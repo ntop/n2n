@@ -1,0 +1,43 @@
+.TH supernode 1  "Jan 3, 2009" "revision 3679" "USER COMMANDS"
+.SH NAME
+supernode \- n2n supernode daemon
+.SH SYNOPSIS
+.B supernode \-l <port> [\-v]
+.SH DESCRIPTION
+N2N is a peer-to-peer VPN system. Supernode is a node introduction registry,
+broadcast conduit and packet relay node for the n2n system. On startup supernode
+begins listening on the specified UDP port for node registrations, and other
+packets to route. The supernode can service any number of communities and routes
+packets only between members of the same community. The supernode does not hold
+the community encryption key and so cannot snoop or inject packets into the
+community.
+.PP
+Supernode can service a number of n2n communities concurrently. Traffic does not
+cross between communities.
+.PP
+All logging goes to stdout.
+.SH OPTIONS
+.TP
+\-l <port>
+listen on the given UDP port
+.TP
+\-v
+use verbose logging
+.TP
+\-f
+disable daemon mode (UNIX) and run in foreground.
+.SH EXAMPLES
+.TP
+.B supernode -l 7654 -v
+Start supernode listening on UDP port 7654 with verbose output.
+.PP
+.SH RESTART
+When suprenode restarts it loses all registration information from associated
+edge nodes. It can take up to five minutes for the edge nodes to re-register and
+normal traffic flow to resume.
+.SH EXIT STATUS
+supernode is a daemon and any exit is an error
+.SH AUTHOR
+Luca Deri ( deri (at) ntop.org ), Richard Andrews ( andrews (at) ntop.org ), Don Bindner
+.SH SEE ALSO
+ifconfig(8) edge(8)

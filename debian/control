@@ -1,0 +1,51 @@
+Source: n2n
+Section: net
+Priority: extra
+Maintainer: Jean-Baptiste Denis <jeanbaptiste.denis@gmail.com>
+Build-Depends: cdbs, debhelper (>= 5), libc6-dev (>= 2.0), dpatch, gcc, libssl-dev
+Standards-Version: 3.7.2
+
+Package: n2n
+Architecture: any
+Depends: n2n-edge, n2n-supernode
+Description: dummy package for transition purposes
+ A dummy package for transition purposes that depends on n2n-edge and
+ n2n-supernode
+
+Package: n2n-edge
+Architecture: any
+Suggests: uml-utilities
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: n2n (<< 2.1.0-1)
+Replaces: n2n (<< 2.1.0-1)
+Description: a layer-two peer-to-peer virtual private network (VPN)
+ n2n is a layer-two peer-to-peer virtual private network (VPN) which allows
+ users to exploit features typical of P2P applications at network instead of
+ application level. This means that users can gain native IP visibility (e.g.
+ two PCs belonging to the same n2n network can ping each other) and be
+ reachable with the same network IP address regardless of the network where
+ they currently belong. In a nutshell, as OpenVPN moved SSL from application
+ (e.g. used to implement the https protocol) to network protocol, n2n moves
+ P2P from application to network level.
+ .
+ Edge is the edge node daemon for n2n which creates a TAP interface to expose
+ the n2n virtual LAN.
+
+Package: n2n-supernode
+Architecture: any
+Suggests: n2n-edge
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: n2n (<< 2.1.0-1)
+Replaces: n2n (<< 2.1.0-1)
+Description: a layer-two peer-to-peer virtual private network (VPN)
+ n2n is a layer-two peer-to-peer virtual private network (VPN) which allows
+ users to exploit features typical of P2P applications at network instead of
+ application level. This means that users can gain native IP visibility (e.g.
+ two PCs belonging to the same n2n network can ping each other) and be
+ reachable with the same network IP address regardless of the network where
+ they currently belong. In a nutshell, as OpenVPN moved SSL from application
+ (e.g. used to implement the https protocol) to network protocol, n2n moves
+ P2P from application to network level.
+ .
+ Supernode is a node introduction registry, broadcast conduit and packet relay
+ node for the n2n system.

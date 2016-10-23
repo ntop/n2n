@@ -1,0 +1,21 @@
+# Config file for the n2n edge node daemon.
+
+# Sets the n2n community name. All edges within the same community appear on
+# the same LAN (layer 2 network segment). Community name is 16 bytes in length.
+N2N_COMMUNITY="MyCommunityName"
+
+# Sets the twofish encryption key from ASCII text. All edges communicating must
+# use the same key and community name.
+N2N_KEY="MySecretCode"
+
+# Sets the n2n supernode IP address to register to.
+N2N_SUPERNODE="gw1.example.com"
+
+# Sets the n2n virtual LAN IP address being claimed. This is a private IP
+# address. All IP addresses in an n2n community typical belong to the same /24
+# net‐ work (ie. only the last octet of the IP addresses varies).
+N2N_IP="10.10.10.11"
+
+# Uncomment this to get edge node started.
+#N2N_EDGE_CONFIG_DONE="yes"
+

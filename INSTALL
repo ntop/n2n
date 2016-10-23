@@ -1,0 +1,50 @@
+INSTALL
+
+To build the programs:
+
+$ make
+
+To install the programs and man pages:
+
+$ make install
+
+or
+
+$ make PREFIX=/usr/local install
+
+
+RPM Package
+-----------
+
+These steps should work with RPM based Linux distributions since rpmbuild was
+split from the rpm utility (c RedHat 9).
+
+
+To build an RPM the easy way follow these steps.
+
+1. Build SRPM
+
+$ cd n2n
+$ scripts/mk_SRPM.sh
+
+Look for where the src.rpm file was put ( "Wrote:" ).
+
+2. Build binary RPM from SRPM
+
+$ rpm -i path/to/n2n-<ver>.src.rpm
+$ rpmbuild -bb n2n.spec
+
+
+All this can be done as non-root user if you have a ~/.rpmmacros file with this
+line in it:
+
+%_topdir /home/username/rpmtopdir
+
+
+To build an RPM the hard way follow these steps.
+
+$ cp -a n2ndir n2n-2.0
+$ tar czf n2n-2.0.tar.gz n2n-2.0
+$ mv n2n-2.0.tar.gz /usr/src/redhat/SOURCES
+$ cp n2ndir/n2n.spec /usr/src/redhat/SPECS
+$ rpmbuild -bb n2n.spec

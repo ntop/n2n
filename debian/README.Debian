@@ -1,0 +1,7 @@
+n2n for Debian
+--------------
+
+This package depends on the kernel having the TUN/TAP driver configured in using
+CONFIG_TUN=yes.
+
+ -- Richard Andrews <andrews@ntop.org>  Thu, 10 Jul 2008 22:38:02 +1000

@@ -1,0 +1,23 @@
+This package was debianized by Jean-Baptiste Denis <jeanbaptiste.denis@gmail.com> on
+Thu, 20 Nov 2008 23:53:02 +1000.
+
+It was downloaded from http://www.ntop.org/n2n/
+
+Upstream Author(s):
+
+    Luca Deri <deri@ntop.org>
+    Richard Andrews <andrews@ntop.org>
+
+Copyright:
+
+    Copyright (C) 2008 Luca Deri
+    Copyright (C) 2008 Richard Andrews
+
+License:
+
+    GPLv3
+
+The Debian packaging is (C) 2008, Richard Andrews <andrews@ntop.org>,
+Luca Deri <deri@ntop.org> and is licensed under the GPLv3, see
+`/usr/share/common-licenses/GPL-3'.
+

@@ -1,0 +1,208 @@
+.TH edge 8  "17 Mar 2010" "n2n-2.1" "SUPERUSER COMMANDS"
+.SH NAME
+edge \- n2n edge node daemon
+.SH SYNOPSIS
+.B edge
+[\-d <tun device>] \-a <tun IP address> \-c <community> {\-k <encrypt key>|\-K <keyfile>} 
+[\-s <netmask>] \-l <supernode host:port> 
+[\-p <local port>] [\-u <UID>] [\-g <GID>] [-f] [\-m <MAC address>] [\-r] [\-v]
+.SH DESCRIPTION
+N2N is a peer-to-peer VPN system. Edge is the edge node daemon for n2n which
+creates a TAP interface to expose the n2n virtual LAN. On startup n2n creates
+the TAP interface and configures it then registers with the supernode so it can
+begin to find other nodes in the community.
+.PP
+.SH OPTIONS
+.TP
+\-d <name>
+sets the TAP device name as seen in ifconfig. Only available on Linux.
+.TP
+\-a {<addr>|static:<addr>|dhcp:0.0.0.0}
+sets the n2n virtual LAN IP address being claimed. This is a private IP
+address. All IP addresses in an n2n community typical belong to the same /24
+network (ie. only the last octet of the IP addresses varies). If DHCP is used to
+assign interface addresses then specify the address as
+.B -a dhcp:0.0.0.0 
+.TP
+\-b
+cause edge to perform hostname resolution for the supernode address each time
+the supernode is periodically contacted. This can cause reliability problems
+because all packet processing stops while the supernode address is resolved
+which might take 15 seconds.
+.TP
+\-c <community>
+sets the n2n community name. All edges within the same community appear on the
+same LAN (layer 2 network segment). Community name is 16 bytes in length. A name
+smaller than this is padded with 0x00 bytes and a name longer than this is
+truncated to take the first 16 bytes.
+.TP
+\-h
+write usage then exit.
+.TP
+\-k <keystring>
+sets the twofish encryption key from ASCII text (see also N2N_KEY in
+ENVIRONMENT). All edges communicating must use the same key and community
+name. If neither -k nor -K is used to specify a key source then edge uses
+cleartext mode (no encryption). The -k and -K options are mutually exclusive.
+.TP
+\-K <keyfile>
+Reads a key-schedule file <keyfile> and populates the internal transform
+operations with the data found there. This mechanism allows keys to roll at
+pre-determined times for a group of hosts. Accurate time synchronisation is not
+required as older keys can be decoded for some time after expiry.  If neither -k
+nor -K is used to specify a key source then edge uses cleartext mode (no
+encryption). The -k and -K options are mutually exclusive.
+.TP
+\-l <addr>:<port>
+sets the n2n supernode IP address and port to register to. Up to 2 supernodes
+can be specified by two invocations of -l <addr>:<port>. eg.
+.B edge -l 12.34.56.78:7654 -l 98.76.54.32:7654
+.
+.TP
+\-p <num>
+binds edge to the given UDP port. Useful for keeping the same external socket
+across restarts of edge. This allows peer edges which know the edge socket to
+continue p2p operation without going back to the supernode.
+.TP
+\-t <num>
+binds the edge management system to the given UDP port. Default 5644. Use this
+if you need to run multiple instance of edge; or something is bound to that
+port.
+.TP
+\-u <uid>
+causes the edge process to drop to the given user ID when privileges are no
+longer required (UNIX).
+.TP
+\-g <gid>
+causes the edge process to drop to the given group ID when privileges are no
+longer required (UNIX).
+.TP
+\-f
+disables daemon mode (UNIX) and causes edge to run in the foreground.
+.TP
+\-m <MAC>
+start the TAP interface with the given MAC address. This is highly recommended
+as it means the same address will be used if edge stops and restarts. If this is
+not done, the ARP caches of all peers will be wrong and packets will not flow to
+this edge until the next ARP refresh.
+.TP
+\-M <MTU>
+set the MTU of the edge interface in bytes. MTU is the largest packet fragment
+size allowed to be moved throught the interface. The default is 1400.
+.TP
+\-s <netmask> 
+set the netmask of edge interface in IPv4 dotted decimal notation. The default
+is 255.255.255.0 (ie. /24).
+.TP
+\-r
+enable IP packet forwarding/routing through the n2n virtual LAN. Without this
+option, IP packets arriving over n2n are dropped if not for the -a <addr> (or
+DHCP assigned) IP address of the edge interface.
+.TP
+\-E 
+accept packets destined for multicast ethernet MAC addresses. These addresses
+are used in multicast ethernet and IPv6 neighbour discovery. If this option is
+not present these multicast packets are discarded as most users do not need or
+understand them.
+.TP
+\-v
+more verbose logging (may be specified several times for more verbosity).
+.SH ENVIRONMENT
+.TP
+.B N2N_KEY
+set the encryption key so it is not visible on the command line
+.SH EXAMPLES
+.TP
+.B edge \-d n2n0 \-c mynetwork \-k encryptme \-u 99 \-g 99 \-m DE:AD:BE:EF:01:23 \-a 192.168.254.7 \-p 50001 \-l 123.121.120.119:7654
+
+Start edge with TAP device n2n0 on community "mynetwork" with community
+supernode at 123.121.120.119 UDP port 7654 and bind the locally used UDP port to
+50001. Use "encryptme" as the single permanent shared encryption key. Assign MAC
+address DE:AD:BE:EF:01:23 to the n2n interface and drop to user=99 and group=99
+after the TAP device is successfull configured.
+.PP
+Add the -f option to stop edge running as a daemon.
+.PP
+Somewhere else setup another edge with similar parameters, eg.
+
+.B edge \-d n2n0 \-c mynetwork \-k encryptme \-u 99 \-g 99 \-m DE:AD:BE:EF:01:21 \-a 192.168.254.5 \-p 50001 \-l 123.121.120.119:7654
+.PP
+Now you can ping from 192.168.254.5 to 192.168.254.7.
+.PP
+The MAC address (-m <MAC>) and virtual IP address (-a <addr>) must be different
+on all edges in the same community.
+
+.SH KEY SCHEDULE FILES
+(See
+.B n2n_v2(7)
+for more details).
+
+The -K <keyfile> option reads a key schedule file.
+
+.B edge \-d n2n0 \-c mynetwork \-K /path/to/file \-u 99 \-g 99 \-m DE:AD:BE:EF:01:21 \-a 192.168.254.5 \-p 50001 \-l 123.121.120.119:7654
+.PP
+
+The key schedule file consists of line, one per key in the schedule. The purpose
+of key schedules is to encourage regular changing of the encryption keys used by
+a community. The file structure also allows for full binary keys to be specified
+as compared to the ASCII keys allowed by the single key injection. Each key line
+consists of the following:
+
+.B <from> <until> <transform> <data>
+
+<from> and <until> are ASCII decimal values of the UNIX times during which the
+key is valid. <transform> is the index of the transform that <data> applies
+to. <data> is some text which is parsed by the transform module to derive the
+key for that line.
+
+Supported <transform> values are:
+.TP
+2 = TwoFish
+<data> has the form <SA>_<hex_key>. eg.
+
+.B 1252327945 1252328305 2 602_3d7c7769b34b2a4812f8c0e9d87ce9
+
+This specifies security association number 602 and a 16-octet key of numeric
+value 0x3d7c7769b34b2a4812f8c0e9d87ce9. <SA> is a 32-bit unsigned integer which
+is used to identify the encryption key to the receiver. The SA number is sent
+unencrypted so the receiver may find the correct key from the key
+schedule. <hex_key> is up to 16 octets although shorter keys are allowed.
+
+.TP
+3 = AES-CBC
+<data> has the form <SA>_<hex_key>. Same rules as TwoFish.
+
+.SH CLEARTEXT MODE
+If neither 
+.B -k
+nor
+.B -K
+is specified then edge uses cleartext mode. In cleartext mode there is no
+transform of the packet data it is simply encrypted. This is useful for
+debugging n2n as packet contents can be seen clearly.
+
+To prevent accidental exposure of data, edge only enters cleartext mode when no
+keying parameters are specified. In the case where keying parameters are
+specified but no valid keys can be determined, edge exits with an error at
+startup. If all keys become invalid while running, edge continues to encode
+using the last key that was valid.
+
+.SH MANAGEMENT INTERFACE
+Edge provides a very simple management system on UDP port 5644. Send a newline
+to receive a status output. Send 'reload' to cause re-read of the
+keyfile. Send 'stop' to cause edge to exit cleanly.
+
+.SH EXIT STATUS
+edge is a daemon and any exit is an error.
+.SH AUTHORS
+.TP
+Richard Andrews
+andrews (at) ntop.org - n2n-1 maintainer and main author of n2n-2
+.TP
+Luca Deri
+deri (at) ntop.org - original author of n2n
+.TP
+Don Bindner
+(--) - significant contributions to n2n-1
+.SH SEE ALSO
+ifconfig(8) supernode(1) tunctl(8) n2n_v2(7)

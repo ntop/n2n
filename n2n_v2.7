@@ -1,0 +1,156 @@
+.TH "n2n_v2" 7 "Sep 21, 2009" "revision 3909" "Background"
+.SH NAME
+N2n Version 2 \- version 2 of the n2n decentralised peer-to-peer network overlay
+VPN.
+.SH DESCRIPTION
+N2n is a peer-to-peer network overlay or VPN system that provides layer 2 over
+layer 3 encapsulation with data transform capabilities such as encryption and
+compression. This guide discusses the differences of version 2 or n2n from
+version 1.
+.SH PROTOCOLS
+N2n-2 uses a different set of messages to communicate with edges and
+supernodes. The n2n-2 messages are not compatible with n2n-1. There is no
+backward compatibility for n2n-1.
+.SH ENCRYPTION
+N2n-2 offers a new way of handling encryption compared to n2n-1. N2n-1 provided
+facility for a single community password with no expiration. In n2n-2 this
+method is preserved but a new mechanism has been added using a key schedule
+file.
+.TP
+Key Schedule
+A key schedule file lists a number of keys with the period for which each is
+valid along with the encryption type identifier and the actual key value. This
+allows the user to define up to 32 keys in advance with a pre-set time at which
+they keys will change. The key schedule file can be reloaded while the edge is
+running to allow new keys to be loaded and unused keys expunged.
+.TP
+Timing Requirements When a key rolls over to the next in the schedule, the new
+key is used for all transmitted packets; however any packets received using an
+older key can still be decoded as the keys from the key schedule are still
+known. As a result edges do not need to have accurate time synchronisation. The
+accuracy of required synchronisation depends to a large degree on the key
+schedule. Rapid key roll-overs requires more accurate time synchronisation.
+.P
+N2n-2 provides the following encryption ciphers; more can be added as required:
+.TP
+.B (1) NULL
+Data is encapsulated unchanged. Useful for testing and high-performance, low
+sensitivity applications.
+.TP
+.B (2) TF
+Twofish AES candidate.
+.P
+The following additional ciphers are specified but not yet implemented:
+.TP
+.B (3) AES-CBC
+AES in CBC mode with 256-bit key.
+.TP
+.B (4) LZO
+LZO compression of data (no encryption).
+.TP
+.B (5) TF-LZO
+TF cipher with LZO compression of data prior to encryption.
+.TP
+.B (6) AES-CBC-LZO
+AES-CBC ciper with LZO compression of data prior to encryption.
+
+.SH EXTENSIBILITY
+N2n-2 decouples the data transform system from the core of the edge
+operation. This allows for easier addition of new data transform
+operations. N2n-2 reserves 64 standard transform identifiers (such as TwoFish
+encryption) but allocates transform identifiers 64 - 65536 for user-defined
+transforms. This allows anyone to add to n2n new private transforms without
+breaking compatibility with the standard offering.
+
+.SH MULTIPLE SUPERNODES
+N2n-2 introduces the capability of multiple supernodes to be used by an
+edge. N2n-2 offers supernode in several flavours:
+.TP
+Stand-alone supernode
+
+This is the same concept as from n2n-1. Supernode is a small efficient C program
+which operates in isolation.
+.TP
+Federated supernodes
+
+This is a cluster of supernodes which share information. Edges registered to any
+of the cooperating supernodes can relay packets through the supernode federation
+and switch supernodes if required. Supernodes can send PACKET or REGISTER
+messages to other supernodes to try and find the destination edge.
+
+.P
+The n2n-2 edge implementation allows multiple supernodes to be specified on the
+command line. Edges monitor the current supernode for responses to
+REGISTER_SUPER messages. If 3 responses are missed then the edge starts looking
+for a new supernode. It cycles through the list of supernodes specified until it
+finds a working one.
+
+.SH EFFICIENCY
+The n2n-2 message formats have been made more efficient. The amount of data
+overhead has been reduced by ensuring the messages contain only the data fields
+required. Some optional fields do not consume data if they are not present.
+
+.SH DAEMON OPERATION
+The supernode and edge use daemon mode of operation by default. This sense is
+inverted from n2n-1 where they ran in the foreground by default. They can be
+made to run in the foreground so tools such a DJB's daemontools can work with
+them. See the 
+.B -f
+option
+
+.SH MANAGEMENT CONSOLE
+Edge and supernode in n2n-2 provide a UDP-based management console. Both listen
+on the localhost address 127.0.0.1. Commands can be sent to the programs by
+sending to the UDP socket. Responses are returned to the socket from which
+commands were issued. This only works from the computer on which the programs
+are running. Statistics can be retrieved and commands issued. The netcat utility
+is all that is required; but more sophisticated tools could be built on the
+interface.
+
+.SH SUPERNODE AUTHENTICATION
+.B (To be implemented)
+Space has been reserved in the supernode registration messages for an
+authentication mechanism.
+
+.SH MESSAGE SUMMARY
+The following message types work within n2n-2.
+.TP
+REGISTER_SUPER
+Sent from an edge to its local supernode to register its MAC with the community.
+.TP
+REGISTER_SUPER_ACK
+Sent from a supernode to an edge to confirm registration. This also carries the
+definition of the edge socket as seen at the supernode so NAT can be detected
+and described.
+.TP
+REGISTER_SUPER_NAK
+Supernode refusing to register an edge.
+.TP
+PACKET
+Encapsulated ethernet packets sent between edges. Supernodes forward or
+broadcast these and edges send them direct in peer-to-peer mode.
+.TP
+REGISTER
+A peer-to-peer mode registration request from one edge to another. Supernodes
+forward these to facilitate NAT crossing introductions.
+.TP
+REGISTER_ACK
+Complete peer-to-peer mode setup between two edges. These messages need to
+travel direct between edges.
+.TP
+FEDERATION
+Federated supernodes exchanging community information.
+
+.SH OTHER DIFFERENCES
+.TP 
+HTTP Tunneling
+This experimental feature (-t option in n2n_v1) of n2n_v1 has been removed
+entirely from n2n_v2.
+.SH AUTHORS
+.TP
+Richard Andrews andrews (at) ntop.org - main author of n2n-2
+.TP
+Luca Deri
+deri (at) ntop.org - code inherited from n2n-1
+.SH SEE ALSO
+ifconfig(8) edge(8) supernode(1)

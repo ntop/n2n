@@ -1,0 +1,27 @@
+n2n (2.1.0-1) unstable; urgency=low
+
+  * Split package in two.
+  * Move manpage for edge to section 8.
+  * Install manpage for n2n_v2 to section 7.
+  * Create init.d files for the daemons.
+
+ -- Kim Hansen <kim@i9.dk>  Sun, 04 Apr 2010 21:40:46 +0200
+
+n2n (2.0-1) hardy; urgency=low
+
+  * New upstream release
+
+ -- Richard Andrews <andrews@ntop.org>  Tue, 30 Oct 2009 22:26:04 +1100
+
+n2n (1.3-1) hardy; urgency=low
+
+  * New upstream release
+
+ -- Richard Andrews <andrews@ntop.org>  Fri, 30 Jan 2009 23:49:56 +1100
+
+n2n (1.2-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Richard Andrews <andrews@ntop.org>  Thu, 10 Jul 2008 22:38:02 +1000
+
