@@ -9,13 +9,16 @@ community.
 
 0. become root
 
-1. create tun device
-   `$ tunctl -t tun0`
+1. create tun device: `$ tunctl -t tun0`
 
 2. enable the edge process
-   `$ ./edge -d n2n0 -c mynetwork -k encryptme -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw`
-   or
-   `$ N2N_KEY=encryptme ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw`
+```
+$ ./edge -d n2n0 -c mynetwork -k encryptme -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
+```
+or
+```
+$ N2N_KEY=encryptme ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
+```
 
 Once you have this worked out, you can add the `-f` option to make edge detach
 and run as a daemon.
@@ -47,7 +50,7 @@ You may choose to install edge SUID-root to do this:
 1. Become root
 2. `chown root:root edge`
 3. `chmod +s edge`
-   done
+4. done
 
 Any user can now run edge. You may not want this, but it may be convenient and
 safe if your host has only one login user.
