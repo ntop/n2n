@@ -23,7 +23,7 @@ $ N2N_KEY=encryptme ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:56:78
 Once you have this worked out, you can add the `-f` option to make edge detach
 and run as a daemon.
 
-Note that `-u`, `-g` and `-f` options are not available for Windows.
+Note that `-d`, `-u`, `-g` and `-f` options are not available for Windows.
 
 
 Supernode
