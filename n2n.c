@@ -386,7 +386,7 @@ static uint8_t hex2byte( const char * s )
   tmp[1]=s[1];
   tmp[2]=0; /* NULL term */
 
-  return((uint8_t)strtol( s, NULL, 16 ));
+  return((uint8_t)strtol( tmp, NULL, 16 ));
 }
 
 extern int str2mac( uint8_t * outmac /* 6 bytes */, const char * s )
