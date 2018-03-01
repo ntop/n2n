@@ -25,7 +25,7 @@ build:
 push:
 	if [ ! "$(TARGET_ARCHITECTURE)" = "" ]; then \
 		docker push $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)-$(TARGET_ARCHITECTURE); \
-		docker push $(DOCKER_IMAGE_NAME):latest-$(TARGET_ARCHITECTURE) \
+		docker push $(DOCKER_IMAGE_NAME):latest-$(TARGET_ARCHITECTURE); \
 	else \
 		echo "Please pass TARGET_ARCHITECTURE, see README.md."; \
 	fi
