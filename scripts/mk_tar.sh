@@ -28,7 +28,7 @@ PKG_AND_VERSION="${PACKAGE}-${PKG_VERSION}"
 TEMPDIR="tmp"
 
 SOURCE_MANIFEST="
-README
+README.md
 edge.c
 lzoconf.h
 lzodefs.h
