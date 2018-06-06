@@ -116,4 +116,4 @@ NULL (-O3) 10659
 
 (C) 2007-2010 - Luca Deri <deri@ntop.org> and Richard Andrews <andrews@ntop.org>
 
-(C) 2016 - ntop
+(C) 2018 - ntop

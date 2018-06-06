@@ -1,5 +1,5 @@
-/*
- * (C) 2007-09 - Luca Deri <deri@ntop.org>
+/**
+ * (C) 2007-18 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,8 +12,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>
-*/
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
+ *
+ */
 
 #include "n2n.h"
 

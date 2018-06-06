@@ -1,6 +1,5 @@
-/*
- * (C) 2007-09 - Luca Deri <deri@ntop.org>
- *               Richard Andrews <andrews@ntop.org>
+/**
+ * (C) 2007-18 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,11 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>
- *
- * Code contributions courtesy of:
- *    Babak Farrokhi <babak@farrokhi.net> [FreeBSD port]
- *    Lukasz Taczuk
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
  *
  */
 
