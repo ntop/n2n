@@ -1,0 +1,19 @@
+
+Using n2n on MacOS
+------------------
+
+In order to use n2n on MacOS you need to first install support for the tap interface.
+if you are a brew (https://brew.sh) user you can do it in a couple of steps
+
+- brew tap homebrew/cask
+- brew cask install tuntap
+
+Note that in the latest OS versions (for instance MacOS High Sierra), you may need to
+need to enable their kernel extension in
+
+  System Preferences → Security & Privacy → General
+
+For more information refer to vendor documentation or the Apple Technical Note:
+
+  https://developer.apple.com/library/content/technotes/tn2459/_index.html
+
