@@ -17,7 +17,7 @@
 
 #include "n2n.h"
 
-#ifdef _DARWIN_
+#ifdef __APPLE__
 
 void tun_close(tuntap_dev *device);
 
@@ -77,7 +77,7 @@ int tuntap_open(tuntap_dev *device /* ignored */,
 
     fd = popen(buf, "r");
     if(fd < 0) {
-      tun_close(device);
+      tuntap_close(device);
       return(-1);
     } else {
       int a, b, c, d, e, f;
@@ -129,4 +129,4 @@ void tuntap_get_address(struct tuntap_dev *tuntap)
 {
 }
 
-#endif /* _DARWIN_ */
+#endif /* __APPLE__ */

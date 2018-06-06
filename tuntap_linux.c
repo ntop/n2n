@@ -30,8 +30,10 @@ static void read_mac(char *ifname, n2n_mac_t mac_addr) {
   _sock=socket(PF_INET, SOCK_DGRAM, 0);
   strcpy(ifr.ifr_name, ifname);
   res = ioctl(_sock,SIOCGIFHWADDR,&ifr);
-  if (res<0) {
+  
+  if(res < 0) {
     perror ("Get hw addr");
+    traceEvent(TRACE_ERROR, "Unable to read interfce %s MAC", ifname);
   } else
     memcpy(mac_addr, ifr.ifr_ifru.ifru_hwaddr.sa_data, 6);
 

@@ -36,14 +36,7 @@
    tunctl -u UID -t tunX
 */
 
-#if defined(__APPLE__) && defined(__MACH__)
-#define _DARWIN_
-#endif
 
-
-/* Some capability defaults which can be reset for particular platforms. */
-#define N2N_HAVE_DAEMON 1
-#define N2N_HAVE_SETUID 1
 /* #define N2N_CAN_NAME_IFACE */
 
 /* Moved here to define _CRT_SECURE_NO_WARNINGS before all the including takes place */
@@ -98,11 +91,6 @@ struct ether_hdr
 } __attribute__ ((__packed__));
 
 typedef struct ether_hdr ether_hdr_t;
-
-#ifdef __sun__
-#include <sys/sysmacros.h> /* MIN() and MAX() declared here */
-#undef N2N_HAVE_DAEMON
-#endif /* #ifdef __sun__ */
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
