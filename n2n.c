@@ -167,7 +167,7 @@ char* intoa(uint32_t /* host order */ addr, char* buf, uint16_t buf_len) {
 /* *********************************************** */
 
 char * macaddr_str(macstr_t buf,
-		   const n2n_mac_t mac )
+		   const n2n_mac_t mac)
 {
   snprintf(buf, N2N_MACSTR_SIZE, "%02X:%02X:%02X:%02X:%02X:%02X",
 	   mac[0] & 0xFF, mac[1] & 0xFF, mac[2] & 0xFF,
@@ -179,9 +179,9 @@ char * macaddr_str(macstr_t buf,
 
 uint8_t is_multi_broadcast(const uint8_t * dest_mac) {
 
-  int is_broadcast =(memcmp(broadcast_addr, dest_mac, 6) == 0 );
-  int is_multicast =(memcmp(multicast_addr, dest_mac, 3) == 0 );
-  int is_ipv6_multicast =(memcmp(ipv6_multicast_addr, dest_mac, 2) == 0 );
+  int is_broadcast =(memcmp(broadcast_addr, dest_mac, 6) == 0);
+  int is_multicast =(memcmp(multicast_addr, dest_mac, 3) == 0);
+  int is_ipv6_multicast =(memcmp(ipv6_multicast_addr, dest_mac, 2) == 0);
 
   return is_broadcast || is_multicast || is_ipv6_multicast;
 
@@ -214,7 +214,7 @@ void hexdump(const uint8_t * buf, size_t len)
 {
   size_t i;
 
-  if(0 == len ) { return; }
+  if(0 == len) { return; }
 
   for(i=0; i<len; i++)
     {
@@ -242,11 +242,11 @@ void print_n2n_version() {
  *
  *  @return NULL if not found; otherwise pointer to peer entry.
  */
-struct peer_info * find_peer_by_mac(struct peer_info * list, const n2n_mac_t mac )
+struct peer_info * find_peer_by_mac(struct peer_info * list, const n2n_mac_t mac)
 {
   while(list != NULL)
     {
-      if(0 == memcmp(mac, list->mac_addr, 6) )
+      if(0 == memcmp(mac, list->mac_addr, 6))
         {
 	  return list;
         }
@@ -260,11 +260,11 @@ struct peer_info * find_peer_by_mac(struct peer_info * list, const n2n_mac_t mac
 /** Return the number of elements in the list.
  *
  */
-size_t peer_list_size(const struct peer_info * list )
+size_t peer_list_size(const struct peer_info * list)
 {
   size_t retval=0;
 
-  while(list )
+  while(list)
     {
       ++retval;
       list = list->next;
@@ -279,7 +279,7 @@ size_t peer_list_size(const struct peer_info * list )
  *  insertion. list takes ownership of new.
  */
 void peer_list_add(struct peer_info * * list,
-		   struct peer_info * new )
+		   struct peer_info * new)
 {
   new->next = *list;
   new->last_seen = time(NULL);
@@ -287,7 +287,7 @@ void peer_list_add(struct peer_info * * list,
 }
 
 
-size_t purge_expired_registrations(struct peer_info ** peer_list ) {
+size_t purge_expired_registrations(struct peer_info ** peer_list) {
   static time_t last_purge = 0;
   time_t now = time(NULL);
   size_t num_reg = 0;
@@ -296,7 +296,7 @@ size_t purge_expired_registrations(struct peer_info ** peer_list ) {
 
   traceEvent(TRACE_INFO, "Purging old registrations");
 
-  num_reg = purge_peer_list(peer_list, now-REGISTRATION_TIMEOUT );
+  num_reg = purge_peer_list(peer_list, now-REGISTRATION_TIMEOUT);
 
   last_purge = now;
   traceEvent(TRACE_INFO, "Remove %ld registrations", num_reg);
@@ -306,7 +306,7 @@ size_t purge_expired_registrations(struct peer_info ** peer_list ) {
 
 /** Purge old items from the peer_list and return the number of items that were removed. */
 size_t purge_peer_list(struct peer_info ** peer_list,
-		       time_t purge_before )
+		       time_t purge_before)
 {
   struct peer_info *scan;
   struct peer_info *prev;
@@ -344,7 +344,7 @@ size_t purge_peer_list(struct peer_info ** peer_list,
 }
 
 /** Purge all items from the peer_list and return the number of items that were removed. */
-size_t clear_peer_list(struct peer_info ** peer_list )
+size_t clear_peer_list(struct peer_info ** peer_list)
 {
   struct peer_info *scan;
   struct peer_info *prev;
@@ -373,17 +373,17 @@ size_t clear_peer_list(struct peer_info ** peer_list )
   return retval;
 }
 
-static uint8_t hex2byte(const char * s )
+static uint8_t hex2byte(const char * s)
 {
   char tmp[3];
   tmp[0]=s[0];
   tmp[1]=s[1];
   tmp[2]=0; /* NULL term */
 
-  return((uint8_t)strtol(tmp, NULL, 16 ));
+  return((uint8_t)strtol(tmp, NULL, 16));
 }
 
-extern int str2mac(uint8_t * outmac /* 6 bytes */, const char * s )
+extern int str2mac(uint8_t * outmac /* 6 bytes */, const char * s)
 {
   size_t i;
 
@@ -394,7 +394,7 @@ extern int str2mac(uint8_t * outmac /* 6 bytes */, const char * s )
   ++outmac;
   s+=2; /* don't skip colon yet - helps generalise loop. */
 
-  for(i=1; i<6; ++i )
+  for(i=1; i<6; ++i)
     {
       s+=1;
       *outmac=hex2byte(s);
@@ -406,45 +406,45 @@ extern int str2mac(uint8_t * outmac /* 6 bytes */, const char * s )
 }
 
 extern char * sock_to_cstr(n2n_sock_str_t out,
-			   const n2n_sock_t * sock )
-{
-  int r;
-
-  if(NULL == out ) { return NULL; }
+			   const n2n_sock_t * sock) {
+  if(NULL == out) { return NULL; }
   memset(out, 0, N2N_SOCKBUF_SIZE);
 
-  if(AF_INET6 == sock->family )
-    {
-      /* INET6 not written yet */
-      r = snprintf(out, N2N_SOCKBUF_SIZE, "XXXX:%hu", sock->port );
-      return out;
-    }
-  else
-    {
-      const uint8_t * a = sock->addr.v4;
-      r = snprintf(out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu", 
-		   (unsigned short)(a[0] & 0xff),
-		   (unsigned short)(a[1] & 0xff),
-		   (unsigned short)(a[2] & 0xff),
-		   (unsigned short)(a[3] & 0xff),
-		   (unsigned short)sock->port );
-      return out;
-    }
+  if(AF_INET6 == sock->family) {
+    /* INET6 not written yet */
+    snprintf(out, N2N_SOCKBUF_SIZE, "XXXX:%hu", sock->port);
+    return out;
+  } else {
+    const uint8_t * a = sock->addr.v4;
+
+    snprintf(out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu", 
+	     (unsigned short)(a[0] & 0xff),
+	     (unsigned short)(a[1] & 0xff),
+	     (unsigned short)(a[2] & 0xff),
+	     (unsigned short)(a[3] & 0xff),
+	     (unsigned short)sock->port);
+    return out;
+  }
 }
 
 /* @return zero if the two sockets are equivalent. */
 int sock_equal(const n2n_sock_t * a,
-	       const n2n_sock_t * b )
-{
-  if(a->port != b->port ) { return 1; }
-  if(a->family != b->family ) { return 1; }
-  switch(a->family) /* they are the same */
-    {
+	       const n2n_sock_t * b) {
+  if(a->port != b->port)     { return 1; }
+  if(a->family != b->family) { return 1; }
+  
+  switch(a->family) {
     case AF_INET:
-      if(0 != memcmp(a->addr.v4, b->addr.v4, IPV4_SIZE ) ) { return 1;};
+      if(0 != memcmp(a->addr.v4, b->addr.v4, IPV4_SIZE)) {
+	return 1;
+      }
       break;
+      
     default:
-      if(0 != memcmp(a->addr.v6, b->addr.v6, IPV6_SIZE ) ) { return 1;};
+      if(0 != memcmp(a->addr.v6, b->addr.v6, IPV6_SIZE)) {
+	return 1;
+      }
+      
       break;
     }
 

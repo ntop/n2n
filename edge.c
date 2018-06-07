@@ -549,7 +549,7 @@ static void send_register(n2n_edge_t * eee,
 {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   size_t idx;
-  ssize_t sent;
+  /* ssize_t sent; */
   n2n_common_t cmn;
   n2n_REGISTER_t reg;
   n2n_sock_str_t sockbuf;
@@ -572,19 +572,16 @@ static void send_register(n2n_edge_t * eee,
   traceEvent(TRACE_INFO, "send REGISTER %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
-
-  sent = sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
-
+  /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
 
 
 /** Send a REGISTER_SUPER packet to the current supernode. */
 static void send_register_super(n2n_edge_t * eee,
-				const n2n_sock_t * supernode)
-{
+				const n2n_sock_t * supernode) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   size_t idx;
-  ssize_t sent;
+  /* ssize_t sent; */
   n2n_common_t cmn;
   n2n_REGISTER_SUPER_t reg;
   n2n_sock_str_t sockbuf;
@@ -614,19 +611,17 @@ static void send_register_super(n2n_edge_t * eee,
 	     sock_to_cstr(sockbuf, supernode));
 
 
-  sent = sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
-
+  /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
 }
 
 
 /** Send a REGISTER_ACK packet to a peer edge. */
 static void send_register_ack(n2n_edge_t * eee,
 			      const n2n_sock_t * remote_peer,
-			      const n2n_REGISTER_t * reg)
-{
+			      const n2n_REGISTER_t * reg) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   size_t idx;
-  ssize_t sent;
+  /* ssize_t sent; */
   n2n_common_t cmn;
   n2n_REGISTER_ACK_t ack;
   n2n_sock_str_t sockbuf;
@@ -650,7 +645,7 @@ static void send_register_ack(n2n_edge_t * eee,
 	     sock_to_cstr(sockbuf, remote_peer));
 
 
-  sent = sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
+  /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
 
 
@@ -1128,7 +1123,7 @@ static int send_PACKET(n2n_edge_t * eee,
 		       size_t pktlen)
 {
   int dest;
-  ssize_t s;
+  /*ssize_t s; */
   n2n_sock_str_t sockbuf;
   n2n_sock_t destination;
 
@@ -1137,17 +1132,13 @@ static int send_PACKET(n2n_edge_t * eee,
   dest = find_peer_destination(eee, dstMac, &destination);
 
   if(dest)
-    {
-      ++(eee->tx_p2p);
-    }
+    ++(eee->tx_p2p);
   else
-    {
-      ++(eee->tx_sup);
-    }
+    ++(eee->tx_sup);
 
   traceEvent(TRACE_INFO, "send_PACKET to %s", sock_to_cstr(sockbuf, &destination));
 
-  s = sendto_sock(eee->udp_sock, pktbuf, pktlen, &destination);
+  /* s = */ sendto_sock(eee->udp_sock, pktbuf, pktlen, &destination);
 
   return 0;
 }
@@ -1414,7 +1405,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running)
 {
   uint8_t             udp_buf[N2N_PKT_BUF_SIZE];      /* Compete UDP packet */
   ssize_t             recvlen;
-  ssize_t             sendlen;
+  /* ssize_t             sendlen; */
   struct sockaddr_in  sender_sock;
   socklen_t           i;
   size_t              msg_len;
@@ -1563,9 +1554,8 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running)
   traceEvent(TRACE_DEBUG, "mgmt status sending: %s", udp_buf);
 
 
-  sendlen = sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
-		   (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
-
+  /* sendlen = */ sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+			 (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
 }
 
 
@@ -1920,7 +1910,7 @@ static int run_loop(n2n_edge_t * eee);
 
 /* *************************************************** */
 
-void daemonize() {
+static void daemonize() {
 #ifndef WIN32
   int childpid;
 
