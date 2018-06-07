@@ -37,10 +37,9 @@
 struct n2n_trans_op;
 typedef struct n2n_trans_op n2n_trans_op_t;
 
-struct n2n_tostat
-{
-    uint8_t             can_tx;         /* Does this transop have a valid SA for encoding. */
-    n2n_cipherspec_t    tx_spec;        /* If can_tx, the spec used to encode. */
+struct n2n_tostat {
+  uint8_t             can_tx;         /* Does this transop have a valid SA for encoding. */
+  n2n_cipherspec_t    tx_spec;        /* If can_tx, the spec used to encode. */
 };
 
 typedef struct n2n_tostat n2n_tostat_t;
@@ -64,19 +63,18 @@ typedef int             (*n2n_transform_f)( n2n_trans_op_t * arg,
  *  to use to decode the packet content. The transform code then decodes the
  *  packet and consults its internal key lookup.
  */
-struct n2n_trans_op
-{
-    void *              priv;   /* opaque data. Key schedule goes here. */
+struct n2n_trans_op {
+  void *              priv;   /* opaque data. Key schedule goes here. */
 
-    n2n_transform_t     transform_id;   /* link header enum to a transform */
-    size_t              tx_cnt;
-    size_t              rx_cnt;
+  n2n_transform_t     transform_id;   /* link header enum to a transform */
+  size_t              tx_cnt;
+  size_t              rx_cnt;
 
-    n2n_transdeinit_f   deinit; /* destructor function */
-    n2n_transaddspec_f  addspec; /* parse opaque data from a key schedule file. */
-    n2n_transtick_f     tick;   /* periodic maintenance */
-    n2n_transform_f     fwd;    /* encode a payload */
-    n2n_transform_f     rev;    /* decode a payload */
+  n2n_transdeinit_f   deinit; /* destructor function */
+  n2n_transaddspec_f  addspec; /* parse opaque data from a key schedule file. */
+  n2n_transtick_f     tick;   /* periodic maintenance */
+  n2n_transform_f     fwd;    /* encode a payload */
+  n2n_transform_f     rev;    /* decode a payload */
 };
 
 /* Setup a single twofish SA for single-key operation. */

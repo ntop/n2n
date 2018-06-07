@@ -45,8 +45,10 @@ MAN8DIR=$(MANDIR)/man8
 
 N2N_LIB=n2n.a
 N2N_OBJS=n2n.o n2n_keyfile.o wire.o minilzo.o twofish.o \
+	 egde_utils.o \
          transform_null.o transform_tf.o transform_aes.o \
-         tuntap_freebsd.o tuntap_netbsd.o tuntap_linux.o tuntap_osx.o version.o
+         tuntap_freebsd.o tuntap_netbsd.o tuntap_linux.o \
+	 tuntap_osx.o version.o
 LIBS_EDGE+=$(LIBS_EDGE_OPT)
 LIBS_SN=
 
