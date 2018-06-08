@@ -222,57 +222,6 @@ static void help() {
 
 /* ************************************** */
 
-/** Start the registration process.
- *
- *  If the peer is already in pending_peers, ignore the request.
- *  If not in pending_peers, add it and send a REGISTER.
- *
- *  If hdr is for a direct peer-to-peer packet, try to register back to sender
- *  even if the MAC is in pending_peers. This is because an incident direct
- *  packet indicates that peer-to-peer exchange should work so more aggressive
- *  registration can be permitted (once per incoming packet) as this should only
- *  last for a small number of packets..
- *
- *  Called from the main loop when Rx a packet for our device mac.
- */
-void try_send_register(n2n_edge_t * eee,
-		       uint8_t from_supernode,
-		       const n2n_mac_t mac,
-		       const n2n_sock_t * peer)
-{
-  /* REVISIT: purge of pending_peers not yet done. */
-  struct peer_info * scan = find_peer_by_mac(eee->pending_peers, mac);
-  macstr_t mac_buf;
-  n2n_sock_str_t sockbuf;
-
-  if(NULL == scan)
-    {
-      scan = calloc(1, sizeof(struct peer_info));
-
-      memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
-      scan->sock = *peer;
-      scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
-
-      peer_list_add(&(eee->pending_peers), scan);
-
-      traceEvent(TRACE_DEBUG, "=== new pending %s -> %s",
-		 macaddr_str(mac_buf, scan->mac_addr),
-		 sock_to_cstr(sockbuf, &(scan->sock)));
-
-      traceEvent(TRACE_INFO, "Pending peers list size=%u",
-		 (unsigned int)peer_list_size(eee->pending_peers));
-
-      /* trace Sending REGISTER */
-
-      send_register(eee, &(scan->sock));
-
-      /* pending_peers now owns scan. */
-    } else {
-  }
-}
-
-/* ************************************** */
-
 #if defined(DUMMY_ID_00001) /* Disabled waiting for config option to enable it */
 
 static char gratuitous_arp[] = {
@@ -799,17 +748,3 @@ int main(int argc, char* argv[]) {
 }
 
 /* ************************************** */
-
-#ifdef QUICK_INIT
-
-int main(int argc, char* argv[]) {
-  traceLevel = 10;
-  return(quick_edge_init("n2n0",
-			 "mynetwork",
-			 "ntop2018",
-			 "DE:AD:BE:EF:01:10",
-			 "192.168.254.10",
-			 "192.12.193.11:7654"));
-}
-
-#endif

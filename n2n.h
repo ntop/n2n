@@ -317,10 +317,6 @@ void check_peer(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
-void try_send_register(n2n_edge_t * eee,
-		       uint8_t from_supernode,
-		       const n2n_mac_t mac,
-		       const n2n_sock_t * peer);
 void set_peer_operational(n2n_edge_t * eee,
 			  const n2n_mac_t mac,
 			  const n2n_sock_t * peer);
