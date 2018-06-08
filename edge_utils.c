@@ -1394,8 +1394,7 @@ static void readFromIPSocket(n2n_edge_t * eee) {
 
 /* ************************************** */
 
-int run_edge_loop(n2n_edge_t * eee) {
-  int   keep_running=1;
+int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   size_t numPurged;
   time_t lastIfaceCheck=0;
   time_t lastTransop=0;
@@ -1404,6 +1403,8 @@ int run_edge_loop(n2n_edge_t * eee) {
   startTunReadThread(eee);
 #endif
 
+  *keep_running = 1;
+  
   /* Main loop
    *
    * select() is used to wait for input on either the TAP fd or the UDP/TCP
@@ -1450,16 +1451,14 @@ int run_edge_loop(n2n_edge_t * eee) {
 	    readFromIPSocket(eee);
 	  }
 
-	if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask))
-	  {
+	if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
 	    /* Read a cooked socket from the internet socket. Writes on the TAP
 	     * socket. */
-	    readFromMgmtSocket(eee, &keep_running);
+	    readFromMgmtSocket(eee, keep_running);
 	  }
 
 #ifndef WIN32
-	if(FD_ISSET(eee->device.fd, &socket_mask))
-	  {
+	if(FD_ISSET(eee->device.fd, &socket_mask)) {
 	    /* Read an ethernet frame from the TAP socket. Write on the IP
 	     * socket. */
 	    readFromTAPSocket(eee);
@@ -1583,7 +1582,8 @@ void edge_term(n2n_edge_t * eee) {
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
-		    char *supernode_ip_address_port) {
+		    char *supernode_ip_address_port,
+		    int *keep_on_running) {
   n2n_edge_t eee;
 
   edge_init(&eee);
@@ -1610,5 +1610,5 @@ int quick_edge_init(char *device_name, char *community_name,
 
   update_supernode_reg(&eee, time(NULL));
   
-  return(run_edge_loop(&eee));
+  return(run_edge_loop(&eee, keep_on_running));
 }

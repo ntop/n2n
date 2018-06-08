@@ -323,11 +323,12 @@ void set_peer_operational(n2n_edge_t * eee,
 const char * supernode_ip(const n2n_edge_t * eee);
 int edge_init_twofish(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 		      uint32_t encrypt_pwd_len);
-int run_edge_loop(n2n_edge_t * eee);
+int run_edge_loop(n2n_edge_t * eee, int *keep_running);
 void edge_term(n2n_edge_t * eee);
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
-		    char *supernode_ip_address_port);
+		    char *supernode_ip_address_port,
+		    int *keep_on_running);
   
 #endif /* _N2N_H_ */

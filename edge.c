@@ -394,6 +394,7 @@ static void daemonize() {
 /** Entry point to program from kernel. */
 int main(int argc, char* argv[]) {
   int     opt;
+  int     keep_on_running = 1;
   int     local_port = 0 /* any port */;
   int     mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   char    tuntap_dev_name[N2N_IFNAMSIZ] = "edge0";
@@ -744,7 +745,7 @@ int main(int argc, char* argv[]) {
 
   update_supernode_reg(&eee, time(NULL));
 
-  return run_edge_loop(&eee);
+  return run_edge_loop(&eee, &keep_on_running);
 }
 
 /* ************************************** */
