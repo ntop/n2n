@@ -279,11 +279,11 @@ size_t peer_list_size(const struct peer_info * list)
  *  insertion. list takes ownership of new.
  */
 void peer_list_add(struct peer_info * * list,
-		   struct peer_info * new)
+		   struct peer_info * newp)
 {
-  new->next = *list;
-  new->last_seen = time(NULL);
-  *list = new;
+  newp->next = *list;
+  newp->last_seen = time(NULL);
+  *list = newp;
 }
 
 

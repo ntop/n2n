@@ -220,11 +220,13 @@ struct n2n_edge {
 
 /* ************************************** */
 
+#ifndef TRACE_ERROR
 #define TRACE_ERROR     0, __FILE__, __LINE__
 #define TRACE_WARNING   1, __FILE__, __LINE__
 #define TRACE_NORMAL    2, __FILE__, __LINE__
 #define TRACE_INFO      3, __FILE__, __LINE__
 #define TRACE_DEBUG     4, __FILE__, __LINE__
+#endif
 
 /* ************************************** */
 
@@ -281,7 +283,7 @@ void print_n2n_version();
 struct peer_info * find_peer_by_mac( struct peer_info * list,
                                      const n2n_mac_t mac );
 void   peer_list_add( struct peer_info * * list,
-                      struct peer_info * new );
+                      struct peer_info * newp );
 size_t peer_list_size( const struct peer_info * list );
 size_t purge_peer_list( struct peer_info ** peer_list, 
                         time_t purge_before );
