@@ -1,5 +1,5 @@
 
-N2N_VERSION=2.1.0
+N2N_VERSION=2.3.0
 N2N_OSNAME=$(shell uname -p)
 
 ########
