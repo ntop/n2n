@@ -21,7 +21,7 @@ N2N_OPTION_AES?="yes"
 #N2N_OPTION_AES=no
 
 ifeq ($(N2N_OPTION_AES), "yes")
-    N2N_DEFINES+="-DN2N_HAVE_AES"
+    N2N_DEFINES+=-DN2N_HAVE_AES
     LIBS_EDGE_OPT+=-lcrypto
 endif
 
@@ -43,7 +43,7 @@ MAN1DIR=$(MANDIR)/man1
 MAN7DIR=$(MANDIR)/man7
 MAN8DIR=$(MANDIR)/man8
 
-N2N_LIB=n2n.a
+N2N_LIB=libn2n.a
 N2N_OBJS=n2n.o n2n_keyfile.o wire.o minilzo.o twofish.o \
 	 edge_utils.o \
          transform_null.o transform_tf.o transform_aes.o \
