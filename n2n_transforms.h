@@ -1,4 +1,20 @@
-/* (c) 2009 Richard Andrews <andrews@ntop.org> */
+/**
+ * (C) 2007-18 - ntop.org and contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
+ *
+ */
 
 #if !defined(N2N_TRANSFORMS_H_)
 #define N2N_TRANSFORMS_H_
@@ -21,10 +37,9 @@
 struct n2n_trans_op;
 typedef struct n2n_trans_op n2n_trans_op_t;
 
-struct n2n_tostat
-{
-    uint8_t             can_tx;         /* Does this transop have a valid SA for encoding. */
-    n2n_cipherspec_t    tx_spec;        /* If can_tx, the spec used to encode. */
+struct n2n_tostat {
+  uint8_t             can_tx;         /* Does this transop have a valid SA for encoding. */
+  n2n_cipherspec_t    tx_spec;        /* If can_tx, the spec used to encode. */
 };
 
 typedef struct n2n_tostat n2n_tostat_t;
@@ -48,19 +63,18 @@ typedef int             (*n2n_transform_f)( n2n_trans_op_t * arg,
  *  to use to decode the packet content. The transform code then decodes the
  *  packet and consults its internal key lookup.
  */
-struct n2n_trans_op
-{
-    void *              priv;   /* opaque data. Key schedule goes here. */
+struct n2n_trans_op {
+  void *              priv;   /* opaque data. Key schedule goes here. */
 
-    n2n_transform_t     transform_id;   /* link header enum to a transform */
-    size_t              tx_cnt;
-    size_t              rx_cnt;
+  n2n_transform_t     transform_id;   /* link header enum to a transform */
+  size_t              tx_cnt;
+  size_t              rx_cnt;
 
-    n2n_transdeinit_f   deinit; /* destructor function */
-    n2n_transaddspec_f  addspec; /* parse opaque data from a key schedule file. */
-    n2n_transtick_f     tick;   /* periodic maintenance */
-    n2n_transform_f     fwd;    /* encode a payload */
-    n2n_transform_f     rev;    /* decode a payload */
+  n2n_transdeinit_f   deinit; /* destructor function */
+  n2n_transaddspec_f  addspec; /* parse opaque data from a key schedule file. */
+  n2n_transtick_f     tick;   /* periodic maintenance */
+  n2n_transform_f     fwd;    /* encode a payload */
+  n2n_transform_f     rev;    /* decode a payload */
 };
 
 /* Setup a single twofish SA for single-key operation. */

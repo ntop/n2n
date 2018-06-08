@@ -1,6 +1,5 @@
-/*
- * (C) 2007-09 - Luca Deri <deri@ntop.org>
- *               Richard Andrews <andrews@ntop.org>
+/**
+ * (C) 2007-18 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,11 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>
- *
- * Code contributions courtesy of:
- *    Babak Farrokhi <babak@farrokhi.net> [FreeBSD port]
- *    Lukasz Taczuk
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
  *
  */
 
@@ -25,25 +20,18 @@
 #define _N2N_H_
 
 /*
-   tunctl -t tun0
-   tunctl -t tun1
-   ifconfig tun0 1.2.3.4 up
-   ifconfig tun1 1.2.3.5 up
-   ./edge -d tun0 -l 2000 -r 127.0.0.1:3000 -c hello
-   ./edge -d tun1 -l 3000 -r 127.0.0.1:2000 -c hello
+  tunctl -t tun0
+  tunctl -t tun1
+  ifconfig tun0 1.2.3.4 up
+  ifconfig tun1 1.2.3.5 up
+  ./edge -d tun0 -l 2000 -r 127.0.0.1:3000 -c hello
+  ./edge -d tun1 -l 3000 -r 127.0.0.1:2000 -c hello
 
 
-   tunctl -u UID -t tunX
+  tunctl -u UID -t tunX
 */
 
-#if defined(__APPLE__) && defined(__MACH__)
-#define _DARWIN_
-#endif
 
-
-/* Some capability defaults which can be reset for particular platforms. */
-#define N2N_HAVE_DAEMON 1
-#define N2N_HAVE_SETUID 1
 /* #define N2N_CAN_NAME_IFACE */
 
 /* Moved here to define _CRT_SECURE_NO_WARNINGS before all the including takes place */
@@ -92,17 +80,12 @@
 #define ETH_ADDR_LEN 6
 struct ether_hdr
 {
-    uint8_t  dhost[ETH_ADDR_LEN];
-    uint8_t  shost[ETH_ADDR_LEN];
-    uint16_t type;                /* higher layer protocol encapsulated */
+  uint8_t  dhost[ETH_ADDR_LEN];
+  uint8_t  shost[ETH_ADDR_LEN];
+  uint16_t type;                /* higher layer protocol encapsulated */
 } __attribute__ ((__packed__));
 
 typedef struct ether_hdr ether_hdr_t;
-
-#ifdef __sun__
-#include <sys/sysmacros.h> /* MIN() and MAX() declared here */
-#undef N2N_HAVE_DAEMON
-#endif /* #ifdef __sun__ */
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -111,6 +94,9 @@ typedef struct ether_hdr ether_hdr_t;
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <assert.h>
+#include <sys/stat.h>
+#include "minilzo.h"
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
@@ -124,6 +110,7 @@ typedef struct ether_hdr ether_hdr_t;
 #endif /* #ifdef WIN32 */
 
 #include "n2n_wire.h"
+#include "n2n_transforms.h"
 
 /* N2N_IFNAMSIZ is needed on win32 even if dev_name is not used after declaration */
 #define N2N_IFNAMSIZ            16 /* 15 chars * NULL */
@@ -167,16 +154,69 @@ typedef char ipstr_t[32];
 typedef char macstr_t[N2N_MACSTR_SIZE];
 
 struct peer_info {
-    struct peer_info *  next;
-    n2n_community_t     community_name;
-    n2n_mac_t           mac_addr;
-    n2n_sock_t          sock;
-    time_t              last_seen;
+  struct peer_info *  next;
+  n2n_community_t     community_name;
+  n2n_mac_t           mac_addr;
+  n2n_sock_t          sock;
+  time_t              last_seen;
 };
 
 struct n2n_edge; /* defined in edge.c */
 typedef struct n2n_edge         n2n_edge_t;
 
+#define N2N_EDGE_SN_HOST_SIZE   48
+#define N2N_EDGE_NUM_SUPERNODES 2
+#define N2N_EDGE_SUP_ATTEMPTS   3       /* Number of failed attmpts before moving on to next supernode. */
+#define N2N_PATHNAME_MAXLEN     256
+#define N2N_MAX_TRANSFORMS      16
+#define N2N_EDGE_MGMT_PORT      5644
+
+
+typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
+
+struct n2n_edge {
+  int                 daemon;                 /**< Non-zero if edge should detach and run in the background. */
+  uint8_t             re_resolve_supernode_ip;
+
+  n2n_sock_t          supernode;
+
+  size_t              sn_idx;                 /**< Currently active supernode. */
+  size_t              sn_num;                 /**< Number of supernode addresses defined. */
+  n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
+  int                 sn_wait;                /**< Whether we are waiting for a supernode response. */
+
+  n2n_community_t     community_name;         /**< The community. 16 full octets. */
+  char                keyschedule[N2N_PATHNAME_MAXLEN];
+  int                 null_transop;           /**< Only allowed if no key sources defined. */
+
+  int                 udp_sock;
+  int                 udp_mgmt_sock;          /**< socket for status info. */
+
+  tuntap_dev          device;                 /**< All about the TUNTAP device */
+  int                 dyn_ip_mode;            /**< Interface IP address is dynamically allocated, eg. DHCP. */
+  int                 allow_routing;          /**< Accept packet no to interface address. */
+  int                 drop_multicast;         /**< Multicast ethernet addresses. */
+
+  n2n_trans_op_t      transop[N2N_MAX_TRANSFORMS]; /* one for each transform at fixed positions */
+  size_t              tx_transop_idx;         /**< The transop to use when encoding. */
+
+  struct peer_info *  known_peers;            /**< Edges we are connected to. */
+  struct peer_info *  pending_peers;          /**< Edges we have tried to register with. */
+  time_t              last_register_req;      /**< Check if time to re-register with super*/
+  size_t              register_lifetime;      /**< Time distance after last_register_req at which to re-register. */
+  time_t              last_p2p;               /**< Last time p2p traffic was received. */
+  time_t              last_sup;               /**< Last time a packet arrived from supernode. */
+  size_t              sup_attempts;           /**< Number of remaining attempts to this supernode. */
+  n2n_cookie_t        last_cookie;            /**< Cookie sent in last REGISTER_SUPER. */
+
+  time_t              start_time;             /**< For calculating uptime */
+
+  /* Statistics */
+  size_t              tx_p2p;
+  size_t              rx_p2p;
+  size_t              tx_sup;
+  size_t              rx_sup;
+};
 
 /* ************************************** */
 
@@ -251,4 +291,47 @@ size_t purge_expired_registrations( struct peer_info ** peer_list );
 /* version.c */
 extern char *n2n_sw_version, *n2n_sw_osName, *n2n_sw_buildDate;
 
+/* egde_utils.c */
+int edge_init(n2n_edge_t * eee);
+void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
+void update_supernode_reg(n2n_edge_t * eee, time_t nowTime);
+int is_empty_ip_address(const n2n_sock_t * sock);
+void update_peer_address(n2n_edge_t * eee,
+			 uint8_t from_supernode,
+			 const n2n_mac_t mac,
+			 const n2n_sock_t * peer,
+			 time_t when);
+int transop_enum_to_index(n2n_transform_t id);
+int edge_init_keyschedule(n2n_edge_t * eee);
+void update_peer_address(n2n_edge_t * eee,
+			 uint8_t from_supernode,
+			 const n2n_mac_t mac,
+			 const n2n_sock_t * peer,
+			 time_t when);
+int is_empty_ip_address(const n2n_sock_t * sock);
+void send_register(n2n_edge_t * eee,
+		   const n2n_sock_t * remote_peer);
+void send_packet2net(n2n_edge_t * eee,
+		     uint8_t *tap_pkt, size_t len);
+void check_peer(n2n_edge_t * eee,
+		uint8_t from_supernode,
+		const n2n_mac_t mac,
+		const n2n_sock_t * peer);
+void try_send_register(n2n_edge_t * eee,
+		       uint8_t from_supernode,
+		       const n2n_mac_t mac,
+		       const n2n_sock_t * peer);
+void set_peer_operational(n2n_edge_t * eee,
+			  const n2n_mac_t mac,
+			  const n2n_sock_t * peer);
+const char * supernode_ip(const n2n_edge_t * eee);
+int edge_init_twofish(n2n_edge_t * eee, uint8_t *encrypt_pwd,
+		      uint32_t encrypt_pwd_len);
+int run_edge_loop(n2n_edge_t * eee);
+void edge_term(n2n_edge_t * eee);
+int quick_edge_init(char *device_name, char *community_name,
+		    char *encrypt_key, char *device_mac,
+		    char *local_ip_address,
+		    char *supernode_ip_address_port);
+  
 #endif /* _N2N_H_ */

@@ -10,9 +10,10 @@ if(NOT DEFINED N2N_OPTION_AES)
 set(N2N_OPTION_AES ON)
 endif(NOT DEFINED N2N_OPTION_AES)
 
-add_definitions(-DN2N_VERSION='\"${N2N_VERSION}\"' -DN2N_OSNAME='\"${N2N_OSNAME}\"')
+add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 
 if(N2N_OPTION_AES)
+find_package(OpenSSL REQUIRED)
 add_definitions(-DN2N_HAVE_AES)
 endif(N2N_OPTION_AES)
 
