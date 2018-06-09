@@ -220,11 +220,13 @@ struct n2n_edge {
 
 /* ************************************** */
 
+#ifndef TRACE_ERROR
 #define TRACE_ERROR     0, __FILE__, __LINE__
 #define TRACE_WARNING   1, __FILE__, __LINE__
 #define TRACE_NORMAL    2, __FILE__, __LINE__
 #define TRACE_INFO      3, __FILE__, __LINE__
 #define TRACE_DEBUG     4, __FILE__, __LINE__
+#endif
 
 /* ************************************** */
 
@@ -281,7 +283,7 @@ void print_n2n_version();
 struct peer_info * find_peer_by_mac( struct peer_info * list,
                                      const n2n_mac_t mac );
 void   peer_list_add( struct peer_info * * list,
-                      struct peer_info * new );
+                      struct peer_info * newp );
 size_t peer_list_size( const struct peer_info * list );
 size_t purge_peer_list( struct peer_info ** peer_list, 
                         time_t purge_before );
@@ -317,21 +319,18 @@ void check_peer(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
-void try_send_register(n2n_edge_t * eee,
-		       uint8_t from_supernode,
-		       const n2n_mac_t mac,
-		       const n2n_sock_t * peer);
 void set_peer_operational(n2n_edge_t * eee,
 			  const n2n_mac_t mac,
 			  const n2n_sock_t * peer);
 const char * supernode_ip(const n2n_edge_t * eee);
 int edge_init_twofish(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 		      uint32_t encrypt_pwd_len);
-int run_edge_loop(n2n_edge_t * eee);
+int run_edge_loop(n2n_edge_t * eee, int *keep_running);
 void edge_term(n2n_edge_t * eee);
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
-		    char *supernode_ip_address_port);
+		    char *supernode_ip_address_port,
+		    int *keep_on_running);
   
 #endif /* _N2N_H_ */

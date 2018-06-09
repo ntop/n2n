@@ -151,6 +151,57 @@ void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
 
 /* ************************************** */
 
+/** Start the registration process.
+ *
+ *  If the peer is already in pending_peers, ignore the request.
+ *  If not in pending_peers, add it and send a REGISTER.
+ *
+ *  If hdr is for a direct peer-to-peer packet, try to register back to sender
+ *  even if the MAC is in pending_peers. This is because an incident direct
+ *  packet indicates that peer-to-peer exchange should work so more aggressive
+ *  registration can be permitted (once per incoming packet) as this should only
+ *  last for a small number of packets..
+ *
+ *  Called from the main loop when Rx a packet for our device mac.
+ */
+static void try_send_register(n2n_edge_t * eee,
+			      uint8_t from_supernode,
+			      const n2n_mac_t mac,
+			      const n2n_sock_t * peer)
+{
+  /* REVISIT: purge of pending_peers not yet done. */
+  struct peer_info * scan = find_peer_by_mac(eee->pending_peers, mac);
+  macstr_t mac_buf;
+  n2n_sock_str_t sockbuf;
+
+  if(NULL == scan)
+    {
+      scan = calloc(1, sizeof(struct peer_info));
+
+      memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
+      scan->sock = *peer;
+      scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
+
+      peer_list_add(&(eee->pending_peers), scan);
+
+      traceEvent(TRACE_DEBUG, "=== new pending %s -> %s",
+		 macaddr_str(mac_buf, scan->mac_addr),
+		 sock_to_cstr(sockbuf, &(scan->sock)));
+
+      traceEvent(TRACE_INFO, "Pending peers list size=%u",
+		 (unsigned int)peer_list_size(eee->pending_peers));
+
+      /* trace Sending REGISTER */
+
+      send_register(eee, &(scan->sock));
+
+      /* pending_peers now owns scan. */
+    } else {
+  }
+}
+
+/* ************************************** */
+
 /** Update the last_seen time for this peer, or get registered. */
 void check_peer(n2n_edge_t * eee,
 		uint8_t from_supernode,
@@ -1343,8 +1394,7 @@ static void readFromIPSocket(n2n_edge_t * eee) {
 
 /* ************************************** */
 
-int run_edge_loop(n2n_edge_t * eee) {
-  int   keep_running=1;
+int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   size_t numPurged;
   time_t lastIfaceCheck=0;
   time_t lastTransop=0;
@@ -1353,6 +1403,8 @@ int run_edge_loop(n2n_edge_t * eee) {
   startTunReadThread(eee);
 #endif
 
+  *keep_running = 1;
+  
   /* Main loop
    *
    * select() is used to wait for input on either the TAP fd or the UDP/TCP
@@ -1399,16 +1451,14 @@ int run_edge_loop(n2n_edge_t * eee) {
 	    readFromIPSocket(eee);
 	  }
 
-	if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask))
-	  {
+	if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
 	    /* Read a cooked socket from the internet socket. Writes on the TAP
 	     * socket. */
-	    readFromMgmtSocket(eee, &keep_running);
+	    readFromMgmtSocket(eee, keep_running);
 	  }
 
 #ifndef WIN32
-	if(FD_ISSET(eee->device.fd, &socket_mask))
-	  {
+	if(FD_ISSET(eee->device.fd, &socket_mask)) {
 	    /* Read an ethernet frame from the TAP socket. Write on the IP
 	     * socket. */
 	    readFromTAPSocket(eee);
@@ -1532,7 +1582,8 @@ void edge_term(n2n_edge_t * eee) {
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
-		    char *supernode_ip_address_port) {
+		    char *supernode_ip_address_port,
+		    int *keep_on_running) {
   n2n_edge_t eee;
 
   edge_init(&eee);
@@ -1559,5 +1610,5 @@ int quick_edge_init(char *device_name, char *community_name,
 
   update_supernode_reg(&eee, time(NULL));
   
-  return(run_edge_loop(&eee));
+  return(run_edge_loop(&eee, keep_on_running));
 }
