@@ -118,8 +118,32 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
       syslog(LOG_INFO, "%s", out_buf);
     } else {
       snprintf(out_buf, sizeof(out_buf), "%s [%11s:%4d] %s%s", theDate, file, line, extra_msg, buf);
+#ifdef __ANDROID_NDK__
+        switch (eventTraceLevel) {
+            case 0:         // ERROR
+                eventTraceLevel = ANDROID_LOG_ERROR;
+                break;
+            case 1:         // WARNING
+                eventTraceLevel = ANDROID_LOG_WARN;
+                break;
+            case 2:         // NORMAL
+                eventTraceLevel = ANDROID_LOG_INFO;
+                break;
+            case 3:         // INFO
+                eventTraceLevel = ANDROID_LOG_DEBUG;
+                break;
+            case 4:         // DEBUG
+                eventTraceLevel = ANDROID_LOG_VERBOSE;
+                break;
+            default:        // NORMAL
+                eventTraceLevel = ANDROID_LOG_INFO;
+                break;
+        }
+        __android_log_write(eventTraceLevel, "n2n", buf);
+#else
       printf("%s\n", out_buf);
       fflush(stdout);
+#endif /* #ifdef __ANDROID_NDK__ */
     }
 #else
     /* this is the WIN32 code */

@@ -294,7 +294,11 @@ static int transop_addspec_twofish( n2n_trans_op_t * arg, const n2n_cipherspec_t
     if ( priv->num_sa < N2N_TWOFISH_NUM_SA )
     {
         const char * op = (const char *)cspec->opaque;
+#ifdef __ANDROID_NDK__
+        const char *sep = strchr(op, '_');
+#else
         const char * sep = index( op, '_' );
+#endif // __ANDROID_NDK__
 
         if ( sep )
         {
