@@ -139,7 +139,7 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
                 eventTraceLevel = ANDROID_LOG_INFO;
                 break;
         }
-        __android_log_write(eventTraceLevel, "n2n", buf);
+        __android_log_write(eventTraceLevel, "n2n", out_buf);
 #else
       printf("%s\n", out_buf);
       fflush(stdout);
