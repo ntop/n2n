@@ -1,0 +1,15 @@
+.idea
+*.iml
+*.ipr
+*.iws
+/.idea/workspace.xml
+/.idea/libraries
+.gradle
+/local.properties
+reports
+/captures
+jacoco.exec
+.DS_Store
+/build
+.externalNativeBuild
+/app/Hin2n.jks

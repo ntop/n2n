@@ -1,0 +1,160 @@
+apply plugin: 'org.greenrobot.greendao'
+apply plugin: 'com.android.application'
+
+
+def getVersionCode = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-list', '--all', '--count'
+            standardOutput = stdout
+        }
+        return Integer.parseInt(stdout.toString().trim())
+    }
+    catch (ignored) {
+        return -1;
+    }
+}
+
+def getVersionName = { ->
+    def ver = 'v0.5.2'
+	return ver
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--tags', '--always', '--dirty', '--match', 'hin2n_v*'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    }
+    catch (ignored) {
+        return null
+    }
+}
+
+def getEnvOrConsole = { env, prompt ->
+    def val = null
+    try {
+        val = System.getenv(env)
+        if (val == null || val == "") {
+            if (System.console() != null) {
+                val = System.console().readLine("\n" + prompt + ": ")
+            }
+        }
+    } catch (ignored) {
+        return null
+    }
+    return val
+}
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion '25.0.0'
+    defaultConfig {
+        applicationId "wang.switchy.hin2n"
+        minSdkVersion 14
+        targetSdkVersion 25
+        versionCode getVersionCode()
+        versionName getVersionName()
+        multiDexEnabled true
+        manifestPlaceholders = [CHANNEL_VALUE: "normal", ARCH: "all"]
+        resConfigs "en", "zh-rCN", "zh-rTW"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+            }
+        }
+    }
+
+    signingConfigs {
+        debug {}
+
+        release {
+            storeFile file("Hin2n.jks")
+            storePassword getEnvOrConsole("HIN2N_KSTOREPWD", "Keystore password")
+            keyAlias "Hin2n"
+            keyPassword getEnvOrConsole("HIN2N_KEYPWD", "Key password")
+        }
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField("boolean", "API_DEBUG", "true")
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+
+        }
+
+        release {
+            buildConfigField("boolean", "API_DEBUG", "false")
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+
+            signingConfig signingConfigs.release
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.each { output ->
+            def outputFile = output.outputFile
+            def fileName = null
+            if (outputFile != null && outputFile.name.endsWith('.apk')) {
+                variant.mergedFlavor.versionName = getVersionName()
+                def channel = variant.mergedFlavor.manifestPlaceholders.CHANNEL_VALUE
+                def arch = variant.mergedFlavor.manifestPlaceholders.ARCH
+                fileName = "hin2n_${variant.mergedFlavor.versionName}_${channel}_${arch}_${variant.buildType.name}.apk"
+                output.outputFile = new File(output.outputFile.parent, fileName)
+            }
+        }
+    }
+
+    flavorDimensions "channel", "arch"
+
+    productFlavors {
+        normal {
+            dimension "channel"
+            manifestPlaceholders += [CHANNEL_VALUE: "normal"]
+        }
+        arm {
+            dimension "arch"
+            ndk {
+                abiFilters "armeabi-v7a", "arm64-v8a"
+                manifestPlaceholders += [ARCH: "arm"]
+            }
+        }
+        x86 {
+            dimension "arch"
+            ndk {
+                abiFilters "x86", "x86_64"
+                manifestPlaceholders += [ARCH: "x86"]
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+
+greendao {
+    schemaVersion 1
+    daoPackage 'wang.switchy.hin2n.storage.db.base'
+    targetGenDir 'src/main/java'
+}
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+    })
+    compile 'com.android.support:design:25.2.0'
+    testCompile 'junit:junit:4.12'
+    compile 'com.android.support:appcompat-v7:25.+'
+    compile 'org.greenrobot:eventbus:3.1.1'
+
+    compile 'org.greenrobot:greendao:3.2.0'
+}
