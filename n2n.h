@@ -87,6 +87,12 @@ struct ether_hdr
 
 typedef struct ether_hdr ether_hdr_t;
 
+#ifdef __ANDROID_NDK__
+#undef N2N_HAVE_DAEMON
+#undef N2N_HAVE_SETUID
+#undef N2N_CAN_NAME_IFACE
+#endif /* #ifdef __ANDROID_NDK__ */
+
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -220,6 +226,9 @@ struct n2n_edge {
 
 /* ************************************** */
 
+#ifdef __ANDROID_NDK__
+#include <android/log.h>
+#endif /* #ifdef __ANDROID_NDK__ */
 #ifndef TRACE_ERROR
 #define TRACE_ERROR     0, __FILE__, __LINE__
 #define TRACE_WARNING   1, __FILE__, __LINE__
@@ -327,6 +336,7 @@ int edge_init_twofish(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 		      uint32_t encrypt_pwd_len);
 int run_edge_loop(n2n_edge_t * eee, int *keep_running);
 void edge_term(n2n_edge_t * eee);
+const char *random_device_mac(void);
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
