@@ -28,10 +28,6 @@ endif(NOT DEFINED CMAKE_BUILD_TYPE)
 #set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_BUILD_TYPE Release)
 
-#Ultrasparc64 users experiencing SIGBUS should try the following gcc options
-#(thanks to Robert Gibbon) 
-#PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
-
 # None
 set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
@@ -51,6 +47,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 add_library(n2n n2n.c
                 n2n_keyfile.c
+		edge_utils.c
                 wire.c
                 minilzo.c
                 twofish.c
@@ -72,9 +69,6 @@ endif(DEFINED WIN32)
 if(N2N_OPTION_AES)
 target_link_libraries(n2n crypto)
 endif(N2N_OPTION_AES)
-
-# For Solaris (or OpenSolaris?)
-#target_link_libraries(n2n socket nsl)
 
 add_executable(edge edge.c)
 target_link_libraries(edge n2n)
