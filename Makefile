@@ -64,7 +64,7 @@ APPS+=example_edge_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n_v2.7.gz
 
-all: $(APPS) $(DOCS)
+all: $(APPS) $(DOCS) benchmark
 
 edge: edge.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
 	$(CC) $(CFLAGS) edge.c $(N2N_LIB) $(LIBS_EDGE) -o edge

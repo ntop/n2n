@@ -18,6 +18,11 @@
 
 #include "n2n.h"
 
+#ifdef __ANDROID_NDK__
+#include "android/edge_android.h"
+#include <tun2tap/tun2tap.h>
+#endif /* __ANDROID_NDK__ */
+
 #if defined(DEBUG)
 #define SOCKET_TIMEOUT_INTERVAL_SECS    5
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec */
@@ -31,6 +36,10 @@
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL           (10) /* sec */
+
+#ifdef __ANDROID_NDK__
+#define ARP_PERIOD_INTERVAL             (10) /* sec */
+#endif
 
 /** Positions in the transop array where various transforms are stored.
  *
@@ -1147,7 +1156,19 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
   macstr_t            mac_buf;
   ssize_t             len;
 
-  len = tuntap_read(&(eee->device), eth_pkt, N2N_PKT_BUF_SIZE);
+#ifdef __ANDROID_NDK__
+    if (uip_arp_len != 0) {
+        len = uip_arp_len;
+        memcpy(eth_pkt, uip_arp_buf, MIN(uip_arp_len, N2N_PKT_BUF_SIZE));
+        traceEvent(TRACE_DEBUG, "ARP reply packet to send");
+    }
+    else
+    {
+#endif /* #ifdef __ANDROID_NDK__ */
+  len = tuntap_read( &(eee->device), eth_pkt, N2N_PKT_BUF_SIZE );
+#ifdef __ANDROID_NDK__
+    }
+#endif /* #ifdef __ANDROID_NDK__ */
 
   if((len <= 0) || (len > N2N_PKT_BUF_SIZE))
     {
@@ -1398,6 +1419,9 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   size_t numPurged;
   time_t lastIfaceCheck=0;
   time_t lastTransop=0;
+#ifdef __ANDROID_NDK__
+    time_t lastArpPeriod=0;
+#endif
 
 #ifdef WIN32
   startTunReadThread(eee);
@@ -1412,7 +1436,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
    * readFromIPSocket() or readFromTAPSocket()
    */
 
-  while(keep_running) {
+  while(*keep_running) {
     int rc, max_sock = 0;
     fd_set socket_mask;
     struct timeval wait_time;
@@ -1451,6 +1475,13 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 	    readFromIPSocket(eee);
 	  }
 
+#ifdef __ANDROID_NDK__
+        if (uip_arp_len != 0) {
+            readFromTAPSocket(eee);
+            uip_arp_len = 0;
+        }
+#endif /* #ifdef __ANDROID_NDK__ */
+
 	if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
 	    /* Read a cooked socket from the internet socket. Writes on the TAP
 	     * socket. */
@@ -1486,6 +1517,12 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
       tuntap_get_address(&(eee->device));
       lastIfaceCheck = nowTime;
     }
+
+#ifdef __ANDROID_NDK__
+      if ((nowTime - lastArpPeriod) > ARP_PERIOD_INTERVAL) {
+          uip_arp_timer();
+      }
+#endif /* #ifdef __ANDROID_NDK__ */
   } /* while */
 
   send_deregister(eee, &(eee->supernode));
@@ -1575,6 +1612,26 @@ void edge_term(n2n_edge_t * eee) {
 
   (eee->transop[N2N_TRANSOP_TF_IDX].deinit)(&eee->transop[N2N_TRANSOP_TF_IDX]);
   (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
+}
+
+/* ************************************** */
+
+const char *random_device_mac(void)
+{
+    const char key[] = "0123456789abcdef";
+    static char mac[18];
+    int i;
+
+    srand(getpid());
+    for (i = 0; i < sizeof(mac) - 1; ++i) {
+        if ((i + 1) % 3 == 0) {
+            mac[i] = ':';
+            continue;
+        }
+        mac[i] = key[random() % sizeof(key)];
+    }
+    mac[sizeof(mac) - 1] = '\0';
+    return mac;
 }
 
 /* ************************************** */

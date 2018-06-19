@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+	<item android:state_pressed="true">
+        <layer-list>
+            <item><shape android:shape="oval">
+                    <solid android:color="#33FFFFFF" />
+                </shape></item>
+            <item android:drawable="@mipmap/title_back_normal"/>
+        </layer-list></item>
+    <item android:drawable="@mipmap/title_back_normal" android:state_pressed="false"/>
+</selector>
