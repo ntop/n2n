@@ -1,0 +1,15 @@
+[Unit]
+Description=n2n edge process
+After=network.target syslog.target
+Wants=
+
+[Service]
+Type=simple
+ExecStartPre=
+ExecStart=/usr/sbin/edge -d n2n0 -c mynetwork -k mypassword -m DE:AD:BE:EF:99:99 -a 1.2.3.4 -p 50001 -l 7.8.9.0:7777
+Restart=on-abnormal
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+Alias=

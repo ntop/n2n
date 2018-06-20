@@ -1,0 +1,15 @@
+[Unit]
+Description=n2n supernode process
+After=network.target syslog.target
+Wants=
+
+[Service]
+Type=simple
+ExecStartPre=
+ExecStart=/usr/sbin/supernode -l 7777
+Restart=on-abnormal
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+Alias=

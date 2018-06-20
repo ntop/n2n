@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+if [ -f /.dockerenv ]; then exit 0; fi
+
+. /usr/share/debconf/confmodule
+
+case "$1" in
+
+	*)
+	systemctl stop edge
+	systemctl disable edge
+	systemctl stop supernode
+	systemctl disable supernode
+	systemctl daemon-reload
+	systemctl reset-failed
+	;;
+esac
+
+exit 0

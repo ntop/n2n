@@ -62,7 +62,7 @@ APPS=edge
 APPS+=supernode
 APPS+=example_edge_embed
 
-DOCS=edge.8.gz supernode.1.gz n2n_v2.7.gz
+DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
 all: $(APPS) $(DOCS) benchmark
 
@@ -97,11 +97,11 @@ version.o: Makefile
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
 
-install: edge supernode edge.8.gz supernode.1.gz n2n_v2.7.gz
+install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"
 	$(MKDIR) $(SBINDIR) $(MAN1DIR) $(MAN7DIR) $(MAN8DIR)
 	$(INSTALL_PROG) supernode $(SBINDIR)/
 	$(INSTALL_PROG) edge $(SBINDIR)/
 	$(INSTALL_DOC) edge.8.gz $(MAN8DIR)/
 	$(INSTALL_DOC) supernode.1.gz $(MAN1DIR)/
-	$(INSTALL_DOC) n2n_v2.7.gz $(MAN7DIR)/
+	$(INSTALL_DOC) n2n.7.gz $(MAN7DIR)/

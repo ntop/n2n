@@ -1,0 +1,34 @@
+#!/bin/sh -e
+
+case "$1" in
+    configure)
+	# continue below
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+	exit 0
+    ;;
+
+    *)
+	echo "postinst called with unknown argument \`$1'" >&2
+	exit 0
+    ;;
+esac
+
+umask 022
+
+echo "Rebuilding ld cache..."
+/sbin/ldconfig
+
+if [ -f /.dockerenv ]; then exit 0; fi
+
+# Start service after upgrade/install
+echo "(Re)Starting n2n..."
+systemctl daemon-reload
+systemctl reset-failed
+systemctl enable edge
+systemctl restart edge
+systemctl enable supernode
+systemctl restart supernode
+
+exit 0

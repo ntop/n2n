@@ -1,0 +1,44 @@
+AC_INIT([Makefile.in], 1.0)
+
+MACHINE=`uname -m`
+SHORT_MACHINE=`uname -m | cut -b1-3`
+
+if test $MACHINE = "x86_64"; then
+   EXTN="amd64"
+else
+  if test $SHORT_MACHINE = "arm"; then
+     EXTN="armhf"
+     EXTRA_DEPS=""
+     LIBRRD="librrd8, "
+  else
+     if test $SHORT_MACHINE = "mip"; then
+       EXTN="mips"
+       EXTRA_DEPS=""
+       LIBRRD=""
+     else	
+       EXTN="i386"
+     fi
+  fi
+fi
+
+APP=n2n
+N2N_VERS=`grep N2N_VERSION ../../Makefile | head -1| cut -d "=" -f 2`
+GIT_RELEASE=`git rev-parse HEAD`
+GIT_COMMITS=`git rev-list --all |wc -l | tr -d '[[:space:]]'`
+DATE=`date -R`
+
+AC_SUBST(APP)
+AC_SUBST(N2N_VERS)
+AC_SUBST(MACHINE)
+AC_SUBST(EXTN)
+AC_SUBST(DATE)
+AC_SUBST(GIT_RELEASE)
+AC_SUBST(GIT_COMMITS)
+
+AC_CONFIG_FILES(debian/changelog)
+AC_CONFIG_FILES(debian/files)
+AC_CONFIG_FILES(debian/control)
+AC_CONFIG_FILES(debian/rules)
+AC_CONFIG_FILES(../etc/systemd/system/edge.service)
+AC_CONFIG_FILES(../etc/systemd/system/supernode.service)
+AC_OUTPUT
