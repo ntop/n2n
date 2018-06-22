@@ -13,8 +13,7 @@ or
 $ N2N_KEY=encryptme sudo ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
 ```
 
-Once you have this worked out, you can add the `-f` option to make edge detach
-and run as a daemon.
+By defaul the edge will run in background but you can use the `-f` option to keep it in foreground.
 
 Note that `-d`, `-u`, `-g` and `-f` options are not available for Windows.
 
