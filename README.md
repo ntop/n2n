@@ -7,13 +7,9 @@ Edge node
 You need to start an edge node on each host you want to connect with the *same*
 community.
 
-0. become root
-
-1. create tun device: `$ tunctl -t tun0`
-
-2. enable the edge process
+Enable the edge process
 ```
-$ ./edge -d n2n0 -c mynetwork -k encryptme -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
+$ sudo ./edge -d n2n0 -c mynetwork -k encryptme -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
 ```
 or
 ```
@@ -29,7 +25,7 @@ Note that `-d`, `-u`, `-g` and `-f` options are not available for Windows.
 Supernode
 --------
 
-You need to start the supernode once
+You need to start the supernode once (no need to be root unless you want to use a privileged port)
 
 1. `./supernode -l 1234 -v`
 
