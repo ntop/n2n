@@ -1,6 +1,3 @@
-
-
-
 Edge node
 ---------
 
@@ -13,7 +10,7 @@ $ sudo ./edge -d n2n0 -c mynetwork -k encryptme -u 99 -g 99 -m 3C:A0:12:34:56:78
 ```
 or
 ```
-$ N2N_KEY=encryptme ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
+$ N2N_KEY=encryptme sudo ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
 ```
 
 Once you have this worked out, you can add the `-f` option to make edge detach
@@ -53,7 +50,7 @@ safe if your host has only one login user.
 
 
 Running As a Daemon (UNIX)
--------------------
+--------------------------
 
 Unless given `-f` as a command line option, edge will call daemon(3) after
 successful setup. This causes the process to fork a child which closes stdin,
