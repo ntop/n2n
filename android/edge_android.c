@@ -354,12 +354,13 @@ int stop_edge(void)
     peer_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     peer_addr.sin_port = htons(N2N_EDGE_MGMT_PORT);
     sendto(fd, "stop", 4, 0, (struct sockaddr *)&peer_addr, sizeof(struct sockaddr_in));
-
+	close(fd);
 
     pthread_mutex_lock(&status.mutex);
     status.is_running = 0;
     pthread_mutex_unlock(&status.mutex);
     report_edge_status();
+
     return 0;
 }
 #endif /* #ifdef __ANDROID_NDK__ */
