@@ -1521,6 +1521,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #ifdef __ANDROID_NDK__
       if ((nowTime - lastArpPeriod) > ARP_PERIOD_INTERVAL) {
           uip_arp_timer();
+		  lastArpPeriod = nowTime;
       }
 #endif /* #ifdef __ANDROID_NDK__ */
   } /* while */
