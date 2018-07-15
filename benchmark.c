@@ -27,7 +27,7 @@
 #include <stdio.h>
 
 
-#ifdef WIN32
+#if defined(WIN32) && !defined(__GNUC__)
 #include <windows.h>
 
 static int gettimeofday(struct timeval *tp, void *tzp)
