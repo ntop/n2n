@@ -19,11 +19,36 @@
 #include "n2n_wire.h"
 #include "n2n_transforms.h"
 #include "n2n.h"
-
+#ifdef __GNUC__
 #include <sys/time.h>
+#endif
 #include <time.h>
 #include <string.h>
 #include <stdio.h>
+
+
+#ifdef WIN32
+#include <windows.h>
+
+static int gettimeofday(struct timeval *tp, void *tzp)
+{
+	time_t clock;
+	struct tm tm;
+	SYSTEMTIME wtm;
+	GetLocalTime(&wtm);
+	tm.tm_year = wtm.wYear - 1900;
+	tm.tm_mon = wtm.wMonth - 1;
+	tm.tm_mday = wtm.wDay;
+	tm.tm_hour = wtm.wHour;
+	tm.tm_min = wtm.wMinute;
+	tm.tm_sec = wtm.wSecond;
+	tm.tm_isdst = -1;
+	clock = mktime(&tm);
+	tp->tv_sec = clock;
+	tp->tv_usec = wtm.wMilliseconds * 1000;
+	return (0);
+}
+#endif
 
 uint8_t PKT_CONTENT[]={
   0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,

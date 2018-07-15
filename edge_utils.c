@@ -17,6 +17,7 @@
  */
 
 #include "n2n.h"
+#include "lzoconf.h"
 
 #ifdef __ANDROID_NDK__
 #include "android/edge_android.h"
@@ -893,7 +894,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 		      "Statistics for edge\n");
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-		      "uptime %lu\n",
+		      "uptime %llu\n",
 		      time(NULL) - eee->start_time);
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
@@ -920,7 +921,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 		      (unsigned int)peer_list_size(eee->known_peers));
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-		      "last   super:%lu(%ld sec ago) p2p:%lu(%ld sec ago)\n",
+		      "last   super:%llu(%lld sec ago) p2p:%llu(%lld sec ago)\n",
 		      eee->last_sup, (now-eee->last_sup), eee->last_p2p, (now-eee->last_p2p));
 
   traceEvent(TRACE_DEBUG, "mgmt status sending: %s", udp_buf);
@@ -1628,7 +1629,13 @@ const char *random_device_mac(void)
             mac[i] = ':';
             continue;
         }
+#ifdef WIN32
+#define random() rand()
+#endif
         mac[i] = key[random() % sizeof(key)];
+#ifdef WIN32
+#undef random()
+#endif
     }
     mac[sizeof(mac) - 1] = '\0';
     return mac;

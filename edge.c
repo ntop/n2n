@@ -17,6 +17,9 @@
  */
 
 #include "n2n.h"
+#ifdef WIN32
+#include <sys/stat.h>
+#endif
 
 #define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ           18 /* AA:BB:CC:DD:EE:FF + NULL*/

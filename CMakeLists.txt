@@ -6,6 +6,12 @@ set(N2N_VERSION 2.3.0)
 set(N2N_OSNAME ${CMAKE_SYSTEM})
 
 # N2n specific params
+OPTION(N2N_OPTION_AES "USE AES" ON)
+
+# Build information
+OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
+
+
 if(NOT DEFINED N2N_OPTION_AES)
 set(N2N_OPTION_AES ON)
 endif(NOT DEFINED N2N_OPTION_AES)
@@ -17,17 +23,13 @@ find_package(OpenSSL REQUIRED)
 add_definitions(-DN2N_HAVE_AES)
 endif(N2N_OPTION_AES)
 
-# Build information
-if(NOT DEFINED BUILD_SHARED_LIBS)
-set(BUILD_SHARED_LIBS OFF)
-endif(NOT DEFINED BUILD_SHARED_LIBS)
-
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
 endif(NOT DEFINED CMAKE_BUILD_TYPE)
 #set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_BUILD_TYPE Release)
 
+if (DEFINED UNIX)
 # None
 set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
@@ -37,6 +39,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Release
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+endif()
 
 ## DEBUG FOR CMAKE
 #message(${N2N_VERSION}) 
@@ -47,7 +50,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 
 add_library(n2n n2n.c
                 n2n_keyfile.c
-		edge_utils.c
+                edge_utils.c
                 wire.c
                 minilzo.c
                 twofish.c
