@@ -212,7 +212,7 @@ static void help() {
   printf("-r                       | Enable packet forwarding through n2n community.\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
-  printf("-t                       | Management UDP Port (for multiple edges on a machine).\n");
+  printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
   printf("\nEnvironment variables:\n");
   printf("  N2N_KEY                | Encryption key (ASCII). Not with -K or -k.\n");
@@ -736,8 +736,7 @@ int main(int argc, char* argv[]) {
   eee.udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
   
   if(eee.udp_mgmt_sock < 0) {
-    traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u",
-	       (unsigned int)N2N_EDGE_MGMT_PORT);
+    traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", mgmt_port);
     return(-1);
   }
   

@@ -57,18 +57,14 @@ SOCKET open_socket(int local_port, int bind_any) {
   memset(&local_address, 0, sizeof(local_address));
   local_address.sin_family = AF_INET;
   local_address.sin_port = htons(local_port);
-  local_address.sin_addr.s_addr = htonl(bind_any?INADDR_ANY:INADDR_LOOPBACK);
+  local_address.sin_addr.s_addr = htonl(bind_any ? INADDR_ANY : INADDR_LOOPBACK);
   if(bind(sock_fd,(struct sockaddr*) &local_address, sizeof(local_address)) == -1) {
-    traceEvent(TRACE_ERROR, "Bind error [%s]\n", strerror(errno));
+    traceEvent(TRACE_ERROR, "Bind error on local port %u [%s]\n", local_port, strerror(errno));
     return(-1);
   }
 
   return(sock_fd);
 }
-
-
-
-
 
 int traceLevel = 2 /* NORMAL */;
 int useSyslog = 0, syslog_opened = 0;
