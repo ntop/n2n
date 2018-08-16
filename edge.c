@@ -30,136 +30,82 @@
 /** maximum length of a line in the configuration file */
 #define MAX_CONFFILE_LINE_LENGTH     1024
 
-/* ******************************************************* */
+/* ***************************************************** */
 
-/** Main structure type for edge. */
+typedef struct {
+  int     local_port;
+  int     mgmt_port;
+  char    tuntap_dev_name[N2N_IFNAMSIZ];
+  char    ip_mode[N2N_IF_MODE_SIZE];
+  char    ip_addr[N2N_NETMASK_STR_SIZE];
+  char    netmask[N2N_NETMASK_STR_SIZE];
+  int     mtu;
+  int     got_s;
+  char    device_mac[N2N_MACNAMSIZ];
+  char *  encrypt_key;
+#ifndef WIN32
+  uid_t   userid;
+  gid_t   groupid;
+#endif
+} edge_conf_t;
 
-/* ************************************** */
+/* ***************************************************** */
 
-/* parse the configuration file */
-static int readConfFile(const char * filename, char * const linebuffer) {
-  struct stat stats;
-  FILE    *   fd;
-  char    *   buffer = NULL;
+/** Find the address and IP mode for the tuntap device.
+ *
+ *  s is one of these forms:
+ *
+ *  <host> := <hostname> | A.B.C.D
+ *
+ *  <host> | static:<host> | dhcp:<host>
+ *
+ *  If the mode is present (colon required) then fill ip_mode with that value
+ *  otherwise do not change ip_mode. Fill ip_mode with everything after the
+ *  colon if it is present; or s if colon is not present.
+ *
+ *  ip_add and ip_mode are NULL terminated if modified.
+ *
+ *  return 0 on success and -1 on error
+ */
+static int scan_address(char * ip_addr, size_t addr_size,
+			char * ip_mode, size_t mode_size,
+			const char * s) {
+  int retval = -1;
+  char * p;
 
-  buffer = (char *)malloc(MAX_CONFFILE_LINE_LENGTH);
-  if(!buffer) {
-    traceEvent(TRACE_ERROR, "Unable to allocate memory");
-    return -1;
-  }
-
-  if(stat(filename, &stats)) {
-    if(errno == ENOENT)
-      traceEvent(TRACE_ERROR, "parameter file %s not found/unable to access\n", filename);
-    else
-      traceEvent(TRACE_ERROR, "cannot stat file %s, errno=%d\n",filename, errno);
-    free(buffer);
-    return -1;
-  }
-
-  fd = fopen(filename, "rb");
-  if(!fd) {
-    traceEvent(TRACE_ERROR, "Unable to open parameter file '%s' (%d)...\n",filename,errno);
-    free(buffer);
-    return -1;
-  }
-  while(fgets(buffer, MAX_CONFFILE_LINE_LENGTH,fd)) {
-    char    *   p = NULL;
-
-    /* strip out comments */
-    p = strchr(buffer, '#');
-    if(p) *p ='\0';
-
-    /* remove \n */
-    p = strchr(buffer, '\n');
-    if(p) *p ='\0';
-
-    /* strip out heading spaces */
-    p = buffer;
-    while(*p == ' ' && *p != '\0') ++p;
-    if(p != buffer) strncpy(buffer,p,strlen(p)+1);
-
-    /* strip out trailing spaces */
-    while(strlen(buffer) && buffer[strlen(buffer)-1]==' ')
-      buffer[strlen(buffer)-1]= '\0';
-
-    /* check for nested @file option */
-    if(strchr(buffer, '@')) {
-      traceEvent(TRACE_ERROR, "@file in file nesting is not supported\n");
-      free(buffer);
+  if((NULL == s) || (NULL == ip_addr))
+    {
       return -1;
     }
-    if((strlen(linebuffer)+strlen(buffer)+2)< MAX_CMDLINE_BUFFER_LENGTH) {
-      strncat(linebuffer, " ", 1);
-      strncat(linebuffer, buffer, strlen(buffer));
-    } else {
-      traceEvent(TRACE_ERROR, "too many argument");
-      free(buffer);
-      return -1;
+
+  memset(ip_addr, 0, addr_size);
+
+  p = strpbrk(s, ":");
+
+  if(p)
+    {
+      /* colon is present */
+      if(ip_mode)
+        {
+	  size_t end=0;
+
+	  memset(ip_mode, 0, mode_size);
+	  end = MIN(p-s, (ssize_t)(mode_size-1)); /* ensure NULL term */
+	  strncpy(ip_mode, s, end);
+	  strncpy(ip_addr, p+1, addr_size-1); /* ensure NULL term */
+	  retval = 0;
+        }
     }
-  }
+  else
+    {
+      /* colon is not present */
+      strncpy(ip_addr, s, addr_size);
+    }
 
-  free(buffer);
-  fclose(fd);
-
-  return 0;
+  return retval;
 }
 
-/* ************************************** */
-
-/* Create the argv vector */
-static char ** buildargv(int * effectiveargc, char * const linebuffer) {
-  const int  INITIAL_MAXARGC = 16;	/* Number of args + NULL in initial argv */
-  int     maxargc;
-  int     argc=0;
-  char ** argv;
-  char *  buffer, * buff;
-
-  *effectiveargc = 0;
-  buffer = (char *)calloc(1, strlen(linebuffer)+2);
-  if(!buffer) {
-    traceEvent(TRACE_ERROR, "Unable to allocate memory");
-    return NULL;
-  }
-  strncpy(buffer, linebuffer,strlen(linebuffer));
-
-  maxargc = INITIAL_MAXARGC;
-  argv = (char **)malloc(maxargc * sizeof(char*));
-  if(argv == NULL) {
-    traceEvent(TRACE_ERROR, "Unable to allocate memory");
-    return NULL;
-  }
-
-  buff = buffer;
-
-  while(buff) {
-    char * p = strchr(buff,' ');
-    if(p) {
-      *p='\0';
-      argv[argc++] = strdup(buff);
-      while(*++p == ' ' && *p != '\0');
-      buff=p;
-      if(argc >= maxargc) {
-	maxargc *= 2;
-	argv = (char **)realloc(argv, maxargc * sizeof(char*));
-	if(argv == NULL) {
-	  traceEvent(TRACE_ERROR, "Unable to re-allocate memory");
-	  free(buffer);
-	  return NULL;
-	}
-      }
-    } else {
-      argv[argc++] = strdup(buff);
-      break;
-    }
-  }
-  free(buffer);
-  *effectiveargc = argc;
-
-  return argv;
-}
-
-/* ************************************** */
+/* *************************************************** */
 
 static void help() {
   print_n2n_version();
@@ -220,6 +166,284 @@ static void help() {
   exit(0);
 }
 
+/* *************************************************** */
+
+static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee) {
+
+  traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
+
+  switch(optkey) {
+    case'K':
+    {
+      if(ec->encrypt_key) {
+        fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
+        exit(1);
+      } else {
+        strncpy(eee->keyschedule, optarg, N2N_PATHNAME_MAXLEN-1);
+        /* strncpy does not add NULL if the source has no NULL. */
+        eee->keyschedule[N2N_PATHNAME_MAXLEN-1] = 0;
+	      
+        traceEvent(TRACE_DEBUG, "keyfile = '%s'\n", eee->keyschedule);
+        fprintf(stderr, "keyfile = '%s'\n", eee->keyschedule);
+      }
+      break;
+    }
+
+    case 'a': /* IP address and mode of TUNTAP interface */
+    {
+      scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
+		   ec->ip_mode, N2N_IF_MODE_SIZE,
+		   optarg);
+      break;
+    }
+
+    case 'c': /* community as a string */
+    {
+      memset(eee->community_name, 0, N2N_COMMUNITY_SIZE);
+      strncpy((char *)eee->community_name, optarg, N2N_COMMUNITY_SIZE);
+      break;
+    }
+
+    case 'E': /* multicast ethernet addresses accepted. */
+    {
+      eee->drop_multicast=0;
+      traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic\n");
+      break;
+    }
+
+#ifndef WIN32
+    case 'u': /* unprivileged uid */
+    {
+      ec->userid = atoi(optarg);
+      break;
+    }
+
+    case 'g': /* unprivileged uid */
+    {
+      ec->groupid = atoi(optarg);
+      break;
+    }
+#endif
+
+#ifndef WIN32
+    case 'f' : /* do not fork as daemon */
+    {
+      eee->daemon=0;
+      break;
+    }
+#endif /* #ifndef WIN32 */
+
+    case 'm' : /* TUNTAP MAC address */
+    {
+      strncpy(ec->device_mac,optarg,N2N_MACNAMSIZ);
+      break;
+    }
+
+    case 'M' : /* TUNTAP MTU */
+    {
+      ec->mtu = atoi(optarg);
+      break;
+    }
+
+    case 'k': /* encrypt key */
+    {
+      if(strlen(eee->keyschedule) > 0) {
+        fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
+        exit(1);
+      } else {
+        traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", ec->encrypt_key);
+        ec->encrypt_key = strdup(optarg);
+      }
+      break;
+    }
+
+    case 'r': /* enable packet routing across n2n endpoints */
+    {
+      eee->allow_routing = 1;
+      break;
+    }
+
+    case 'l': /* supernode-list */
+    {
+      if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
+        strncpy((eee->sn_ip_array[eee->sn_num]), optarg, N2N_EDGE_SN_HOST_SIZE);
+        traceEvent(TRACE_DEBUG, "Adding supernode[%u] = %s\n", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
+        ++eee->sn_num;
+      } else {
+        fprintf(stderr, "Too many supernodes!\n");
+        exit(1);
+      }
+      break;
+    }
+
+#if defined(N2N_CAN_NAME_IFACE)
+    case 'd': /* TUNTAP name */
+    {
+      strncpy(ec->tuntap_dev_name, optarg, N2N_IFNAMSIZ);
+      break;
+    }
+#endif
+
+    case 'b':
+    {
+      eee->re_resolve_supernode_ip = 1;
+      break;
+    }
+
+    case 'p':
+    {
+      ec->local_port = atoi(optarg);
+      break;
+    }
+
+    case 't':
+    {
+      ec->mgmt_port = atoi(optarg);
+      break;
+    }
+
+    case 's': /* Subnet Mask */
+    {
+      if(0 != ec->got_s) {
+        traceEvent(TRACE_WARNING, "Multiple subnet masks supplied.");
+      }
+      strncpy(ec->netmask, optarg, N2N_NETMASK_STR_SIZE);
+      ec->got_s = 1;
+      break;
+    }
+
+    case 'h': /* help */
+    {
+      help();
+      break;
+    }
+
+    case 'v': /* verbose */
+    {
+      ++traceLevel; /* do 2 -v flags to increase verbosity to DEBUG level*/
+      break;
+    }
+
+    default:
+    {
+      traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char)optkey);
+      return(-1);
+    }
+  }
+
+  return(0);
+}
+
+/* *********************************************** */
+
+static const struct option long_options[] = {
+  { "community",       required_argument, NULL, 'c' },
+  { "supernode-list",  required_argument, NULL, 'l' },
+  { "tun-device",      required_argument, NULL, 'd' },
+  { "euid",            required_argument, NULL, 'u' },
+  { "egid",            required_argument, NULL, 'g' },
+  { "help"   ,         no_argument,       NULL, 'h' },
+  { "verbose",         no_argument,       NULL, 'v' },
+  { NULL,              0,                 NULL,  0  }
+};
+
+/* *************************************************** */
+
+/* read command line options */
+static int loadFromCLI(int argc, char *argv[], edge_conf_t *ec, n2n_edge_t *eee) {
+  u_char c;
+
+  while((c = getopt_long(argc, argv,
+			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:",
+			 long_options, NULL)) != '?') {
+    if(c == 255) break;
+    setOption(c, optarg, ec, eee);
+  }
+
+  return 0;
+}
+
+/* *************************************************** */
+
+static char *trim(char *s) {
+  char *end;
+
+  while(isspace(s[0]) || (s[0] == '"') || (s[0] == '\'')) s++;
+  if(s[0] == 0) return s;
+
+  end = &s[strlen(s) - 1];
+  while(end > s
+	&& (isspace(end[0])|| (end[0] == '"') || (end[0] == '\'')))
+    end--;
+  end[1] = 0;
+
+  return s;
+}
+
+/* *************************************************** */
+
+/* parse the configuration file */
+static int loadFromFile(const char *path, edge_conf_t *ec, n2n_edge_t *eee) {
+  char buffer[4096], *line, *key, *value;
+  u_int line_len, opt_name_len;
+  FILE *fd;
+  const struct option *opt;
+
+  fd = fopen(path, "r");
+
+  if(fd == NULL) {
+    traceEvent(TRACE_WARNING, "Config file %s not found", path);
+    return -1;
+  }
+
+  while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
+
+    line = trim(line);
+    value = NULL;
+
+    if((line_len = strlen(line)) < 2 || line[0] == '#')
+      continue;
+
+    if(!strncmp(line, "--", 2)) { /* long opt */
+      key = &line[2], line_len -= 2;
+
+      opt = long_options;
+      while(opt->name != NULL) {
+	opt_name_len = strlen(opt->name);
+
+	if(!strncmp(key, opt->name, opt_name_len)
+	   && (line_len <= opt_name_len
+	       || key[opt_name_len] == '\0'
+	       || key[opt_name_len] == ' '
+	       || key[opt_name_len] == '=')) {
+	  if(line_len > opt_name_len)	  key[opt_name_len] = '\0';
+	  if(line_len > opt_name_len + 1) value = trim(&key[opt_name_len + 1]);
+
+	  // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
+	  setOption(opt->val, value, ec, eee);
+	  break;
+	}
+
+	opt++;
+      }
+    } else if(line[0] == '-') { /* short opt */
+      key = &line[1], line_len--;
+      if(line_len > 1) key[1] = '\0';
+      if(line_len > 2) value = trim(&key[2]);
+
+      // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
+      setOption(key[0], value, ec, eee);
+    } else {
+      traceEvent(TRACE_WARNING, "Skipping unrecognized line: %s", line);
+      continue;
+    }
+  }
+
+  fclose(fd);
+
+  return 0;
+}
+
 /* ************************************** */
 
 #if defined(DUMMY_ID_00001) /* Disabled waiting for config option to enable it */
@@ -273,75 +497,6 @@ static void send_grat_arps(n2n_edge_t * eee,) {
 
 #endif /* #if defined(DUMMY_ID_00001) */
 
-/* *********************************************** */
-
-static const struct option long_options[] = {
-  { "community",       required_argument, NULL, 'c' },
-  { "supernode-list",  required_argument, NULL, 'l' },
-  { "tun-device",      required_argument, NULL, 'd' },
-  { "euid",            required_argument, NULL, 'u' },
-  { "egid",            required_argument, NULL, 'g' },
-  { "help"   ,         no_argument,       NULL, 'h' },
-  { "verbose",         no_argument,       NULL, 'v' },
-  { NULL,              0,                 NULL,  0  }
-};
-
-/* ***************************************************** */
-
-/** Find the address and IP mode for the tuntap device.
- *
- *  s is one of these forms:
- *
- *  <host> := <hostname> | A.B.C.D
- *
- *  <host> | static:<host> | dhcp:<host>
- *
- *  If the mode is present (colon required) then fill ip_mode with that value
- *  otherwise do not change ip_mode. Fill ip_mode with everything after the
- *  colon if it is present; or s if colon is not present.
- *
- *  ip_add and ip_mode are NULL terminated if modified.
- *
- *  return 0 on success and -1 on error
- */
-static int scan_address(char * ip_addr, size_t addr_size,
-			char * ip_mode, size_t mode_size,
-			const char * s) {
-  int retval = -1;
-  char * p;
-
-  if((NULL == s) || (NULL == ip_addr))
-    {
-      return -1;
-    }
-
-  memset(ip_addr, 0, addr_size);
-
-  p = strpbrk(s, ":");
-
-  if(p)
-    {
-      /* colon is present */
-      if(ip_mode)
-        {
-	  size_t end=0;
-
-	  memset(ip_mode, 0, mode_size);
-	  end = MIN(p-s, (ssize_t)(mode_size-1)); /* ensure NULL term */
-	  strncpy(ip_mode, s, end);
-	  strncpy(ip_addr, p+1, addr_size-1); /* ensure NULL term */
-	  retval = 0;
-        }
-    }
-  else
-    {
-      /* colon is not present */
-      strncpy(ip_addr, s, addr_size);
-    }
-
-  return retval;
-}
-
 /* ************************************** */
 
 static void daemonize() {
@@ -393,30 +548,27 @@ static void daemonize() {
 
 /** Entry point to program from kernel. */
 int main(int argc, char* argv[]) {
-  int     opt;
   int     keep_on_running = 1;
-  int     local_port = 0 /* any port */;
-  int     mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
-  char    tuntap_dev_name[N2N_IFNAMSIZ] = "edge0";
-  char    ip_mode[N2N_IF_MODE_SIZE] = "static";
-  char    ip_addr[N2N_NETMASK_STR_SIZE] = "";
-  char    netmask[N2N_NETMASK_STR_SIZE] = "255.255.255.0";
-  int     mtu = DEFAULT_MTU;
-  int     got_s = 0;
-
-#ifndef WIN32
-  uid_t   userid = 0; /* root is the only guaranteed ID */
-  gid_t   groupid = 0; /* root is the only guaranteed ID */
-#endif
-
-  char    device_mac[N2N_MACNAMSIZ] = "";
-  char *  encrypt_key = NULL;
-
-  int     i, effectiveargc = 0;
-  char ** effectiveargv = NULL;
-  char  * linebuffer = NULL;
+  int     rc;
+  int     i;
 
   n2n_edge_t eee; /* single instance for this program */
+  edge_conf_t ec;
+
+  ec.local_port = 0 /* any port */;
+  ec.mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
+  snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), "edge0");
+  snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
+  snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
+  ec.ip_addr[0] = '\0';
+  ec.device_mac[0] = '\0';
+  ec.mtu = DEFAULT_MTU;
+  ec.got_s = 0;
+  ec.encrypt_key = NULL;
+#ifndef WIN32
+  ec.userid = 0; /* root is the only guaranteed ID */
+  ec.groupid = 0; /* root is the only guaranteed ID */
+#endif
 
   if(-1 == edge_init(&eee))
     {
@@ -426,225 +578,26 @@ int main(int argc, char* argv[]) {
 
   if(getenv("N2N_KEY"))
     {
-      encrypt_key = strdup(getenv("N2N_KEY"));
+      ec.encrypt_key = strdup(getenv("N2N_KEY"));
     }
 
 #ifdef WIN32
-  tuntap_dev_name[0] = '\0';
+  ec.tuntap_dev_name[0] = '\0';
 #endif
   memset(&(eee.supernode), 0, sizeof(eee.supernode));
   eee.supernode.family = AF_INET;
 
-  linebuffer = (char *)malloc(MAX_CMDLINE_BUFFER_LENGTH);
-  if(!linebuffer)
-    {
-      traceEvent(TRACE_ERROR, "Unable to allocate memory");
-      exit(1);
-    }
-  snprintf(linebuffer, MAX_CMDLINE_BUFFER_LENGTH, "%s",argv[0]);
-
-#ifdef WIN32
-  for(i=0; i < (int)strlen(linebuffer); i++)
-    if(linebuffer[i] == '\\') linebuffer[i] = '/';
-#endif
-
-  for(i=1;i<argc;++i)
-    {
-      if(argv[i][0] == '@')
-        {
-	  if(readConfFile(&argv[i][1], linebuffer)<0) exit(1); /* <<<<----- check */
-        }
-      else if((strlen(linebuffer)+strlen(argv[i])+2) < MAX_CMDLINE_BUFFER_LENGTH)
-        {
-	  strncat(linebuffer, " ", 1);
-	  strncat(linebuffer, argv[i], strlen(argv[i]));
-        }
-      else
-        {
-	  traceEvent(TRACE_ERROR, "too many argument");
-	  exit(1);
-        }
-    }
-  /*  strip trailing spaces */
-  while(strlen(linebuffer) && linebuffer[strlen(linebuffer)-1]==' ')
-    linebuffer[strlen(linebuffer)-1]= '\0';
-
-  /* build the new argv from the linebuffer */
-  effectiveargv = buildargv(&effectiveargc, linebuffer);
-
-  if(linebuffer)
-    {
-      free(linebuffer);
-      linebuffer = NULL;
-    }
-
-  /* {int k;for(k=0;k<effectiveargc;++k)  printf("%s\n",effectiveargv[k]);} */
-
-  if(effectiveargc < 2)
-    help();
-
-  optarg = NULL;
-  while((opt = getopt_long(effectiveargc,
-			   effectiveargv,
-			   "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:", long_options, NULL)) != EOF) {
-    switch (opt)
-      {
-      case'K':
-	{
-	  if(encrypt_key)
-	    {
-	      fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
-	      exit(1);
-	    }
-	  else
-	    {
-	      strncpy(eee.keyschedule, optarg, N2N_PATHNAME_MAXLEN-1);
-	      /* strncpy does not add NULL if the source has no NULL. */
-	      eee.keyschedule[N2N_PATHNAME_MAXLEN-1] = 0;
-	      
-	      traceEvent(TRACE_DEBUG, "keyfile = '%s'\n", eee.keyschedule);
-	      fprintf(stderr, "keyfile = '%s'\n", eee.keyschedule);
-	    }
-	  break;
-	}
-      case 'a': /* IP address and mode of TUNTAP interface */
-	{
-	  scan_address(ip_addr, N2N_NETMASK_STR_SIZE,
-		       ip_mode, N2N_IF_MODE_SIZE,
-		       optarg);
-	  break;
-	}
-      case 'c': /* community as a string */
-	{
-	  memset(eee.community_name, 0, N2N_COMMUNITY_SIZE);
-	  strncpy((char *)eee.community_name, optarg, N2N_COMMUNITY_SIZE);
-	  break;
-	}
-      case 'E': /* multicast ethernet addresses accepted. */
-	{
-	  eee.drop_multicast=0;
-	  traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic\n");
-	  break;
-	}
-
 #ifndef WIN32
-      case 'u': /* unprivileged uid */
-	{
-	  userid = atoi(optarg);
-	  break;
-	}
-      case 'g': /* unprivileged uid */
-	{
-	  groupid = atoi(optarg);
-	  break;
-	}
+  if((argc >= 2) && (argv[1][0] != '-')) {
+    rc = loadFromFile(argv[1], &ec, &eee);
+    if(argc > 2)
+      rc = loadFromCLI(argc, argv, &ec, &eee);
+  } else
 #endif
-#ifndef WIN32
-      case 'f' : /* do not fork as daemon */
-	{
-	  eee.daemon=0;
-	  break;
-	}
-#endif /* #ifndef WIN32 */
+    rc = loadFromCLI(argc, argv, &ec, &eee);
 
-      case 'm' : /* TUNTAP MAC address */
-	{
-	  strncpy(device_mac,optarg,N2N_MACNAMSIZ);
-	  break;
-	}
-
-      case 'M' : /* TUNTAP MTU */
-	{
-	  mtu = atoi(optarg);
-	  break;
-	}
-
-      case 'k': /* encrypt key */
-	{
-	  if(strlen(eee.keyschedule) > 0)
-	    {
-	      fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
-	      exit(1);
-	    } else {
-	    traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", encrypt_key);
-	    encrypt_key = strdup(optarg);
-	  }
-	  break;
-	}
-      case 'r': /* enable packet routing across n2n endpoints */
-	{
-	  eee.allow_routing = 1;
-	  break;
-	}
-
-      case 'l': /* supernode-list */
-	{
-	  if(eee.sn_num < N2N_EDGE_NUM_SUPERNODES)
-	    {
-	      strncpy((eee.sn_ip_array[eee.sn_num]), optarg, N2N_EDGE_SN_HOST_SIZE);
-	      traceEvent(TRACE_DEBUG, "Adding supernode[%u] = %s\n", (unsigned int)eee.sn_num, (eee.sn_ip_array[eee.sn_num]));
-	      ++eee.sn_num;
-	    }
-	  else
-	    {
-	      fprintf(stderr, "Too many supernodes!\n");
-	      exit(1);
-	    }
-	  break;
-	}
-
-#if defined(N2N_CAN_NAME_IFACE)
-      case 'd': /* TUNTAP name */
-	{
-	  strncpy(tuntap_dev_name, optarg, N2N_IFNAMSIZ);
-	  break;
-	}
-#endif
-
-      case 'b':
-	{
-	  eee.re_resolve_supernode_ip = 1;
-	  break;
-	}
-
-      case 'p':
-	{
-	  local_port = atoi(optarg);
-	  break;
-	}
-
-      case 't':
-	{
-	  mgmt_port = atoi(optarg);
-	  break;
-	}
-
-      case 's': /* Subnet Mask */
-	{
-	  if(0 != got_s)
-	    {
-	      traceEvent(TRACE_WARNING, "Multiple subnet masks supplied.");
-	    }
-	  strncpy(netmask, optarg, N2N_NETMASK_STR_SIZE);
-	  got_s = 1;
-	  break;
-	}
-
-      case 'h': /* help */
-	{
-	  help();
-	  break;
-	}
-
-      case 'v': /* verbose */
-	{
-	  ++traceLevel; /* do 2 -v flags to increase verbosity to DEBUG level*/
-	  break;
-	}
-
-      } /* end switch */
-  }
-
+  if(rc < 0)
+    return(-1);
 
 #ifndef WIN32
   if(eee.daemon) {
@@ -660,24 +613,18 @@ int main(int argc, char* argv[]) {
 
   supernode2addr(&(eee.supernode), eee.sn_ip_array[eee.sn_idx]);
 
-  for (i=0; i<effectiveargc; ++i)
-    free(effectiveargv[i]);
-
-  free(effectiveargv);
-  effectiveargv = NULL, effectiveargc = 0;
-
   if(!(
 #ifdef __linux__
-       (tuntap_dev_name[0] != 0) &&
+       (ec.tuntap_dev_name[0] != 0) &&
 #endif
        (eee.community_name[0] != 0) &&
-       (ip_addr[0] != 0)
+       (ec.ip_addr[0] != 0)
        ))
     {
       help();
     }
 
-  if((NULL == encrypt_key) && (0 == strlen(eee.keyschedule)))
+  if((NULL == ec.encrypt_key) && (0 == strlen(eee.keyschedule)))
     {
       traceEvent(TRACE_WARNING, "Encryption is disabled in edge.");
 
@@ -690,32 +637,32 @@ int main(int argc, char* argv[]) {
   /* setgid(0); */
 #endif
 
-  if(0 == strcmp("dhcp", ip_mode)) {
+  if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
     
     eee.dyn_ip_mode = 1;
   } else
-    traceEvent(TRACE_NORMAL, "ip_mode='%s'", ip_mode);    
+    traceEvent(TRACE_NORMAL, "ip_mode='%s'", ec.ip_mode);    
 
-  if(tuntap_open(&(eee.device), tuntap_dev_name, ip_mode, ip_addr, netmask, device_mac, mtu) < 0)
+  if(tuntap_open(&(eee.device), ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
     return(-1);
 
 #ifndef WIN32
-  if((userid != 0) || (groupid != 0)) {
+  if((ec.userid != 0) || (ec.groupid != 0)) {
     traceEvent(TRACE_NORMAL, "Interface up. Dropping privileges to uid=%d, gid=%d",
-	       (signed int)userid, (signed int)groupid);
+	       (signed int)ec.userid, (signed int)ec.groupid);
 
     /* Finished with the need for root privileges. Drop to unprivileged user. */
-    setreuid(userid, userid);
-    setregid(groupid, groupid);
+    setreuid(ec.userid, ec.userid);
+    setregid(ec.groupid, ec.groupid);
   }
 #endif
 
-  if(local_port > 0)
-    traceEvent(TRACE_NORMAL, "Binding to local port %d", (signed int)local_port);
+  if(ec.local_port > 0)
+    traceEvent(TRACE_NORMAL, "Binding to local port %d", (signed int)ec.local_port);
 
-  if(encrypt_key) {
-    if(edge_init_twofish(&eee, (uint8_t *)(encrypt_key), strlen(encrypt_key)) < 0) {
+  if(ec.encrypt_key) {
+    if(edge_init_twofish(&eee, (uint8_t *)(ec.encrypt_key), strlen(ec.encrypt_key)) < 0) {
       fprintf(stderr, "Error: twofish setup failed.\n");
       return(-1);
     }
@@ -727,16 +674,16 @@ int main(int argc, char* argv[]) {
   }  
   /* else run in NULL mode */
 
-  eee.udp_sock = open_socket(local_port, 1 /* bind ANY */);
+  eee.udp_sock = open_socket(ec.local_port, 1 /* bind ANY */);
   if(eee.udp_sock < 0) {
-    traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", (signed int)local_port);
+    traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", (signed int)ec.local_port);
     return(-1);
   }
   
-  eee.udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
+  eee.udp_mgmt_sock = open_socket(ec.mgmt_port, 0 /* bind LOOPBACK */);
   
   if(eee.udp_mgmt_sock < 0) {
-    traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", mgmt_port);
+    traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", ec.mgmt_port);
     return(-1);
   }
   
