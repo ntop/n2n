@@ -1,4 +1,4 @@
-Template: ntopng/license_expired_continue_installation
+Template: n2n/license_expired_continue_installation
 Type: boolean
 Default: true
 Description: Do you want to continue with the installation?

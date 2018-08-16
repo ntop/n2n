@@ -6,7 +6,7 @@ Wants=
 [Service]
 Type=simple
 ExecStartPre=
-ExecStart=/usr/sbin/supernode -l 7777
+ExecStart=/usr/sbin/supernode /etc/n2n/supernode.conf -f
 Restart=on-abnormal
 RestartSec=5
 
