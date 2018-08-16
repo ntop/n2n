@@ -170,7 +170,7 @@ static void help() {
 
 static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee) {
 
-  traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
+  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
 
   switch(optkey) {
     case'K':

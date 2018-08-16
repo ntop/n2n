@@ -610,23 +610,74 @@ static int process_udp( n2n_sn_t * sss,
     return 0;
 }
 
+/* *************************************************** */
 
 /** Help message to print if the command line arguments are not valid. */
-static void exit_help(int argc, char * const argv[])
+static void help()
 {
-    fprintf( stderr, "%s usage\n", argv[0] );
-    fprintf( stderr, "-l <lport>\tSet UDP main listen port to <lport>\n" );
+  print_n2n_version();
 
+  printf("supernode ");
+  printf("-l <lport> ");
+  printf("[-f] ");
+  printf("[-v] ");
+  printf("\n\n");
+
+  printf("-l <lport>\tSet UDP main listen port to <lport>\n");
 #if defined(N2N_HAVE_DAEMON)
-    fprintf( stderr, "-f        \tRun in foreground.\n" );
+  printf("-f        \tRun in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
-    fprintf( stderr, "-v        \tIncrease verbosity. Can be used multiple times.\n" );
-    fprintf( stderr, "-h        \tThis help message.\n" );
-    fprintf( stderr, "\n" );
-    exit(1);
+  printf("-v        \tIncrease verbosity. Can be used multiple times.\n");
+  printf("-h        \tThis help message.\n");
+  printf("\n");
+
+  exit(1);
 }
 
+/* *************************************************** */
+
 static int run_loop( n2n_sn_t * sss );
+
+/* *************************************************** */
+
+static int setOption(int optkey, char *optarg, n2n_sn_t *sss) {
+
+  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
+
+  switch(optkey) {
+    case 'l': /* local-port */
+    {
+      sss->lport = atoi(optarg);
+      break;
+    }
+
+    case 'f': /* foreground */
+    {
+      sss->daemon = 0;
+      break;
+    }
+
+    case 'h': /* help */
+    {
+      help();
+      break;
+    }
+
+    case 'v': /* verbose */
+    {
+      ++traceLevel;
+      break;
+    }
+
+    default:
+    {
+      traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char)optkey);
+      return(-1);
+    }
+  }
+
+  return(0);
+}
 
 /* *********************************************** */
 
@@ -638,36 +689,125 @@ static const struct option long_options[] = {
   { NULL,              0,                 NULL,  0  }
 };
 
+/* *************************************************** */
+
+/* read command line options */
+static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
+  u_char c;
+
+  while((c = getopt_long(argc, argv,
+			 "fl:vh",
+			 long_options, NULL)) != '?') {
+    if(c == 255) break;
+    setOption(c, optarg, sss);
+  }
+
+  return 0;
+}
+
+/* *************************************************** */
+
+static char *trim(char *s) {
+  char *end;
+
+  while(isspace(s[0]) || (s[0] == '"') || (s[0] == '\'')) s++;
+  if(s[0] == 0) return s;
+
+  end = &s[strlen(s) - 1];
+  while(end > s
+	&& (isspace(end[0])|| (end[0] == '"') || (end[0] == '\'')))
+    end--;
+  end[1] = 0;
+
+  return s;
+}
+
+/* *************************************************** */
+
+/* parse the configuration file */
+static int loadFromFile(const char *path, n2n_sn_t *sss) {
+  char buffer[4096], *line, *key, *value;
+  u_int line_len, opt_name_len;
+  FILE *fd;
+  const struct option *opt;
+
+  fd = fopen(path, "r");
+
+  if(fd == NULL) {
+    traceEvent(TRACE_WARNING, "Config file %s not found", path);
+    return -1;
+  }
+
+  while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
+
+    line = trim(line);
+    value = NULL;
+
+    if((line_len = strlen(line)) < 2 || line[0] == '#')
+      continue;
+
+    if(!strncmp(line, "--", 2)) { /* long opt */
+      key = &line[2], line_len -= 2;
+
+      opt = long_options;
+      while(opt->name != NULL) {
+	opt_name_len = strlen(opt->name);
+
+	if(!strncmp(key, opt->name, opt_name_len)
+	   && (line_len <= opt_name_len
+	       || key[opt_name_len] == '\0'
+	       || key[opt_name_len] == ' '
+	       || key[opt_name_len] == '=')) {
+	  if(line_len > opt_name_len)	  key[opt_name_len] = '\0';
+	  if(line_len > opt_name_len + 1) value = trim(&key[opt_name_len + 1]);
+
+	  // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
+	  setOption(opt->val, value, sss);
+	  break;
+	}
+
+	opt++;
+      }
+    } else if(line[0] == '-') { /* short opt */
+      key = &line[1], line_len--;
+      if(line_len > 1) key[1] = '\0';
+      if(line_len > 2) value = trim(&key[2]);
+
+      // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
+      setOption(key[0], value, sss);
+    } else {
+      traceEvent(TRACE_WARNING, "Skipping unrecognized line: %s", line);
+      continue;
+    }
+  }
+
+  fclose(fd);
+
+  return 0;
+}
+
+/* *************************************************** */
+
 /** Main program entry point from kernel. */
 int main( int argc, char * const argv[] )
 {
+    int rc;
     n2n_sn_t sss;
 
     init_sn( &sss );
 
+#ifndef WIN32
+    if((argc >= 2) && (argv[1][0] != '-')) 
     {
-        int opt;
+        rc = loadFromFile(argv[1], &sss);
+        if (argc > 2)
+            rc = loadFromCLI(argc, argv, &sss);
+    } else
+#endif
+    rc = loadFromCLI(argc, argv, &sss);
 
-        while((opt = getopt_long(argc, argv, "fl:vh", long_options, NULL)) != -1) 
-        {
-            switch (opt) 
-            {
-            case 'l': /* local-port */
-                sss.lport = atoi(optarg);
-                break;
-            case 'f': /* foreground */
-                sss.daemon = 0;
-                break;
-            case 'h': /* help */
-                exit_help(argc, argv);
-                break;
-            case 'v': /* verbose */
-                ++traceLevel;
-                break;
-            }
-        }
-        
-    }
+    if (rc < 0)
+        return(-1);
 
 #if defined(N2N_HAVE_DAEMON)
     if (sss.daemon)
