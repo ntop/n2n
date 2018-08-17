@@ -1,0 +1,25 @@
+FROM multiarch/debian-debootstrap:armhf-stretch AS builder
+
+ARG COMMIT_HASH
+
+WORKDIR /usr/src
+
+RUN apt-get update && apt-get install -y \
+	gcc \
+	libc6-dev \
+    libssl-dev \
+    ca-certificates \
+    git \
+    make \
+	--no-install-recommends \
+	&& rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/ntop/n2n && cd n2n && git reset --hard $COMMIT_HASH && make
+
+FROM arm32v7/debian:stretch
+COPY --from=builder /usr/src/n2n/supernode /usr/bin
+
+EXPOSE 7654 7654/udp
+EXPOSE 5645 5645/udp
+
+ENTRYPOINT ["/usr/bin/supernode", "-f"]
