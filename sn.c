@@ -639,14 +639,14 @@ static int run_loop( n2n_sn_t * sss );
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *optarg, n2n_sn_t *sss) {
+static int setOption(int optkey, char *optargument, n2n_sn_t *sss) {
 
-  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
+  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : "");
 
   switch(optkey) {
   case 'l': /* local-port */
     {
-      sss->lport = atoi(optarg);
+      sss->lport = atoi(optargument);
       break;
     }
 
