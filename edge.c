@@ -171,9 +171,9 @@ static void help() {
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee) {
+static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t *eee) {
 
-  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
+  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : "");
 
   switch(optkey) {
   case'K':
@@ -182,7 +182,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
         fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
         exit(1);
       } else {
-        strncpy(eee->keyschedule, optarg, N2N_PATHNAME_MAXLEN-1);
+        strncpy(eee->keyschedule, optargument, N2N_PATHNAME_MAXLEN-1);
         /* strncpy does not add NULL if the source has no NULL. */
         eee->keyschedule[N2N_PATHNAME_MAXLEN-1] = 0;
 	      
@@ -196,14 +196,14 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
     {
       scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
 		   ec->ip_mode, N2N_IF_MODE_SIZE,
-		   optarg);
+		   optargument);
       break;
     }
 
   case 'c': /* community as a string */
     {
       memset(eee->community_name, 0, N2N_COMMUNITY_SIZE);
-      strncpy((char *)eee->community_name, optarg, N2N_COMMUNITY_SIZE);
+      strncpy((char *)eee->community_name, optargument, N2N_COMMUNITY_SIZE);
       break;
     }
 
@@ -217,13 +217,13 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
 #ifndef WIN32
   case 'u': /* unprivileged uid */
     {
-      ec->userid = atoi(optarg);
+      ec->userid = atoi(optargument);
       break;
     }
 
   case 'g': /* unprivileged uid */
     {
-      ec->groupid = atoi(optarg);
+      ec->groupid = atoi(optargument);
       break;
     }
 #endif
@@ -238,13 +238,13 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
 
   case 'm' : /* TUNTAP MAC address */
     {
-      strncpy(ec->device_mac,optarg,N2N_MACNAMSIZ);
+      strncpy(ec->device_mac,optargument,N2N_MACNAMSIZ);
       break;
     }
 
   case 'M' : /* TUNTAP MTU */
     {
-      ec->mtu = atoi(optarg);
+      ec->mtu = atoi(optargument);
       break;
     }
 
@@ -255,7 +255,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
         exit(1);
       } else {
         traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", ec->encrypt_key);
-        ec->encrypt_key = strdup(optarg);
+        ec->encrypt_key = strdup(optargument);
       }
       break;
     }
@@ -269,8 +269,9 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
   case 'l': /* supernode-list */
     {
       if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
-        strncpy((eee->sn_ip_array[eee->sn_num]), optarg, N2N_EDGE_SN_HOST_SIZE);
-        traceEvent(TRACE_DEBUG, "Adding supernode[%u] = %s\n", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
+        strncpy((eee->sn_ip_array[eee->sn_num]), optargument, N2N_EDGE_SN_HOST_SIZE);
+        traceEvent(TRACE_DEBUG, "Adding supernode[%u] = %s\n",
+		   (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
         ++eee->sn_num;
       } else {
         fprintf(stderr, "Too many supernodes!\n");
@@ -282,7 +283,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
 #if defined(N2N_CAN_NAME_IFACE)
   case 'd': /* TUNTAP name */
     {
-      strncpy(ec->tuntap_dev_name, optarg, N2N_IFNAMSIZ);
+      strncpy(ec->tuntap_dev_name, optargument, N2N_IFNAMSIZ);
       break;
     }
 #endif
@@ -295,13 +296,13 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
 
   case 'p':
     {
-      ec->local_port = atoi(optarg);
+      ec->local_port = atoi(optargument);
       break;
     }
 
   case 't':
     {
-      ec->mgmt_port = atoi(optarg);
+      ec->mgmt_port = atoi(optargument);
       break;
     }
 
@@ -310,7 +311,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
       if(0 != ec->got_s) {
         traceEvent(TRACE_WARNING, "Multiple subnet masks supplied.");
       }
-      strncpy(ec->netmask, optarg, N2N_NETMASK_STR_SIZE);
+      strncpy(ec->netmask, optargument, N2N_NETMASK_STR_SIZE);
       ec->got_s = 1;
       break;
     }
