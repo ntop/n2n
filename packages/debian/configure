@@ -1728,6 +1728,8 @@ ac_config_files="$ac_config_files ../etc/systemd/system/edge.service"
 
 ac_config_files="$ac_config_files ../etc/systemd/system/supernode.service"
 
+ac_config_files="$ac_config_files Makefile"
+
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -2439,6 +2441,7 @@ do
     "debian/rules") CONFIG_FILES="$CONFIG_FILES debian/rules" ;;
     "../etc/systemd/system/edge.service") CONFIG_FILES="$CONFIG_FILES ../etc/systemd/system/edge.service" ;;
     "../etc/systemd/system/supernode.service") CONFIG_FILES="$CONFIG_FILES ../etc/systemd/system/supernode.service" ;;
+    "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

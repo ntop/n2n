@@ -41,4 +41,5 @@ AC_CONFIG_FILES(debian/control)
 AC_CONFIG_FILES(debian/rules)
 AC_CONFIG_FILES(../etc/systemd/system/edge.service)
 AC_CONFIG_FILES(../etc/systemd/system/supernode.service)
+AC_CONFIG_FILES(Makefile)
 AC_OUTPUT

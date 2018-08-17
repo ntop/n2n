@@ -110,6 +110,9 @@ static int scan_address(char * ip_addr, size_t addr_size,
 static void help() {
   print_n2n_version();
 
+  printf("edge <config file> (see edge.conf)\n"
+	 "or\n"
+	 );
   printf("edge "
 #if defined(N2N_CAN_NAME_IFACE)
 	 "-d <tun device> "
@@ -173,7 +176,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
   //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
 
   switch(optkey) {
-    case'K':
+  case'K':
     {
       if(ec->encrypt_key) {
         fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
@@ -189,7 +192,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
       break;
     }
 
-    case 'a': /* IP address and mode of TUNTAP interface */
+  case 'a': /* IP address and mode of TUNTAP interface */
     {
       scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
 		   ec->ip_mode, N2N_IF_MODE_SIZE,
@@ -197,14 +200,14 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
       break;
     }
 
-    case 'c': /* community as a string */
+  case 'c': /* community as a string */
     {
       memset(eee->community_name, 0, N2N_COMMUNITY_SIZE);
       strncpy((char *)eee->community_name, optarg, N2N_COMMUNITY_SIZE);
       break;
     }
 
-    case 'E': /* multicast ethernet addresses accepted. */
+  case 'E': /* multicast ethernet addresses accepted. */
     {
       eee->drop_multicast=0;
       traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic\n");
@@ -212,13 +215,13 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
     }
 
 #ifndef WIN32
-    case 'u': /* unprivileged uid */
+  case 'u': /* unprivileged uid */
     {
       ec->userid = atoi(optarg);
       break;
     }
 
-    case 'g': /* unprivileged uid */
+  case 'g': /* unprivileged uid */
     {
       ec->groupid = atoi(optarg);
       break;
@@ -226,26 +229,26 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
 #endif
 
 #ifndef WIN32
-    case 'f' : /* do not fork as daemon */
+  case 'f' : /* do not fork as daemon */
     {
       eee->daemon=0;
       break;
     }
 #endif /* #ifndef WIN32 */
 
-    case 'm' : /* TUNTAP MAC address */
+  case 'm' : /* TUNTAP MAC address */
     {
       strncpy(ec->device_mac,optarg,N2N_MACNAMSIZ);
       break;
     }
 
-    case 'M' : /* TUNTAP MTU */
+  case 'M' : /* TUNTAP MTU */
     {
       ec->mtu = atoi(optarg);
       break;
     }
 
-    case 'k': /* encrypt key */
+  case 'k': /* encrypt key */
     {
       if(strlen(eee->keyschedule) > 0) {
         fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
@@ -257,13 +260,13 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
       break;
     }
 
-    case 'r': /* enable packet routing across n2n endpoints */
+  case 'r': /* enable packet routing across n2n endpoints */
     {
       eee->allow_routing = 1;
       break;
     }
 
-    case 'l': /* supernode-list */
+  case 'l': /* supernode-list */
     {
       if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
         strncpy((eee->sn_ip_array[eee->sn_num]), optarg, N2N_EDGE_SN_HOST_SIZE);
@@ -277,32 +280,32 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
     }
 
 #if defined(N2N_CAN_NAME_IFACE)
-    case 'd': /* TUNTAP name */
+  case 'd': /* TUNTAP name */
     {
       strncpy(ec->tuntap_dev_name, optarg, N2N_IFNAMSIZ);
       break;
     }
 #endif
 
-    case 'b':
+  case 'b':
     {
       eee->re_resolve_supernode_ip = 1;
       break;
     }
 
-    case 'p':
+  case 'p':
     {
       ec->local_port = atoi(optarg);
       break;
     }
 
-    case 't':
+  case 't':
     {
       ec->mgmt_port = atoi(optarg);
       break;
     }
 
-    case 's': /* Subnet Mask */
+  case 's': /* Subnet Mask */
     {
       if(0 != ec->got_s) {
         traceEvent(TRACE_WARNING, "Multiple subnet masks supplied.");
@@ -312,19 +315,19 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
       break;
     }
 
-    case 'h': /* help */
+  case 'h': /* help */
     {
       help();
       break;
     }
 
-    case 'v': /* verbose */
+  case 'v': /* verbose */
     {
       ++traceLevel; /* do 2 -v flags to increase verbosity to DEBUG level*/
       break;
     }
 
-    default:
+  default:
     {
       traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char)optkey);
       return(-1);
@@ -551,10 +554,12 @@ int main(int argc, char* argv[]) {
   int     keep_on_running = 1;
   int     rc;
   int     i;
-
   n2n_edge_t eee; /* single instance for this program */
   edge_conf_t ec;
 
+  if(argc == 1)
+    help();
+  
   ec.local_port = 0 /* any port */;
   ec.mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), "edge0");
@@ -570,17 +575,15 @@ int main(int argc, char* argv[]) {
   ec.groupid = 0; /* root is the only guaranteed ID */
 #endif
 
-  if(-1 == edge_init(&eee))
-    {
-      traceEvent(TRACE_ERROR, "Failed in edge_init");
-      exit(1);
-    }
-
-  if(getenv("N2N_KEY"))
-    {
-      ec.encrypt_key = strdup(getenv("N2N_KEY"));
-    }
-
+  if(-1 == edge_init(&eee)) {
+    traceEvent(TRACE_ERROR, "Failed in edge_init");
+    exit(1);
+  }
+  
+  if(getenv("N2N_KEY")) {
+    ec.encrypt_key = strdup(getenv("N2N_KEY"));
+  }
+  
 #ifdef WIN32
   ec.tuntap_dev_name[0] = '\0';
 #endif
@@ -596,19 +599,12 @@ int main(int argc, char* argv[]) {
 #endif
     rc = loadFromCLI(argc, argv, &ec, &eee);
 
-  if(rc < 0)
-    return(-1);
-
-#ifndef WIN32
-  if(eee.daemon) {
-    useSyslog = 1; /* traceEvent output now goes to syslog. */
-    daemonize();
-  }
-#endif /* #ifndef WIN32 */
-
+  if((rc < 0) || (eee.sn_num == 0))
+    help();
+  
   traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", n2n_sw_version, n2n_sw_buildDate);
 
-  for (i=0; i< N2N_EDGE_NUM_SUPERNODES; ++i)
+  for (i=0; i<eee.sn_num; ++i)
     traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (eee.sn_ip_array[i]));
 
   supernode2addr(&(eee.supernode), eee.sn_ip_array[eee.sn_idx]);
@@ -624,13 +620,20 @@ int main(int argc, char* argv[]) {
       help();
     }
 
+#ifndef WIN32
+  if(eee.daemon) {
+    useSyslog = 1; /* traceEvent output now goes to syslog. */
+    daemonize();
+  }
+#endif /* #ifndef WIN32 */
+  
   if((NULL == ec.encrypt_key) && (0 == strlen(eee.keyschedule)))
     {
       traceEvent(TRACE_WARNING, "Encryption is disabled in edge.");
-
+      
       eee.null_transop = 1;
     }
-
+  
 #ifndef WIN32
   /* If running suid root then we need to setuid before using the force. */
   setuid(0);
