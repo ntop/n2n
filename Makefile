@@ -1,5 +1,5 @@
 N2N_VERSION=2.3.0
-N2N_OSNAME=$(shell uname -p)
+N2N_OSNAME=$(shell uname)
 
 ########
 
@@ -106,13 +106,15 @@ install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	$(INSTALL_DOC) n2n.7.gz $(MAN7DIR)/
 
 # Docker builder section
-DOCKER_IMAGE_NAME=ntop/supernode
-DOCKER_IMAGE_VERSION=$N2N_VERSION
-N2N_COMMIT_HASH=21055550f3392235a1b41d71257e9dc9ead0dfa0
+DOCKER_IMAGE_NAME=supermock/supernode
+DOCKER_IMAGE_VERSION=v$(N2N_VERSION)
 
-default: steps
+pre_platforms:
+	if [ ! "$(N2N_COMMIT_HASH)" = "" ]; then \
+		echo -n "Are you sure you want to build the hash commit, with the version 2.3 tag, if it is not right, change the N2N_VERSION environment variable in the Makefile. (y/n) " && read sure && [ $$sure == y ]; \
+	fi
 
-steps:
+platforms: pre_platforms
 	if [ "$(TARGET_ARCHITECTURE)" = "arm32v7" ] || [ "$(TARGET_ARCHITECTURE)" = "" ]; then DOCKER_IMAGE_FILENAME="Dockerfile.arm32v7" DOCKER_IMAGE_TAGNAME=$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)-arm32v7 make build; fi
 	if [ "$(TARGET_ARCHITECTURE)" = "x86_64" ] || [ "$(TARGET_ARCHITECTURE)" = "" ]; then DOCKER_IMAGE_FILENAME="Dockerfile.x86_64" DOCKER_IMAGE_TAGNAME=$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)-x86_64 make build; fi
 
@@ -122,22 +124,28 @@ build:
 
 	docker build --target builder --build-arg COMMIT_HASH=$(N2N_COMMIT_HASH) -t $(DOCKER_IMAGE_TAGNAME) -f image-platforms/$(DOCKER_IMAGE_FILENAME) .
 
-	docker container create --name builder $(DOCKER_IMAGE_TAGNAME)
+	docker container create --name n2n-builder $(DOCKER_IMAGE_TAGNAME)
 	if [ ! -d "./build" ]; then mkdir ./build; fi
-	docker container cp builder:/usr/src/n2n/supernode ./build/supernode-$(OS)$(ARCHITECTURE)
-	docker container cp builder:/usr/src/n2n/edge ./build/edge-$(OS)$(ARCHITECTURE)
-	docker container rm -f builder
+	docker container cp n2n-builder:/usr/src/n2n/supernode ./build/supernode-$(OS)$(ARCHITECTURE)
+	docker container cp n2n-builder:/usr/src/n2n/edge ./build/edge-$(OS)$(ARCHITECTURE)
+	docker container rm -f n2n-builder
 
-	docker build --build-arg COMMIT_HASH=$(N2N_COMMIT_HASH) -t $(DOCKER_IMAGE_TAGNAME) -f image-platforms/$(DOCKER_IMAGE_FILENAME) .
-	docker tag $(DOCKER_IMAGE_TAGNAME) $(DOCKER_IMAGE_NAME):latest$(ARCHITECTURE)
+	docker build --cache-from $(DOCKER_IMAGE_TAGNAME) \
+		--build-arg COMMIT_HASH=$(N2N_COMMIT_HASH) \
+		-t $(DOCKER_IMAGE_TAGNAME) \
+		-t $(DOCKER_IMAGE_NAME):latest$(ARCHITECTURE) \
+		-f image-platforms/$(DOCKER_IMAGE_FILENAME) .
 
-push:
-	if [ ! "$(TARGET_ARCHITECTURE)" = "" ]; then \
-		docker push $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)-$(TARGET_ARCHITECTURE); \
-		docker push $(DOCKER_IMAGE_NAME):latest-$(TARGET_ARCHITECTURE); \
-	else \
+pre_push:
+	if [ "$(TARGET_ARCHITECTURE)" = "" ]; then \
 		echo "Please pass TARGET_ARCHITECTURE, see README.md."; \
+		exit 1; \
 	fi
 
-.PHONY: steps build push
+push: pre_push
+	docker push $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)-$(TARGET_ARCHITECTURE)
+	docker push $(DOCKER_IMAGE_NAME):latest-$(TARGET_ARCHITECTURE)
+
+.PHONY: pre_platforms platforms build pre_push push
+.SILENT: pre_platforms pre_push
 # End Docker builder section
