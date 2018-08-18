@@ -4,7 +4,7 @@ N2N_OSNAME=$(shell uname -p)
 
 ########
 
-CC=gcc
+CC?=gcc
 DEBUG?=-g3
 #OPTIMIZATION?=-O2
 WARN?=-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs
