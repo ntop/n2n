@@ -20,8 +20,6 @@
 #include "n2n_transforms.h"
 
 #if defined(N2N_HAVE_AES)
-
-
 #include "openssl/aes.h"
 #ifndef _MSC_VER
 /* Not included in Visual Studio 2008 */

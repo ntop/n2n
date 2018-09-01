@@ -174,9 +174,8 @@ static void help() {
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee) {
-
-  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
+static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t *eee) {
+  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : "");
 
   switch(optkey) {
   case'K':
@@ -185,7 +184,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
         fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
         exit(1);
       } else {
-        strncpy(eee->keyschedule, optarg, N2N_PATHNAME_MAXLEN-1);
+        strncpy(eee->keyschedule, optargument, N2N_PATHNAME_MAXLEN-1);
         /* strncpy does not add NULL if the source has no NULL. */
         eee->keyschedule[N2N_PATHNAME_MAXLEN-1] = 0;
 	      
@@ -199,7 +198,7 @@ static int setOption(int optkey, char *optarg, edge_conf_t *ec, n2n_edge_t *eee)
     {
       scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
 		   ec->ip_mode, N2N_IF_MODE_SIZE,
-		   optarg);
+		   optargument);
       break;
     }
 

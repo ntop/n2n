@@ -894,7 +894,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 		      "Statistics for edge\n");
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-		      "uptime %llu\n",
+		      "uptime %lu\n",
 		      time(NULL) - eee->start_time);
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
@@ -921,7 +921,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 		      (unsigned int)peer_list_size(eee->known_peers));
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-		      "last   super:%llu(%lld sec ago) p2p:%llu(%lld sec ago)\n",
+		      "last   super:%lu (%ld sec ago) p2p:%lu (%ld sec ago)\n",
 		      eee->last_sup, (now-eee->last_sup), eee->last_p2p, (now-eee->last_p2p));
 
   traceEvent(TRACE_DEBUG, "mgmt status sending: %s", udp_buf);
