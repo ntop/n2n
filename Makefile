@@ -29,15 +29,20 @@ CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS) $(N2N_DEFINES)
 
 INSTALL=install
 MKDIR=mkdir -p
+OS := $(shell uname -s)
 
 INSTALL_PROG=$(INSTALL) -m755
 INSTALL_DOC=$(INSTALL) -m644
 
-
 # DESTDIR set in debian make system
 PREFIX?=$(DESTDIR)/usr
 #BINDIR=$(PREFIX)/bin
+ifeq ($(OS),Darwin)
+SBINDIR=$(PREFIX)/local/sbin
+else
 SBINDIR=$(PREFIX)/sbin
+endif
+
 MANDIR?=$(PREFIX)/share/man
 MAN1DIR=$(MANDIR)/man1
 MAN7DIR=$(MANDIR)/man7
