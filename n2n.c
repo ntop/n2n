@@ -265,10 +265,8 @@ void print_n2n_version() {
 struct peer_info * find_peer_by_mac(struct peer_info * list, const n2n_mac_t mac)
 {
   /* TODO - replace a list with a hashtable */
-  while(list != NULL)
-    {
-      if(0 == memcmp(mac, list->mac_addr, 6))
-        {
+  while(list != NULL) {
+      if(0 == memcmp(mac, list->mac_addr, 6)) {
 	  return list;
         }
       list = list->next;
