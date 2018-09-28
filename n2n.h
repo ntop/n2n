@@ -111,6 +111,8 @@ typedef struct ether_hdr ether_hdr_t;
 
 #include <stdarg.h>
 
+#include "uthash.h"
+
 #ifdef WIN32
 #include "win32/wintap.h"
 #endif /* #ifdef WIN32 */
