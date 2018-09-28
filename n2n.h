@@ -102,7 +102,9 @@ typedef struct ether_hdr ether_hdr_t;
 #include <unistd.h>
 #include <assert.h>
 #include <sys/stat.h>
+
 #include "minilzo.h"
+#include "uthash.h"
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */

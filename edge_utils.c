@@ -264,19 +264,12 @@ void set_peer_operational(n2n_edge_t * eee,
       scan = scan->next;
     }
 
-  if(scan)
-    {
-
-
+  if(scan) {
       /* Remove scan from pending_peers. */
       if(prev)
-        {
-	  prev->next = scan->next;
-        }
+	prev->next = scan->next;
       else
-        {
-	  eee->pending_peers = scan->next;
-        }
+	eee->pending_peers = scan->next;
 
       /* Add scan to known_peers. */
       scan->next = eee->known_peers;
@@ -298,9 +291,7 @@ void set_peer_operational(n2n_edge_t * eee,
       scan->last_seen = time(NULL);
     }
   else
-    {
-      traceEvent(TRACE_DEBUG, "Failed to find sender in pending_peers.");
-    }
+    traceEvent(TRACE_DEBUG, "Failed to find sender in pending_peers.");
 }
 
 /* ************************************** */

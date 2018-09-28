@@ -147,7 +147,7 @@ static void help() {
   printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>. Not with -K.\n");
   printf("-K <key file>            | Specify a key schedule file to load. Not with -k.\n");
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
-  printf("-l <supernode host:port> | Supernode IP:port\n");
+  printf("-l <supernode host:port> | Supernode IP:port. Repeat -l for multiple supernodes configuration\n");
   printf("-b                       | Periodically resolve supernode IP\n");
   printf("                         | (when supernodes are running on dynamic IPs)\n");
   printf("-p <local port>          | Fixed local UDP port.\n");

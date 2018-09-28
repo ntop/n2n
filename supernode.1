@@ -2,7 +2,7 @@
 .SH NAME
 supernode \- n2n supernode daemon
 .SH SYNOPSIS
-.B supernode \-l <port> [\-v]
+.B supernode \-l <port> -c <community file path>[\-v]
 .SH DESCRIPTION
 N2N is a peer-to-peer VPN system. Supernode is a node introduction registry,
 broadcast conduit and packet relay node for the n2n system. On startup supernode
@@ -20,6 +20,9 @@ All logging goes to stdout.
 .TP
 \-l <port>
 listen on the given UDP port
+.TP
+\-c <community file path>
+Load the list of allowed n2n communities from file. Default: all communities are allowed
 .TP
 \-v
 use verbose logging

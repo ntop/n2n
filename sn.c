@@ -20,7 +20,6 @@
 
 #include "n2n.h"
 
-
 #define N2N_SN_LPORT_DEFAULT 7654
 #define N2N_SN_PKTBUF_SIZE   2048
 
@@ -50,6 +49,12 @@ struct n2n_sn {
 
 typedef struct n2n_sn n2n_sn_t;
 
+struct n2n_allowed_communities {
+  char  community[N2N_COMMUNITY_SIZE];
+  UT_hash_handle   hh; /* makes this structure hashable */
+};
+
+static struct n2n_allowed_communities *allowed_communities = NULL;
 
 static int try_forward( n2n_sn_t * sss, 
                         const n2n_common_t * cmn,
@@ -107,8 +112,7 @@ static void deinit_sn( n2n_sn_t * sss )
  *  If the supernode has been put into a pre-shutdown phase then this lifetime
  *  should not allow registrations to continue beyond the shutdown point.
  */
-static uint16_t reg_lifetime( n2n_sn_t * sss )
-{
+static uint16_t reg_lifetime( n2n_sn_t * sss ) {
   return 120;
 }
 
@@ -119,8 +123,7 @@ static int update_edge( n2n_sn_t * sss,
                         const n2n_mac_t edgeMac,
                         const n2n_community_t community,
                         const n2n_sock_t * sender_sock,
-                        time_t now)
-{
+                        time_t now) {
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
   struct peer_info *  scan;
@@ -378,6 +381,61 @@ static int process_mgmt( n2n_sn_t * sss,
   return 0;
 }
 
+/** Check if the specified community is allowed by the
+ *  supernode configuration
+ *  @return 0 = community not allowed, 1 = community allowed
+ *
+ */
+static int allowed_n2n_community(n2n_common_t *cmn) {
+  if(allowed_communities != NULL) {
+    struct n2n_allowed_communities *c;
+    
+    HASH_FIND_STR(allowed_communities, (const char*)cmn->community, c);
+    return((c == NULL) ? 0 : 1);
+  } else {
+    /* If no allowed community is defined, all communities are allowed */
+  }
+  
+  return(1);
+}
+
+/** Load the list of allowed communities. Existing/previous ones will be removed
+ *
+ */
+static int load_allowed_n2n_communities(char *path) {
+  char buffer[4096], *line;
+  FILE *fd = fopen(path, "r");
+  struct n2n_allowed_communities *s, *tmp;
+  u_int32_t num_communities = 0;
+  
+  if(fd == NULL) {
+    traceEvent(TRACE_WARNING, "File %s not found", path);
+    return -1;
+  }
+ 
+  HASH_ITER(hh, allowed_communities, s, tmp)
+    free(s);
+  
+  while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
+    if((strlen(line) < 2) || line[0] == '#')
+      continue;
+
+    s = (struct n2n_allowed_communities*)malloc(sizeof(struct n2n_allowed_communities));
+
+    if(s != NULL) {
+      strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE);
+      HASH_ADD_STR(allowed_communities, community, s);
+      num_communities++;
+    }
+  }
+
+  fclose(fd);
+
+  traceEvent(TRACE_NORMAL, "Loaded %u communities from %s",
+	     num_communities, path);
+  
+  return(0);
+}
 
 /** Examine a datagram and determine what to do with it.
  *
@@ -412,164 +470,170 @@ static int process_udp( n2n_sn_t * sss,
   rem = udp_size; /* Counts down bytes of packet to protect against buffer overruns. */
   idx = 0; /* marches through packet header as parts are decoded. */
   if ( decode_common(&cmn, udp_buf, &rem, &idx) < 0 )
-    {
-      traceEvent( TRACE_ERROR, "Failed to decode common section" );
-      return -1; /* failed to decode packet */
-    }
+  {
+    traceEvent( TRACE_ERROR, "Failed to decode common section" );
+    return -1; /* failed to decode packet */
+  }
 
   msg_type = cmn.pc; /* packet code */
   from_supernode= cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
 
   if ( cmn.ttl < 1 )
-    {
-      traceEvent( TRACE_WARNING, "Expired TTL" );
-      return 0; /* Don't process further */
-    }
+  {
+    traceEvent( TRACE_WARNING, "Expired TTL" );
+    return 0; /* Don't process further */
+  }
 
   --(cmn.ttl); /* The value copied into all forwarded packets. */
 
   if ( msg_type == MSG_TYPE_PACKET )
+  {
+    /* PACKET from one edge to another edge via supernode. */
+
+    /* pkt will be modified in place and recoded to an output of potentially
+     * different size due to addition of the socket.*/
+    n2n_PACKET_t                    pkt; 
+    n2n_common_t                    cmn2;
+    uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
+    size_t                          encx=0;
+    int                             unicast; /* non-zero if unicast */
+    const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
+
+
+    sss->stats.last_fwd=now;
+    decode_PACKET( &pkt, &cmn, udp_buf, &rem, &idx );
+
+    unicast = (0 == is_multi_broadcast(pkt.dstMac) );
+
+    traceEvent( TRACE_DEBUG, "Rx PACKET (%s) %s -> %s %s",
+		(unicast?"unicast":"multicast"),
+		macaddr_str( mac_buf, pkt.srcMac ),
+		macaddr_str( mac_buf2, pkt.dstMac ),
+		(from_supernode?"from sn":"local") );
+
+    if ( !from_supernode )
     {
-      /* PACKET from one edge to another edge via supernode. */
+      memcpy( &cmn2, &cmn, sizeof( n2n_common_t ) );
 
-      /* pkt will be modified in place and recoded to an output of potentially
-       * different size due to addition of the socket.*/
-      n2n_PACKET_t                    pkt; 
-      n2n_common_t                    cmn2;
-      uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
-      size_t                          encx=0;
-      int                             unicast; /* non-zero if unicast */
-      const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
+      /* We are going to add socket even if it was not there before */
+      cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
 
+      pkt.sock.family = AF_INET;
+      pkt.sock.port = ntohs(sender_sock->sin_port);
+      memcpy( pkt.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE );
 
-      sss->stats.last_fwd=now;
-      decode_PACKET( &pkt, &cmn, udp_buf, &rem, &idx );
+      rec_buf = encbuf;
 
-      unicast = (0 == is_multi_broadcast(pkt.dstMac) );
+      /* Re-encode the header. */
+      encode_PACKET( encbuf, &encx, &cmn2, &pkt );
 
-      traceEvent( TRACE_DEBUG, "Rx PACKET (%s) %s -> %s %s",
-		  (unicast?"unicast":"multicast"),
-		  macaddr_str( mac_buf, pkt.srcMac ),
-		  macaddr_str( mac_buf2, pkt.dstMac ),
-		  (from_supernode?"from sn":"local") );
+      /* Copy the original payload unchanged */
+      encode_buf( encbuf, &encx, (udp_buf + idx), (udp_size - idx ) );
+    }
+    else
+    {
+      /* Already from a supernode. Nothing to modify, just pass to
+       * destination. */
 
-      if ( !from_supernode )
-        {
-	  memcpy( &cmn2, &cmn, sizeof( n2n_common_t ) );
+      traceEvent( TRACE_DEBUG, "Rx PACKET fwd unmodified" );
 
-	  /* We are going to add socket even if it was not there before */
-	  cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
+      rec_buf = udp_buf;
+      encx = udp_size;
+    }
 
-	  pkt.sock.family = AF_INET;
-	  pkt.sock.port = ntohs(sender_sock->sin_port);
-	  memcpy( pkt.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE );
-
-	  rec_buf = encbuf;
-
-	  /* Re-encode the header. */
-	  encode_PACKET( encbuf, &encx, &cmn2, &pkt );
-
-	  /* Copy the original payload unchanged */
-	  encode_buf( encbuf, &encx, (udp_buf + idx), (udp_size - idx ) );
-        }
-      else
-        {
-	  /* Already from a supernode. Nothing to modify, just pass to
-	   * destination. */
-
-	  traceEvent( TRACE_DEBUG, "Rx PACKET fwd unmodified" );
-
-	  rec_buf = udp_buf;
-	  encx = udp_size;
-        }
-
-      /* Common section to forward the final product. */
-      if ( unicast )
-        {
-	  try_forward( sss, &cmn, pkt.dstMac, rec_buf, encx );
-        }
-      else
-        {
-	  try_broadcast( sss, &cmn, pkt.srcMac, rec_buf, encx );
-        }
-    }/* MSG_TYPE_PACKET */
+    /* Common section to forward the final product. */
+    if ( unicast )
+    {
+      try_forward( sss, &cmn, pkt.dstMac, rec_buf, encx );
+    }
+    else
+    {
+      try_broadcast( sss, &cmn, pkt.srcMac, rec_buf, encx );
+    }
+  }/* MSG_TYPE_PACKET */
   else if ( msg_type == MSG_TYPE_REGISTER )
-    {
-      /* Forwarding a REGISTER from one edge to the next */
+  {
+    /* Forwarding a REGISTER from one edge to the next */
 
-      n2n_REGISTER_t                  reg;
-      n2n_common_t                    cmn2;
-      uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
-      size_t                          encx=0;
-      int                             unicast; /* non-zero if unicast */
-      const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
+    n2n_REGISTER_t                  reg;
+    n2n_common_t                    cmn2;
+    uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
+    size_t                          encx=0;
+    int                             unicast; /* non-zero if unicast */
+    const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
 
-      sss->stats.last_fwd=now;
-      decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
+    sss->stats.last_fwd=now;
+    decode_REGISTER( &reg, &cmn, udp_buf, &rem, &idx );
 
-      unicast = (0 == is_multi_broadcast(reg.dstMac) );
+    unicast = (0 == is_multi_broadcast(reg.dstMac) );
         
-      if ( unicast )
-        {
-	  traceEvent( TRACE_DEBUG, "Rx REGISTER %s -> %s %s",
-		      macaddr_str( mac_buf, reg.srcMac ),
-		      macaddr_str( mac_buf2, reg.dstMac ),
-		      ((cmn.flags & N2N_FLAGS_FROM_SUPERNODE)?"from sn":"local") );
+    if ( unicast )
+    {
+      traceEvent( TRACE_DEBUG, "Rx REGISTER %s -> %s %s",
+		  macaddr_str( mac_buf, reg.srcMac ),
+		  macaddr_str( mac_buf2, reg.dstMac ),
+		  ((cmn.flags & N2N_FLAGS_FROM_SUPERNODE)?"from sn":"local") );
 
-	  if ( 0 != (cmn.flags & N2N_FLAGS_FROM_SUPERNODE) )
-	    {
-	      memcpy( &cmn2, &cmn, sizeof( n2n_common_t ) );
+      if ( 0 != (cmn.flags & N2N_FLAGS_FROM_SUPERNODE) )
+      {
+	memcpy( &cmn2, &cmn, sizeof( n2n_common_t ) );
 
-	      /* We are going to add socket even if it was not there before */
-	      cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
+	/* We are going to add socket even if it was not there before */
+	cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
 
-	      reg.sock.family = AF_INET;
-	      reg.sock.port = ntohs(sender_sock->sin_port);
-	      memcpy( reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE );
+	reg.sock.family = AF_INET;
+	reg.sock.port = ntohs(sender_sock->sin_port);
+	memcpy( reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE );
 
-	      rec_buf = encbuf;
+	rec_buf = encbuf;
 
-	      /* Re-encode the header. */
-	      encode_REGISTER( encbuf, &encx, &cmn2, &reg );
+	/* Re-encode the header. */
+	encode_REGISTER( encbuf, &encx, &cmn2, &reg );
 
-	      /* Copy the original payload unchanged */
-	      encode_buf( encbuf, &encx, (udp_buf + idx), (udp_size - idx ) );
-	    }
-	  else
-	    {
-	      /* Already from a supernode. Nothing to modify, just pass to
-	       * destination. */
-
-	      rec_buf = udp_buf;
-	      encx = udp_size;
-	    }
-
-	  try_forward( sss, &cmn, reg.dstMac, rec_buf, encx ); /* unicast only */
-        }
+	/* Copy the original payload unchanged */
+	encode_buf( encbuf, &encx, (udp_buf + idx), (udp_size - idx ) );
+      }
       else
-        {
-	  traceEvent( TRACE_ERROR, "Rx REGISTER with multicast destination" );
-        }
+      {
+	/* Already from a supernode. Nothing to modify, just pass to
+	 * destination. */
 
+	rec_buf = udp_buf;
+	encx = udp_size;
+      }
+
+      try_forward( sss, &cmn, reg.dstMac, rec_buf, encx ); /* unicast only */
     }
+    else
+    {
+      traceEvent( TRACE_ERROR, "Rx REGISTER with multicast destination" );
+    }
+
+  }
   else if ( msg_type == MSG_TYPE_REGISTER_ACK )
-    {
-      traceEvent( TRACE_DEBUG, "Rx REGISTER_ACK (NOT IMPLEMENTED) SHould not be via supernode" );
-    }
+  {
+    traceEvent( TRACE_DEBUG, "Rx REGISTER_ACK (NOT IMPLEMENTED) SHould not be via supernode" );
+  }
   else if ( msg_type == MSG_TYPE_REGISTER_SUPER )
-    {
-      n2n_REGISTER_SUPER_t            reg;
-      n2n_REGISTER_SUPER_ACK_t        ack;
-      n2n_common_t                    cmn2;
-      uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-      size_t                          encx=0;
+  {
+    n2n_REGISTER_SUPER_t            reg;
+    n2n_REGISTER_SUPER_ACK_t        ack;
+    n2n_common_t                    cmn2;
+    uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
+    size_t                          encx=0;
 
-      /* Edge requesting registration with us.  */
-        
-      sss->stats.last_reg_super=now;
-      ++(sss->stats.reg_super);
-      decode_REGISTER_SUPER( &reg, &cmn, udp_buf, &rem, &idx );
+    /* Edge requesting registration with us.  */        
+    sss->stats.last_reg_super=now;
+    ++(sss->stats.reg_super);
+    decode_REGISTER_SUPER( &reg, &cmn, udp_buf, &rem, &idx );
 
+    /*
+      Before we move any further, we need to check if the requested
+      community is allowed by the supernode. In case it is not we do
+      not report any message back to the edge to hide the supernode
+      existance (better from the security standpoint)
+    */
+    if(allowed_n2n_community(&cmn)) {
       cmn2.ttl = N2N_DEFAULT_TTL;
       cmn2.pc = n2n_register_super_ack;
       cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
@@ -600,8 +664,8 @@ static int process_udp( n2n_sn_t * sss,
       traceEvent( TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
 		  macaddr_str( mac_buf, reg.edgeMac ),
 		  sock_to_cstr( sockbuf, &(ack.sock) ) );
-
     }
+  }
 
   return 0;
 }
@@ -618,6 +682,7 @@ static void help()
 	 );
   printf("supernode ");
   printf("-l <lport> ");
+  printf("-c <community file path> ");
   printf("[-f] ");
   printf("[-v] ");
   printf("\n\n");
@@ -639,17 +704,21 @@ static int run_loop( n2n_sn_t * sss );
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *optarg, n2n_sn_t *sss) {
+static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 
-  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optarg ? optarg : "");
+  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
 
   switch(optkey) {
   case 'l': /* local-port */
     {
-      sss->lport = atoi(optarg);
+      sss->lport = atoi(_optarg);
       break;
     }
 
+  case 'c': /* community file */
+    load_allowed_n2n_communities(optarg);
+    break;
+      
   case 'f': /* foreground */
     {
       sss->daemon = 0;
@@ -695,7 +764,7 @@ static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "fl:vh",
+			 "fl:c:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);
