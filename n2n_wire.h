@@ -42,6 +42,9 @@
 #define N2N_PKT_BUF_SIZE                2048
 #define N2N_SOCKBUF_SIZE                64      /* string representation of INET or INET6 sockets */
 
+#define N2N_MULTICAST_PORT              1968
+#define N2N_MULTICAST_GROUP             "224.0.0.68"
+
 typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
 typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
 typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];

@@ -324,11 +324,9 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
     }
 
   case 'v': /* verbose */
-    {
-      ++traceLevel; /* do 2 -v flags to increase verbosity to DEBUG level*/
-      break;
-    }
-
+    traceLevel = 4; /* DEBUG */
+    break;
+    
   default:
     {
       traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char)optkey);
@@ -679,19 +677,44 @@ int main(int argc, char* argv[]) {
   }  
   /* else run in NULL mode */
 
+  /* Populate the multicast group for local edge */
+  eee.multicast_peer.family     = AF_INET;
+  eee.multicast_peer.port       = N2N_MULTICAST_PORT;
+  eee.multicast_peer.addr.v4[0] = 224; /* N2N_MULTICAST_GROUP */
+  eee.multicast_peer.addr.v4[1] = 0;
+  eee.multicast_peer.addr.v4[2] = 0;
+  eee.multicast_peer.addr.v4[3] = 68;
+      
   eee.udp_sock = open_socket(ec.local_port, 1 /* bind ANY */);
   if(eee.udp_sock < 0) {
     traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", (signed int)ec.local_port);
     return(-1);
   }
   
-  eee.udp_mgmt_sock = open_socket(ec.mgmt_port, 0 /* bind LOOPBACK */);
-  
+  eee.udp_mgmt_sock = open_socket(eee.multicast_peer.port, 0 /* bind LOOPBACK */);  
   if(eee.udp_mgmt_sock < 0) {
     traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", ec.mgmt_port);
     return(-1);
+  } else {
+
   }
-  
+
+   eee.udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
+  if(eee.udp_multicast_sock < 0)
+    return(-5);
+  else {
+    /* Bind eee.udp_multicast_sock to multicast group */
+    struct ip_mreq mreq;
+    
+    mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
+      traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u",
+		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
+      return(-6);
+    }    
+  }
+
   traceEvent(TRACE_NORMAL, "edge started");
 
   update_supernode_reg(&eee, time(NULL));

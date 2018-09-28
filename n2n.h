@@ -199,6 +199,7 @@ struct n2n_edge {
 
   int                 udp_sock;
   int                 udp_mgmt_sock;          /**< socket for status info. */
+  int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
 
   tuntap_dev          device;                 /**< All about the TUNTAP device */
   int                 dyn_ip_mode;            /**< Interface IP address is dynamically allocated, eg. DHCP. */
@@ -207,7 +208,7 @@ struct n2n_edge {
 
   n2n_trans_op_t      transop[N2N_MAX_TRANSFORMS]; /* one for each transform at fixed positions */
   size_t              tx_transop_idx;         /**< The transop to use when encoding. */
-
+  n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
   struct peer_info *  known_peers;            /**< Edges we are connected to. */
   struct peer_info *  pending_peers;          /**< Edges we have tried to register with. */
   time_t              last_register_req;      /**< Check if time to re-register with super*/

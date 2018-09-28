@@ -58,6 +58,7 @@ SOCKET open_socket(int local_port, int bind_any) {
   local_address.sin_family = AF_INET;
   local_address.sin_port = htons(local_port);
   local_address.sin_addr.s_addr = htonl(bind_any ? INADDR_ANY : INADDR_LOOPBACK);
+
   if(bind(sock_fd,(struct sockaddr*) &local_address, sizeof(local_address)) == -1) {
     traceEvent(TRACE_ERROR, "Bind error on local port %u [%s]\n", local_port, strerror(errno));
     return(-1);
