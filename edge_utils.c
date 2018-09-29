@@ -574,6 +574,8 @@ static void send_register_ack(n2n_edge_t * eee,
  *  This is frequently called by the main loop.
  */
 void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
+  u_int sn_idx;
+  
   if(eee->sn_wait && (nowTime > (eee->last_register_req + (eee->register_lifetime/10)))) {
     /* fall through */
     traceEvent(TRACE_DEBUG, "update_supernode_reg: doing fast retry.");
@@ -597,13 +599,16 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
   else
     --(eee->sup_attempts);
 
-  if(eee->re_resolve_supernode_ip || (eee->sn_num > 1))
-    supernode2addr(&(eee->supernode), eee->sn_ip_array[eee->sn_idx]);
-
-  traceEvent(TRACE_DEBUG, "Registering with supernode (%s) (attempts left %u)",
-	     supernode_ip(eee), (unsigned int)eee->sup_attempts);
-
-  send_register_super(eee, &(eee->supernode));
+  for(sn_idx=0; sn_idx<eee->sn_num; sn_idx++) {
+    supernode2addr(&(eee->supernode), eee->sn_ip_array[sn_idx]);
+    
+    traceEvent(TRACE_NORMAL, "Registering with supernode [id: %u/%u][%s][attempts left %u]",
+	       sn_idx+1, eee->sn_num,
+	       supernode_ip(eee), (unsigned int)eee->sup_attempts);
+    
+    send_register_super(eee, &(eee->supernode));
+  }
+  
   register_with_local_peers(eee);
   
   eee->sn_wait=1;

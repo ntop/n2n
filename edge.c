@@ -175,7 +175,7 @@ static void help() {
 /* *************************************************** */
 
 static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t *eee) {
-  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : "");
+  /* traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : ""); */
 
   switch(optkey) {
   case'K':
@@ -272,10 +272,10 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
     {
       if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
         strncpy((eee->sn_ip_array[eee->sn_num]), optargument, N2N_EDGE_SN_HOST_SIZE);
-        traceEvent(TRACE_DEBUG, "Adding supernode[%u] = %s\n", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
+        traceEvent(TRACE_NORMAL, "Adding supernode[%u] = %s\n", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
         ++eee->sn_num;
       } else {
-        fprintf(stderr, "Too many supernodes!\n");
+        traceEvent(TRACE_WARNING, "Too many supernodes!\n");
         exit(1);
       }
       break;
