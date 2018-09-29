@@ -162,6 +162,19 @@ void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
 
 /* ************************************** */
 
+/***
+ *
+ * Register over multicast in case there is a peer on the same network listening
+ */
+static void register_with_local_peers(n2n_edge_t * eee) {
+  /* no send registration to the local multicast group */
+  traceEvent(TRACE_INFO, "Registering with multicast group %s:%u",
+	     N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);    
+  send_register(eee, &(eee->multicast_peer));   
+}
+
+/* ************************************** */
+
 /** Start the registration process.
  *
  *  If the peer is already in pending_peers, ignore the request.
@@ -201,15 +214,9 @@ static void try_send_register(n2n_edge_t * eee,
 	       (unsigned int)peer_list_size(eee->pending_peers));
 
     /* trace Sending REGISTER */
-
     send_register(eee, &(scan->sock));
 
-    /* no send registration to the local multicast group */
-    traceEvent(TRACE_INFO, "Registering with multicast group %s:%u",
-	       N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);    
-    send_register(eee, &(eee->multicast_peer));  
-    
-    /* pending_peers now owns scan. */
+    register_with_local_peers(eee);
   }
 }
 
@@ -222,12 +229,17 @@ void check_peer(n2n_edge_t * eee,
 		const n2n_sock_t * peer) {
   struct peer_info * scan = find_peer_by_mac(eee->known_peers, mac);
   
-  if(NULL == scan) {
+  if(scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
     try_send_register(eee, from_supernode, mac, peer);
   } else {
     /* Already in known_peers. */
-    update_peer_address(eee, from_supernode, mac, peer, time(NULL));
+    time_t now = time(NULL);
+
+    if((now - scan->last_seen) > 0 /* >= 1 sec */) {
+      /* Don't register too often */
+      update_peer_address(eee, from_supernode, mac, peer, now);
+    }
   }
 }
 /* ************************************** */
@@ -592,7 +604,8 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 	     supernode_ip(eee), (unsigned int)eee->sup_attempts);
 
   send_register_super(eee, &(eee->supernode));
-
+  register_with_local_peers(eee);
+  
   eee->sn_wait=1;
 
   /* REVISIT: turn-on gratuitous ARP with config option. */
@@ -1407,7 +1420,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif
 
   *keep_running = 1;
-  
+      
   /* Main loop
    *
    * select() is used to wait for input on either the TAP fd or the UDP/TCP
@@ -1457,7 +1470,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
       if(FD_ISSET(eee->udp_multicast_sock, &socket_mask)) {
 	/* Read a cooked socket from the internet socket (multicast). Writes on the TAP
 	 * socket. */
-	traceEvent(TRACE_WARNING, "**** Received packet from multicast socket ****");
+	traceEvent(TRACE_INFO, "Received packet from multicast socket");
 	readFromIPSocket(eee, eee->udp_multicast_sock);
       }
 
@@ -1652,11 +1665,11 @@ int quick_edge_init(char *device_name, char *community_name,
   if(eee.udp_sock < 0)
     return(-3);  
   
-  eee.udp_mgmt_sock      = open_socket(0 /* any port */, 0 /* bind LOOPBACK */);
+  eee.udp_mgmt_sock = open_socket(0 /* any port */, 0 /* bind LOOPBACK */);
   if(eee.udp_mgmt_sock < 0)
     return(-4);
 
-  eee.udp_multicast_sock = open_socket(0 /* any port */, 1 /* bind ANY */);
+  eee.udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
   if(eee.udp_multicast_sock < 0)
     return(-5);
   else {
@@ -1666,6 +1679,7 @@ int quick_edge_init(char *device_name, char *community_name,
     
     /* allow multiple sockets to use the same PORT number */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
+    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
     
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);

@@ -697,7 +697,7 @@ int main(int argc, char* argv[]) {
     return(-1);
   }
 
-  eee.udp_multicast_sock = open_socket(0 /* any port */, 1 /* bind ANY */);
+  eee.udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
   if(eee.udp_multicast_sock < 0)
     return(-5);
   else {
@@ -707,7 +707,8 @@ int main(int argc, char* argv[]) {
     
     /* allow multiple sockets to use the same PORT number */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
-     
+    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
+    
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
     if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
