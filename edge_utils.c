@@ -928,17 +928,14 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 static int is_ip6_discovery(const void * buf, size_t bufsize) {
   int retval = 0;
 
-  if(bufsize >= sizeof(ether_hdr_t))
-    {
+  if(bufsize >= sizeof(ether_hdr_t)) {
       /* copy to aligned memory */
       ether_hdr_t eh;
+      
       memcpy(&eh, buf, sizeof(ether_hdr_t));
 
-      if((0x33 == eh.dhost[0]) &&
-	 (0x33 == eh.dhost[1]))
-        {
-	  retval = 1; /* This is an IPv6 multicast packet [RFC2464]. */
-        }
+      if((0x33 == eh.dhost[0]) && (0x33 == eh.dhost[1]))
+	  retval = 1; /* This is an IPv6 multicast packet [RFC2464]. */        
     }
   return retval;
 }
@@ -951,8 +948,7 @@ static int is_ethMulticast(const void * buf, size_t bufsize) {
   int retval = 0;
 
   /* Match 01:00:5E:00:00:00 - 01:00:5E:7F:FF:FF */
-  if(bufsize >= sizeof(ether_hdr_t))
-    {
+  if(bufsize >= sizeof(ether_hdr_t)) {
       /* copy to aligned memory */
       ether_hdr_t eh;
       memcpy(&eh, buf, sizeof(ether_hdr_t));
@@ -961,9 +957,7 @@ static int is_ethMulticast(const void * buf, size_t bufsize) {
 	 (0x00 == eh.dhost[1]) &&
 	 (0x5E == eh.dhost[2]) &&
 	 (0 == (0x80 & eh.dhost[3])))
-        {
 	  retval = 1; /* This is an ethernet multicast packet [RFC1112]. */
-        }
     }
 
   return retval;
@@ -1277,10 +1271,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   msg_type = cmn.pc; /* packet code */
   from_supernode= cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
 
-  if(0 == memcmp(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE))
-    {
-      if(msg_type == MSG_TYPE_PACKET)
-        {
+  if(0 == memcmp(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE)) {
+      if(msg_type == MSG_TYPE_PACKET) {
 	  /* process PACKET - most frequent so first in list. */
 	  n2n_PACKET_t pkt;
 
@@ -1296,18 +1288,15 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf2, orig_sender));
 
 	  handle_PACKET(eee, &cmn, &pkt, orig_sender, udp_buf+idx, recvlen-idx);
-        }
-      else if(msg_type == MSG_TYPE_REGISTER)
-        {
+        } else if(msg_type == MSG_TYPE_REGISTER) {
 	  /* Another edge is registering with us */
 	  n2n_REGISTER_t reg;
-
+	  n2n_mac_t null_mac = { '\0' };
+	  
 	  decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
 	  if(reg.sock.family)
-            {
-	      orig_sender = &(reg.sock);
-            }
+	    orig_sender = &(reg.sock);
 
 	  traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s (%s)",
 		     macaddr_str(mac_buf1, reg.srcMac),
@@ -1315,11 +1304,14 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf1, &sender),
 		     sock_to_cstr(sockbuf2, orig_sender));
 
-	  if(0 == memcmp(reg.dstMac, (eee->device.mac_addr), 6))
-            {
-	      check_peer(eee, from_supernode, reg.srcMac, orig_sender);
-            }
-
+	  if(!memcmp(reg.dstMac, eee->device.mac_addr, 6))
+	    check_peer(eee, from_supernode, reg.srcMac, orig_sender);
+	  else if(// (sender.port == N2N_MULTICAST_PORT) &&
+		  (!memcmp(reg.dstMac, null_mac, 6)) /* Announce via a multicast socket */
+		  && (!memcmp(reg.srcMac, eee->device.mac_addr, 6)) /* It's not our self-announce */
+		  )
+	    check_peer(eee, from_supernode, reg.srcMac, orig_sender);
+	  
 	  send_register_ack(eee, orig_sender, &reg);
         }
       else if(msg_type == MSG_TYPE_REGISTER_ACK)
@@ -1664,12 +1656,16 @@ int quick_edge_init(char *device_name, char *community_name,
   if(eee.udp_mgmt_sock < 0)
     return(-4);
 
-  eee.udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
+  eee.udp_multicast_sock = open_socket(0 /* any port */, 1 /* bind ANY */);
   if(eee.udp_multicast_sock < 0)
     return(-5);
   else {
     /* Bind eee.udp_multicast_sock to multicast group */
     struct ip_mreq mreq;
+    u_int enable_reuse = 1;
+    
+    /* allow multiple sockets to use the same PORT number */
+    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
     
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);

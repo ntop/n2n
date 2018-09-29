@@ -691,21 +691,23 @@ int main(int argc, char* argv[]) {
     return(-1);
   }
   
-  eee.udp_mgmt_sock = open_socket(eee.multicast_peer.port, 0 /* bind LOOPBACK */);  
+  eee.udp_mgmt_sock = open_socket(ec.mgmt_port, 0 /* bind LOOPBACK */);  
   if(eee.udp_mgmt_sock < 0) {
     traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", ec.mgmt_port);
     return(-1);
-  } else {
-
   }
 
-   eee.udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
+  eee.udp_multicast_sock = open_socket(0 /* any port */, 1 /* bind ANY */);
   if(eee.udp_multicast_sock < 0)
     return(-5);
   else {
     /* Bind eee.udp_multicast_sock to multicast group */
     struct ip_mreq mreq;
+    u_int enable_reuse = 1;
     
+    /* allow multiple sockets to use the same PORT number */
+    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
+     
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
     if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
