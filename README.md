@@ -116,6 +116,9 @@ NULL (-O3) 10659
 $ docker run --rm -d -p 5645:5645/udp -p 7654:7654/udp supermock/supernode:[TAGNAME]
 ```
 
+## Binary packages
+If you don't like to compile from source, we build stable and nightly builds that you can find at [packages.ntop.org](http://packages.ntop.org).
+
 ## Docker registry
 
 - [DockerHub](https://hub.docker.com/r/supermock/supernode/)
