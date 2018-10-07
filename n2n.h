@@ -41,6 +41,8 @@
 #undef N2N_HAVE_SETUID
 #endif
 
+#include "config.h"
+
 #include <time.h>
 #include <ctype.h>
 #include <stdlib.h>

@@ -1,6 +1,5 @@
 
-N2N_VERSION=2.5.0
-N2N_OSNAME=$(shell uname -p)
+N2N_VERSION=@N2N_VERSION@
 
 ########
 
@@ -13,19 +12,11 @@ WARN?=-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs
 #(thanks to Robert Gibbon)
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
-N2N_DEFINES=
 N2N_OBJS_OPT=
-LIBS_EDGE_OPT=
+LIBS_EDGE_OPT=@N2N_LIBS@
 
-N2N_OPTION_AES?="yes"
-#N2N_OPTION_AES=no
 
-ifeq ($(N2N_OPTION_AES), "yes")
-    N2N_DEFINES+=-DN2N_HAVE_AES
-    LIBS_EDGE_OPT+=-lcrypto
-endif
-
-CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS) $(N2N_DEFINES)
+CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
 INSTALL=install
 MKDIR=mkdir -p
@@ -97,7 +88,7 @@ $(N2N_LIB): $(N2N_OBJS)
 #	$(RANLIB) $@
 
 version.o: Makefile
-	$(CC) $(CFLAGS) -DN2N_VERSION='"$(N2N_VERSION)"' -DN2N_OSNAME='"$(N2N_OSNAME)"' -c version.c
+	$(CC) $(CFLAGS) -c version.c
 
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
