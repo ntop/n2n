@@ -15,6 +15,10 @@ PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finlin
 N2N_OBJS_OPT=
 LIBS_EDGE_OPT=@N2N_LIBS@
 
+OPENSSL_CFLAGS=$(shell pkg-config openssl; echo $$?)
+ifeq ($(OPENSSL_CFLAGS), 0)
+	CFLAGS+=$(shell pkg-config --cflags-only-I openssl)
+endif
 
 CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
