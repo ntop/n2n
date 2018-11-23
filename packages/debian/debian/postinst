@@ -26,9 +26,9 @@ if [ -f /.dockerenv ]; then exit 0; fi
 echo "(Re)Starting n2n..."
 systemctl daemon-reload
 systemctl reset-failed
-systemctl enable edge
-systemctl restart edge
-systemctl enable supernode
-systemctl restart supernode
+
+# Do not start services automatically
+#systemctl restart edge
+#systemctl restart supernode
 
 exit 0

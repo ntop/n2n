@@ -71,10 +71,11 @@ rm -fr $RPM_BUILD_ROOT
 
 if [ ! -f /.dockerenv ]; then
 /bin/systemctl daemon-reload
-/bin/systemctl enable  edge.service
-/bin/systemctl restart edge.service
-/bin/systemctl enable  supernode.service
-/bin/systemctl restart supernode.service
+# Do not enable service automatically
+#/bin/systemctl enable  edge.service
+#/bin/systemctl restart edge.service
+#/bin/systemctl enable  supernode.service
+#/bin/systemctl restart supernode.service
 fi
 
 %preun
