@@ -1709,6 +1709,8 @@ ac_config_files="$ac_config_files n2n.spec"
 
 ac_config_files="$ac_config_files ../etc/systemd/system/edge.service"
 
+ac_config_files="$ac_config_files ../etc/systemd/system/edge@.service"
+
 ac_config_files="$ac_config_files ../etc/systemd/system/supernode.service"
 
 ac_config_files="$ac_config_files Makefile"
@@ -2420,6 +2422,7 @@ do
   case $ac_config_target in
     "n2n.spec") CONFIG_FILES="$CONFIG_FILES n2n.spec" ;;
     "../etc/systemd/system/edge.service") CONFIG_FILES="$CONFIG_FILES ../etc/systemd/system/edge.service" ;;
+    "../etc/systemd/system/edge@.service") CONFIG_FILES="$CONFIG_FILES ../etc/systemd/system/edge@.service" ;;
     "../etc/systemd/system/supernode.service") CONFIG_FILES="$CONFIG_FILES ../etc/systemd/system/supernode.service" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
 
