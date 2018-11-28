@@ -47,6 +47,7 @@ rm -fr $RPM_BUILD_ROOT
 /usr/share/man/man1/supernode.1.gz
 /usr/share/man/man8/edge.8.gz
 /usr/lib/systemd/system/edge.service
+/usr/lib/systemd/system/edge@.service
 /usr/lib/systemd/system/supernode.service
 %config(noreplace) /etc/n2n/supernode.conf.sample
 %config(noreplace) /etc/n2n/edge.conf.sample
