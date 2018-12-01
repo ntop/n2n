@@ -27,7 +27,7 @@ cp $HOME/n2n/n2n.7.gz $RPM_BUILD_ROOT/usr/share/man/man7
 cp $HOME/n2n/supernode.1.gz $RPM_BUILD_ROOT/usr/share/man/man1
 cp $HOME/n2n/edge.8.gz $RPM_BUILD_ROOT/usr/share/man/man8
 cp $HOME/n2n/packages/etc/systemd/system/*.service $RPM_BUILD_ROOT/usr/lib/systemd/system/
-cp $HOME/n2n/packages/etc/n2n/*.conf $RPM_BUILD_ROOT/etc/n2n
+cp $HOME/n2n/packages/etc/n2n/*.conf.sample $RPM_BUILD_ROOT/etc/n2n
 
 find $RPM_BUILD_ROOT -name ".git" | xargs /bin/rm -rf
 find $RPM_BUILD_ROOT -name ".svn" | xargs /bin/rm -rf
