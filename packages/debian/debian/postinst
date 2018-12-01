@@ -23,12 +23,21 @@ echo "Rebuilding ld cache..."
 if [ -f /.dockerenv ]; then exit 0; fi
 
 # Start service after upgrade/install
-echo "(Re)Starting n2n..."
 systemctl daemon-reload
 systemctl reset-failed
 
-# Do not start services automatically
-#systemctl restart edge
-#systemctl restart supernode
+# Enable edge
+if [ -f /etc/n2n/edge.conf ]; then
+    echo "Enabling n2n edge..."
+    systemctl enable edge
+    systemctl restart edge
+fi
+
+# Enable supernode
+if [ -f /etc/n2n/supernode.conf ]; then
+    echo "Enabling n2n supernode..."
+    systemctl enable supernode
+    systemctl restart supernode
+fi
 
 exit 0
