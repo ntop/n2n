@@ -48,8 +48,8 @@ rm -fr $RPM_BUILD_ROOT
 /usr/share/man/man8/edge.8.gz
 /usr/lib/systemd/system/edge.service
 /usr/lib/systemd/system/supernode.service
-%config(noreplace) /etc/n2n/supernode.conf
-%config(noreplace) /etc/n2n/edge.conf
+%config(noreplace) /etc/n2n/supernode.conf.sample
+%config(noreplace) /etc/n2n/edge.conf.sample
 
 # Set the default attributes of all of the files specified to have an
 # owner and group of root and to inherit the permissions of the file
@@ -71,17 +71,26 @@ rm -fr $RPM_BUILD_ROOT
 
 if [ ! -f /.dockerenv ]; then
 /bin/systemctl daemon-reload
-# Do not enable service automatically
-#/bin/systemctl enable  edge.service
-#/bin/systemctl restart edge.service
-#/bin/systemctl enable  supernode.service
-#/bin/systemctl restart supernode.service
+    if [ -f /etc/n2n/edge.conf ]; then
+	/bin/systemctl enable  edge.service
+	/bin/systemctl restart edge.service
+	fi
+
+    if [ -f /etc/n2n/supernode.conf ]; then
+	/bin/systemctl enable  supernode.service
+	/bin/systemctl restart supernode.service
+    fi
 fi
 
 %preun
 if [ ! -f /.dockerenv ]; then
+if [ -f /etc/n2n/edge.conf ]; then
 /bin/systemctl disable edge.service
 /bin/systemctl stop    edge.service
+fi
+
+if [ -f /etc/n2n/supernode.conf ]; then
 /bin/systemctl disable supernode.service
 /bin/systemctl stop    supernode.service
+fi
 fi
