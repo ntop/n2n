@@ -1332,6 +1332,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  /* Another edge is registering with us */
 	  n2n_REGISTER_t reg;
 	  n2n_mac_t null_mac = { '\0' };
+	  int skip_register = 0;
 	  
 	  decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
@@ -1347,12 +1348,17 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  if(!memcmp(reg.dstMac, eee->device.mac_addr, 6))
 	    check_peer(eee, from_supernode, reg.srcMac, orig_sender);
 	  else if(// (sender.port == N2N_MULTICAST_PORT) &&
-		  (!memcmp(reg.dstMac, null_mac, 6)) /* Announce via a multicast socket */
-		  && (!memcmp(reg.srcMac, eee->device.mac_addr, 6)) /* It's not our self-announce */
-		  )
-	    check_peer(eee, from_supernode, reg.srcMac, orig_sender);
-	  
-	  send_register_ack(eee, orig_sender, &reg);
+		  (!memcmp(reg.dstMac, null_mac, 6))) { /* Announce via a multicast socket */
+	    if(memcmp(reg.srcMac, eee->device.mac_addr, 6)) /* It's not our self-announce */
+	      check_peer(eee, from_supernode, reg.srcMac, orig_sender);
+	    else {
+	      traceEvent(TRACE_INFO, "Skipping REGISTER from self");
+	      skip_register = 1; /* do not register with ourselves */
+	    }
+	  }
+
+	  if(!skip_register)
+	    send_register_ack(eee, orig_sender, &reg);
         }
       else if(msg_type == MSG_TYPE_REGISTER_ACK)
         {
