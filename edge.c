@@ -269,7 +269,7 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
     }
 
   case 'l': /* supernode-list */
-    {
+    if(optargument) {
       if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
         strncpy((eee->sn_ip_array[eee->sn_num]), optargument, N2N_EDGE_SN_HOST_SIZE);
         traceEvent(TRACE_NORMAL, "Adding supernode[%u] = %s\n", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
