@@ -1,0 +1,16 @@
+[Unit]
+Description=n2n edge process, on %I
+After=network.target syslog.target
+Wants=
+BindsTo=ntopng.service
+
+[Service]
+Type=simple
+ExecStartPre=
+ExecStart=/usr/sbin/edge /etc/n2n/edge-%i.conf -f
+Restart=on-abnormal
+RestartSec=5
+
+[Install]
+WantedBy=ntopng.service
+Alias=
