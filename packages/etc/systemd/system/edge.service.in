@@ -1,7 +1,7 @@
 [Unit]
 Description=n2n edge process
-After=network.target syslog.target
-Wants=
+After=network-online.target syslog.target
+Wants=network-online.target
 
 [Service]
 Type=simple
