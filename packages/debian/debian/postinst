@@ -27,17 +27,21 @@ systemctl daemon-reload
 systemctl reset-failed
 
 # Enable edge
-if [ -f /etc/n2n/edge.conf ]; then
-    echo "Enabling n2n edge..."
-    systemctl enable edge
-    systemctl restart edge
+if systemctl -q is-active edge; then
+    # only restart edge if it's already running
+    echo "Restarting n2n edge..."
+    deb-systemd-invoke restart edge
 fi
 
+# Restart specific services if already running
+deb-systemd-invoke enable 'edge@*.service' 'edge-ntopng@*.service'
+deb-systemd-invoke restart 'edge@*.service' 'edge-ntopng@*.service'
+
 # Enable supernode
-if [ -f /etc/n2n/supernode.conf ]; then
-    echo "Enabling n2n supernode..."
-    systemctl enable supernode
-    systemctl restart supernode
+if systemctl -q is-active supernode; then
+    # only restart supernode if it's already running
+    echo "Restarting n2n supernode..."
+    deb-systemd-invoke restart supernode
 fi
 
 exit 0

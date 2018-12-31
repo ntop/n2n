@@ -68,29 +68,19 @@ rm -fr $RPM_BUILD_ROOT
 %pre
 
 %post
-
 if [ ! -f /.dockerenv ]; then
-/bin/systemctl daemon-reload
-    if [ -f /etc/n2n/edge.conf ]; then
-	/bin/systemctl enable  edge.service
-	/bin/systemctl restart edge.service
-	fi
-
-    if [ -f /etc/n2n/supernode.conf ]; then
-	/bin/systemctl enable  supernode.service
-	/bin/systemctl restart supernode.service
-    fi
+    /bin/systemctl daemon-reload
+    # NOTE: do not enable any services during first installation
 fi
 
 %preun
 if [ ! -f /.dockerenv ]; then
-if [ -f /etc/n2n/edge.conf ]; then
-/bin/systemctl disable edge.service
-/bin/systemctl stop    edge.service
+    # possibly remove the installed services
+    %systemd_preun supernode.service edge.service 'edge-ntopng@*.service' 'edge@*.service'
 fi
 
-if [ -f /etc/n2n/supernode.conf ]; then
-/bin/systemctl disable supernode.service
-/bin/systemctl stop    supernode.service
-fi
+%postun
+if [ ! -f /.dockerenv ]; then
+    # possibly restart the running services
+    %systemd_postun_with_restart supernode.service edge.service 'edge-ntopng@*.service' 'edge@*.service'
 fi
