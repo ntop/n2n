@@ -1687,17 +1687,20 @@ SHORT_MACHINE=`uname -m | cut -b1-3`
 if test $MACHINE = "x86_64"; then
    EXTN="amd64"
 else
-  if test $SHORT_MACHINE = "arm"; then
-     EXTN="armhf"
+  if test $SHORT_MACHINE = "aar"; then
+     EXTN="arm64"
      EXTRA_DEPS=""
-     LIBRRD="librrd8, "
   else
-     if test $SHORT_MACHINE = "mip"; then
-       EXTN="mips"
+    if test $SHORT_MACHINE = "arm"; then
+       EXTN="armhf"
        EXTRA_DEPS=""
-       LIBRRD=""
-     else
-       EXTN="i386"
+    else
+       if test $SHORT_MACHINE = "mip"; then
+         EXTN="mips"
+         EXTRA_DEPS=""
+       else
+         EXTN="i386"
+       fi
      fi
   fi
 fi
