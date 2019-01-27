@@ -384,73 +384,34 @@ static n2n_tostat_t transop_tick_twofish( n2n_trans_op_t * arg, time_t now )
   return r;
 }
 
-
-int transop_twofish_setup( n2n_trans_op_t * ttt, 
+int transop_twofish_setup_psk( n2n_trans_op_t * ttt, 
                            n2n_sa_t sa_num,
                            uint8_t * encrypt_pwd, 
                            uint32_t encrypt_pwd_len )
 {
   int retval = 1;
-  transop_tf_t * priv = NULL;
+  transop_tf_t * priv = (transop_tf_t *)ttt->priv;
 
-  if ( ttt->priv )
-    {
-      transop_deinit_twofish( ttt );
-    }
+  if(priv) {
+    sa_twofish_t *sa;
 
-  memset( ttt, 0, sizeof( n2n_trans_op_t ) );
+    priv->num_sa=1;         /* There is one SA in the array. */
+    priv->tx_sa=0;
+    sa = &(priv->sa[priv->tx_sa]);
+    sa->sa_id=sa_num;
+    sa->spec.valid_until = 0x7fffffff;
 
-  priv = (transop_tf_t *) malloc( sizeof(transop_tf_t) );
+    /* This is a preshared key setup. Both Tx and Rx are using the same security association. */
 
-  if ( NULL != priv )
-    {
-      size_t i;
-      sa_twofish_t * sa=NULL;
+    sa->enc_tf = TwoFishInit(encrypt_pwd, encrypt_pwd_len);
+    sa->dec_tf = TwoFishInit(encrypt_pwd, encrypt_pwd_len);
 
-      /* install the private structure. */
-      ttt->priv = priv;
-
-      for(i=0; i<N2N_TWOFISH_NUM_SA; ++i)
-        {
-	  sa = &(priv->sa[i]);
-	  sa->sa_id=0;
-	  memset( &(sa->spec), 0, sizeof(n2n_cipherspec_t) );
-	  sa->enc_tf=NULL;
-	  sa->dec_tf=NULL;
-        }
-
-      priv->num_sa=1;         /* There is one SA in the array. */
-      priv->tx_sa=0;
-      sa = &(priv->sa[priv->tx_sa]);
-      sa->sa_id=sa_num;
-      sa->spec.valid_until = 0x7fffffff;
-
-      /* This is a preshared key setup. Both Tx and Rx are using the same security association. */
-
-      sa->enc_tf = TwoFishInit(encrypt_pwd, encrypt_pwd_len);
-      sa->dec_tf = TwoFishInit(encrypt_pwd, encrypt_pwd_len);
-
-      if ( (sa->enc_tf) && (sa->dec_tf) )
-        {
-	  ttt->transform_id = N2N_TRANSFORM_ID_TWOFISH;
-	  ttt->deinit = transop_deinit_twofish;
-	  ttt->addspec = transop_addspec_twofish;
-	  ttt->tick = transop_tick_twofish; /* chooses a new tx_sa */
-	  ttt->fwd = transop_encode_twofish;
-	  ttt->rev = transop_decode_twofish;
-                
-	  retval = 0;
-        }
-      else
-        {
-	  traceEvent( TRACE_ERROR, "TwoFishInit failed" );
-        }
-    }
-  else
-    {
-      memset( ttt, 0, sizeof(n2n_trans_op_t) );
-      traceEvent( TRACE_ERROR, "Failed to allocate priv for twofish" );
-    }
+    if ( (sa->enc_tf) && (sa->dec_tf) )
+      retval = 0;
+    else
+      traceEvent( TRACE_ERROR, "transop_twofish_setup_psk" );
+  } else
+    traceEvent( TRACE_ERROR, "twofish priv is not allocated" );
 
   return retval;
 }

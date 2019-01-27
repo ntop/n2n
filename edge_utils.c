@@ -75,6 +75,7 @@ int edge_init(n2n_edge_t * eee) {
   eee->tx_transop_idx = N2N_TRANSOP_NULL_IDX; /* No guarantee the others have been setup */
 
   eee->daemon = 1;    /* By default run in daemon mode. */
+  eee->preferred_aes = 0; /* Disable AES by default (for compatibility) */
   eee->re_resolve_supernode_ip = 0;
   /* keyschedule set to NULLs by memset */
   /* community_name set to NULLs by memset */
@@ -644,10 +645,44 @@ const char * supernode_ip(const n2n_edge_t * eee) {
 
 /* ************************************** */
 
-int edge_init_twofish(n2n_edge_t * eee, uint8_t *encrypt_pwd,
+int edge_init_twofish_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 		      uint32_t encrypt_pwd_len) {
-  return transop_twofish_setup(&(eee->transop[N2N_TRANSOP_TF_IDX]),
+  return transop_twofish_setup_psk(&(eee->transop[N2N_TRANSOP_TF_IDX]),
 			       0, encrypt_pwd, encrypt_pwd_len);
+}
+
+/* ************************************** */
+
+int edge_init_aes_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
+		      uint32_t encrypt_pwd_len) {
+  return transop_aes_setup_psk(&(eee->transop[N2N_TRANSOP_AESCBC_IDX]),
+			       0, encrypt_pwd, encrypt_pwd_len);
+}
+
+/* ************************************** */
+
+static n2n_tostat_t n2n_tick_aes(n2n_edge_t * eee, time_t now, size_t *trop) {
+  n2n_tostat_t tst = (eee->transop[N2N_TRANSOP_AESCBC_IDX].tick)(&(eee->transop[N2N_TRANSOP_AESCBC_IDX]), now);
+
+  if(tst.can_tx)
+    {
+      traceEvent(TRACE_DEBUG, "can_tx AESCBC (idx=%u)", (unsigned int)N2N_TRANSOP_AESCBC_IDX);
+      *trop = N2N_TRANSOP_AESCBC_IDX;
+    }
+
+  return tst;
+}
+
+/* ************************************** */
+static n2n_tostat_t n2n_tick_twofish(n2n_edge_t * eee, time_t now, size_t *trop) {
+  n2n_tostat_t tst = (eee->transop[N2N_TRANSOP_TF_IDX].tick)(&(eee->transop[N2N_TRANSOP_TF_IDX]), now);
+  if(tst.can_tx)
+    {
+      traceEvent(TRACE_DEBUG, "can_tx TF (idx=%u)", (unsigned int)N2N_TRANSOP_TF_IDX);
+      *trop = N2N_TRANSOP_TF_IDX;
+    }
+
+  return tst;
 }
 
 /* ************************************** */
@@ -656,25 +691,19 @@ int edge_init_twofish(n2n_edge_t * eee, uint8_t *encrypt_pwd,
  *  tranform operations state machines. */
 static int n2n_tick_transop(n2n_edge_t * eee, time_t now)
 {
-  n2n_tostat_t tst;
   size_t trop = eee->tx_transop_idx;
 
   /* Tests are done in order that most preferred transform is last and causes
    * tx_transop_idx to be left at most preferred valid transform. */
-  tst = (eee->transop[N2N_TRANSOP_NULL_IDX].tick)(&(eee->transop[N2N_TRANSOP_NULL_IDX]), now);
-  tst = (eee->transop[N2N_TRANSOP_AESCBC_IDX].tick)(&(eee->transop[N2N_TRANSOP_AESCBC_IDX]), now);
-  if(tst.can_tx)
-    {
-      traceEvent(TRACE_DEBUG, "can_tx AESCBC (idx=%u)", (unsigned int)N2N_TRANSOP_AESCBC_IDX);
-      trop = N2N_TRANSOP_AESCBC_IDX;
-    }
+  (eee->transop[N2N_TRANSOP_NULL_IDX].tick)(&(eee->transop[N2N_TRANSOP_NULL_IDX]), now);
 
-  tst = (eee->transop[N2N_TRANSOP_TF_IDX].tick)(&(eee->transop[N2N_TRANSOP_TF_IDX]), now);
-  if(tst.can_tx)
-    {
-      traceEvent(TRACE_DEBUG, "can_tx TF (idx=%u)", (unsigned int)N2N_TRANSOP_TF_IDX);
-      trop = N2N_TRANSOP_TF_IDX;
-    }
+  if(eee->preferred_aes) {
+    n2n_tick_twofish(eee, now, &trop);
+    n2n_tick_aes(eee, now, &trop);
+  } else {
+    n2n_tick_aes(eee, now, &trop);
+    n2n_tick_twofish(eee, now, &trop);
+  }
 
   if(trop != eee->tx_transop_idx)
     {
@@ -1688,8 +1717,10 @@ int quick_edge_init(char *device_name, char *community_name,
 		 device_mac, DEFAULT_MTU) < 0)
     return(-1);
 
-  if(edge_init_twofish(&eee, (uint8_t *)encrypt_key, strlen(encrypt_key)) < 0)
-    return(-2);  
+  if(edge_init_aes_psk(&eee, (uint8_t *)encrypt_key, strlen(encrypt_key)) < 0)
+    return(-2);
+  if(edge_init_twofish_psk(&eee, (uint8_t *)encrypt_key, strlen(encrypt_key)) < 0)
+    return(-2);
 
   snprintf((char*)eee.community_name, sizeof(eee.community_name), "%s", community_name);
   supernode2addr(&(eee.supernode), supernode_ip_address_port);
