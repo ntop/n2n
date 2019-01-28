@@ -88,8 +88,8 @@ int main(int argc, char * argv[]) {
   transop_twofish_init(&transop_twofish);
   transop_twofish_setup_psk(&transop_twofish, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
   memset(&transop_aes_cbc, 0, sizeof(transop_aes_cbc));
-  transop_twofish_init(&transop_aes_cbc);
-  transop_twofish_setup_psk(&transop_aes_cbc, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
+  transop_aes_init(&transop_aes_cbc);
+  transop_aes_setup_psk(&transop_aes_cbc, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
 
   /* Run the tests */
   run_transop_benchmark("transop_null", &transop_null, pktbuf, c);

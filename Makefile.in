@@ -76,7 +76,7 @@ supernode: sn.c $(N2N_LIB) n2n.h Makefile
 	$(CC) $(CFLAGS) sn.c $(N2N_LIB) $(LIBS_SN) -o supernode
 
 benchmark: benchmark.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
-	$(CC) $(CFLAGS) benchmark.c $(N2N_LIB) $(LIBS_SN) -o benchmark
+	$(CC) $(CFLAGS) benchmark.c $(N2N_LIB) $(LIBS_EDGE) -o benchmark
 
 example_edge_embed: example_edge_embed.c $(N2N_LIB) n2n.h
 	$(CC) $(CFLAGS) example_edge_embed.c $(N2N_LIB) $(LIBS_EDGE) -o example_edge_embed
