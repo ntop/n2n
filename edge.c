@@ -136,7 +136,7 @@ static void help() {
 	 "-l <supernode host:port>\n"
 	 "    "
 	 "[-p <local port>] [-M <mtu>] "
-	 "[-r] [-E] [-v] [-t <mgmt port>] [-b] [-h]\n\n");
+	 "[-r] [-E] [-v] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
 
 #ifdef __linux__
   printf("-d <tun device>          | tun device name\n");
@@ -162,6 +162,7 @@ static void help() {
          "                         | eg. -m 01:02:03:04:05:06\n");
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
   printf("-r                       | Enable packet forwarding through n2n community.\n");
+  printf("-A                       | Set AES CBC as the preferred encryption mode.\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
@@ -268,6 +269,12 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
       break;
     }
 
+  case 'A':
+    {
+      eee->preferred_aes = 1;
+      break;
+    }
+
   case 'l': /* supernode-list */
     if(optargument) {
       if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
@@ -357,7 +364,7 @@ static int loadFromCLI(int argc, char *argv[], edge_conf_t *ec, n2n_edge_t *eee)
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:",
+			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrAt:",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, ec, eee);
@@ -665,8 +672,12 @@ int main(int argc, char* argv[]) {
     traceEvent(TRACE_NORMAL, "Binding to local port %d", (signed int)ec.local_port);
 
   if(ec.encrypt_key) {
-    if(edge_init_twofish(&eee, (uint8_t *)(ec.encrypt_key), strlen(ec.encrypt_key)) < 0) {
-      fprintf(stderr, "Error: twofish setup failed.\n");
+    if(edge_init_aes_psk(&eee, (uint8_t *)(ec.encrypt_key), strlen(ec.encrypt_key)) < 0) {
+      fprintf(stderr, "Error: AES PSK setup failed.\n");
+      return(-1);
+    }
+    if(edge_init_twofish_psk(&eee, (uint8_t *)(ec.encrypt_key), strlen(ec.encrypt_key)) < 0) {
+      fprintf(stderr, "Error: twofish PSK setup failed.\n");
       return(-1);
     }
   } else if(strlen(eee.keyschedule) > 0) {

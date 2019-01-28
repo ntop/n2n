@@ -339,6 +339,41 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
     return len;
 }
 
+/*
+ * priv: pointer to transform state
+ * keybuf: buffer holding the key
+ * pstat: length of keybuf
+ */
+static void add_aes_key(transop_aes_t *priv, uint8_t *keybuf, ssize_t pstat) {
+    /* pstat is number of bytes read into keybuf. */
+    sa_aes_t * sa = &(priv->sa[priv->num_sa]);
+    size_t aes_keysize_bytes;
+    size_t aes_keysize_bits;
+
+    /* Clear out any old possibly longer key matter. */
+    memset( &(sa->enc_key), 0, sizeof(AES_KEY) );
+    memset( &(sa->dec_key), 0, sizeof(AES_KEY) );
+
+    memset( &(sa->enc_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
+    memset( &(sa->dec_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
+
+    aes_keysize_bytes = aes_best_keysize(pstat);
+    aes_keysize_bits = 8 * aes_keysize_bytes;
+
+    /* Use N2N_MAX_KEYSIZE because the AES key needs to be of fixed
+     * size. If fewer bits specified then the rest will be
+     * zeroes. AES acceptable key sizes are 128, 192 and 256
+     * bits. */
+    AES_set_encrypt_key( keybuf, aes_keysize_bits, &(sa->enc_key));
+    AES_set_decrypt_key( keybuf, aes_keysize_bits, &(sa->dec_key));
+    /* Leave ivecs set to all zeroes */
+    
+    traceEvent( TRACE_DEBUG, "transop_addspec_aes sa_id=%u, %u bits data=%s.\n",
+                priv->sa[priv->num_sa].sa_id, aes_keysize_bits, keybuf);
+    
+    ++(priv->num_sa);
+}
+
 static int transop_addspec_aes( n2n_trans_op_t * arg, const n2n_cipherspec_t * cspec )
 {
     int retval = 1;
@@ -369,33 +404,7 @@ static int transop_addspec_aes( n2n_trans_op_t * arg, const n2n_cipherspec_t * c
             pstat = n2n_parse_hex( keybuf, N2N_MAX_KEYSIZE, sep+1, s );
             if ( pstat > 0 )
             {
-                /* pstat is number of bytes read into keybuf. */
-                sa_aes_t * sa = &(priv->sa[priv->num_sa]);
-                size_t aes_keysize_bytes;
-                size_t aes_keysize_bits;
-
-                /* Clear out any old possibly longer key matter. */
-                memset( &(sa->enc_key), 0, sizeof(AES_KEY) );
-                memset( &(sa->dec_key), 0, sizeof(AES_KEY) );
-
-                memset( &(sa->enc_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
-                memset( &(sa->dec_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
-
-                aes_keysize_bytes = aes_best_keysize(pstat);
-                aes_keysize_bits = 8 * aes_keysize_bytes;
-
-                /* Use N2N_MAX_KEYSIZE because the AES key needs to be of fixed
-                 * size. If fewer bits specified then the rest will be
-                 * zeroes. AES acceptable key sizes are 128, 192 and 256
-                 * bits. */
-                AES_set_encrypt_key( keybuf, aes_keysize_bits, &(sa->enc_key));
-                AES_set_decrypt_key( keybuf, aes_keysize_bits, &(sa->dec_key));
-                /* Leave ivecs set to all zeroes */
-                
-                traceEvent( TRACE_DEBUG, "transop_addspec_aes sa_id=%u, %u bits data=%s.\n",
-                            priv->sa[priv->num_sa].sa_id, aes_keysize_bits, sep+1);
-                
-                ++(priv->num_sa);
+                add_aes_key(priv, keybuf, pstat);
                 retval = 0;
             }
         }
@@ -510,6 +519,31 @@ int transop_aes_init( n2n_trans_op_t * ttt )
     return retval;
 }
 
+/* Setup AES in pre-shared key mode */
+int transop_aes_setup_psk(n2n_trans_op_t *ttt,
+                           n2n_sa_t sa_num,
+                           uint8_t *encrypt_pwd,
+                           uint32_t encrypt_pwd_len) {
+    int retval = 1;
+    transop_aes_t *priv = (transop_aes_t *)ttt->priv;
+
+    if(ttt->priv) {
+        sa_aes_t *sa;
+        priv->num_sa=0;
+        priv->tx_sa=0;
+        sa = &(priv->sa[priv->tx_sa]);
+        sa->sa_id=sa_num;
+        sa->spec.valid_until = 0x7fffffff;
+
+        /* This is a preshared key setup. Both Tx and Rx are using the same security association. */
+        add_aes_key(priv, encrypt_pwd, encrypt_pwd_len);
+        retval = 0;
+    } else
+        traceEvent(TRACE_ERROR, "AES priv is not allocated");
+
+    return retval;
+}
+
 #else /* #if defined(N2N_HAVE_AES) */
 
 struct transop_aes
@@ -604,6 +638,14 @@ int transop_aes_init( n2n_trans_op_t * ttt )
     }
 
     return retval;
+}
+
+
+int transop_aes_setup_psk(n2n_trans_op_t *ttt,
+                           n2n_sa_t sa_num,
+                           uint8_t *encrypt_pwd,
+                           uint32_t encrypt_pwd_len) {
+    return 0;
 }
 
 #endif /* #if defined(N2N_HAVE_AES) */

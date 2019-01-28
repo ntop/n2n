@@ -70,14 +70,38 @@ uint8_t PKT_CONTENT[]={
 
 /* Prototypes */
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
+static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, uint8_t *pktbuf, n2n_community_t c);
 
 int main(int argc, char * argv[]) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
-  n2n_trans_op_t transop_null;
+  n2n_community_t c;
+  n2n_trans_op_t transop_null, transop_twofish, transop_aes_cbc;
+  u_char encrypt_pwd[] = "SoMEVer!S$cUREPassWORD";
 
+  memset(c,0,sizeof(N2N_COMMUNITY_SIZE));
+  memcpy(c, "abc123def456", 12);
+
+  /* Init transopts */
+  memset(&transop_null, 0, sizeof(transop_null));
+  transop_null_init(&transop_null);
+  memset(&transop_twofish, 0, sizeof(transop_twofish));
+  transop_twofish_init(&transop_twofish);
+  transop_twofish_setup_psk(&transop_twofish, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
+  memset(&transop_aes_cbc, 0, sizeof(transop_aes_cbc));
+  transop_aes_init(&transop_aes_cbc);
+  transop_aes_setup_psk(&transop_aes_cbc, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
+
+  /* Run the tests */
+  run_transop_benchmark("transop_null", &transop_null, pktbuf, c);
+  run_transop_benchmark("transop_twofish", &transop_twofish, pktbuf, c);
+  run_transop_benchmark("transop_aes", &transop_aes_cbc, pktbuf, c);
+
+  return 0;
+}
+
+static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, uint8_t *pktbuf, n2n_community_t c) {
   n2n_common_t cmn;
   n2n_PACKET_t pkt;
-  n2n_community_t c;
 
   struct timeval t1;
   struct timeval t2;
@@ -89,18 +113,14 @@ int main(int argc, char * argv[]) {
   ssize_t nw;
   ssize_t tdiff;
 
-  transop_null_init( &transop_null );
-  memset(c,0,sizeof(N2N_COMMUNITY_SIZE));
-
   n=10000;
-  memcpy( c, "abc123def456", 12 );
 
   gettimeofday( &t1, NULL );
   for(i=0; i<n; ++i)
     {
       nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, c);
 
-      nw += transop_null.fwd( &transop_null,
+      nw += op_fn->fwd( op_fn,
 			      pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
 			      PKT_CONTENT, sizeof(PKT_CONTENT) );
 
@@ -110,7 +130,7 @@ int main(int argc, char * argv[]) {
       decode_common( &cmn, pktbuf, &rem, &idx);
       decode_PACKET( &pkt, &cmn, pktbuf, &rem, &idx );
 
-      if ( 0 == (i%1000) )
+      if ( 0 == (i%(n/10)) )
         {
 	  fprintf(stderr,".");
         }
@@ -119,13 +139,12 @@ int main(int argc, char * argv[]) {
 
   tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
 
-  fprintf( stderr, "\nrun %u times. (%u -> %u nsec each) %u.%06u -> %u.%06u.\n",
+  fprintf( stderr, "\n[%s] %u times: (%u -> %u nsec each) %u.%06u -> %u.%06u.\n",
+	   op_name,
 	   (unsigned int)i, (unsigned int)tdiff,
 	   (unsigned int)((tdiff *1000)/i),
 	   (uint32_t)t1.tv_sec, (uint32_t)t1.tv_usec,
 	   (uint32_t)t2.tv_sec, (uint32_t)t2.tv_usec );
-
-  return 0;
 }
 
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
@@ -154,3 +173,4 @@ static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_com
     
   return idx;
 }
+

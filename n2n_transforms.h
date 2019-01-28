@@ -78,7 +78,12 @@ struct n2n_trans_op {
 };
 
 /* Setup a single twofish SA for single-key operation. */
-int transop_twofish_setup( n2n_trans_op_t * ttt, 
+int transop_twofish_setup_psk( n2n_trans_op_t * ttt, 
+                           n2n_sa_t sa_num,
+                           uint8_t * encrypt_pwd, 
+                           uint32_t encrypt_pwd_len );
+/* Setup a single AES SA for single-key operation. */
+int transop_aes_setup_psk( n2n_trans_op_t * ttt, 
                            n2n_sa_t sa_num,
                            uint8_t * encrypt_pwd, 
                            uint32_t encrypt_pwd_len );
