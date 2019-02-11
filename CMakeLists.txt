@@ -2,7 +2,7 @@ project(n2n)
 cmake_minimum_required(VERSION 2.6)
 
 # N2n information
-set(N2N_VERSION 2.3.0)
+set(N2N_VERSION 2.5.0)
 set(N2N_OSNAME ${CMAKE_SYSTEM})
 
 # N2n specific params
@@ -70,7 +70,8 @@ target_link_libraries(n2n n2n_win32)
 endif(DEFINED WIN32)
 
 if(N2N_OPTION_AES)
-target_link_libraries(n2n crypto)
+target_link_libraries(n2n ${OPENSSL_LIBRARIES})
+include_directories(${OPENSSL_INCLUDE_DIR})
 endif(N2N_OPTION_AES)
 
 add_executable(edge edge.c)
