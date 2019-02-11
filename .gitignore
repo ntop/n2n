@@ -1,0 +1,11 @@
+*.o
+*.a
+*.gz
+configure
+config.*
+Makefile
+autom4te.cache
+benchmark
+edge
+example_edge_embed
+supernode
