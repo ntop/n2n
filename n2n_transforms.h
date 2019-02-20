@@ -55,7 +55,8 @@ typedef int             (*n2n_transform_f)( n2n_trans_op_t * arg,
                                             uint8_t * outbuf,
                                             size_t out_len,
                                             const uint8_t * inbuf,
-                                            size_t in_len );
+                                            size_t in_len,
+                                            const n2n_mac_t peer_mac);
 
 /** Holds the info associated with a data transform plugin.
  *

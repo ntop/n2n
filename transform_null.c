@@ -29,7 +29,8 @@ static int transop_encode_null( n2n_trans_op_t * arg,
                                 uint8_t * outbuf,
                                 size_t out_len,
                                 const uint8_t * inbuf,
-                                size_t in_len )
+                                size_t in_len,
+                                const uint8_t * peer_mac)
 {
     int retval = -1;
 
@@ -51,7 +52,8 @@ static int transop_decode_null( n2n_trans_op_t * arg,
                                 uint8_t * outbuf,
                                 size_t out_len,
                                 const uint8_t * inbuf,
-                                size_t in_len )
+                                size_t in_len,
+                                const uint8_t * peer_mac)
 {
     int retval = -1;
 
