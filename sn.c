@@ -112,7 +112,8 @@ static void deinit_sn(n2n_sn_t * sss)
  *  should not allow registrations to continue beyond the shutdown point.
  */
 static uint16_t reg_lifetime(n2n_sn_t * sss) {
-  return 120;
+  /* NOTE: UDP firewalls usually have a 30 seconds timeout */
+  return 15;
 }
 
 

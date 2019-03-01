@@ -32,7 +32,7 @@
 #define REGISTER_SUPER_INTERVAL_DFL     60 /* sec */
 #endif /* #if defined(DEBUG) */
 
-#define REGISTER_SUPER_INTERVAL_MIN     20   /* sec */
+#define REGISTER_SUPER_INTERVAL_MIN     5    /* sec */
 #define REGISTER_SUPER_INTERVAL_MAX     3600 /* sec */
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
