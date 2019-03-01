@@ -102,6 +102,7 @@ int main(int argc, char * argv[]) {
 static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, uint8_t *pktbuf, n2n_community_t c) {
   n2n_common_t cmn;
   n2n_PACKET_t pkt;
+  n2n_mac_t mac_buf;
 
   struct timeval t1;
   struct timeval t2;
@@ -115,6 +116,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, ui
 
   n=10000;
 
+  memset(mac_buf, 0, sizeof(mac_buf));
   gettimeofday( &t1, NULL );
   for(i=0; i<n; ++i)
     {
@@ -122,7 +124,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, ui
 
       nw += op_fn->fwd( op_fn,
 			      pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
-			      PKT_CONTENT, sizeof(PKT_CONTENT) );
+			      PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
 
       idx=0;
       rem=nw;

@@ -791,7 +791,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	eh = (ether_hdr_t*)eth_payload;
 	eth_size = eee->transop[rx_transop_idx].rev(&(eee->transop[rx_transop_idx]),
 						    eth_payload, N2N_PKT_BUF_SIZE,
-						    payload, psize);
+						    payload, psize, pkt->srcMac);
 	++(eee->transop[rx_transop_idx].rx_cnt); /* stats */
 
 	if(!(eee->allow_routing)) {
@@ -1192,7 +1192,7 @@ void send_packet2net(n2n_edge_t * eee,
 
   idx += eee->transop[tx_transop_idx].fwd(&(eee->transop[tx_transop_idx]),
 					  pktbuf+idx, N2N_PKT_BUF_SIZE-idx,
-					  tap_pkt, len);
+					  tap_pkt, len, pkt.dstMac);
   ++(eee->transop[tx_transop_idx].tx_cnt); /* stats */
 
   send_packet(eee, destMac, pktbuf, idx); /* to peer or supernode */
