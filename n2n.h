@@ -37,11 +37,13 @@
 /* Moved here to define _CRT_SECURE_NO_WARNINGS before all the including takes place */
 #ifdef WIN32
 #include "win32/n2n_win32.h"
+#include "win32/winconfig.h"
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_SETUID
+#else
+#include "config.h"
 #endif
 
-#include "config.h"
 
 #include <time.h>
 #include <ctype.h>

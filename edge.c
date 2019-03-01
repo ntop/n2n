@@ -730,7 +730,9 @@ int main(int argc, char* argv[]) {
     
     /* allow multiple sockets to use the same PORT number */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
+#ifndef WIN32 /* no SO_REUSEPORT in Windows */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
+#endif
     
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);

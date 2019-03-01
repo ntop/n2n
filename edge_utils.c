@@ -19,6 +19,10 @@
 #include "n2n.h"
 #include "lzoconf.h"
 
+#ifdef WIN32
+#include <process.h>
+#endif
+
 #ifdef __ANDROID_NDK__
 #include "android/edge_android.h"
 #include <tun2tap/tun2tap.h>
@@ -1690,11 +1694,11 @@ const char *random_device_mac(void)
       continue;
     }
 #ifdef WIN32
-#define random() rand()
+#define random rand
 #endif
     mac[i] = key[random() % sizeof(key)];
 #ifdef WIN32
-#undef random()
+#undef random
 #endif
   }
   mac[sizeof(mac) - 1] = '\0';
@@ -1743,8 +1747,10 @@ int quick_edge_init(char *device_name, char *community_name,
     
     /* allow multiple sockets to use the same PORT number */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
-    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
-    
+#ifndef WIN32 /* no SO_REUSEPORT in Windows */
+	  setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
+#endif
+
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
     if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {

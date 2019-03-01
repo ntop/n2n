@@ -20,6 +20,10 @@
 
 #include "n2n.h"
 
+#ifdef WIN32
+#include <signal.h>
+#endif
+
 #define N2N_SN_LPORT_DEFAULT 7654
 #define N2N_SN_PKTBUF_SIZE   2048
 
@@ -920,7 +924,11 @@ int main(int argc, char * const argv[]) {
 
   traceEvent(TRACE_NORMAL, "supernode started");
 
+#ifndef WIN32
   signal(SIGHUP, dump_registrations);
+#else
+  signal(SIGINT, dump_registrations);
+#endif
   
   return run_loop(&sss_node);
 }
