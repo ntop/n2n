@@ -926,8 +926,6 @@ int main(int argc, char * const argv[]) {
 
 #ifndef WIN32
   signal(SIGHUP, dump_registrations);
-#else
-  signal(SIGINT, dump_registrations);
 #endif
   
   return run_loop(&sss_node);

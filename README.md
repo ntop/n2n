@@ -20,6 +20,11 @@ $ N2N_KEY=encryptme sudo ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:
 
 By defaul the edge will run in background but you can use the `-f` option to keep it in foreground.
 
+Windows
+-------
+
+Check out doc/windows for compilation and run istuctions.
+
 Note that `-d`, `-u`, `-g` and `-f` options are not available for Windows.
 
 Supernode
