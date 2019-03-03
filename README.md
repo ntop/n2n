@@ -23,7 +23,7 @@ By defaul the edge will run in background but you can use the `-f` option to kee
 Windows
 -------
 
-Check out doc/windows for compilation and run istuctions.
+Check out doc/Windows.md for compilation and run instuctions.
 
 Note that `-d`, `-u`, `-g` and `-f` options are not available for Windows.
 
