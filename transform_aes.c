@@ -22,6 +22,7 @@
 #if defined(N2N_HAVE_AES)
 
 #include "openssl/aes.h"
+#include "openssl/sha.h"
 #ifndef _MSC_VER
 /* Not included in Visual Studio 2008 */
 #include <strings.h> /* index() */
@@ -29,8 +30,10 @@
 
 #define N2N_AES_NUM_SA                  32 /* space for SAa */
 
-#define N2N_AES_TRANSFORM_VERSION       1  /* version of the transform encoding */
-#define N2N_AES_IVEC_SIZE               32 /* Enough space for biggest AES ivec */
+#define N2N_AES_TRANSFORM_VERSION       2  /* version of the transform encoding */
+#define N2N_AES_IVEC_SIZE               16 /* Enough space for biggest AES ivec */
+#define N2N_AES_MSGAUTH_SIZE		16
+#define HASH_SIZE			64
 
 typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
 
@@ -42,6 +45,8 @@ struct sa_aes
     n2n_aes_ivec_t      enc_ivec;       /* tx CBC state */
     AES_KEY             dec_key;        /* tx key */
     n2n_aes_ivec_t      dec_ivec;       /* tx CBC state */
+    AES_KEY		enc_key_2;	/* secondary key for IV encryption and msg auth signing */
+    AES_KEY		dec_key_2;	/* secondary key for IV encryption and msg auth signing */
 };
 
 typedef struct sa_aes sa_aes_t;
@@ -147,7 +152,7 @@ static ssize_t aes_choose_rx_sa( transop_aes_t * priv, const u_int8_t * peer_mac
 }
 
 #define TRANSOP_AES_VER_SIZE     1       /* Support minor variants in encoding in one module. */
-#define TRANSOP_AES_NONCE_SIZE   4
+#define TRANSOP_AES_DATA_LEN     2
 #define TRANSOP_AES_SA_SIZE      4
 
 
@@ -162,28 +167,23 @@ static ssize_t aes_choose_rx_sa( transop_aes_t * priv, const u_int8_t * peer_mac
  */
 static size_t aes_best_keysize(size_t numBytes)
 {
-    if (numBytes >= AES256_KEY_BYTES )
-    {
+	/* this is a shortcut to always use full key size for security reasons */
+	/* however, performance needs might require platform-dependant changes, e.g. for routers */
         return AES256_KEY_BYTES;
-    }
-    else if (numBytes >= AES192_KEY_BYTES)
-    {
-        return AES192_KEY_BYTES;
-    }
-    else
-    {
-        return AES128_KEY_BYTES;
-    }
 }
 
 /** The aes packet format consists of:
  *
  *  - a 8-bit aes encoding version in clear text
  *  - a 32-bit SA number in clear text
- *  - ciphertext encrypted from a 32-bit nonce followed by the payload.
+ *  - a 128 bit inner message authentication code (last encrypted data block encrypted again using K2),
+ *  - the separately encrypted IV (using K2),
+ *  - the 16-bit packet length of the following data (encrypted together with...
+ *  - ...the following payload data (using K1).
+ *  with K1 = key1 and K2 = key2.
  *
- *  [V|SSSS|nnnnDDDDDDDDDDDDDDDDDDDDD]
- *         |<------ encrypted ------>|
+ *  [V|SSSS|MMMMMMMMMMMMMMMM|IIIIIIIIIIIIIIII|LLDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD]
+ *         |< encrypted K2 >|< encrypted K2 >|<------- encrypted K1 --------->|
  */
 static int transop_encode_aes( n2n_trans_op_t * arg,
                                    uint8_t * outbuf,
@@ -195,11 +195,12 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
     int len2=-1;
     transop_aes_t * priv = (transop_aes_t *)arg->priv;
     uint8_t assembly[N2N_PKT_BUF_SIZE];
-    uint32_t * pnonce;
+    n2n_aes_ivec_t iv;
+    uint16_t * data_len;
 
-    if ( (in_len + TRANSOP_AES_NONCE_SIZE) <= N2N_PKT_BUF_SIZE )
+    if ( (in_len + TRANSOP_AES_DATA_LEN) <= N2N_PKT_BUF_SIZE )
     {
-        if ( (in_len + TRANSOP_AES_NONCE_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_VER_SIZE) <= out_len )
+        if ( (in_len + TRANSOP_AES_DATA_LEN + N2N_AES_IVEC_SIZE + N2N_AES_MSGAUTH_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_VER_SIZE) <= out_len )
         {
             int len=-1;
             size_t idx=0;
@@ -219,28 +220,37 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             /* Encode the security association (SA) number */
             encode_uint32( outbuf, &idx, sa->sa_id );
 
-            /* Encrypt the assembly contents and write the ciphertext after the SA. */
-            len = in_len + TRANSOP_AES_NONCE_SIZE;
+           /* The following fields (message authentication, IV) are calculated respectively filled after data encrpytion */
 
-            /* The assembly buffer is a source for encrypting data. The nonce is
+            /* Encrypt the assembly contents and write the ciphertext after the IV. */
+            len = in_len + TRANSOP_AES_DATA_LEN;
+
+            /* The assembly buffer is a source for encrypting data. The data length is
              * written in first followed by the packet payload. The whole
              * contents of assembly are encrypted. */
-            pnonce = (uint32_t *)assembly;
-            *pnonce = rand();
-            memcpy( assembly + TRANSOP_AES_NONCE_SIZE, inbuf, in_len );
+            data_len = (uint16_t *)assembly;
+            *data_len = in_len;
 
-            /* Need at least one encrypted byte at the end for the padding. */
-            len2 = ( (len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
-            assembly[ len2-1 ]=(len2-len);
-            traceEvent( TRACE_DEBUG, "padding = %u", assembly[ len2-1 ] );
+	    memcpy( assembly + TRANSOP_AES_DATA_LEN , inbuf, in_len );
+            len2 = ( ( ( len - 1) / AES_BLOCK_SIZE) + 1 ) * AES_BLOCK_SIZE; /* Round up to next whole AES block size */
 
-            memset( &(sa->enc_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
+            RAND_bytes(&iv, 16);  /* get a cryptographically safely randomized initialization vector */
+            /* REVISIT: return value of RAND_bytes function should be 1 to continue cryptographically safe, otherwise exit */
+            memcpy((sa->enc_ivec), iv, 16 ); /* sa->enc_ivec gets changed during CBC encryption procedure, so keep a copy in iv */
+
             AES_cbc_encrypt( assembly, /* source */
-                             outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, /* dest */
+                             outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE, /* dest */
                              len2, /* enc size */
-                             &(sa->enc_key), sa->enc_ivec, 1 /* encrypt */ );
+                             &(sa->enc_key), &(sa->enc_ivec), 1 /* encrypt */ );
 
-            len2 += TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE; /* size of data carried in UDP. */
+            AES_encrypt (iv, /* encrpyt the original initialization vector */
+                         outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* to the buffer */
+                         &(sa->enc_key_2) ); /* using the secondary key */
+            AES_encrypt (outbuf + len2 - AES_BLOCK_SIZE, /* encrypt the last cipher block again */
+                         outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, /* to use it as message authentication code */
+                         &(sa->enc_key_2) ); /* using the secondary key */
+
+            len2 += TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE; /* size of data carried in UDP. */
         }
         else
         {
@@ -278,15 +288,18 @@ static ssize_t aes_find_sa( const transop_aes_t * priv, const n2n_sa_t req_id )
     return -1;
 }
 
-
 /** The aes packet format consists of:
  *
  *  - a 8-bit aes encoding version in clear text
  *  - a 32-bit SA number in clear text
- *  - ciphertext encrypted from a 32-bit nonce followed by the payload.
+ *  - a 128 bit inner message authentication code (last encrypted data block encrypted again using K2),
+ *  - the separately encrypted IV (using K2),
+ *  - the 16-bit packet length of the following data (encrypted together with...
+ *  - ...the following payload data (using K1).
+ *  with K1 = key1 and K2 = key2.
  *
- *  [V|SSSS|nnnnDDDDDDDDDDDDDDDDDDDDD]
- *         |<------ encrypted ------>|
+ *  [V|SSSS|MMMMMMMMMMMMMMMM|IIIIIIIIIIIIIIII|LLDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD]
+ *         |< encrypted K2 >|< encrypted K2 >|<------- encrypted K1 --------->|
  */
 static int transop_decode_aes( n2n_trans_op_t * arg,
                                    uint8_t * outbuf,
@@ -299,8 +312,8 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
     transop_aes_t * priv = (transop_aes_t *)arg->priv;
     uint8_t assembly[N2N_PKT_BUF_SIZE];
 
-    if ( ( (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE)) <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */ 
-         && (in_len >= (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_NONCE_SIZE) ) /* Has at least version, SA and nonce */
+    if ( ( (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE)) <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */ 
+         && (in_len >= (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE + AES_BLOCK_SIZE) ) /* Has at least all neccessary fields and at least one cipher block */
         )
     {
         n2n_sa_t sa_rx;
@@ -325,36 +338,34 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 
                 traceEvent( TRACE_DEBUG, "decode_aes %lu with SA %lu.", in_len, sa_rx, sa->sa_id );
 
-                len = (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE));
+                len = (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE));
                 
                 if ( 0 == (len % AES_BLOCK_SIZE ) )
                 {
-                    uint8_t padding;
-
+                    uint16_t data_len;
                     memset( &(sa->dec_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
-                    AES_cbc_encrypt( (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE),
+                   AES_decrypt (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE,
+                                 &(sa->dec_ivec),
+                                 &(sa->dec_key_2) );
+
+                    AES_cbc_encrypt( (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE),
                                      assembly, /* destination */
                                      len, 
                                      &(sa->dec_key),
-                                     sa->dec_ivec, 0 /* decrypt */ );
+                                     &(sa->dec_ivec), 0 /* decrypt */ );
+                    data_len = *(uint16_t*)assembly;
 
-                    /* last byte is how much was padding: max value should be
-                     * AES_BLOCKSIZE-1 */
-                    padding = assembly[ len-1 ] & 0xff; 
-
-                    if ( len >= (padding + TRANSOP_AES_NONCE_SIZE))
+                    // REVISIT: verifiy message authentication code by CBC'ing the decrypted block again and encrypting the last block using enc_key_2, and finally compare it to MSGAUTH in inbuf
+                    if ( len >= (data_len + TRANSOP_AES_DATA_LEN))
                     {
                         /* strictly speaking for this to be an ethernet packet
                          * it is going to need to be even bigger; but this is
                          * enough to prevent segfaults. */
-                        traceEvent( TRACE_DEBUG, "padding = %u", padding );
-                        len -= padding;
+                        len = data_len;
 
-                        len -= TRANSOP_AES_NONCE_SIZE; /* size of ethernet packet */
-
-                        /* Step over 4-byte random nonce value */
+                        /* Step over data length value */
                         memcpy( outbuf, 
-                                assembly + TRANSOP_AES_NONCE_SIZE, 
+                                assembly + TRANSOP_AES_DATA_LEN, 
                                 len );
                     }
                     else
@@ -399,35 +410,36 @@ static int setup_aes_key(transop_aes_t *priv, uint8_t *keybuf, ssize_t pstat, si
     sa_aes_t * sa = &(priv->sa[sa_num]);
     size_t aes_keysize_bytes;
     size_t aes_keysize_bits;
-    uint8_t * padded_keybuf;
+    uint8_t * hashed_keybuf;
 
     /* Clear out any old possibly longer key matter. */
     memset( &(sa->enc_key), 0, sizeof(AES_KEY) );
     memset( &(sa->dec_key), 0, sizeof(AES_KEY) );
 
-    memset( &(sa->enc_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
-    memset( &(sa->dec_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
-
     aes_keysize_bytes = aes_best_keysize(pstat);
     aes_keysize_bits = 8 * aes_keysize_bytes;
 
-    /* The aes_keysize_bytes may differ from pstat, possibly pad */
-    padded_keybuf = calloc(1, aes_keysize_bytes);
-    if(!padded_keybuf)
+    /* The aes_keysize_bytes may differ from pstat, therefore hash */
+    /* HASH_SIZE > KEY_SIZE, essential to security  */
+    hashed_keybuf = calloc(1, HASH_SIZE);
+    if(!hashed_keybuf)
         return(1);
-    memcpy(keybuf, padded_keybuf, pstat);
+    SHA512(keybuf, pstat, hashed_keybuf);
 
     /* Use N2N_MAX_KEYSIZE because the AES key needs to be of fixed
      * size. If fewer bits specified then the rest will be
      * zeroes. AES acceptable key sizes are 128, 192 and 256
      * bits. */
-    AES_set_encrypt_key(padded_keybuf, aes_keysize_bits, &(sa->enc_key));
-    AES_set_decrypt_key(padded_keybuf, aes_keysize_bits, &(sa->dec_key));
-    /* Leave ivecs set to all zeroes */
+    AES_set_encrypt_key(hashed_keybuf, aes_keysize_bits, &(sa->enc_key));
+    AES_set_decrypt_key(hashed_keybuf, aes_keysize_bits, &(sa->dec_key));
+    /* ivecs remain untouched here and get set directly before encryption or decryption respectively */
+    /* use the last part of the hash as secondary key */
+    AES_set_encrypt_key(hashed_keybuf+HASH_SIZE-aes_keysize_bytes, aes_keysize_bits, &(sa->enc_key_2));
+    AES_set_decrypt_key(hashed_keybuf+HASH_SIZE-aes_keysize_bytes, aes_keysize_bits, &(sa->dec_key_2));
     
     traceEvent( TRACE_DEBUG, "transop_addspec_aes sa_id=%u, %u bits data=%s.\n",
                 priv->sa[sa_num].sa_id, aes_keysize_bits, keybuf);
-    free(padded_keybuf);
+    free(hashed_keybuf);
 
     return(0);
 }
