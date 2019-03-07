@@ -77,6 +77,23 @@ typedef struct transop_aes transop_aes_t;
 static ssize_t aes_find_sa( const transop_aes_t * priv, const n2n_sa_t req_id );
 static int setup_aes_key(transop_aes_t *priv, uint8_t *keybuf, ssize_t pstat, size_t sa_num);
 
+
+/* Helper function to xor destination and source memory to destination.
+   Taken from gnutls which is under GPL 3.0.
+   Written by Simon Josefsson.  The interface was inspired by memxor
+   in Niels Möller's Nettle. */
+void *
+memxor (void *restrict dest, const void *restrict src, size_t n)
+{
+  char const *s = src;
+  char *d = dest;
+
+  for (; n > 0; n--)
+    *d++ ^= *s++;
+
+  return dest;
+}
+
 static int transop_deinit_aes( n2n_trans_op_t * arg )
 {
     transop_aes_t * priv = (transop_aes_t *)arg->priv;
@@ -210,9 +227,9 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             tx_sa_num = aes_choose_tx_sa( priv, peer_mac );
 
             sa = &(priv->sa[tx_sa_num]); /* Proper Tx SA index */
-        
+
             traceEvent( TRACE_DEBUG, "encode_aes %lu with SA %lu.", in_len, sa->sa_id );
-            
+
             /* Encode the aes format version. */
             encode_uint8( outbuf, &idx, N2N_AES_TRANSFORM_VERSION );
 
@@ -255,12 +272,22 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
                              outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* dst: same field */
                              &(sa->enc_key_2)); /* using the secondary key K2 */
 
-                /* encrypt the last cipher block again using K2 to generate ECBC-MAC for message authentication code */
-                AES_encrypt (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE + len2 - AES_BLOCK_SIZE, /* src: last cipher block */
-                             full_msg_auth, /* dst: a buffer for the full length message authentication code */
+                /* prepare the message authentication buffer */
+	        memset (full_msg_auth, 0, AES_BLOCK_SIZE);
+                /* copy the AES version and security association to that buffer (left bound) */
+                memcpy (full_msg_auth, outbuf, TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE);
+
+                /* xor the last cipher block with that prefilled buffer */
+                memxor (full_msg_auth, /* operand and destination */
+                        outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE + len2 - AES_BLOCK_SIZE, /* 2nd operand, last cipher block */
+                        AES_BLOCK_SIZE);
+
+                /* encrypt the so far generated message authentication code using K2 to generate ECBC-MAC, which now also includes the preceeding fields VER_SIZE and SA_SIZE */
+                AES_encrypt (full_msg_auth, /* src */
+                             full_msg_auth, /* dst */
                              &(sa->enc_key_2)); /* using the secondary key K2 */
 
-                /* copy only the defined number of bytes for transmission */
+                /* copy only the defined number of bytes for transmission to output buffer */
                 memcpy (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, full_msg_auth, N2N_AES_MSGAUTH_SIZE);
 
                 len2 += TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE; /* size of data carried in UDP. */
@@ -332,6 +359,8 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
     uint8_t assembly[N2N_PKT_BUF_SIZE];
     uint8_t assembly2[N2N_PKT_BUF_SIZE];
     n2n_aes_ivec_t iv;
+    uint8_t full_msg_auth[AES_BLOCK_SIZE];
+
 
     if ( ( (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE)) <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */ 
          && (in_len >= (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE + AES_BLOCK_SIZE) ) /* Has at least all neccessary fields and at least one cipher block */
@@ -360,7 +389,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                 traceEvent( TRACE_DEBUG, "decode_aes %lu with SA %lu.", in_len, sa_rx, sa->sa_id );
 
                 len = (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE));
-                
+
                 if ( 0 == (len % AES_BLOCK_SIZE ) )
                 {
                     uint16_t data_len;
@@ -376,7 +405,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                     /* decrypt payload in cbc mode using secondary key K2 */
                     AES_cbc_encrypt (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE, /* src: payload from buffer */
                                      assembly, /* dst: assembly */
-                                     len, 
+                                     len,
                                      &(sa->dec_key), /* using key K1 */
                                      &(sa->dec_ivec),/* using the already decrypted IV */
                                      0); /* = decryption */
@@ -392,8 +421,9 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 
                          /* verify message authentication code by
                             1. cbc'ing the decrypted data again completly using K1,
-                            2. encrypting the last cipher block using secondary key K2, and
-                            3. finally, comparing with the trasmitted message authentication code */
+                            2. xor'ing this block with VERSION and SA fields
+                            3. encrypting the last cipher block using secondary key K2, and
+                            4. finally, comparing with the trasmitted message authentication code */
 
 			 /* encrypt payload in cbc mode again using key K1 */
                          AES_cbc_encrypt (assembly, /* src: the already decrypted data in assembly buffer */
@@ -403,7 +433,12 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                                           &iv,/* using the saved, already derypted IV from above */
                                           1); /* = encryption */
 
-                         /* encrypt the last cipher block again using K2 to generate ECBC-MAC for message authentication code */
+                         /* xor that just encrypted last cipher block with AES version and security association (left bound) */
+                         memxor (assembly2 + len - AES_BLOCK_SIZE,  /* dst and operand */
+                                 inbuf, /* 2nd operand: the decrypted aes version and security associtation number */
+                                 TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE);
+
+                         /* encrypt that modified last cipher block again using K2 to generate ECBC-MAC for message authentication code */
                          AES_encrypt (assembly2 + len - AES_BLOCK_SIZE, /* src: last cipher block */
                                       assembly2 + len - AES_BLOCK_SIZE, /* dst: just overwrite in the same place as assembly2 is not needed anymore*/
                                       &(sa->enc_key_2)); /* using the secondary key K2 */
