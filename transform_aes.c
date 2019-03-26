@@ -71,7 +71,7 @@ struct transop_aes
 typedef struct transop_aes transop_aes_t;
 
 static ssize_t aes_find_sa( const transop_aes_t * priv, const n2n_sa_t req_id );
-static int setup_aes_key(transop_aes_t *priv, uint8_t *keybuf, ssize_t pstat, size_t sa_num);
+static int setup_aes_key(transop_aes_t *priv, const uint8_t *keybuf, ssize_t pstat, size_t sa_num);
 
 static int transop_deinit_aes( n2n_trans_op_t * arg )
 {
@@ -394,7 +394,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 }
 
 /* NOTE: the caller should adjust priv->num_sa accordingly */
-static int setup_aes_key(transop_aes_t *priv, uint8_t *keybuf, ssize_t pstat, size_t sa_num) {
+static int setup_aes_key(transop_aes_t *priv, const uint8_t *keybuf, ssize_t pstat, size_t sa_num) {
     /* pstat is number of bytes read into keybuf. */
     sa_aes_t * sa = &(priv->sa[sa_num]);
     size_t aes_keysize_bytes;
@@ -415,7 +415,7 @@ static int setup_aes_key(transop_aes_t *priv, uint8_t *keybuf, ssize_t pstat, si
     padded_keybuf = calloc(1, aes_keysize_bytes);
     if(!padded_keybuf)
         return(1);
-    memcpy(keybuf, padded_keybuf, pstat);
+    memcpy(padded_keybuf, keybuf, pstat);
 
     /* Use N2N_MAX_KEYSIZE because the AES key needs to be of fixed
      * size. If fewer bits specified then the rest will be
