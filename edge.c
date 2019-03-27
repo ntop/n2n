@@ -737,8 +737,12 @@ int main(int argc, char* argv[]) {
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
     if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
-      traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u",
-		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
+      traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u [errno %u]",
+		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
+
+#ifdef WIN32
+      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
       return(-6);
     }    
   }
