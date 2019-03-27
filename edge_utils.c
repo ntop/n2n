@@ -1311,7 +1311,15 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     (struct sockaddr *)&sender_sock, (socklen_t*)&i);
 
   if(recvlen < 0) {
-    traceEvent(TRACE_ERROR, "recvfrom failed with %s", strerror(errno));
+#ifdef WIN32
+    if(WSAGetLastError() != WSAECONNRESET)
+#endif
+    {
+      traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", recvlen, errno, strerror(errno));
+#ifdef WIN32
+      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
+    }
     
     return; /* failed to receive data from UDP */
   }
