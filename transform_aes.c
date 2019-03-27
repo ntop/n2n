@@ -234,7 +234,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             assembly[ len2-1 ]=(len2-len);
             traceEvent( TRACE_DEBUG, "padding = %u", assembly[ len2-1 ] );
 
-            memset( &(sa->enc_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
+            memset( &(sa->enc_ivec), 0, sizeof(sa->enc_ivec) );
             AES_cbc_encrypt( assembly, /* source */
                              outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, /* dest */
                              len2, /* enc size */
@@ -331,7 +331,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                 {
                     uint8_t padding;
 
-                    memset( &(sa->dec_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
+                    memset( &(sa->dec_ivec), 0, sizeof(sa->dec_ivec) );
                     AES_cbc_encrypt( (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE),
                                      assembly, /* destination */
                                      len, 
@@ -402,11 +402,11 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *keybuf, ssize_t pst
     uint8_t * padded_keybuf;
 
     /* Clear out any old possibly longer key matter. */
-    memset( &(sa->enc_key), 0, sizeof(AES_KEY) );
-    memset( &(sa->dec_key), 0, sizeof(AES_KEY) );
+    memset( &(sa->enc_key), 0, sizeof(sa->enc_key) );
+    memset( &(sa->dec_key), 0, sizeof(sa->dec_key) );
 
-    memset( &(sa->enc_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
-    memset( &(sa->dec_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
+    memset( &(sa->enc_ivec), 0, sizeof(sa->enc_ivec) );
+    memset( &(sa->dec_ivec), 0, sizeof(sa->dec_ivec) );
 
     aes_keysize_bytes = aes_best_keysize(pstat);
     aes_keysize_bits = 8 * aes_keysize_bytes;
@@ -584,10 +584,10 @@ int transop_aes_init( n2n_trans_op_t * ttt )
             sa = &(priv->sa[i]);
             sa->sa_id=0;
             memset( &(sa->spec), 0, sizeof(n2n_cipherspec_t) );
-            memset( &(sa->enc_key), 0, sizeof(AES_KEY) );
-            memset( &(sa->enc_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
-            memset( &(sa->dec_key), 0, sizeof(AES_KEY) );
-            memset( &(sa->dec_ivec), 0, sizeof(N2N_AES_IVEC_SIZE) );
+            memset( &(sa->enc_key), 0, sizeof(sa->enc_key) );
+            memset( &(sa->enc_ivec), 0, sizeof(sa->enc_ivec) );
+            memset( &(sa->dec_key), 0, sizeof(sa->dec_key) );
+            memset( &(sa->dec_ivec), 0, sizeof(sa->dec_ivec) );
         }
 
         retval = 0;
