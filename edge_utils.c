@@ -607,7 +607,7 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
   for(sn_idx=0; sn_idx<eee->sn_num; sn_idx++) {
     supernode2addr(&(eee->supernode), eee->sn_ip_array[sn_idx]);
     
-    traceEvent(TRACE_NORMAL, "Registering with supernode [id: %u/%u][%s][attempts left %u]",
+    traceEvent(TRACE_INFO, "Registering with supernode [id: %u/%u][%s][attempts left %u]",
 	       sn_idx+1, eee->sn_num,
 	       supernode_ip(eee), (unsigned int)eee->sup_attempts);
     
@@ -711,7 +711,7 @@ static int n2n_tick_transop(n2n_edge_t * eee, time_t now)
   if(trop != eee->tx_transop_idx)
     {
       eee->tx_transop_idx = trop;
-      traceEvent(TRACE_NORMAL, "Chose new tx_transop_idx=%u", (unsigned int)(eee->tx_transop_idx));
+      traceEvent(TRACE_INFO, "Chose new tx_transop_idx=%u", (unsigned int)(eee->tx_transop_idx));
     }
 
   return 0;
@@ -1310,7 +1310,15 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     (struct sockaddr *)&sender_sock, (socklen_t*)&i);
 
   if(recvlen < 0) {
-    traceEvent(TRACE_ERROR, "recvfrom failed with %s", strerror(errno));
+#ifdef WIN32
+    if(WSAGetLastError() != WSAECONNRESET)
+#endif
+    {
+      traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", recvlen, errno, strerror(errno));
+#ifdef WIN32
+      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
+    }
     
     return; /* failed to receive data from UDP */
   }
@@ -1424,7 +1432,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		  orig_sender = &(ra.sock);
                 }
 
-	      traceEvent(TRACE_NORMAL, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s). Attempts %u",
+	      traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s). Attempts %u",
 			 macaddr_str(mac_buf1, ra.edgeMac),
 			 sock_to_cstr(sockbuf1, &sender),
 			 sock_to_cstr(sockbuf2, orig_sender),
