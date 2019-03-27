@@ -136,7 +136,7 @@ static void help() {
 	 "-l <supernode host:port>\n"
 	 "    "
 	 "[-p <local port>] [-M <mtu>] "
-	 "[-r] [-E] [-v] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
+	 "[-r] [-E] [-v] [-t <mgmt port>] [-b] [-A [<v>]] [-h]\n\n");
 
 #ifdef __linux__
   printf("-d <tun device>          | tun device name\n");
@@ -163,7 +163,8 @@ static void help() {
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
   printf("-r                       | Enable packet forwarding through n2n community.\n");
 #ifdef N2N_HAVE_AES
-  printf("-A                       | Set AES CBC as the preferred encryption mode.\n");
+  printf("-A[<version>]            | Set AES CBC as the preferred encryption mode\n");
+  printf("                         | using given encryption scheme version, defaults to %d.\n", N2N_AES_DEFAULT_VERSION);
 #endif
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
@@ -274,7 +275,13 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
 #ifdef N2N_HAVE_AES
   case 'A':
     {
-      eee->preferred_aes = 1;
+      if(optargument) {
+        eee->preferred_aes = atoi(optargument);
+      }
+      else {
+        eee->preferred_aes = 1;
+      }
+      traceEvent(TRACE_WARNING, "aes_version = %d\n", eee->preferred_aes);
       break;
     }
 #endif
@@ -370,7 +377,7 @@ static int loadFromCLI(int argc, char *argv[], edge_conf_t *ec, n2n_edge_t *eee)
   while((c = getopt_long(argc, argv,
 			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:"
 #ifdef N2N_HAVE_AES
-			 "A"
+			 "A::"
 #endif
 			 ,
 			 long_options, NULL)) != '?') {
@@ -730,9 +737,7 @@ int main(int argc, char* argv[]) {
     
     /* allow multiple sockets to use the same PORT number */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
-#ifndef WIN32 /* no SO_REUSEPORT in Windows */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
-#endif
     
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);

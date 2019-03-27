@@ -87,7 +87,8 @@ int transop_twofish_setup_psk( n2n_trans_op_t * ttt,
 int transop_aes_setup_psk( n2n_trans_op_t * ttt, 
                            n2n_sa_t sa_num,
                            uint8_t * encrypt_pwd, 
-                           uint32_t encrypt_pwd_len );
+                           uint32_t encrypt_pwd_len, 
+			   uint8_t aes_version );
 
 /* Initialise an empty transop ready to receive cipherspec elements. */
 int  transop_twofish_init( n2n_trans_op_t * ttt );

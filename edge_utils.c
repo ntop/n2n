@@ -19,10 +19,6 @@
 #include "n2n.h"
 #include "lzoconf.h"
 
-#ifdef WIN32
-#include <process.h>
-#endif
-
 #ifdef __ANDROID_NDK__
 #include "android/edge_android.h"
 #include <tun2tap/tun2tap.h>
@@ -36,7 +32,7 @@
 #define REGISTER_SUPER_INTERVAL_DFL     60 /* sec */
 #endif /* #if defined(DEBUG) */
 
-#define REGISTER_SUPER_INTERVAL_MIN     5    /* sec */
+#define REGISTER_SUPER_INTERVAL_MIN     20   /* sec */
 #define REGISTER_SUPER_INTERVAL_MAX     3600 /* sec */
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
@@ -659,8 +655,11 @@ int edge_init_twofish_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 
 int edge_init_aes_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 		      uint32_t encrypt_pwd_len) {
+
+traceEvent (TRACE_ERROR, "!!! !!! !!! %d", eee->preferred_aes);
+
   return transop_aes_setup_psk(&(eee->transop[N2N_TRANSOP_AESCBC_IDX]),
-			       0, encrypt_pwd, encrypt_pwd_len);
+			       0, encrypt_pwd, encrypt_pwd_len, eee->preferred_aes);
 }
 
 /* ************************************** */
@@ -1694,11 +1693,11 @@ const char *random_device_mac(void)
       continue;
     }
 #ifdef WIN32
-#define random rand
+#define random() rand()
 #endif
     mac[i] = key[random() % sizeof(key)];
 #ifdef WIN32
-#undef random
+#undef random()
 #endif
   }
   mac[sizeof(mac) - 1] = '\0';
@@ -1747,10 +1746,8 @@ int quick_edge_init(char *device_name, char *community_name,
     
     /* allow multiple sockets to use the same PORT number */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
-#ifdef SO_REUSEPORT /* no SO_REUSEPORT in Windows / old linux versions */
     setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
-#endif
-
+    
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
     if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {

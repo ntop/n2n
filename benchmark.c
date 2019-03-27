@@ -35,7 +35,7 @@ static int gettimeofday(struct timeval *tp, void *tzp)
 	time_t clock;
 	struct tm tm;
 	SYSTEMTIME wtm;
-	GetSystemTime(&wtm);
+	GetLocalTime(&wtm);
 	tm.tm_year = wtm.wYear - 1900;
 	tm.tm_mon = wtm.wMonth - 1;
 	tm.tm_mday = wtm.wDay;
@@ -89,7 +89,7 @@ int main(int argc, char * argv[]) {
   transop_twofish_setup_psk(&transop_twofish, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
   memset(&transop_aes_cbc, 0, sizeof(transop_aes_cbc));
   transop_aes_init(&transop_aes_cbc);
-  transop_aes_setup_psk(&transop_aes_cbc, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
+  transop_aes_setup_psk(&transop_aes_cbc, 0, encrypt_pwd, sizeof(encrypt_pwd)-1,1);
 
   /* Run the tests */
   run_transop_benchmark("transop_null", &transop_null, pktbuf, c);

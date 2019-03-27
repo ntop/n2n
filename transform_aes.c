@@ -30,9 +30,10 @@
 
 #define N2N_AES_NUM_SA                  32 /* space for SAa */
 
-#define N2N_AES_TRANSFORM_VERSION       2  /* version of the transform encoding */
+#define N2N_AES_TRANSFORM_VERSION_MAX   2  /* maximum version of the transform encoding */
+#define N2N_AES_TRANSFORM_VERSION_MIN   1  /* minimum version of the transform encoding */
 #define N2N_AES_IVEC_SIZE               16 /* Enough space for biggest AES ivec */
-#define N2N_AES_MSGAUTH_SIZE		4 /* size of the message authentication code length, from 0 ... 16 = AES_BLOCK_SIZE */
+#define N2N_AES_MSGAUTH_SIZE		16 /* size of the message authentication code length, from 0 ... 16 = AES_BLOCK_SIZE */
 
 #define N2N_MAX_PACKET_DELAY		16000000 /* the maximum allowable time stamp difference time in microseconds = 16 sec */
 #define N2N_MAX_PACKET_DEVIATION_TIME	160000 /* the maximum allowable time stamp difference [usec] a packet may be earlier than another = 160 ms*/
@@ -43,10 +44,12 @@ struct sa_aes
 {
     n2n_cipherspec_t    spec;           /* cipher spec parameters */
     n2n_sa_t            sa_id;          /* security association index */
-    AES_KEY             enc_key;        /* tx key */
-    AES_KEY             dec_key;        /* tx key */
-    AES_KEY		enc_key_2;	/* secondary key for IV encryption and msg auth signing */
-    AES_KEY		dec_key_2;	/* secondary key for IV encryption and msg auth signing */
+    AES_KEY             enc_key_K;      /* v1: tx key */
+    AES_KEY             dec_key_K;      /* v1: tx key */
+    AES_KEY		enc_key_K1;	/* v2: primary key for encryption */
+    AES_KEY		dec_key_K1;	/* v2: primary key for decryption */
+    AES_KEY		enc_key_K2;	/* v2: secondary key for IV encryption and msg auth signing */
+    AES_KEY		dec_key_K2;	/* v2: secondary key for IV decryption and msg auth signature check */
     uint64_t		prev_time_stamp;/* time stamp [usec] of previous packet sent from the associated node */
 };
 
@@ -65,11 +68,13 @@ struct transop_aes
     ssize_t             tx_sa;
     size_t              num_sa;
     sa_aes_t            sa[N2N_AES_NUM_SA];
+    int			version; /* indicates the encryption scheme version */
 
     /* PSK mode only */
     int                 psk_mode;
     u_int8_t            mac_sa[N2N_AES_NUM_SA][N2N_MAC_SIZE]; /* this is used as a key in the sa array */
-    uint8_t             *encrypt_pwd;    uint32_t            encrypt_pwd_len;
+    uint8_t             *encrypt_pwd;
+    uint32_t            encrypt_pwd_len;
     size_t              sa_to_replace;
 };
 
@@ -169,6 +174,7 @@ static ssize_t aes_choose_rx_sa( transop_aes_t * priv, const u_int8_t * peer_mac
 }
 
 #define TRANSOP_AES_VER_SIZE     1       /* Support minor variants in encoding in one module. */
+#define TRANSOP_AES_NONCE_SIZE   4
 #define TRANSOP_AES_DATA_LEN     2
 #define TRANSOP_AES_SA_SIZE      4
 
@@ -183,21 +189,38 @@ static ssize_t aes_choose_rx_sa( transop_aes_t * priv, const u_int8_t * peer_mac
  */
 static size_t aes_best_keysize(size_t numBytes)
 {
-	/* this is a shortcut to always use full key size for security reasons */
-	/* however, performance needs might require platform-dependant changes, e.g. for routers */
+    if (numBytes >= AES256_KEY_BYTES)
+    {
         return AES256_KEY_BYTES;
+    }
+    else if (numBytes >= AES192_KEY_BYTES)
+    {
+        return AES192_KEY_BYTES;
+    }
+    else
+    {
+        return AES128_KEY_BYTES;
+    }
 }
+
 
 /** The aes packet format consists of:
  *
  *  - a 8-bit aes encoding version in clear text
  *  - a 32-bit SA number in clear text
- *  - a 128 bit inner message authentication code (last encrypted data block encrypted again using K2),
- *  - the separately encrypted 128 bit IV (using K2),
- *  - the 16-bit packet length of the following data (encrypted together with...
- *  - ...the following payload data (using K1).
- *  with K1 = key1 and K2 = key2.
+ *  - (V2 only) a 128 bit inner message authentication code (last encrypted data block encrypted again using K2),
+ *  - (V2 only) the separately encrypted 128 bit IV (using K2),
+ *  - (V1 only) a 32-bit random nonce (encrypted together with ...
+ *  - (V2 only) the 16-bit packet length of the following data (encrypted together with...
+ *  - ...the following payload data (using V1 key K or V2 key K1).
+ *  with K = key (V1) and
+ *       K1 = key1 and K2 = key2 (V2)
  *
+ *  V1:
+ *  [V|SSSS|nnnnDDDDDDDDDDDDDDDDDDDDD]
+ *         |<-- encrypted with K  -->|
+ *
+ *  V2:
  *  [V|SSSS|MMMMMMMMMMMMMMMM|IIIIIIIIIIIIIIII|LLDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD]
  *         |<- encrypted -->|<- encrypted -->|<----- encrypted with K1 ------>|
  *         |<- with K2   -->|<- with K2   -->|                                |
@@ -212,133 +235,175 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
     int len2=-1;
     transop_aes_t * priv = (transop_aes_t *)arg->priv;
     uint8_t assembly[N2N_PKT_BUF_SIZE];
+    uint32_t * pnonce;
     uint16_t * data_len;
     uint8_t full_msg_auth[AES_BLOCK_SIZE];
-    uint8_t temp_iv[AES_BLOCK_SIZE];
+    uint8_t iv[AES_BLOCK_SIZE];
 
-    if ( (in_len + TRANSOP_AES_DATA_LEN) <= N2N_PKT_BUF_SIZE )
-    {
-        if ( (in_len + TRANSOP_AES_DATA_LEN + N2N_AES_IVEC_SIZE + N2N_AES_MSGAUTH_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_VER_SIZE) <= out_len )
-        {
-            int len=-1;
-            size_t idx=0;
-            sa_aes_t * sa;
-            size_t tx_sa_num = 0;
-
-            /* The transmit sa is periodically updated */
-            tx_sa_num = aes_choose_tx_sa( priv, peer_mac );
-
-            sa = &(priv->sa[tx_sa_num]); /* Proper Tx SA index */
-
-            traceEvent( TRACE_DEBUG, "encode_aes %lu with SA %lu.", in_len, sa->sa_id );
-
-            /* Encode the aes format version. */
-            encode_uint8( outbuf, &idx, N2N_AES_TRANSFORM_VERSION );
-
-            /* Encode the security association (SA) number */
-            encode_uint32( outbuf, &idx, sa->sa_id );
-
-           /* The following fields (message authentication, IV) are calculated respectively filled after data encrpytion */
-
-            /* Encrypt the assembly contents and write the ciphertext after the IV. */
-            len = in_len + TRANSOP_AES_DATA_LEN;
-
-            /* The assembly buffer is a source for encrypting data. The data length is
-             * written in first followed by the packet payload. The whole
-             * contents of assembly are encrypted. */
-            data_len = (uint16_t *)assembly;
-            *data_len = htons(in_len);
-
-	    memcpy( assembly + TRANSOP_AES_DATA_LEN , inbuf, in_len );
-            len2 = ( ( ( len - 1) / AES_BLOCK_SIZE) + 1 ) * AES_BLOCK_SIZE; /* Round up to next whole AES block size */
-
-            /* generate random padding for the last plain text block and also */
-            /* generate a random initialization vector for CBC directly to its field in the buffer */
-            /* only proceed if random values are cryptographically safe (return value == 1) */
-            if ( (RAND_bytes(assembly + len + 1, len2 - len) == 1) &&
-                 (RAND_bytes(outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, N2N_AES_IVEC_SIZE) == 1) )
-            {
-                /* encode system time to IV for replay attack protection */
-                /* get current system time (for international use: not local time) to encode it in IV */
-                struct timeval tod;
-                uint64_t micro_seconds;
-                gettimeofday (&tod, NULL);
-                /* We will calculate and put the microseconds since 1970 leftbound into the IV.
-                   As microseconds fraction never exceeds 1,000,000 , a max of 20 bits is
-                   used to encode the value tv_usec. 32 bits are used for tv_sec.
-                   Thus, micro_seconds' 12 most significant bits are not used.
-                   As we do not want 12 definetely zeroed bits IV, some bit masking is required
-                   to only copy the 52 (least) significant bits leaving the other 12 random as before
-                   - converting in host byte order to make sure bitwise masking is applied correctly;
-                   shifting might be independet from byte order, though. */
-                micro_seconds = be64toh(*(uint64_t*)(outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE));
-                micro_seconds = htobe64( ( (tod.tv_sec * 1000000 + tod.tv_usec) << 12)
-                                         | (0x0000000000000FFF & micro_seconds));
-                memcpy (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, &micro_seconds, sizeof (micro_seconds));
-                /* nybblewise (4 bit portions), the whole 128 bit IV should look as follows:
-                   MMMMMMMMMMMMMrrrrrrrrrrrrrrrrrrr
-                   M = 52 bit value of microseconds since 1970
-                   r = random data */
-                /* to prevent an all too predictable content of this modified IV,
-                   before use it gets encrypted using K1 directly in the buffer */
-                AES_encrypt (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* src: IV position in outbuffer */
-                             outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE , /* dst: same place as src */
-                             &(sa->enc_key)); /* using key K1 */
-                /* end of preparatory action against replay attacks */
-
-                /* make a copy of IV to the field provided to AES_cbc_encrypt, it gets corrupted during cbc mode encryption */
-                memcpy(temp_iv, outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, N2N_AES_IVEC_SIZE );
-
-                /* encrypt the payload (including packet length)  */
-                AES_cbc_encrypt( assembly, /* source */
-                                 outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE, /* dest */
-                                 len2, /* enc size */
-                                 &(sa->enc_key), /* using key K1 */
-                                 temp_iv, /* the copy of IV */
-				 1); /* = encryption */
-
-                /* now that IV was used, it gets encrypted for transmission. */
-                /* this is necessary because first block of plain text is quite predicable (length, preamble, NIC MACs) */
-                /* encrypt the initialization vector directly on its field in the buffer using secondary key K2 */
-                AES_encrypt (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* src: IV field in the buffer */
-                             outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* dst: same field */
-                             &(sa->enc_key_2)); /* using the secondary key K2 */
-
-                /* prepare the message authentication buffer */
-	        memset (full_msg_auth, 0, AES_BLOCK_SIZE);
-                /* copy the AES version and security association to that buffer (left bound) */
-                memcpy (full_msg_auth, outbuf, TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE);
-
-                /* xor the last cipher block with that prefilled buffer */
-                memxor (full_msg_auth, /* operand and destination */
-                        outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE + len2 - AES_BLOCK_SIZE, /* 2nd operand, last cipher block */
-                        AES_BLOCK_SIZE);
-
-                /* encrypt the so far generated message authentication code using K2 to generate ECBC-MAC, which now also includes the preceeding fields VER_SIZE and SA_SIZE */
-                AES_encrypt (full_msg_auth, /* src */
-                             full_msg_auth, /* dst */
-                             &(sa->enc_key_2)); /* using the secondary key K2 */
-
-                /* copy only the defined number of bytes for transmission to output buffer */
-                memcpy (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, full_msg_auth, N2N_AES_MSGAUTH_SIZE);
-
-                len2 += TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE; /* size of data carried in UDP. */
-            }
-            else
-            {
-                traceEvent ( TRACE_ERROR, "encode_aes no random data available for padding and initialization vector." );
-            }
-        }
-        else
-        {
-            traceEvent( TRACE_ERROR, "encode_aes outbuf too small." );
-        }
-    }
-    else
+    if ( (in_len + TRANSOP_AES_DATA_LEN) > N2N_PKT_BUF_SIZE )
     {
         traceEvent( TRACE_ERROR, "encode_aes inbuf too big to encrypt." );
+	goto error;
+    }
+    if ( (in_len + TRANSOP_AES_DATA_LEN + N2N_AES_IVEC_SIZE + N2N_AES_MSGAUTH_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_VER_SIZE) > out_len )
+    {
+        traceEvent( TRACE_ERROR, "encode_aes outbuf too small." );
+	goto error;
     }
 
+    int len=-1;
+    size_t idx=0;
+    sa_aes_t * sa;
+    size_t tx_sa_num = 0;
+
+    /* The transmit sa is periodically updated */
+    tx_sa_num = aes_choose_tx_sa( priv, peer_mac );
+    sa = &(priv->sa[tx_sa_num]); /* Proper Tx SA index */
+
+    traceEvent( TRACE_DEBUG, "encode_aes %lu with SA %lu.", in_len, sa->sa_id );
+
+    /* Encode the aes format version. */
+    encode_uint8( outbuf, &idx, priv->version );
+
+    /* Encode the security association (SA) number */
+    encode_uint32( outbuf, &idx, sa->sa_id );
+
+    /* v2: The following fields (message authentication, IV) are calculated respectively filled 
+       after data encrpytion */
+
+    /* prepare assembly buffer with nonce (v1) or data length (v2) respectively
+       and calculate the length of data to be encrypted */
+    uint8_t ethernet_data_offset;
+    uint8_t buffer_suffix;
+    uint8_t skip_to_data;
+    switch (priv->version)
+    {
+	case 1 :
+	{
+	    ethernet_data_offset = TRANSOP_AES_NONCE_SIZE;
+            pnonce = (uint32_t *)assembly;
+            *pnonce = rand();
+	    buffer_suffix = 1; /* one byte follows buffer's end for padding length, not to be encrypted */
+            skip_to_data = TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE;
+	    break;
+	}
+	case 2 :
+	{
+	    ethernet_data_offset = TRANSOP_AES_DATA_LEN;
+	    /* version 2 also requires the data length to be part of encrypted data */
+	    data_len = (uint16_t *)assembly;
+	     *data_len = htons(in_len);
+	    buffer_suffix = 0; /* nothing to be added behind buffer's end */
+	    skip_to_data = TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE;
+	    break;
+	}
+    }
+    /* also count the prepending data fields for encryption */
+    len = in_len + ethernet_data_offset;
+    /* Round up to next whole AES block size */
+    len2 = ( ( ( len - 1 + buffer_suffix) / AES_BLOCK_SIZE) + 1 ) * AES_BLOCK_SIZE; 
+
+    /* The assembly buffer is a source for encrypting data.
+     * The whole contents of assembly are encrypted. */
+    memcpy( assembly + ethernet_data_offset , inbuf, in_len );
+
+    /* prepare the encryption by performing the version-dependant padding
+       at buffer's end as well as the IV, also choose key */
+    AES_KEY key;
+    switch (priv->version)
+    {
+	case 1 :
+ 	{
+	    assembly[ len2-1 ]=(len2-len);
+            traceEvent( TRACE_DEBUG, "padding = %u", assembly[ len2-1 ] );
+	    /* set IV to 0 for v1 */
+	    memset (iv, 0, N2N_AES_IVEC_SIZE);
+            /* data will be encrypted using v1 key K */
+	    key = sa->enc_key_K;
+	    break;
+	}
+	case 2 :
+	{
+	    /* generate random padding for the last plain text block and also
+               generate a random initialization vector for CBC directly to its field in the buffer
+               only proceed if random values are cryptographically safe (return value == 1) */
+	    if ((RAND_bytes(assembly + len + 1, len2 - len) != 1) ||
+	        (RAND_bytes(outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, N2N_AES_IVEC_SIZE) != 1))
+	    {
+	        traceEvent ( TRACE_ERROR, "encode_aes no random data available for padding and initialization vector." );
+	        goto error;
+	    }
+	    /* encode system time to IV for replay attack protection */
+	    /* get current system time (for international use: not local time) to encode it in IV */
+	    struct timeval tod;
+	    uint64_t micro_seconds;
+	    gettimeofday (&tod, NULL);
+	    /* We will calculate and put the microseconds since 1970 leftbound into the IV.
+	       As microseconds fraction never exceeds 1,000,000 , a max of 20 bits is
+	       used to encode the value tv_usec. 32 bits are used for tv_sec.
+	       Thus, micro_seconds' 12 most significant bits are not used.
+	       As we do not want 12 definetely zeroed bits IV, some bit masking is required
+	       to only copy the 52 (least) significant bits leaving the other 12 random as before
+	       - converting in host byte order to make sure bitwise masking is applied correctly;
+	       shifting might be independet from byte order, though. */
+	    micro_seconds = be64toh(*(uint64_t*)(outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE));
+	    micro_seconds = htobe64( ( (tod.tv_sec * 1000000 + tod.tv_usec) << 12)
+	                             | (0x0000000000000FFF & micro_seconds));
+	    memcpy (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, &micro_seconds, sizeof (micro_seconds));
+	    /* nybblewise (4 bit portions), the whole 128 bit IV should look as follows:
+	       MMMMMMMMMMMMMrrrrrrrrrrrrrrrrrrr
+	       M = 52 bit value of microseconds since 1970
+	       r = random data */
+	    /* to prevent an all too predictable content of this modified IV,
+	       before use it gets encrypted using K1 directly in the buffer */
+	    AES_encrypt (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* src: IV position in outbuffer */
+	                 outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE , /* dst: same place as src */
+	                 &(sa->enc_key_K1)); /* using key K1 */
+
+	    /* copy IV to the field later provided to AES_cbc_encrypt (where it gets corrupted during cbc mode encryption) */
+	    memcpy(iv, outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, N2N_AES_IVEC_SIZE );
+            /* data will be encrypted using v2 key K1 */
+            key = sa->enc_key_K1;
+	    break;
+	}
+    }
+
+    /* encrypt the payload (including prepending data)  */
+    AES_cbc_encrypt(assembly, /* source */
+                    outbuf + skip_to_data, /* dest */
+                    len2, /* enc size */
+                    &key, /* using key K (v1) or K1 (v2) */
+                    iv, /* IV */
+                    1); /* = encryption */
+
+    /* v2: now that IV was used, it gets encrypted for transmission. */
+    if (priv->version == 2)
+    {
+        /* this is necessary because first block of plain text is quite predicable (length, preamble, NIC MACs) 
+           encrypt the initialization vector directly on its field in the buffer using secondary key K2 */
+        AES_encrypt (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* src: IV field in the buffer */
+                     outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* dst: same field */
+                     &(sa->enc_key_K2)); /* using the secondary key K2 */
+        /* prepare the message authentication buffer */
+        memset (full_msg_auth, 0, AES_BLOCK_SIZE);
+        /* copy the AES version and security association to that buffer (left bound) */
+        memcpy (full_msg_auth, outbuf, TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE);
+        /* xor the last cipher block with that prefilled buffer */
+        memxor (full_msg_auth, /* operand and destination */
+                outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE + len2 - AES_BLOCK_SIZE, /* 2nd operand, last cipher block */
+                AES_BLOCK_SIZE);
+        /* encrypt the so far generated message authentication code using K2 to generate ECBC-MAC, which now also includes the preceeding fields VER_SIZE and SA_SIZE */
+        AES_encrypt (full_msg_auth, /* src */
+                     full_msg_auth, /* dst */
+                     &(sa->enc_key_K2)); /* using the secondary key K2 */
+        /* copy only the defined number of bytes for transmission to output buffer */
+        memcpy (outbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, full_msg_auth, N2N_AES_MSGAUTH_SIZE);
+    }
+
+    /* prepare return value */
+    len2 += skip_to_data; /* size of data carried in UDP. */
+
+error:
     return len2;
 }
 
@@ -369,12 +434,19 @@ static ssize_t aes_find_sa( const transop_aes_t * priv, const n2n_sa_t req_id )
  *
  *  - a 8-bit aes encoding version in clear text
  *  - a 32-bit SA number in clear text
- *  - a 128 bit inner message authentication code (last encrypted data block encrypted again using K2),
- *  - the separately encrypted 128 bit IV (using K2),
- *  - the 16-bit packet length of the following data (encrypted together with...
- *  - ...the following payload data (using K1).
- *  with K1 = key1 and K2 = key2.
+ *  - (V2 only) a 128 bit inner message authentication code (last encrypted data block encrypted again using K2),
+ *  - (V2 only) the separately encrypted 128 bit IV (using K2),
+ *  - (V1 only) a 32-bit random nonce (encrypted together with ...
+ *  - (V2 only) the 16-bit packet length of the following data (encrypted together with...
+ *  - ...the following payload data (using V1 key K or V2 key K1).
+ *  with K = key (V1) and
+ *       K1 = key1 and K2 = key2 (V2)
  *
+ *  V1:
+ *  [V|SSSS|nnnnDDDDDDDDDDDDDDDDDDDDD]
+ *         |<-- encrypted with K  -->|
+ *
+ *  V2:
  *  [V|SSSS|MMMMMMMMMMMMMMMM|IIIIIIIIIIIIIIII|LLDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD]
  *         |<- encrypted -->|<- encrypted -->|<----- encrypted with K1 ------>|
  *         |<- with K2   -->|<- with K2   -->|                                |
@@ -394,178 +466,229 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
     n2n_aes_ivec_t actual_iv;
     uint8_t full_msg_auth[AES_BLOCK_SIZE];
 
-    if ( ( (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE)) <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */ 
-        && (in_len >= (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE + AES_BLOCK_SIZE) ) /* Has at least all neccessary fields and at least one cipher block */
+    n2n_sa_t sa_rx;
+    ssize_t sa_idx=-1;
+    size_t rem=in_len;
+    size_t idx=0;
+
+    /* Get the encoding version ... */
+    uint8_t aes_enc_ver=0;
+    decode_uint8( &aes_enc_ver, inbuf, &rem, &idx );
+    /* ... to make sure it is supported 
+       and calculate prepending packet overhead */
+    uint32_t skip_to_encrypted_data;
+    switch (aes_enc_ver)
+    {
+	case 1 :
+	{
+	    skip_to_encrypted_data = TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE;
+	    break;
+	}
+        case 2 :
+	{
+	    skip_to_encrypted_data = TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE;
+            break;
+	}
+        default:
+	{
+            traceEvent( TRACE_ERROR, "decode_aes unsupported aes version %u.", aes_enc_ver );
+            /* REVISIT: should be able to load a new SA at this point to complete the decoding. */
+	    goto error;
+	    break;
+	}
+    }
+
+    /* reasonable length check */
+    if ( ( (in_len - skip_to_encrypted_data) > N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly ... */ 
+        || (in_len < (skip_to_encrypted_data + AES_BLOCK_SIZE) ) /* .. and has at least all neccessary fields and at least one cipher block */
        )
     {
-        n2n_sa_t sa_rx;
-        ssize_t sa_idx=-1;
-        size_t rem=in_len;
-        size_t idx=0;
-        uint8_t aes_enc_ver=0;
-
-        /* Get the encoding version to make sure it is supported */
-        decode_uint8( &aes_enc_ver, inbuf, &rem, &idx );
-
-        if ( N2N_AES_TRANSFORM_VERSION == aes_enc_ver )
-        {
-            /* Get the SA number and make sure we are decrypting with the right one. */
-            decode_uint32( &sa_rx, inbuf, &rem, &idx );
-
-            sa_idx = aes_choose_rx_sa(priv, peer_mac, sa_rx);
-
-            if ( sa_idx >= 0 )
-            {
-                sa_aes_t * sa = &(priv->sa[sa_idx]);
-
-                traceEvent( TRACE_DEBUG, "decode_aes %lu with SA %lu.", in_len, sa_rx, sa->sa_id );
-
-                len = (in_len - (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE));
-
-                if ( 0 == (len % AES_BLOCK_SIZE ) )
-                {
-                    uint16_t data_len;
-
-                    /* decrypt the initialization vector using secondary key K2 */
-                    AES_decrypt (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* src: IV field in the buffer */
-                                 actual_iv, /* dst:  IV field in SA-structure getting used in the next step, i.e. cbc decryption of data */
-                                 &(sa->dec_key_2)); /* using secondary key K2 */
-
-		    /* prevent replay attacks:
-                       get current system time (for international use - not local time) for later
-                       comparison to the one encoded in IV */
-		    struct timeval tod;
-		    uint64_t iv_micro_seconds;
-		    uint64_t micro_seconds;
-                    gettimeofday (&tod, NULL);
-                    micro_seconds = tod.tv_sec * 1000000 + tod.tv_usec;
-                    AES_decrypt (actual_iv, /* src: IV */
-                                 temp_iv, /* dst: a temporary IV field getting used later in cbc decryption of data */
-                                 &(sa->dec_key)); /* using secondary key K1 */
-                    /* extract encoded system time out of IV */
-                    iv_micro_seconds = be64toh(*(uint64_t*)temp_iv) >> 12 ;
-
-                    /* continue only if it is in the allowed time frame */
-                    if ( abs (micro_seconds - iv_micro_seconds) < N2N_MAX_PACKET_DELAY ) 
-                    {
-                        /* continue only if time stamp is bigger than the one of packet received before */
-                        /* the only exception to let pass: the first packet ever */
-                        if (sa->prev_time_stamp == 0)
-                        {
-                            sa->prev_time_stamp = iv_micro_seconds;
-                        }
-                        /* allow for some grace time because packets sometimes seem to  overtake each other
-                         either on the line or somewhere inside the network stack */
-                        if ( iv_micro_seconds > (sa->prev_time_stamp - N2N_MAX_PACKET_DEVIATION_TIME) )
-                        {
-                            /* end of first part replay prevention */
-
-                            /* save the decrypted initialization vector for later use in message authentication verification as sa->dec_ivec gets scrambled during cbc process */
-                            memcpy (temp_iv, actual_iv, N2N_AES_IVEC_SIZE);
-
-                            /* decrypt payload in cbc mode using secondary key K2 */
-                            AES_cbc_encrypt (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE + N2N_AES_IVEC_SIZE, /* src: payload from buffer */
-                                             assembly, /* dst: assembly */
-                                             len,
-                                             &(sa->dec_key), /* using key K1 */
-                                             temp_iv,/* using the already decrypted IV */
-                                             0); /* = decryption */
-
-                            data_len = ntohs(*(uint16_t*)assembly);
-
-                            /* the transmitted data length (data_len + its own field size) should match the encrypted data length (len) +/- blocksize */
-                            if ( (len >= (data_len + TRANSOP_AES_DATA_LEN)) && ( (len - AES_BLOCK_SIZE) < (data_len + TRANSOP_AES_DATA_LEN) ) )
-                            {
-                                /* strictly speaking for this to be an ethernet packet
-                                 * it is going to need to be even bigger; but this is
-                                 * enough to prevent segfaults. */
-
-                                /* verify message authentication code by
-                                   1. cbc'ing the decrypted data again completly using K1,
-                                   2. xor'ing this block with VERSION and SA fields
-                                   3. encrypting the last cipher block using secondary key K2, and
-                                   4. finally, comparing with the trasmitted message authentication code */
-
-                                /* encrypt payload in cbc mode again using key K1 */
-                                AES_cbc_encrypt (assembly, /* src: the already decrypted data in assembly buffer */
-                                                 assembly2, /* dst: assembly2 */
-                                                 len,
-                                                 &(sa->enc_key), /* using key K1 */
-                                                 actual_iv,/* using the saved, already derypted IV from above */
-                                                 1); /* = encryption */
-
-                                /* xor that just encrypted last cipher block with AES version and security association (left bound) */
-                                memxor (assembly2 + len - AES_BLOCK_SIZE,  /* dst and operand */
-                                        inbuf, /* 2nd operand: the decrypted aes version and security associtation number */
-                                        TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE);
-
-                                /* encrypt that modified last cipher block again using K2 to generate ECBC-MAC for message authentication code */
-                                AES_encrypt (assembly2 + len - AES_BLOCK_SIZE, /* src: last cipher block */
-                                             assembly2 + len - AES_BLOCK_SIZE, /* dst: just overwrite in the same place as assembly2 is not needed anymore*/
-                                             &(sa->enc_key_2)); /* using the secondary key K2 */
-
-                                /* compare the just generated ECBC-MAC to the one transmitted in the packet */
-                                if (!memcmp (assembly2 + len - AES_BLOCK_SIZE, inbuf+ TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, N2N_AES_MSGAUTH_SIZE))
-                                {
-                                    len = data_len;
-
-                                    /* Step over data length value */
-                                    memcpy( outbuf, 
-                                            assembly + TRANSOP_AES_DATA_LEN, 
-                                            len );
-
- 	                           /* For replay prevention: Update time stamp after successfull decryption */
-                                    sa->prev_time_stamp = iv_micro_seconds;
-                                }
-                                else
-                                {
-                                    traceEvent( TRACE_WARNING, "Message authentication failed." );
-                                }
-                            }
-                            else
-                            {
-                                traceEvent( TRACE_WARNING, "The length of received encrypted data does not even roughly match the alleged UDP payload size." );
-                            }
-                        }
-                        else
-                        {
-                            /* part of replay prevention */
-                            traceEvent( TRACE_WARNING, "Packet's time stamp by %u microseconds lower than in previous packet.", abs (sa->prev_time_stamp - iv_micro_seconds) );
-                        }
-                    }
-                    else
-                    {
-                        /* part of replay prevention */
-                        traceEvent( TRACE_WARNING, "Packet did not arrive in expected time frame: %u microseconds off.", abs (micro_seconds - iv_micro_seconds) );
-                    }
-                }
-                else
-                {
-                    traceEvent( TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE );
-                    len = 0;
-                }
-            }
-            else
-            {
-                /* Wrong security association; drop the packet as it is undecodable. */
-                traceEvent( TRACE_ERROR, "decode_aes SA number %lu not found.", sa_rx );
-
-                /* REVISIT: should be able to load a new SA at this point to complete the decoding. */
-            }
-        }
-        else
-        {
-            /* Wrong security association; drop the packet as it is undecodable. */
-            traceEvent( TRACE_ERROR, "decode_aes unsupported aes version %u.", aes_enc_ver );
-
-            /* REVISIT: should be able to load a new SA at this point to complete the decoding. */
-        }
-    }
-    else
-    {
         traceEvent( TRACE_ERROR, "decode_aes inbuf wrong size (%ul) to decrypt.", in_len );
+	goto error;
     }
 
+    /* Get the SA number and make sure we are decrypting with the right one. */
+    decode_uint32( &sa_rx, inbuf, &rem, &idx );
+    sa_idx = aes_choose_rx_sa(priv, peer_mac, sa_rx);
+    if ( sa_idx < 0 )
+    {
+        traceEvent( TRACE_ERROR, "decode_aes SA number %lu not found.", sa_rx );
+        /* REVISIT: should be able to load a new SA at this point to complete the decoding. */
+	goto error;
+    }
+    sa_aes_t * sa = &(priv->sa[sa_idx]);
+    traceEvent( TRACE_DEBUG, "decode_aes %lu with SA %lu.", in_len, sa_rx, sa->sa_id );
+
+    /* calculate encrypted data length */
+    len = in_len - skip_to_encrypted_data;
+    if ( 0 != (len % AES_BLOCK_SIZE ) )
+    {
+        traceEvent( TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE );
+	len = 0;
+        goto error;
+    }
+
+    /* prepare IV for CBC decryption and also set decryption key */
+    AES_KEY key;
+    switch (aes_enc_ver)
+    {
+	case 1 :
+	{
+       	    memset (actual_iv, 0, N2N_AES_IVEC_SIZE);
+	    key = sa->dec_key_K;
+            break;
+	}
+        case 2 :
+	{
+	    /* decrypt the initialization vector using secondary key K2 */
+	    AES_decrypt (inbuf + TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + N2N_AES_MSGAUTH_SIZE, /* src: IV field in the buffer */
+	                 actual_iv, /* dst:  IV field in SA-structure getting used in the next step, i.e. cbc decryption of data */
+                         &(sa->dec_key_K2)); /* using secondary key K2 */
+	    key = sa->dec_key_K1;
+	    break;
+	}
+    }
+
+    /* prevent replay attacks, encryption scheme version 2 only */
+    uint64_t iv_micro_seconds;
+    if (aes_enc_ver == 2)
+    {
+        /* get current system time (for international use - not local time) for later
+        comparison to the one encoded in IV */
+        struct timeval tod;
+        uint64_t micro_seconds;
+        gettimeofday (&tod, NULL);
+        micro_seconds = tod.tv_sec * 1000000 + tod.tv_usec;
+        AES_decrypt (actual_iv, /* src: IV */
+                     temp_iv, /* dst: borrowed a temporary IV field getting used later in cbc decryption of data */
+                     &(sa->dec_key_K1)); /* using key K1 */
+        /* extract encoded system time out of IV */
+        iv_micro_seconds = be64toh(*(uint64_t*)temp_iv) >> 12 ;
+        /* it needs to be in the allowed time frame */
+        if (abs (micro_seconds - iv_micro_seconds) > N2N_MAX_PACKET_DELAY)
+        {
+            traceEvent( TRACE_WARNING, "Packet did not arrive in expected time frame: %u microseconds off.", abs (micro_seconds - iv_micro_seconds) );
+            goto error;
+        }
+        /* time stamp has to be bigger than the one of packet received before */
+        /* the only exception to let pass: the first packet ever */
+        if (sa->prev_time_stamp == 0)
+        {
+            sa->prev_time_stamp = iv_micro_seconds;
+        }
+        /* allow for some grace time because packets sometimes seem to overtake each other
+           either on the line or somewhere inside the network stack */
+        if (iv_micro_seconds < (sa->prev_time_stamp - N2N_MAX_PACKET_DEVIATION_TIME))
+        {
+            traceEvent( TRACE_WARNING, "Packet's time stamp by %u microseconds lower than in previous packet.", abs (sa->prev_time_stamp - iv_micro_seconds) );
+	    goto error;
+	}
+        /* restore a copy of initialization vector in the temp field for later use in
+           message authentication verification as aes_cbc's parameter gets scrambled during cbc process */
+        memcpy (temp_iv, actual_iv, N2N_AES_IVEC_SIZE);
+    }
+
+    /* decrypt payload in cbc mode using primary key K1 */
+    AES_cbc_encrypt (inbuf + skip_to_encrypted_data, /* src: payload from buffer */
+                     assembly, /* dst: assembly */
+                     len,
+                     &key, /* using key K (v1) or K1 (v2) */
+                     actual_iv,/* using the beforehand prepared IV */
+                     0); /* = decryption */
+
+    /* reconstruct original packet length */
+    switch (aes_enc_ver)
+    {
+	case 1 :
+	{
+	   uint8_t padding;
+            /* last byte is how much was padding: max value should be
+             * AES_BLOCKSIZE-1 */
+            padding = assembly[ len-1 ] & 0xff;
+            /* strictly speaking for this to be an ethernet packet
+             * it is going to need to be even bigger; but this is
+             * enough to prevent segfaults. */
+            if ( len < (padding + TRANSOP_AES_NONCE_SIZE))
+	    {
+		traceEvent( TRACE_WARNING, "UDP payload decryption failed." );
+		goto error;
+            }
+	    traceEvent( TRACE_DEBUG, "padding = %u", padding );
+            len -= padding;
+            len -= TRANSOP_AES_NONCE_SIZE; /* size of ethernet packet */
+	    break;
+	}
+	case 2 :
+	{
+	    uint16_t data_len;
+	    data_len = ntohs(*(uint16_t*)assembly);
+            /* the transmitted data length (data_len + its own field size) should match the encrypted data length (len) +/- blocksize */
+            if ( (len < (data_len + TRANSOP_AES_DATA_LEN)) || ( (len - AES_BLOCK_SIZE) >= (data_len + TRANSOP_AES_DATA_LEN) ) )
+	    {
+                traceEvent( TRACE_WARNING, "The length of received encrypted data does not even roughly match the alleged UDP payload size." );
+		goto error;
+	    }
+            len = data_len;
+            break;
+	}
+    }
+
+    /* verify message authentication code (encryption scheme version 2 only) ... */
+    if (aes_enc_ver == 2)
+    {
+        /* ... by
+           1. cbc'ing the decrypted data again completly using K1,
+           2. xor'ing this block with VERSION and SA fields
+           3. encrypting the last cipher block using secondary key K2, and
+           4. finally, comparing with the trasmitted message authentication code */
+
+        /* encrypt payload in cbc mode again using key K1 */
+        AES_cbc_encrypt (assembly, /* src: the already decrypted data in assembly buffer */
+                         assembly2, /* dst: assembly2 */
+                         len + TRANSOP_AES_DATA_LEN,
+                         &(sa->enc_key_K1), /* using key K1 */
+                         temp_iv,/* using the saved IV from above */
+                         1); /* = encryption */
+        /* xor that just encrypted last cipher block with AES version and security association (left bound) */
+        memxor (assembly2 + len - AES_BLOCK_SIZE,  /* dst and operand */
+                inbuf, /* 2nd operand: the decrypted aes version and security associtation number */
+                TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE);
+        /* encrypt that modified last cipher block again using K2 to generate ECBC-MAC for message authentication code */
+        AES_encrypt (assembly2 + len - AES_BLOCK_SIZE, /* src: last cipher block */
+                     assembly2 + len - AES_BLOCK_SIZE, /* dst: just overwrite in the same place as assembly2 is not needed anymore*/
+                     &(sa->enc_key_K2)); /* using the secondary key K2 */
+        /* compare the just generated ECBC-MAC to the one transmitted in the packet */
+        if (!memcmp (assembly2 + len - AES_BLOCK_SIZE, inbuf+ TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE, N2N_AES_MSGAUTH_SIZE))
+        {
+                traceEvent( TRACE_WARNING, "Message authentication failed." );
+                goto error;
+        }
+        /* For replay prevention: Update time stamp after verified decryption */
+        sa->prev_time_stamp = iv_micro_seconds;
+    }
+
+    /* Step over nonce length (v1) or data length value (v2) repectively */
+    uint8_t ethernet_data_offset;
+    switch (aes_enc_ver)
+    {
+	case 1 :
+	{
+	    ethernet_data_offset = TRANSOP_AES_NONCE_SIZE;
+	    break;
+	}
+	case 2 :
+	{
+	    ethernet_data_offset = TRANSOP_AES_DATA_LEN;
+	    break;
+	}
+    }
+
+    /* copy ethernet packet data to outuf */
+    memcpy( outbuf,
+            assembly + ethernet_data_offset,
+            len );
+
+error:
     return len;
 }
 
@@ -575,38 +698,63 @@ static int setup_aes_key(transop_aes_t *priv, uint8_t *keybuf, ssize_t pstat, si
     sa_aes_t * sa = &(priv->sa[sa_num]);
     size_t aes_keysize_bytes;
     size_t aes_keysize_bits;
-    uint8_t * hashed_keybuf;
+    uint8_t * modified_keybuf;
 
-    /* Clear out any old possibly longer key matter. */
-    memset( &(sa->enc_key), 0, sizeof(AES_KEY) );
-    memset( &(sa->dec_key), 0, sizeof(AES_KEY) );
-    /* ... and also some possible rest of a former time stamp */
+    /* Clear out any old possibly longer key material */
+    memset( &(sa->enc_key_K), 0, sizeof(AES_KEY) );
+    memset( &(sa->dec_key_K), 0, sizeof(AES_KEY) );
+    memset( &(sa->enc_key_K1), 0, sizeof(AES_KEY) );
+    memset( &(sa->enc_key_K1), 0, sizeof(AES_KEY) );
+    memset( &(sa->enc_key_K2), 0, sizeof(AES_KEY) );
+    memset( &(sa->enc_key_K2), 0, sizeof(AES_KEY) );
+    /* ... and also some possible rest of a former time stamp used by v2 */
     memset( &(sa->prev_time_stamp), 0, sizeof (sa->prev_time_stamp));
+    /* we need to setup all version's keys because as long as we try to be backward 
+       compatible, we never know what versioned packet will arrive and need to be decoded */
 
+    /* setup version 1 key K */
     aes_keysize_bytes = aes_best_keysize(pstat);
     aes_keysize_bits = 8 * aes_keysize_bytes;
-
-    /* The aes_keysize_bytes may differ from pstat, therefore hash */
-    /* HASH_SIZE > KEY_SIZE, essential to security  */
-    hashed_keybuf = calloc(1, SHA512_DIGEST_LENGTH);
-    if(!hashed_keybuf)
+   /* The aes_keysize_bytes may differ from pstat, possibly pad */
+    modified_keybuf = calloc(1, aes_keysize_bytes);
+    if(!modified_keybuf)
         return(1);
-    SHA512(keybuf, pstat, hashed_keybuf);
-
+    memcpy(modified_keybuf, keybuf, (pstat <= aes_keysize_bytes)?pstat:aes_keysize_bytes);
     /* Use N2N_MAX_KEYSIZE because the AES key needs to be of fixed
      * size. If fewer bits specified then the rest will be
      * zeroes. AES acceptable key sizes are 128, 192 and 256
      * bits. */
-    AES_set_encrypt_key(hashed_keybuf, aes_keysize_bits, &(sa->enc_key));
-    AES_set_decrypt_key(hashed_keybuf, aes_keysize_bits, &(sa->dec_key));
-    /* ivecs remain untouched here and get set directly before encryption or decryption respectively */
-    /* use the last part of the hash as secondary key */
-    AES_set_encrypt_key(hashed_keybuf+SHA512_DIGEST_LENGTH-aes_keysize_bytes, aes_keysize_bits, &(sa->enc_key_2));
-    AES_set_decrypt_key(hashed_keybuf+SHA512_DIGEST_LENGTH-aes_keysize_bytes, aes_keysize_bits, &(sa->dec_key_2));
-    
+    AES_set_encrypt_key(modified_keybuf, aes_keysize_bits, &(sa->enc_key_K));
+    AES_set_decrypt_key(modified_keybuf, aes_keysize_bits, &(sa->dec_key_K));
     traceEvent( TRACE_DEBUG, "transop_addspec_aes sa_id=%u, %u bits data=%s.\n",
                 priv->sa[sa_num].sa_id, aes_keysize_bits, keybuf);
-    free(hashed_keybuf);
+    free(modified_keybuf);
+
+    /* setup version 2 keys K1 and K2 */
+    /* cli keys are given in ascii or some other letter coding which show
+       far less entropy as they do no use the full byte range. Thus, we
+       assume 4 password letters/special characters  to have the same entropy
+       than one random byte, that's why pstat gets divided by 4 for 
+       key size determination. */
+    aes_keysize_bytes = aes_best_keysize(pstat / 4);
+    /* AES acceptable key sizes are 128, 192 and 256 bits. */
+    aes_keysize_bits = 8 * aes_keysize_bytes;
+
+    /* The aes_keysize_bytes may differ from pstat, therefore hash and make sure that
+       HASH_SIZE > KEY_SIZE, that is essential to security because two keys are derived */
+    modified_keybuf = calloc(1, SHA512_DIGEST_LENGTH);
+    if(!modified_keybuf)
+        return(1);
+    SHA512(keybuf, pstat, modified_keybuf);
+    /* set (primary) en/decryption key , use #aes_keysize_bits first bits of hash */
+    AES_set_encrypt_key(modified_keybuf, aes_keysize_bits, &(sa->enc_key_K1));
+    AES_set_decrypt_key(modified_keybuf, aes_keysize_bits, &(sa->dec_key_K1));
+    /* use the last part of the hash as secondary key */
+    AES_set_encrypt_key(modified_keybuf+SHA512_DIGEST_LENGTH/2, aes_keysize_bits, &(sa->enc_key_K2));
+    AES_set_decrypt_key(modified_keybuf+SHA512_DIGEST_LENGTH/2, aes_keysize_bits, &(sa->dec_key_K2));
+    free(modified_keybuf);
+
+    ++(priv->num_sa);
 
     return(0);
 }
@@ -750,6 +898,7 @@ int transop_aes_init( n2n_trans_op_t * ttt )
         priv->num_sa=0;
         priv->tx_sa=0; /* We will use this sa index for encoding. */
         priv->psk_mode = 0;
+	priv->version = N2N_AES_TRANSFORM_VERSION_MIN;
 
         ttt->transform_id = N2N_TRANSFORM_ID_AESCBC;
         ttt->addspec = transop_addspec_aes;
@@ -763,10 +912,13 @@ int transop_aes_init( n2n_trans_op_t * ttt )
             sa = &(priv->sa[i]);
             sa->sa_id=0;
             memset( &(sa->spec), 0, sizeof(n2n_cipherspec_t) );
-            memset( &(sa->enc_key), 0, sizeof(AES_KEY) );
-            memset( &(sa->dec_key), 0, sizeof(AES_KEY) );
+            memset( &(sa->enc_key_K), 0, sizeof(AES_KEY) );
+            memset( &(sa->dec_key_K), 0, sizeof(AES_KEY) );
+            memset( &(sa->enc_key_K1), 0, sizeof(AES_KEY) );
+            memset( &(sa->dec_key_K1), 0, sizeof(AES_KEY) );
+            memset( &(sa->enc_key_K2), 0, sizeof(AES_KEY) );
+            memset( &(sa->dec_key_K2), 0, sizeof(AES_KEY) );
             memset( &(sa->prev_time_stamp), 0, sizeof (sa->prev_time_stamp));
-
         }
 
         retval = 0;
@@ -784,7 +936,8 @@ int transop_aes_init( n2n_trans_op_t * ttt )
 int transop_aes_setup_psk(n2n_trans_op_t *ttt,
                            n2n_sa_t sa_num,
                            uint8_t *encrypt_pwd,
-                           uint32_t encrypt_pwd_len) {
+                           uint32_t encrypt_pwd_len,
+                           uint8_t aes_version) {
     static const u_int8_t broadcast_mac[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
     int retval = 1;
     transop_aes_t *priv = (transop_aes_t *)ttt->priv;
@@ -800,8 +953,12 @@ int transop_aes_setup_psk(n2n_trans_op_t *ttt,
         priv->num_sa=0;
         priv->tx_sa=0;
 
+	/* encryption scheme version */
+	priv->version = aes_version;
+
         /* Add the key to be used for broadcast */
         add_aes_key(priv, priv->encrypt_pwd, priv->encrypt_pwd_len);
+
         memcpy(priv->mac_sa[0], broadcast_mac, N2N_MAC_SIZE);
         priv->sa_to_replace = priv->num_sa;
 
