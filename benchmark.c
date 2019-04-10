@@ -103,50 +103,44 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, ui
   n2n_common_t cmn;
   n2n_PACKET_t pkt;
   n2n_mac_t mac_buf;
-
+  const int target_sec = 3;
   struct timeval t1;
   struct timeval t2;
-
-  size_t i;
-  size_t n;
   size_t idx;
   size_t rem;
   ssize_t nw;
-  ssize_t tdiff;
+  ssize_t target_usec = target_sec * 1e6;
+  ssize_t tdiff = 0; // microseconds
+  size_t num_packets = 0;
 
-  n=10000;
+  printf("Run [%s] for %us (%u bytes):   ", op_name, target_sec, (unsigned int)sizeof(PKT_CONTENT));
+  fflush(stdout);
 
   memset(mac_buf, 0, sizeof(mac_buf));
   gettimeofday( &t1, NULL );
-  for(i=0; i<n; ++i)
-    {
-      nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, c);
 
-      nw += op_fn->fwd( op_fn,
-			      pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
-			      PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
+  while(tdiff < target_usec) {
+    nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, c);
 
-      idx=0;
-      rem=nw;
+    nw += op_fn->fwd(op_fn,
+	  pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
+	  PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
 
-      decode_common( &cmn, pktbuf, &rem, &idx);
-      decode_PACKET( &pkt, &cmn, pktbuf, &rem, &idx );
+    idx=0;
+    rem=nw;
 
-      if ( 0 == (i%(n/10)) )
-        {
-	  fprintf(stderr,".");
-        }
-    }
-  gettimeofday( &t2, NULL );
+    decode_common( &cmn, pktbuf, &rem, &idx);
+    decode_PACKET( &pkt, &cmn, pktbuf, &rem, &idx );
 
-  tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+    gettimeofday( &t2, NULL );
+    tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+    num_packets++;
+  }
 
-  fprintf( stderr, "\n[%s] %u times: (%u -> %u nsec each) %u.%06u -> %u.%06u.\n",
-	   op_name,
-	   (unsigned int)i, (unsigned int)tdiff,
-	   (unsigned int)((tdiff *1000)/i),
-	   (uint32_t)t1.tv_sec, (uint32_t)t1.tv_usec,
-	   (uint32_t)t2.tv_sec, (uint32_t)t2.tv_usec );
+  float mpps = num_packets / (tdiff / 1e6) / 1e6;
+
+  printf("\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
+	   (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
 }
 
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
