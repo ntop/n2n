@@ -59,13 +59,7 @@ struct transop_aes
     ssize_t             tx_sa;
     size_t              num_sa;
     sa_aes_t            sa[N2N_AES_NUM_SA];
-
-    /* PSK mode only */
-    int                 psk_mode;
-    u_int8_t            mac_sa[N2N_AES_NUM_SA][N2N_MAC_SIZE]; /* this is used as a key in the sa array */
-    uint8_t             *encrypt_pwd;
-    uint32_t            encrypt_pwd_len;
-    size_t              sa_to_replace;
+    u_int8_t            psk_mode;
 };
 
 typedef struct transop_aes transop_aes_t;
@@ -99,43 +93,8 @@ static int transop_deinit_aes( n2n_trans_op_t * arg )
     return 0;
 }
 
-/* Find the peer_mac sa */
-static size_t aes_psk_get_peer_sa(transop_aes_t * priv, const u_int8_t * peer_mac) {
-    size_t i;
-    int found = 0;
-
-    /* Find the MAC sa */
-    for(i=0; i<priv->num_sa; i++) {
-        if(!memcmp(priv->mac_sa[i], peer_mac, N2N_MAC_SIZE)) {
-            found = 1;
-            break;
-        }
-    }
-
-    if(found)
-        return(i);
-
-    size_t new_sa = priv->sa_to_replace;
-    macstr_t mac_buf;
-    macaddr_str(mac_buf, peer_mac);
-    traceEvent(TRACE_DEBUG, "Assigning SA %u to %s", new_sa, mac_buf);
-
-    setup_aes_key(priv, priv->encrypt_pwd, priv->encrypt_pwd_len, new_sa);
-    priv->num_sa = max(priv->num_sa, new_sa + 1);
-    memcpy(priv->mac_sa[new_sa], peer_mac, N2N_MAC_SIZE);
-    priv->sa[new_sa].sa_id = new_sa;
-
-    /* Use sa_to_replace round-robin */
-    priv->sa_to_replace = (priv->sa_to_replace + 1) % N2N_AES_NUM_SA;
-
-    return new_sa;
-}
-
 static size_t aes_choose_tx_sa( transop_aes_t * priv, const u_int8_t * peer_mac ) {
-    if(!priv->psk_mode)
-        return priv->tx_sa; /* set in tick */
-    else
-        return aes_psk_get_peer_sa(priv, peer_mac);
+    return priv->tx_sa; /* set in tick */
 }
 
 static ssize_t aes_choose_rx_sa( transop_aes_t * priv, const u_int8_t * peer_mac, ssize_t sa_rx) {
@@ -143,7 +102,7 @@ static ssize_t aes_choose_rx_sa( transop_aes_t * priv, const u_int8_t * peer_mac
         return aes_find_sa(priv, sa_rx);
     else
         /* NOTE the sa_rx of the packet is ignored in this case */
-        return aes_psk_get_peer_sa(priv, peer_mac);
+        return 0;
 }
 
 #define TRANSOP_AES_VER_SIZE     1       /* Support minor variants in encoding in one module. */
@@ -606,7 +565,6 @@ int transop_aes_setup_psk(n2n_trans_op_t *ttt,
                            n2n_sa_t sa_num,
                            uint8_t *encrypt_pwd,
                            uint32_t encrypt_pwd_len) {
-    static const u_int8_t broadcast_mac[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
     int retval = 1;
     transop_aes_t *priv = (transop_aes_t *)ttt->priv;
 
@@ -614,17 +572,11 @@ int transop_aes_setup_psk(n2n_trans_op_t *ttt,
         /* Replace the tick function with the PSK version of it */
         ttt->tick = transop_tick_aes_psk;
         priv->psk_mode = 1;
-        memset(priv->mac_sa, 0, sizeof(priv->mac_sa));
-        priv->encrypt_pwd = encrypt_pwd;
-        priv->encrypt_pwd_len = encrypt_pwd_len;
-
         priv->num_sa=0;
         priv->tx_sa=0;
 
-        /* Add the key to be used for broadcast */
-        add_aes_key(priv, priv->encrypt_pwd, priv->encrypt_pwd_len);
-        memcpy(priv->mac_sa[0], broadcast_mac, N2N_MAC_SIZE);
-        priv->sa_to_replace = priv->num_sa;
+        /* Setup the key to use for encryption/decryption */
+        add_aes_key(priv, encrypt_pwd, encrypt_pwd_len);
 
         retval = 0;
     } else
