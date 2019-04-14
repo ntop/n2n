@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
   int  keep_on_running = 1;
   
   /* Increase tracelevel to see what's happening */
-  traceLevel = 10;
+  setTraceLevel(10);
 
   /* 
      NOTE

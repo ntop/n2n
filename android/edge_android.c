@@ -336,8 +336,6 @@ int start_edge(const n2n_edge_cmd_t* cmd)
     report_edge_status();
     traceEvent(TRACE_NORMAL, "edge started");
 
-    update_supernode_reg(&eee, time(NULL));
-
     return run_edge_loop(&eee, &keep_on_running);
 }
 

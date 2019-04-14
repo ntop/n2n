@@ -44,6 +44,7 @@
 #include "config.h"
 #endif
 
+#define PACKAGE_BUILDDATE (__DATE__ " " __TIME__)
 
 #include <time.h>
 #include <ctype.h>
@@ -262,89 +263,66 @@ struct n2n_edge {
 
 /* ************************************** */
 
-/* Variables */
-/* extern TWOFISH *tf; */
-extern int traceLevel;
-extern int useSyslog;
-extern const uint8_t broadcast_addr[6];
-extern const uint8_t multicast_addr[6];
+/* Log */
+void setTraceLevel(int level);
+void setUseSyslog(int use_syslog);
+int getTraceLevel();
+void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
 
-/* Functions */
-extern void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
-extern int  tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip, 
+/* Tuntap API */
+int tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip, 
 			char *device_mask, const char * device_mac, int mtu);
-extern int  tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
-extern int  tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
-extern void tuntap_close(struct tuntap_dev *tuntap);
-extern void tuntap_get_address(struct tuntap_dev *tuntap);
+int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
+int tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
+void tuntap_close(struct tuntap_dev *tuntap);
+void tuntap_get_address(struct tuntap_dev *tuntap);
 
-extern SOCKET open_socket(int local_port, int bind_any);
-
-extern char* intoa(uint32_t addr, char* buf, uint16_t buf_len);
-extern char* macaddr_str(macstr_t buf, const n2n_mac_t mac);
-extern int   str2mac( uint8_t * outmac /* 6 bytes */, const char * s );
-extern char * sock_to_cstr( n2n_sock_str_t out,
-                            const n2n_sock_t * sock );
-
-extern int sock_equal( const n2n_sock_t * a, 
-                       const n2n_sock_t * b );
-
-extern uint8_t is_multi_broadcast(const uint8_t * dest_mac);
-extern char* msg_type2str(uint16_t msg_type);
-extern void hexdump(const uint8_t * buf, size_t len);
-
+/* Utils */
+char* intoa(uint32_t addr, char* buf, uint16_t buf_len);
+char* macaddr_str(macstr_t buf, const n2n_mac_t mac);
+int str2mac( uint8_t * outmac /* 6 bytes */, const char * s );
+uint8_t is_multi_broadcast(const uint8_t * dest_mac);
+char* msg_type2str(uint16_t msg_type);
+void hexdump(const uint8_t * buf, size_t len);
 void print_n2n_version();
+void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
+int is_empty_ip_address(const n2n_sock_t * sock);
+const char *random_device_mac(void);
 
+/* Sockets */
+char* sock_to_cstr( n2n_sock_str_t out,
+                            const n2n_sock_t * sock );
+SOCKET open_socket(int local_port, int bind_any);
+int sock_equal( const n2n_sock_t * a, 
+                       const n2n_sock_t * b );
 
 /* Operations on peer_info lists. */
 struct peer_info * find_peer_by_mac( struct peer_info * list,
                                      const n2n_mac_t mac );
-void   peer_list_add( struct peer_info * * list,
+void peer_list_add( struct peer_info * * list,
                       struct peer_info * newp );
 size_t peer_list_size( const struct peer_info * list );
 size_t purge_peer_list( struct peer_info ** peer_list, 
                         time_t purge_before );
 size_t clear_peer_list( struct peer_info ** peer_list );
 size_t purge_expired_registrations( struct peer_info ** peer_list );
-
-/* version.c */
-extern char *n2n_sw_version, *n2n_sw_osName, *n2n_sw_buildDate;
-
-/* egde_utils.c */
-int edge_init(n2n_edge_t * eee);
-void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
-void update_supernode_reg(n2n_edge_t * eee, time_t nowTime);
-int is_empty_ip_address(const n2n_sock_t * sock);
 void update_peer_address(n2n_edge_t * eee,
 			 uint8_t from_supernode,
 			 const n2n_mac_t mac,
 			 const n2n_sock_t * peer,
 			 time_t when);
-int transop_enum_to_index(n2n_transform_t id);
+
+/* Public functions */
 int edge_init_keyschedule(n2n_edge_t * eee);
-void update_peer_address(n2n_edge_t * eee,
-			 uint8_t from_supernode,
-			 const n2n_mac_t mac,
-			 const n2n_sock_t * peer,
-			 time_t when);
-int is_empty_ip_address(const n2n_sock_t * sock);
-void send_register(n2n_edge_t * eee,
-		   const n2n_sock_t * remote_peer);
 void send_packet2net(n2n_edge_t * eee,
 		     uint8_t *tap_pkt, size_t len);
-void check_peer(n2n_edge_t * eee,
-		uint8_t from_supernode,
-		const n2n_mac_t mac,
-		const n2n_sock_t * peer);
-void set_peer_operational(n2n_edge_t * eee,
-			  const n2n_mac_t mac,
-			  const n2n_sock_t * peer);
-const char * supernode_ip(const n2n_edge_t * eee);
 int edge_init_encryption(n2n_edge_t * eee, uint8_t *encrypt_pwd, uint32_t encrypt_pwd_len);
 int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port);
-int run_edge_loop(n2n_edge_t * eee, int *keep_running);
+
+int edge_init(n2n_edge_t * eee);
 void edge_term(n2n_edge_t * eee);
-const char *random_device_mac(void);
+int run_edge_loop(n2n_edge_t * eee, int *keep_running);
+
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,

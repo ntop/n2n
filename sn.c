@@ -721,7 +721,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     break;
 
   case 'v': /* verbose */
-    traceLevel = 4; /* DEBUG */
+    setTraceLevel(4); /* DEBUG */
     break;
 
   default:
@@ -905,7 +905,7 @@ int main(int argc, char * const argv[]) {
   }
 #endif /* #if defined(N2N_HAVE_DAEMON) */
 
-  traceEvent(TRACE_DEBUG, "traceLevel is %d", traceLevel);
+  traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
   sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/);
   if(-1 == sss_node.sock) {

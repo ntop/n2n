@@ -334,7 +334,7 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
     }
 
   case 'v': /* verbose */
-    traceLevel = 4; /* DEBUG */
+    setTraceLevel(4); /* DEBUG */
     break;
     
   default:
@@ -616,7 +616,7 @@ int main(int argc, char* argv[]) {
   if((rc < 0) || (eee.sn_num == 0))
     help();
   
-  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", n2n_sw_version, n2n_sw_buildDate);
+  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
   for (i=0; i<eee.sn_num; ++i)
     traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (eee.sn_ip_array[i]));
@@ -636,7 +636,7 @@ int main(int argc, char* argv[]) {
 
 #ifndef WIN32
   if(eee.daemon) {
-    useSyslog = 1; /* traceEvent output now goes to syslog. */
+    setUseSyslog(1); /* traceEvent output now goes to syslog. */
     daemonize();
   }
 #endif /* #ifndef WIN32 */
@@ -697,8 +697,6 @@ int main(int argc, char* argv[]) {
   }
 
   traceEvent(TRACE_NORMAL, "edge started");
-
-  update_supernode_reg(&eee, time(NULL));
 
   return run_edge_loop(&eee, &keep_on_running);
 }

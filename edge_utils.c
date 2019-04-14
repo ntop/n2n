@@ -61,6 +61,15 @@
 
 /* ************************************** */
 
+static const char * supernode_ip(const n2n_edge_t * eee);
+static void send_register(n2n_edge_t * eee, const n2n_sock_t * remote_peer);
+static void check_peer(n2n_edge_t * eee,
+		uint8_t from_supernode,
+		const n2n_mac_t mac,
+		const n2n_sock_t * peer);
+
+/* ************************************** */
+
 /** Initialise an edge to defaults.
  *
  *  This also initialises the NULL transform operation opstruct.
@@ -232,7 +241,7 @@ static void try_send_register(n2n_edge_t * eee,
 /* ************************************** */
 
 /** Update the last_seen time for this peer, or get registered. */
-void check_peer(n2n_edge_t * eee,
+static void check_peer(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer) {
@@ -260,7 +269,7 @@ void check_peer(n2n_edge_t * eee,
  *
  * Called by main loop when Rx a REGISTER_ACK.
  */
-void set_peer_operational(n2n_edge_t * eee,
+static void set_peer_operational(n2n_edge_t * eee,
 			  const n2n_mac_t mac,
 			  const n2n_sock_t * peer) {
   struct peer_info * prev = NULL;
@@ -511,7 +520,7 @@ static void send_register_super(n2n_edge_t * eee,
 /* ************************************** */
 
 /** Send a REGISTER packet to another edge. */
-void send_register(n2n_edge_t * eee,
+static void send_register(n2n_edge_t * eee,
 		   const n2n_sock_t * remote_peer) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   size_t idx;
@@ -582,7 +591,7 @@ static void send_register_ack(n2n_edge_t * eee,
  *
  *  This is frequently called by the main loop.
  */
-void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
+static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
   u_int sn_idx;
   
   if(eee->sn_wait && (nowTime > (eee->last_register_req + (eee->register_lifetime/10)))) {
@@ -643,7 +652,7 @@ static void send_deregister(n2n_edge_t * eee,
 /* ************************************** */
 
 /** Return the IP address of the current supernode in the ring. */
-const char * supernode_ip(const n2n_edge_t * eee) {
+static const char * supernode_ip(const n2n_edge_t * eee) {
   return (eee->sn_ip_array)[eee->sn_idx];
 }
 
@@ -742,7 +751,7 @@ static int n2n_tick_transop(n2n_edge_t * eee, time_t now)
  *
  * @return - index into the transop array, or -1 on failure.
  */
-int transop_enum_to_index(n2n_transform_t id) {
+static int transop_enum_to_index(n2n_transform_t id) {
   switch (id)
     {
     case N2N_TRANSFORM_ID_TWOFISH:
@@ -889,7 +898,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
       if(0 == memcmp(udp_buf, "help", 4))
         {
 	  msg_len=0;
-	  ++traceLevel;
+	  setTraceLevel(getTraceLevel()+1);
 
 	  msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
 			      "Help for edge management console:\n"
@@ -913,11 +922,11 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
       if(0 == memcmp(udp_buf, "+verb", 5))
         {
 	  msg_len=0;
-	  ++traceLevel;
+	  setTraceLevel(getTraceLevel()+1);
 
-	  traceEvent(TRACE_ERROR, "+verb traceLevel=%u", (unsigned int)traceLevel);
+	  traceEvent(TRACE_ERROR, "+verb traceLevel=%u", (unsigned int)getTraceLevel());
 	  msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-			      "> +OK traceLevel=%u\n", (unsigned int)traceLevel);
+			      "> +OK traceLevel=%u\n", (unsigned int)getTraceLevel());
 
 	  sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 		 (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
@@ -929,19 +938,19 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
         {
 	  msg_len=0;
 
-	  if(traceLevel > 0)
+	  if(getTraceLevel() > 0)
             {
-	      --traceLevel;
+	      setTraceLevel(getTraceLevel()-1);
 	      msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-				  "> -OK traceLevel=%u\n", traceLevel);
+				  "> -OK traceLevel=%u\n", getTraceLevel());
             }
 	  else
             {
 	      msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-				  "> -NOK traceLevel=%u\n", traceLevel);
+				  "> -NOK traceLevel=%u\n", getTraceLevel());
             }
 
-	  traceEvent(TRACE_ERROR, "-verb traceLevel=%u", (unsigned int)traceLevel);
+	  traceEvent(TRACE_ERROR, "-verb traceLevel=%u", (unsigned int)getTraceLevel());
 
 	  sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 		 (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
@@ -1512,6 +1521,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif
 
   *keep_running = 1;
+  update_supernode_reg(eee, time(NULL));
       
   /* Main loop
    *
@@ -1808,8 +1818,6 @@ int quick_edge_init(char *device_name, char *community_name,
 
   if(edge_init_sockets(&eee, 0 /* ANY port */, 0 /* ANY port */) < 0)
     return(-3);
-
-  update_supernode_reg(&eee, time(NULL));
 
   return(run_edge_loop(&eee, keep_on_running));
 }

@@ -31,9 +31,9 @@
 #endif /* #if defined(DEBUG) */
 
 
-const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
-const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
+static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
+static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
 
 /* ************************************** */
 
@@ -67,8 +67,20 @@ SOCKET open_socket(int local_port, int bind_any) {
   return(sock_fd);
 }
 
-int traceLevel = 2 /* NORMAL */;
-int useSyslog = 0, syslog_opened = 0;
+static int traceLevel = 2 /* NORMAL */;
+static int useSyslog = 0, syslog_opened = 0;
+
+int getTraceLevel() {
+  return(traceLevel);
+}
+
+void setTraceLevel(int level) {
+  traceLevel = level;
+}
+
+void setUseSyslog(int use_syslog) {
+  useSyslog= use_syslog;
+}
 
 #define N2N_TRACE_DATESIZE 32
 void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
@@ -252,7 +264,7 @@ void print_n2n_version() {
   printf("Welcome to n2n v.%s for %s\n"
          "Built on %s\n"
 	 "Copyright 2007-18 - ntop.org and contributors\n\n",
-         n2n_sw_version, n2n_sw_osName, n2n_sw_buildDate);
+         PACKAGE_VERSION, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
 }
 
 /* *********************************************** */ 
