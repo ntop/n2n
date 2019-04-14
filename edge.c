@@ -184,15 +184,14 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
   case'K':
     {
       if(ec->encrypt_key) {
-        fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
+        traceEvent(TRACE_ERROR, "Error: -K and -k options are mutually exclusive");
         exit(1);
       } else {
         strncpy(eee->keyschedule, optargument, N2N_PATHNAME_MAXLEN-1);
         /* strncpy does not add NULL if the source has no NULL. */
         eee->keyschedule[N2N_PATHNAME_MAXLEN-1] = 0;
 	      
-        traceEvent(TRACE_DEBUG, "keyfile = '%s'\n", eee->keyschedule);
-        fprintf(stderr, "keyfile = '%s'\n", eee->keyschedule);
+        traceEvent(TRACE_NORMAL, "keyfile = '%s'\n", eee->keyschedule);
       }
       break;
     }
@@ -215,7 +214,7 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
   case 'E': /* multicast ethernet addresses accepted. */
     {
       eee->drop_multicast=0;
-      traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic\n");
+      traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic");
       break;
     }
 
@@ -256,7 +255,7 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
   case 'k': /* encrypt key */
     {
       if(strlen(eee->keyschedule) > 0) {
-        fprintf(stderr, "Error: -K and -k options are mutually exclusive.\n");
+        traceEvent(TRACE_ERROR, "-K and -k options are mutually exclusive");
         exit(1);
       } else {
         traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", ec->encrypt_key);
@@ -283,10 +282,10 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
     if(optargument) {
       if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
         strncpy((eee->sn_ip_array[eee->sn_num]), optargument, N2N_EDGE_SN_HOST_SIZE);
-        traceEvent(TRACE_NORMAL, "Adding supernode[%u] = %s\n", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
+        traceEvent(TRACE_NORMAL, "Adding supernode[%u] = %s", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
         ++eee->sn_num;
       } else {
-        traceEvent(TRACE_WARNING, "Too many supernodes!\n");
+        traceEvent(TRACE_WARNING, "Too many supernodes!");
         exit(1);
       }
       break;
@@ -321,7 +320,7 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
   case 's': /* Subnet Mask */
     {
       if(0 != ec->got_s) {
-        traceEvent(TRACE_WARNING, "Multiple subnet masks supplied.");
+        traceEvent(TRACE_WARNING, "Multiple subnet masks supplied");
       }
       strncpy(ec->netmask, optargument, N2N_NETMASK_STR_SIZE);
       ec->got_s = 1;
@@ -340,7 +339,7 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
     
   default:
     {
-      traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char)optkey);
+      traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
       return(-1);
     }
   }
@@ -681,19 +680,19 @@ int main(int argc, char* argv[]) {
 
   if(ec.encrypt_key) {
     if(edge_init_encryption(&eee, (uint8_t *)ec.encrypt_key, strlen(ec.encrypt_key)) != 0) {
-      fprintf(stderr, "Error: encryption setup failed.\n");
+      traceEvent(TRACE_ERROR, "Error: encryption setup failed");
       return(-1);
     }
   } else if(strlen(eee.keyschedule) > 0) {
     if(edge_init_keyschedule(&eee) < 0) {
-      fprintf(stderr, "Error: keyschedule setup failed.\n");
+      traceEvent(TRACE_ERROR, "Error: keyschedule setup failed");
       return(-1);
     }
   }
   /* else run in NULL mode */
 
   if(edge_init_sockets(&eee, ec.local_port, ec.mgmt_port) < 0) {
-    fprintf(stderr, "Error: socket setup failed.\n");
+    traceEvent(TRACE_ERROR, "Error: socket setup failed");
     return(-1);
   }
 

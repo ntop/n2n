@@ -78,7 +78,7 @@ int tuntap_open(tuntap_dev *device,
 
   device->fd = open(tuntap_device, O_RDWR);
   if(device->fd < 0) {
-    printf("ERROR: ioctl() [%s][%d]\n", strerror(errno), errno);
+    traceEvent(TRACE_ERROR, "ioctl() [%s][%d]\n", strerror(errno), errno);
     return -1;
   }
 

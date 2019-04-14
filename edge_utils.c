@@ -668,13 +668,13 @@ static int edge_init_aes_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 int edge_init_encryption(n2n_edge_t * eee, uint8_t *encrypt_pwd, uint32_t encrypt_pwd_len) {
 #ifdef N2N_HAVE_AES
   if(edge_init_aes_psk(eee, encrypt_pwd, encrypt_pwd_len) < 0) {
-    fprintf(stderr, "Error: AES PSK setup failed.\n");
+    traceEvent(TRACE_ERROR, "Error: AES PSK setup failed");
     return(-1);
   }
 #endif
 
   if(edge_init_twofish_psk(eee, encrypt_pwd, encrypt_pwd_len) < 0) {
-    fprintf(stderr, "Error: twofish PSK setup failed.\n");
+    traceEvent(TRACE_ERROR, "Error: twofish PSK setup failed");
     return(-1);
   }
 
