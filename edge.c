@@ -680,71 +680,21 @@ int main(int argc, char* argv[]) {
     traceEvent(TRACE_NORMAL, "Binding to local port %d", (signed int)ec.local_port);
 
   if(ec.encrypt_key) {
-#ifdef N2N_HAVE_AES
-    if(edge_init_aes_psk(&eee, (uint8_t *)(ec.encrypt_key), strlen(ec.encrypt_key)) < 0) {
-      fprintf(stderr, "Error: AES PSK setup failed.\n");
+    if(edge_init_encryption(&eee, (uint8_t *)ec.encrypt_key, strlen(ec.encrypt_key)) != 0) {
+      fprintf(stderr, "Error: encryption setup failed.\n");
       return(-1);
     }
-#endif
-    
-    if(edge_init_twofish_psk(&eee, (uint8_t *)(ec.encrypt_key), strlen(ec.encrypt_key)) < 0) {
-      fprintf(stderr, "Error: twofish PSK setup failed.\n");
-      return(-1);
-    }
-    
   } else if(strlen(eee.keyschedule) > 0) {
-    if(edge_init_keyschedule(&eee) != 0) {
+    if(edge_init_keyschedule(&eee) < 0) {
       fprintf(stderr, "Error: keyschedule setup failed.\n");
       return(-1);
     }
-  }  
+  }
   /* else run in NULL mode */
 
-  /* Populate the multicast group for local edge */
-  eee.multicast_peer.family     = AF_INET;
-  eee.multicast_peer.port       = N2N_MULTICAST_PORT;
-  eee.multicast_peer.addr.v4[0] = 224; /* N2N_MULTICAST_GROUP */
-  eee.multicast_peer.addr.v4[1] = 0;
-  eee.multicast_peer.addr.v4[2] = 0;
-  eee.multicast_peer.addr.v4[3] = 68;
-      
-  eee.udp_sock = open_socket(ec.local_port, 1 /* bind ANY */);
-  if(eee.udp_sock < 0) {
-    traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", (signed int)ec.local_port);
+  if(edge_init_sockets(&eee, ec.local_port, ec.mgmt_port) < 0) {
+    fprintf(stderr, "Error: socket setup failed.\n");
     return(-1);
-  }
-  
-  eee.udp_mgmt_sock = open_socket(ec.mgmt_port, 0 /* bind LOOPBACK */);  
-  if(eee.udp_mgmt_sock < 0) {
-    traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", ec.mgmt_port);
-    return(-1);
-  }
-
-  eee.udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
-  if(eee.udp_multicast_sock < 0)
-    return(-5);
-  else {
-    /* Bind eee.udp_multicast_sock to multicast group */
-    struct ip_mreq mreq;
-    u_int enable_reuse = 1;
-    
-    /* allow multiple sockets to use the same PORT number */
-    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
-#ifdef SO_REUSEPORT /* no SO_REUSEPORT in Windows / old linux versions */
-    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
-#endif
-    
-    mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
-      traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u [errno %u]",
-		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
-
-#ifdef WIN32
-      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
-#endif
-      return(-6);
-    }    
   }
 
   traceEvent(TRACE_NORMAL, "edge started");

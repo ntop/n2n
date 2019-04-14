@@ -340,10 +340,8 @@ void set_peer_operational(n2n_edge_t * eee,
 			  const n2n_mac_t mac,
 			  const n2n_sock_t * peer);
 const char * supernode_ip(const n2n_edge_t * eee);
-int edge_init_twofish_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
-		      uint32_t encrypt_pwd_len);
-int edge_init_aes_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
-		      uint32_t encrypt_pwd_len);
+int edge_init_encryption(n2n_edge_t * eee, uint8_t *encrypt_pwd, uint32_t encrypt_pwd_len);
+int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port);
 int run_edge_loop(n2n_edge_t * eee, int *keep_running);
 void edge_term(n2n_edge_t * eee);
 const char *random_device_mac(void);

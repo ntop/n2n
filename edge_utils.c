@@ -649,7 +649,7 @@ const char * supernode_ip(const n2n_edge_t * eee) {
 
 /* ************************************** */
 
-int edge_init_twofish_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
+static int edge_init_twofish_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 		      uint32_t encrypt_pwd_len) {
   return transop_twofish_setup_psk(&(eee->transop[N2N_TRANSOP_TF_IDX]),
 			       0, encrypt_pwd, encrypt_pwd_len);
@@ -657,10 +657,28 @@ int edge_init_twofish_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 
 /* ************************************** */
 
-int edge_init_aes_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
+static int edge_init_aes_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
 		      uint32_t encrypt_pwd_len) {
   return transop_aes_setup_psk(&(eee->transop[N2N_TRANSOP_AESCBC_IDX]),
 			       0, encrypt_pwd, encrypt_pwd_len);
+}
+
+/* ************************************** */
+
+int edge_init_encryption(n2n_edge_t * eee, uint8_t *encrypt_pwd, uint32_t encrypt_pwd_len) {
+#ifdef N2N_HAVE_AES
+  if(edge_init_aes_psk(eee, encrypt_pwd, encrypt_pwd_len) < 0) {
+    fprintf(stderr, "Error: AES PSK setup failed.\n");
+    return(-1);
+  }
+#endif
+
+  if(edge_init_twofish_psk(eee, encrypt_pwd, encrypt_pwd_len) < 0) {
+    fprintf(stderr, "Error: twofish PSK setup failed.\n");
+    return(-1);
+  }
+
+  return(0);
 }
 
 /* ************************************** */
@@ -1715,6 +1733,59 @@ const char *random_device_mac(void)
 
 /* ************************************** */
 
+int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port) {
+  /* Populate the multicast group for local edge */
+  eee->multicast_peer.family     = AF_INET;
+  eee->multicast_peer.port       = N2N_MULTICAST_PORT;
+  eee->multicast_peer.addr.v4[0] = 224; /* N2N_MULTICAST_GROUP */
+  eee->multicast_peer.addr.v4[1] = 0;
+  eee->multicast_peer.addr.v4[2] = 0;
+  eee->multicast_peer.addr.v4[3] = 68;
+
+  eee->udp_sock = open_socket(udp_local_port, 1 /* bind ANY */);
+  if(eee->udp_sock < 0) {
+    traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", udp_local_port);
+    return(-1);
+  }
+
+  eee->udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
+  if(eee->udp_mgmt_sock < 0) {
+    traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", mgmt_port);
+    return(-2);
+  }
+
+  eee->udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
+  if(eee->udp_multicast_sock < 0)
+    return(-3);
+  else {
+    /* Bind eee->udp_multicast_sock to multicast group */
+    struct ip_mreq mreq;
+    u_int enable_reuse = 1;
+    
+    /* allow multiple sockets to use the same PORT number */
+    setsockopt(eee->udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
+#ifdef SO_REUSEPORT /* no SO_REUSEPORT in Windows / old linux versions */
+    setsockopt(eee->udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
+#endif
+
+    mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    if (setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
+      traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u [errno %u]",
+		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
+
+#ifdef WIN32
+      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
+      return(-4);
+    }    
+  }
+
+  return(0);
+}
+
+/* ************************************** */
+
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
@@ -1723,56 +1794,22 @@ int quick_edge_init(char *device_name, char *community_name,
   n2n_edge_t eee;
 
   edge_init(&eee);
-  
+
   if(tuntap_open(&(eee.device), device_name, "static",
 		 local_ip_address, "255.255.255.0",
 		 device_mac, DEFAULT_MTU) < 0)
     return(-1);
 
-  if(edge_init_aes_psk(&eee, (uint8_t *)encrypt_key, strlen(encrypt_key)) < 0)
-    return(-2);
-  if(edge_init_twofish_psk(&eee, (uint8_t *)encrypt_key, strlen(encrypt_key)) < 0)
+  if(edge_init_encryption(&eee, (uint8_t *)encrypt_key, strlen(encrypt_key) < 0))
     return(-2);
 
   snprintf((char*)eee.community_name, sizeof(eee.community_name), "%s", community_name);
   supernode2addr(&(eee.supernode), supernode_ip_address_port);
-  
-  eee.udp_sock = open_socket(0 /* any port */, 1 /* bind ANY */);
-  if(eee.udp_sock < 0)
-    return(-3);  
-  
-  eee.udp_mgmt_sock = open_socket(0 /* any port */, 0 /* bind LOOPBACK */);
-  if(eee.udp_mgmt_sock < 0)
-    return(-4);
 
-  eee.udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
-  if(eee.udp_multicast_sock < 0)
-    return(-5);
-  else {
-    /* Bind eee.udp_multicast_sock to multicast group */
-    struct ip_mreq mreq;
-    u_int enable_reuse = 1;
-    
-    /* allow multiple sockets to use the same PORT number */
-    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
-#ifdef SO_REUSEPORT /* no SO_REUSEPORT in Windows / old linux versions */
-    setsockopt(eee.udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
-#endif
+  if(edge_init_sockets(&eee, 0 /* ANY port */, 0 /* ANY port */) < 0)
+    return(-3);
 
-    mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    if (setsockopt(eee.udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
-      traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u [errno %u]",
-		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
-
-#ifdef WIN32
-      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
-#endif
-      return(-6);
-    }    
-  }
-  
   update_supernode_reg(&eee, time(NULL));
-  
+
   return(run_edge_loop(&eee, keep_on_running));
 }
