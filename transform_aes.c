@@ -422,7 +422,7 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
 
     /* setup of iv_enc_key and iv_ext_val, used for generating the CBC IV */
     AES_set_encrypt_key(keybuf.iv_enc_key, sizeof(keybuf.iv_enc_key) * 8, &(sa->iv_enc_key));
-    memcpy(&(sa->iv_ext_val), keybuf.iv_ext_val, sizeof(keybuf.iv_ext_val));
+    memcpy(sa->iv_ext_val, keybuf.iv_ext_val, sizeof(keybuf.iv_ext_val));
 
     traceEvent( TRACE_DEBUG, "transop_addspec_aes sa_id=%u, %u bits key=%s.\n",
                 priv->sa[sa_num].sa_id, aes_keysize_bits, key);
