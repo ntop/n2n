@@ -81,6 +81,10 @@ int edge_init(n2n_edge_t * eee) {
   memset(eee, 0, sizeof(n2n_edge_t));
   eee->start_time = time(NULL);
 
+  /* REVISIT: BbMaj7 : Should choose something with less predictability
+           * particularly for embedded targets with no real-time clock. */
+  srand(eee->start_time);
+
   transop_null_init(   &(eee->transop[N2N_TRANSOP_NULL_IDX]));
   transop_twofish_init(&(eee->transop[N2N_TRANSOP_TF_IDX] ));
   transop_aes_init(&(eee->transop[N2N_TRANSOP_AESCBC_IDX] ));
@@ -1723,7 +1727,6 @@ const char *random_device_mac(void)
   static char mac[18];
   int i;
 
-  srand(getpid());
   for (i = 0; i < sizeof(mac) - 1; ++i) {
     if ((i + 1) % 3 == 0) {
       mac[i] = ':';

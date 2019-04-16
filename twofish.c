@@ -42,10 +42,6 @@
 #include <sys/types.h>
 #include "twofish.h"
 
-
-bool TwoFish_srand=TRUE;				/* if TRUE, first call of TwoFishInit will seed rand(); */
-/* of TwoFishInit */
-
 /* Fixed 8x8 permutation S-boxes */
 static const uint8_t TwoFish_P[2][256] =
   {
@@ -172,13 +168,6 @@ TWOFISH *TwoFishInit(const uint8_t *userkey, uint32_t keysize)
       _TwoFish_ResetCBC(tfdata);			/* reset the CBC */
       tfdata->output=NULL;				/* nothing to output yet */
       tfdata->dontflush=FALSE;				/* reset decrypt skip block flag */
-      if(TwoFish_srand)
-      {
-          TwoFish_srand=FALSE;
-          /* REVISIT: BbMaj7 : Should choose something with less predictability
-           * particularly for embedded targets with no real-time clock. */
-          srand((unsigned int)time(NULL)); 
-      }
   }
   return tfdata;					/* return the data pointer */
 }

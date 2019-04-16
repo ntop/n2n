@@ -126,13 +126,6 @@ typedef struct
     bool dontflush;
 }       TWOFISH;
 
-#ifndef __TWOFISH_LIBRARY_SOURCE__
-
-extern bool TwoFish_srand;			/* if set to TRUE (default), first call of TwoFishInit will seed rand();  */
-						/* call of TwoFishInit */
-#endif
-
-
 /**** Public Functions ****/
 
 /*	TwoFish Initialization
