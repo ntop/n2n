@@ -44,9 +44,7 @@ struct sa_aes
     n2n_cipherspec_t    spec;           /* cipher spec parameters */
     n2n_sa_t            sa_id;          /* security association index */
     AES_KEY             enc_key;        /* tx key */
-    n2n_aes_ivec_t      enc_ivec;       /* tx CBC state */
     AES_KEY             dec_key;        /* tx key */
-    n2n_aes_ivec_t      dec_ivec;       /* tx CBC state */
     AES_KEY             iv_enc_key;     /* key used to encrypt the IV */
     uint8_t             iv_ext_val[AES128_KEY_BYTES]; /* key used to extend the random IV seed to full block size */
 };
@@ -190,6 +188,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             size_t tx_sa_num = 0;
             uint64_t iv_seed = 0;
             uint8_t padding = 0;
+            n2n_aes_ivec_t enc_ivec = {0};
 
             /* The transmit sa is periodically updated */
             tx_sa_num = aes_choose_tx_sa( priv, peer_mac );
@@ -228,12 +227,12 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             assembly[len2 - 1] = padding;
             traceEvent( TRACE_DEBUG, "padding = %u, seed = %016lx", padding, iv_seed );
 
-            set_aes_cbc_iv(sa, sa->enc_ivec, iv_seed);
+            set_aes_cbc_iv(sa, enc_ivec, iv_seed);
 
             AES_cbc_encrypt( assembly, /* source */
                              outbuf + TRANSOP_AES_PREAMBLE_SIZE, /* dest */
                              len2, /* enc size */
-                             &(sa->enc_key), sa->enc_ivec, AES_ENCRYPT );
+                             &(sa->enc_key), enc_ivec, AES_ENCRYPT );
 
             len2 += TRANSOP_AES_PREAMBLE_SIZE; /* size of data carried in UDP. */
         }
@@ -321,14 +320,15 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                 if ( 0 == (len % AES_BLOCK_SIZE ) )
                 {
                     uint8_t padding;
+                    n2n_aes_ivec_t dec_ivec = {0};
 
-                    set_aes_cbc_iv(sa, sa->dec_ivec, iv_seed);
+                    set_aes_cbc_iv(sa, dec_ivec, iv_seed);
 
                     AES_cbc_encrypt( (inbuf + TRANSOP_AES_PREAMBLE_SIZE),
                                      assembly, /* destination */
                                      len, 
                                      &(sa->dec_key),
-                                     sa->dec_ivec, AES_DECRYPT );
+                                     dec_ivec, AES_DECRYPT );
 
                     /* last byte is how much was padding: max value should be
                      * AES_BLOCKSIZE-1 */
@@ -401,8 +401,6 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
     /* Clear out any old possibly longer key matter. */
     memset( &(sa->enc_key), 0, sizeof(sa->enc_key) );
     memset( &(sa->dec_key), 0, sizeof(sa->dec_key) );
-    memset( &(sa->enc_ivec), 0, sizeof(sa->enc_ivec) );
-    memset( &(sa->dec_ivec), 0, sizeof(sa->dec_ivec) );
     memset( &(sa->iv_enc_key), 0, sizeof(sa->iv_enc_key) );
     memset( &(sa->iv_ext_val), 0, sizeof(sa->iv_ext_val) );
 
@@ -583,9 +581,9 @@ int transop_aes_init( n2n_trans_op_t * ttt )
             sa->sa_id=0;
             memset( &(sa->spec), 0, sizeof(n2n_cipherspec_t) );
             memset( &(sa->enc_key), 0, sizeof(sa->enc_key) );
-            memset( &(sa->enc_ivec), 0, sizeof(sa->enc_ivec) );
             memset( &(sa->dec_key), 0, sizeof(sa->dec_key) );
-            memset( &(sa->dec_ivec), 0, sizeof(sa->dec_ivec) );
+            memset( &(sa->iv_enc_key), 0, sizeof(sa->iv_enc_key) );
+            memset( &(sa->iv_ext_val), 0, sizeof(sa->iv_ext_val) );
         }
 
         retval = 0;
