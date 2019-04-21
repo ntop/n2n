@@ -71,12 +71,33 @@ uint8_t PKT_CONTENT[]={
 /* Prototypes */
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
 static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, uint8_t *pktbuf, n2n_community_t c);
+static int perform_decryption = 0;
+
+static void usage() {
+  fprintf(stderr, "Usage: benchmark [-d]\n"
+    " -d\t\tEnable decryption. Default: only encryption is performed\n");
+  exit(1);
+}
+
+static void parseArgs(int argc, char * argv[]) {
+  if((argc != 1) && (argc != 2))
+    usage();
+
+  if(argc == 2) {
+    if(strcmp(argv[1], "-d") != 0)
+      usage();
+
+    perform_decryption = 1;
+  }
+}
 
 int main(int argc, char * argv[]) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   n2n_community_t c;
   n2n_trans_op_t transop_null, transop_twofish, transop_aes_cbc;
   u_char encrypt_pwd[] = "SoMEVer!S$cUREPassWORD";
+
+  parseArgs(argc, argv);
 
   memset(c,0,sizeof(N2N_COMMUNITY_SIZE));
   memcpy(c, "abc123def456", 12);
@@ -113,7 +134,8 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, ui
   ssize_t tdiff = 0; // microseconds
   size_t num_packets = 0;
 
-  printf("Run [%s] for %us (%u bytes):   ", op_name, target_sec, (unsigned int)sizeof(PKT_CONTENT));
+  printf("Run %s[%s] for %us (%u bytes):   ", perform_decryption ? "enc/dec" : "enc",
+            op_name, target_sec, (unsigned int)sizeof(PKT_CONTENT));
   fflush(stdout);
 
   memset(mac_buf, 0, sizeof(mac_buf));
@@ -131,6 +153,15 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, ui
 
     decode_common( &cmn, pktbuf, &rem, &idx);
     decode_PACKET( &pkt, &cmn, pktbuf, &rem, &idx );
+
+    if(perform_decryption) {
+      uint8_t decodebuf[N2N_PKT_BUF_SIZE];
+
+      op_fn->rev(op_fn, decodebuf, N2N_PKT_BUF_SIZE, pktbuf+idx, rem, 0);
+
+      if(memcmp(decodebuf, PKT_CONTENT, sizeof(PKT_CONTENT)) != 0)
+        fprintf(stderr, "Payload decryption failed!\n");
+    }
 
     gettimeofday( &t2, NULL );
     tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
