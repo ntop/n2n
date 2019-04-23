@@ -78,7 +78,7 @@ int tuntap_open(tuntap_dev *device,
 
   device->fd = open(tuntap_device, O_RDWR);
   if(device->fd < 0) {
-    traceEvent(TRACE_ERROR, "ioctl() [%s][%d]\n", strerror(errno), errno);
+    traceEvent(TRACE_ERROR, "tuntap open() error: %s[%d]. Is the tun kernel module loaded?\n", strerror(errno), errno);
     return -1;
   }
 
@@ -88,7 +88,7 @@ int tuntap_open(tuntap_dev *device,
   rc = ioctl(device->fd, TUNSETIFF, (void *)&ifr);
 
   if(rc < 0) {
-    traceEvent(TRACE_ERROR, "ioctl() [%s][%d]\n", strerror(errno), rc);
+    traceEvent(TRACE_ERROR, "tuntap ioctl(TUNSETIFF, IFF_TAP) error: %s[%d]\n", strerror(errno), rc);
     close(device->fd);
     return -1;
   }
