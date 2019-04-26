@@ -46,15 +46,6 @@
 #define ARP_PERIOD_INTERVAL             (10) /* sec */
 #endif
 
-/** Positions in the transop array where various transforms are stored.
- *
- *  Used by transop_enum_to_index(). See also the transform enumerations in
- *  n2n_transforms.h */
-#define N2N_TRANSOP_NULL_IDX    0
-#define N2N_TRANSOP_TF_IDX      1
-#define N2N_TRANSOP_AESCBC_IDX  2
-/* etc. */
-
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
 #define IP4_DSTOFFSET 16
@@ -67,6 +58,58 @@ static void check_peer(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
+static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port);
+static int edge_init_keyschedule(n2n_edge_t * eee);
+
+/* ************************************** */
+
+int edge_verify_conf(const n2n_edge_conf_t *conf) {
+  if(conf->community_name[0] == 0)
+    return(-1);
+
+  if(conf->sn_num == 0)
+    return(-2);
+
+  return(0);
+}
+
+/* ************************************** */
+
+struct n2n_edge {
+  n2n_edge_conf_t     conf;
+
+  /* Status */
+  uint8_t             sn_idx;                 /**< Currently active supernode. */
+  uint8_t             sn_wait;                /**< Whether we are waiting for a supernode response. */
+  size_t              sup_attempts;           /**< Number of remaining attempts to this supernode. */
+  tuntap_dev          device;                 /**< All about the TUNTAP device */
+  n2n_trans_op_t      transop;                /**< The transop to use when encoding */
+  n2n_cookie_t        last_cookie;            /**< Cookie sent in last REGISTER_SUPER. */
+
+  /* Sockets */
+  n2n_sock_t          supernode;
+  n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
+  int                 udp_sock;
+  int                 udp_mgmt_sock;          /**< socket for status info. */
+  int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
+
+  /* Peers */
+  struct peer_info *  known_peers;            /**< Edges we are connected to. */
+  struct peer_info *  pending_peers;          /**< Edges we have tried to register with. */
+
+  /* Timers */
+  time_t              last_register_req;      /**< Check if time to re-register with super*/
+  size_t              register_lifetime;      /**< Time distance after last_register_req at which to re-register. */
+  time_t              last_p2p;               /**< Last time p2p traffic was received. */
+  time_t              last_sup;               /**< Last time a packet arrived from supernode. */
+  time_t              start_time;             /**< For calculating uptime */
+
+  /* Statistics */
+  size_t              tx_p2p;
+  size_t              rx_p2p;
+  size_t              tx_sup;
+  size_t              rx_sup;
+};
 
 /* ************************************** */
 
@@ -74,49 +117,89 @@ static void check_peer(n2n_edge_t * eee,
  *
  *  This also initialises the NULL transform operation opstruct.
  */
-int edge_init(n2n_edge_t * eee) {
+n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *rv) {
+  n2n_transform_id_t transop_id = conf->transop_id;
+  n2n_edge_t *eee = calloc(1, sizeof(n2n_edge_t));
+  int rc = -1;
+
+  if((rc = edge_verify_conf(conf)) != 0) {
+    traceEvent(TRACE_ERROR, "Invalid configuration");
+    goto edge_init_error;
+  }
+
+  if(!eee) {
+    traceEvent(TRACE_ERROR, "Cannot allocate memory");
+    goto edge_init_error;
+  }
+
 #ifdef WIN32
   initWin32();
 #endif
-  memset(eee, 0, sizeof(n2n_edge_t));
+  memcpy(&eee->conf, conf, sizeof(*conf));
+  memcpy(&eee->device, dev, sizeof(*dev));
   eee->start_time = time(NULL);
 
   /* REVISIT: BbMaj7 : Should choose something with less predictability
            * particularly for embedded targets with no real-time clock. */
   srand(eee->start_time);
 
-  transop_null_init(   &(eee->transop[N2N_TRANSOP_NULL_IDX]));
-  transop_twofish_init(&(eee->transop[N2N_TRANSOP_TF_IDX] ));
-  transop_aes_init(&(eee->transop[N2N_TRANSOP_AESCBC_IDX] ));
-
-  eee->tx_transop_idx = N2N_TRANSOP_NULL_IDX; /* No guarantee the others have been setup */
-
-  eee->daemon = 1;    /* By default run in daemon mode. */
-  eee->preferred_aes = 0; /* Disable AES by default (for compatibility) */
-  eee->re_resolve_supernode_ip = 0;
-  /* keyschedule set to NULLs by memset */
-  /* community_name set to NULLs by memset */
-  eee->null_transop   = 0;
-  eee->udp_sock       = -1;
-  eee->udp_mgmt_sock  = -1;
-  eee->udp_multicast_sock = -1;
-  eee->dyn_ip_mode    = 0;
-  eee->allow_routing  = 0;
-  eee->drop_multicast = 1;
   eee->known_peers    = NULL;
   eee->pending_peers  = NULL;
-  eee->last_register_req = 0;
   eee->register_lifetime = REGISTER_SUPER_INTERVAL_DFL;
-  eee->last_p2p = 0;
-  eee->last_sup = 0;
   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
+#ifdef NOT_USED
   if(lzo_init() != LZO_E_OK) {
     traceEvent(TRACE_ERROR, "LZO compression error");
-    return(-1);
+    goto edge_init_error;
+  }
+#endif
+
+  for(int i=0; i<conf->sn_num; ++i)
+    traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (conf->sn_ip_array[i]));
+
+  /* Set the active supernode */
+  supernode2addr(&(eee->supernode), conf->sn_ip_array[eee->sn_idx]);
+
+  /* Set active transop */
+  if((conf->encrypt_key == NULL) && (strlen(eee->conf.keyschedule) == 0))
+    transop_id = N2N_TRANSFORM_ID_NULL;
+
+  switch(transop_id) {
+  case N2N_TRANSFORM_ID_TWOFISH:
+    rc = n2n_transop_twofish_init(eee, &eee->transop);
+    break;
+#ifdef N2N_HAVE_AES
+  case N2N_TRANSFORM_ID_AESCBC:
+    rc = n2n_transop_aes_init(eee, &eee->transop);
+    break;
+#endif
+  default:
+    rc = n2n_transop_null_init(eee, &eee->transop);
   }
 
-  return(0);
+  if((rc < 0) || (eee->transop.fwd == NULL) || (eee->transop.transform_id != transop_id)) {
+    traceEvent(TRACE_ERROR, "Transop init failed");
+    goto edge_init_error;
+  }
+
+  if(eee->transop.no_encryption)
+    traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
+
+  if(edge_init_sockets(eee, conf->local_port, conf->mgmt_port) < 0) {
+    traceEvent(TRACE_ERROR, "Error: socket setup failed");
+    goto edge_init_error;
+  }
+
+//edge_init_success:
+  *rv = 0;
+  return(eee);
+
+edge_init_error:
+  if(eee)
+    free(eee);
+  *rv = rc;
+  return(NULL);
 }
 
 /* ***************************************************** */
@@ -501,7 +584,7 @@ static void send_register_super(n2n_edge_t * eee,
   cmn.ttl=N2N_DEFAULT_TTL;
   cmn.pc = n2n_register_super;
   cmn.flags = 0;
-  memcpy(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE);
+  memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
   for(idx=0; idx < N2N_COOKIE_SIZE; ++idx)
     eee->last_cookie[idx] = rand() % 0xff;
@@ -538,7 +621,7 @@ static void send_register(n2n_edge_t * eee,
   cmn.ttl=N2N_DEFAULT_TTL;
   cmn.pc = n2n_register;
   cmn.flags = 0;
-  memcpy(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE);
+  memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
   idx=0;
   encode_uint32(reg.cookie, &idx, 123456789);
@@ -572,7 +655,7 @@ static void send_register_ack(n2n_edge_t * eee,
   cmn.ttl=N2N_DEFAULT_TTL;
   cmn.pc = n2n_register_ack;
   cmn.flags = 0;
-  memcpy(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE);
+  memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
   memset(&ack, 0, sizeof(ack));
   memcpy(ack.cookie, reg->cookie, N2N_COOKIE_SIZE);
@@ -608,24 +691,24 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
     /* Give up on that supernode and try the next one. */
     ++(eee->sn_idx);
 
-    if (eee->sn_idx >= eee->sn_num) {
+    if (eee->sn_idx >= eee->conf.sn_num) {
       /* Got to end of list, go back to the start. Also works for list of one entry. */
       eee->sn_idx=0;
     }
 
     traceEvent(TRACE_WARNING, "Supernode not responding - moving to %u of %u",
-	       (unsigned int)eee->sn_idx, (unsigned int)eee->sn_num);
+	       (unsigned int)eee->sn_idx, (unsigned int)eee->conf.sn_num);
 
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
   }
   else
     --(eee->sup_attempts);
 
-  for(sn_idx=0; sn_idx<eee->sn_num; sn_idx++) {
-    supernode2addr(&(eee->supernode), eee->sn_ip_array[sn_idx]);
+  for(sn_idx=0; sn_idx<eee->conf.sn_num; sn_idx++) {
+    supernode2addr(&(eee->supernode), eee->conf.sn_ip_array[sn_idx]);
     
     traceEvent(TRACE_INFO, "Registering with supernode [id: %u/%u][%s][attempts left %u]",
-	       sn_idx+1, eee->sn_num,
+	       sn_idx+1, eee->conf.sn_num,
 	       supernode_ip(eee), (unsigned int)eee->sup_attempts);
     
     send_register_super(eee, &(eee->supernode));
@@ -657,119 +740,22 @@ static void send_deregister(n2n_edge_t * eee,
 
 /** Return the IP address of the current supernode in the ring. */
 static const char * supernode_ip(const n2n_edge_t * eee) {
-  return (eee->sn_ip_array)[eee->sn_idx];
-}
-
-/* ************************************** */
-
-static int edge_init_twofish_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
-		      uint32_t encrypt_pwd_len) {
-  return transop_twofish_setup_psk(&(eee->transop[N2N_TRANSOP_TF_IDX]),
-			       0, encrypt_pwd, encrypt_pwd_len);
-}
-
-/* ************************************** */
-
-static int edge_init_aes_psk(n2n_edge_t * eee, uint8_t *encrypt_pwd,
-		      uint32_t encrypt_pwd_len) {
-  return transop_aes_setup_psk(&(eee->transop[N2N_TRANSOP_AESCBC_IDX]),
-			       0, encrypt_pwd, encrypt_pwd_len);
-}
-
-/* ************************************** */
-
-int edge_init_encryption(n2n_edge_t * eee, uint8_t *encrypt_pwd, uint32_t encrypt_pwd_len) {
-#ifdef N2N_HAVE_AES
-  if(edge_init_aes_psk(eee, encrypt_pwd, encrypt_pwd_len) < 0) {
-    traceEvent(TRACE_ERROR, "Error: AES PSK setup failed");
-    return(-1);
-  }
-#endif
-
-  if(edge_init_twofish_psk(eee, encrypt_pwd, encrypt_pwd_len) < 0) {
-    traceEvent(TRACE_ERROR, "Error: twofish PSK setup failed");
-    return(-1);
-  }
-
-  return(0);
-}
-
-/* ************************************** */
-
-static n2n_tostat_t n2n_tick_aes(n2n_edge_t * eee, time_t now, size_t *trop) {
-  n2n_tostat_t tst = (eee->transop[N2N_TRANSOP_AESCBC_IDX].tick)(&(eee->transop[N2N_TRANSOP_AESCBC_IDX]), now);
-
-  if(tst.can_tx)
-    {
-      traceEvent(TRACE_DEBUG, "can_tx AESCBC (idx=%u)", (unsigned int)N2N_TRANSOP_AESCBC_IDX);
-      *trop = N2N_TRANSOP_AESCBC_IDX;
-    }
-
-  return tst;
-}
-
-/* ************************************** */
-static n2n_tostat_t n2n_tick_twofish(n2n_edge_t * eee, time_t now, size_t *trop) {
-  n2n_tostat_t tst = (eee->transop[N2N_TRANSOP_TF_IDX].tick)(&(eee->transop[N2N_TRANSOP_TF_IDX]), now);
-  if(tst.can_tx)
-    {
-      traceEvent(TRACE_DEBUG, "can_tx TF (idx=%u)", (unsigned int)N2N_TRANSOP_TF_IDX);
-      *trop = N2N_TRANSOP_TF_IDX;
-    }
-
-  return tst;
+  return (eee->conf.sn_ip_array)[eee->sn_idx];
 }
 
 /* ************************************** */
 
 /** Called periodically to roll keys and do any periodic maintenance in the
  *  tranform operations state machines. */
-static int n2n_tick_transop(n2n_edge_t * eee, time_t now)
-{
-  size_t trop = eee->tx_transop_idx;
+static int n2n_tick_transop(n2n_edge_t *eee, time_t now) {
+  n2n_tostat_t tst = eee->transop.tick(&eee->transop, now);
 
-  /* Tests are done in order that most preferred transform is last and causes
-   * tx_transop_idx to be left at most preferred valid transform. */
-  (eee->transop[N2N_TRANSOP_NULL_IDX].tick)(&(eee->transop[N2N_TRANSOP_NULL_IDX]), now);
-
-  if(eee->preferred_aes) {
-    n2n_tick_twofish(eee, now, &trop);
-    n2n_tick_aes(eee, now, &trop);
-  } else {
-    n2n_tick_aes(eee, now, &trop);
-    n2n_tick_twofish(eee, now, &trop);
+  if(!tst.can_tx) {
+    traceEvent(TRACE_ERROR, "transop.tick can_tx=0, no packets can be sent!");
+    return(-1);
   }
 
-  if(trop != eee->tx_transop_idx)
-    {
-      eee->tx_transop_idx = trop;
-      traceEvent(TRACE_INFO, "Chose new tx_transop_idx=%u", (unsigned int)(eee->tx_transop_idx));
-    }
-
   return 0;
-}
-
-/* ************************************** */
-
-/** Find the transop op-struct for the transform enumeration required.
- *
- * @return - index into the transop array, or -1 on failure.
- */
-static int transop_enum_to_index(n2n_transform_t id) {
-  switch (id)
-    {
-    case N2N_TRANSFORM_ID_TWOFISH:
-      return N2N_TRANSOP_TF_IDX;
-      break;
-    case N2N_TRANSFORM_ID_NULL:
-      return N2N_TRANSOP_NULL_IDX;
-      break;
-    case N2N_TRANSFORM_ID_AESCBC:
-      return N2N_TRANSOP_AESCBC_IDX;
-      break;
-    default:
-      return -1;
-    }
 }
 
 /* ************************************** */
@@ -816,20 +802,19 @@ static int handle_PACKET(n2n_edge_t * eee,
   {
     uint8_t decodebuf[N2N_PKT_BUF_SIZE];
     size_t eth_size;
-    int rx_transop_idx;
+    n2n_transform_id_t rx_transop_id;
 
-    rx_transop_idx = transop_enum_to_index(pkt->transform);
+    rx_transop_id = (n2n_transform_id_t)pkt->transform;
 
-    if(rx_transop_idx >=0)
-      {
+    if(rx_transop_id == eee->conf.transop_id) {
 	eth_payload = decodebuf;
 	eh = (ether_hdr_t*)eth_payload;
-	eth_size = eee->transop[rx_transop_idx].rev(&(eee->transop[rx_transop_idx]),
+	eth_size = eee->transop.rev(&eee->transop,
 						    eth_payload, N2N_PKT_BUF_SIZE,
 						    payload, psize, pkt->srcMac);
-	++(eee->transop[rx_transop_idx].rx_cnt); /* stats */
+	++(eee->transop.rx_cnt); /* stats */
 
-	if(!(eee->allow_routing)) {
+	if(!(eee->conf.allow_routing)) {
 	  if(ntohs(eh->type) == 0x0800) {
 	    uint32_t *dst = (uint32_t*)&eth_payload[ETH_FRAMESIZE + IP4_DSTOFFSET];
 
@@ -857,8 +842,8 @@ static int handle_PACKET(n2n_edge_t * eee,
       }
     else
       {
-	traceEvent(TRACE_ERROR, "handle_PACKET dropped unknown transform enum %u",
-		   (unsigned int)pkt->transform);
+	traceEvent(TRACE_ERROR, "invalid transop ID: %u, expected %u",
+		   rx_transop_id, eee->conf.transop_id);
       }
   }
 
@@ -966,7 +951,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
     {
       if(0 == memcmp(udp_buf, "reload", 6))
         {
-	  if(strlen(eee->keyschedule) > 0)
+	  if(strlen(eee->conf.keyschedule) > 0)
             {
 	      if(edge_init_keyschedule(eee) == 0)
                 {
@@ -999,15 +984,9 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 		      (unsigned int)eee->rx_p2p);
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-		      "trans:null |%6u|%6u|\n"
-		      "trans:tf   |%6u|%6u|\n"
-		      "trans:aes  |%6u|%6u|\n",
-		      (unsigned int)eee->transop[N2N_TRANSOP_NULL_IDX].tx_cnt,
-		      (unsigned int)eee->transop[N2N_TRANSOP_NULL_IDX].rx_cnt,
-		      (unsigned int)eee->transop[N2N_TRANSOP_TF_IDX].tx_cnt,
-		      (unsigned int)eee->transop[N2N_TRANSOP_TF_IDX].rx_cnt,
-		      (unsigned int)eee->transop[N2N_TRANSOP_AESCBC_IDX].tx_cnt,
-		      (unsigned int)eee->transop[N2N_TRANSOP_AESCBC_IDX].rx_cnt);
+		      "transop |%6u|%6u|\n",
+		      (unsigned int)eee->transop.tx_cnt,
+		      (unsigned int)eee->transop.rx_cnt);
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
 		      "peers  pend:%u full:%u\n",
@@ -1067,25 +1046,6 @@ static int is_ethMulticast(const void * buf, size_t bufsize) {
     }
 
   return retval;
-}
-
-/* ************************************** */
-
-/* Choose the transop for Tx. This should be based on the newest valid
- * cipherspec in the key schedule.
- *
- * Never fall back to NULL tranform unless no key sources were specified. It is
- * better to render edge inoperative than to expose user data in the clear. In
- * the case where all SAs are expired an arbitrary transform will be chosen for
- * Tx. It will fail having no valid SAs but one must be selected.
- */
-static size_t edge_choose_tx_transop(const n2n_edge_t * eee) {
-  if(eee->null_transop)
-    {
-      return N2N_TRANSOP_NULL_IDX;
-    }
-
-  return eee->tx_transop_idx;
 }
 
 /* ************************************** */
@@ -1173,7 +1133,7 @@ void send_packet2net(n2n_edge_t * eee,
 
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   size_t idx=0;
-  size_t tx_transop_idx=0;
+  n2n_transform_t tx_transop_idx = eee->transop.transform_id;
 
   ether_hdr_t eh;
 
@@ -1181,7 +1141,7 @@ void send_packet2net(n2n_edge_t * eee,
   memcpy(&eh, tap_pkt, sizeof(ether_hdr_t));
 
   /* Discard IP packets that are not originated by this hosts */
-  if(!(eee->allow_routing)) {
+  if(!(eee->conf.allow_routing)) {
     if(ntohs(eh.type) == 0x0800) {
       /* This is an IP packet from the local source address - not forwarded. */
       uint32_t *src = (uint32_t*)&tap_pkt[ETH_FRAMESIZE + IP4_SRCOFFSET];
@@ -1209,26 +1169,24 @@ void send_packet2net(n2n_edge_t * eee,
   cmn.ttl = N2N_DEFAULT_TTL;
   cmn.pc = n2n_packet;
   cmn.flags=0; /* no options, not from supernode, no socket */
-  memcpy(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE);
+  memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
   memset(&pkt, 0, sizeof(pkt));
   memcpy(pkt.srcMac, eee->device.mac_addr, N2N_MAC_SIZE);
   memcpy(pkt.dstMac, destMac, N2N_MAC_SIZE);
 
-  tx_transop_idx = edge_choose_tx_transop(eee);
-
   pkt.sock.family=0; /* do not encode sock */
-  pkt.transform = eee->transop[tx_transop_idx].transform_id;
+  pkt.transform = tx_transop_idx;
 
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
-  traceEvent(TRACE_DEBUG, "encoded PACKET header of size=%u transform %u (idx=%u)",
-	     (unsigned int)idx, (unsigned int)pkt.transform, (unsigned int)tx_transop_idx);
+  traceEvent(TRACE_DEBUG, "encoded PACKET header of size=%u transform %u",
+	     (unsigned int)idx, tx_transop_idx);
 
-  idx += eee->transop[tx_transop_idx].fwd(&(eee->transop[tx_transop_idx]),
+  idx += eee->transop.fwd(&eee->transop,
 					  pktbuf+idx, N2N_PKT_BUF_SIZE-idx,
 					  tap_pkt, len, pkt.dstMac);
-  ++(eee->transop[tx_transop_idx].tx_cnt); /* stats */
+  eee->transop.tx_cnt++; /* stats */
 
   send_packet(eee, destMac, pktbuf, idx); /* to peer or supernode */
 }
@@ -1269,7 +1227,7 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
       traceEvent(TRACE_INFO, "### Rx TAP packet (%4d) for %s",
 		 (signed int)len, macaddr_str(mac_buf, mac));
 
-      if(eee->drop_multicast &&
+      if(eee->conf.drop_multicast &&
 	 (is_ip6_discovery(eth_pkt, len) ||
 	  is_ethMulticast(eth_pkt, len)
 	  )
@@ -1383,7 +1341,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   msg_type = cmn.pc; /* packet code */
   from_supernode= cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
 
-  if(0 == memcmp(cmn.community, eee->community_name, N2N_COMMUNITY_SIZE)) {
+  if(0 == memcmp(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE)) {
       if(msg_type == MSG_TYPE_PACKET) {
 	  /* process PACKET - most frequent so first in list. */
 	  n2n_PACKET_t pkt;
@@ -1614,7 +1572,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 		 (unsigned int)peer_list_size(eee->known_peers));
     }
 
-    if(eee->dyn_ip_mode &&
+    if(eee->conf.dyn_ip_mode &&
        ((nowTime - lastIfaceCheck) > IFACE_UPDATE_INTERVAL)) {
       traceEvent(TRACE_NORMAL, "Re-checking dynamic IP address.");
       tuntap_get_address(&(eee->device));
@@ -1632,9 +1590,6 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   send_deregister(eee, &(eee->supernode));
 
   closesocket(eee->udp_sock);
-  tuntap_close(&(eee->device));
-
-  edge_term(eee);
 
   return(0);
 }
@@ -1648,7 +1603,8 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
  *  will then determine the best SA for that trans_op from the key schedule to
  *  use for encoding. */
 
-int edge_init_keyschedule(n2n_edge_t * eee) {
+// TODO call me
+static int edge_init_keyschedule(n2n_edge_t *eee) {
 #define N2N_NUM_CIPHERSPECS 32
 
   int retval = -1;
@@ -1657,7 +1613,7 @@ int edge_init_keyschedule(n2n_edge_t * eee) {
   size_t i;
   time_t now = time(NULL);
 
-  numSpecs = n2n_read_keyfile(specs, N2N_NUM_CIPHERSPECS, eee->keyschedule);
+  numSpecs = n2n_read_keyfile(specs, N2N_NUM_CIPHERSPECS, eee->conf.keyschedule);
 
   if(numSpecs > 0)
     {
@@ -1665,22 +1621,14 @@ int edge_init_keyschedule(n2n_edge_t * eee) {
 
       for (i=0; i < (size_t)numSpecs; ++i)
         {
-	  int idx;
+	  n2n_transform_t idx = (n2n_transform_t) specs[i].t;
+	  if(idx != eee->transop.transform_id) {
+	    traceEvent(TRACE_ERROR, "changing transop in keyschedule is not supported");
+	    retval = -1;
+	  }
 
-	  idx = transop_enum_to_index(specs[i].t);
-
-	  switch (idx)
-            {
-            case N2N_TRANSOP_TF_IDX:
-            case N2N_TRANSOP_AESCBC_IDX:
-	      {
-                retval = (eee->transop[idx].addspec)(&(eee->transop[idx]),
-						     &(specs[i]));
-                break;
-	      }
-            default:
-	      retval = -1;
-            }
+	  if(eee->transop.addspec != NULL)
+	    retval = eee->transop.addspec(&eee->transop, &(specs[i]));
 
 	  if (0 != retval)
             {
@@ -1694,7 +1642,7 @@ int edge_init_keyschedule(n2n_edge_t * eee) {
       n2n_tick_transop(eee, now);
     }
   else    
-    traceEvent(TRACE_ERROR, "Failed to process '%s'", eee->keyschedule);
+    traceEvent(TRACE_ERROR, "Failed to process '%s'", eee->conf.keyschedule);
     
   return retval;
 }
@@ -1715,12 +1663,12 @@ void edge_term(n2n_edge_t * eee) {
   clear_peer_list(&(eee->pending_peers));
   clear_peer_list(&(eee->known_peers));
 
-  (eee->transop[N2N_TRANSOP_TF_IDX].deinit)(&eee->transop[N2N_TRANSOP_TF_IDX]);
-  (eee->transop[N2N_TRANSOP_NULL_IDX].deinit)(&eee->transop[N2N_TRANSOP_NULL_IDX]);
+  eee->transop.deinit(&eee->transop);
 }
 
 /* ************************************** */
 
+// TODO check
 const char *random_device_mac(void)
 {
   const char key[] = "0123456789abcdef";
@@ -1746,7 +1694,7 @@ const char *random_device_mac(void)
 
 /* ************************************** */
 
-int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port) {
+static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port) {
   /* Populate the multicast group for local edge */
   eee->multicast_peer.family     = AF_INET;
   eee->multicast_peer.port       = N2N_MULTICAST_PORT;
@@ -1754,6 +1702,9 @@ int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port) {
   eee->multicast_peer.addr.v4[1] = 0;
   eee->multicast_peer.addr.v4[2] = 0;
   eee->multicast_peer.addr.v4[3] = 68;
+
+  if(udp_local_port > 0)
+    traceEvent(TRACE_NORMAL, "Binding to local port %d", udp_local_port);
 
   eee->udp_sock = open_socket(udp_local_port, 1 /* bind ANY */);
   if(eee->udp_sock < 0) {
@@ -1799,28 +1750,53 @@ int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port) {
 
 /* ************************************** */
 
+int edge_conf_add_supernode(n2n_edge_conf_t *conf, const char *ip_and_port) {
+  if(conf->sn_num >= N2N_EDGE_NUM_SUPERNODES)
+    return(-1);
+
+  strncpy((conf->sn_ip_array[conf->sn_num]), ip_and_port, N2N_EDGE_SN_HOST_SIZE);
+  traceEvent(TRACE_NORMAL, "Adding supernode[%u] = %s", (unsigned int)conf->sn_num, (conf->sn_ip_array[conf->sn_num]));
+  conf->sn_num++;
+
+  return(0);
+}
+
+/* ************************************** */
+
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
 		    char *supernode_ip_address_port,
 		    int *keep_on_running) {
-  n2n_edge_t eee;
+  tuntap_dev tuntap;
+  n2n_edge_t *eee;
+  n2n_edge_conf_t conf;
+  int rv;
 
-  edge_init(&eee);
+  /* Setup the configuration */
+  edge_conf_init_defaults(&conf);
+  conf.encrypt_key = encrypt_key;
+  snprintf((char*)conf.community_name, sizeof(conf.community_name), "%s", community_name);
+  edge_conf_add_supernode(&conf, supernode_ip_address_port);
 
-  if(tuntap_open(&(eee.device), device_name, "static",
-		 local_ip_address, "255.255.255.0",
-		 device_mac, DEFAULT_MTU) < 0)
+  /* Validate configuration */
+  if(edge_verify_conf(&conf) != 0)
     return(-1);
 
-  if(edge_init_encryption(&eee, (uint8_t *)encrypt_key, strlen(encrypt_key) < 0))
+  /* Open the tuntap device */
+  if(tuntap_open(&tuntap, device_name, "static",
+		 local_ip_address, "255.255.255.0",
+		 device_mac, DEFAULT_MTU) < 0)
     return(-2);
 
-  snprintf((char*)eee.community_name, sizeof(eee.community_name), "%s", community_name);
-  supernode2addr(&(eee.supernode), supernode_ip_address_port);
+  /* Init edge */
+  if((eee = edge_init(&tuntap, &conf, &rv)) == NULL)
+    goto quick_edge_init_end;
 
-  if(edge_init_sockets(&eee, 0 /* ANY port */, 0 /* ANY port */) < 0)
-    return(-3);
+  rv = run_edge_loop(eee, keep_on_running);
+  edge_term(eee);
 
-  return(run_edge_loop(&eee, keep_on_running));
+quick_edge_init_end:
+  tuntap_close(&tuntap);
+  return(rv);
 }
