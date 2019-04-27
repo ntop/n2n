@@ -3,6 +3,7 @@ typedef struct n2n_tostat {
   n2n_cipherspec_t    tx_spec;        /* If can_tx, the spec used to encode. */
 } n2n_tostat_t;
 
+typedef uint32_t n2n_sa_t;              /* security association number */
 typedef int             (*n2n_transaddspec_f)( struct n2n_trans_op * arg, 
                                                const n2n_cipherspec_t * cspec );
 

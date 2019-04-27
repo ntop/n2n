@@ -186,7 +186,7 @@ typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
-  n2n_transform_id_t  transop_id;             /**< The transop to use. */
+  n2n_transform_t     transop_id;             /**< The transop to use. */
   uint8_t             re_resolve_supernode_ip;
   uint8_t             dyn_ip_mode;            /**< Interface IP address is dynamically allocated, eg. DHCP. */
   uint8_t             allow_routing;          /**< Accept packet no to interface address. */
@@ -230,10 +230,10 @@ typedef struct n2n_edge n2n_edge_t; /* Opaque, see edge_utils.c */
 /* ************************************** */
 
 /* Transop Init Functions */
-int n2n_transop_null_init(n2n_edge_t *eee, n2n_trans_op_t *op);
-int n2n_transop_twofish_init(n2n_edge_t *eee, n2n_trans_op_t *op);
+int n2n_transop_null_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+int n2n_transop_twofish_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #ifdef N2N_HAVE_AES
-int n2n_transop_aes_init(n2n_edge_t *eee, n2n_trans_op_t *op);
+int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #endif
 
 /* Log */
@@ -258,9 +258,7 @@ uint8_t is_multi_broadcast(const uint8_t * dest_mac);
 char* msg_type2str(uint16_t msg_type);
 void hexdump(const uint8_t * buf, size_t len);
 void print_n2n_version();
-void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
 int is_empty_ip_address(const n2n_sock_t * sock);
-const char *random_device_mac(void);
 
 /* Sockets */
 char* sock_to_cstr( n2n_sock_str_t out,
@@ -289,6 +287,7 @@ void update_peer_address(n2n_edge_t * eee,
 void edge_init_conf_defaults(n2n_edge_conf_t *conf);
 int edge_verify_conf(const n2n_edge_conf_t *conf);
 int edge_conf_add_supernode(n2n_edge_conf_t *conf, const char *ip_and_port);
+const n2n_edge_conf_t* edge_get_conf(const n2n_edge_t *eee);
 
 /* Public functions */
 n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *rv);

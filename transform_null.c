@@ -71,32 +71,17 @@ static int transop_decode_null( n2n_trans_op_t * arg,
     return retval;
 }
 
-static int transop_addspec_null( n2n_trans_op_t * arg, const n2n_cipherspec_t * cspec )
-{
-    return 0;
-}
+static void transop_tick_null(n2n_trans_op_t * arg, time_t now) {}
 
-static n2n_tostat_t transop_tick_null( n2n_trans_op_t * arg, time_t now )
-{
-    n2n_tostat_t r;
-
-    r.can_tx=1;
-    r.tx_spec.t = N2N_TRANSFORM_ID_NULL;
-    r.tx_spec.valid_from = 0;
-    r.tx_spec.valid_until = (time_t)(-1);
-    r.tx_spec.opaque_size=0;
-
-    return r;
-}
-
-void transop_null_init( n2n_trans_op_t * ttt )
-{
+int n2n_transop_null_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
     memset(ttt, 0, sizeof(n2n_trans_op_t) );
 
     ttt->transform_id = N2N_TRANSFORM_ID_NULL;
+    ttt->no_encryption = 1;
     ttt->deinit  = transop_deinit_null;
-    ttt->addspec = transop_addspec_null;
     ttt->tick    = transop_tick_null;
     ttt->fwd     = transop_encode_null;
     ttt->rev     = transop_decode_null;
+
+    return(0);
 }

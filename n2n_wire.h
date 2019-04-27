@@ -51,7 +51,7 @@ typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
 
 typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer */
 
-enum n2n_pc
+typedef enum n2n_pc
 {
     n2n_ping=0,                 /* Not used */
     n2n_register=1,             /* Register edge to edge */
@@ -62,9 +62,7 @@ enum n2n_pc
     n2n_register_super_ack=6,   /* ACK from supernode to edge */
     n2n_register_super_nak=7,   /* NAK from supernode to edge - registration refused */
     n2n_federation=8            /* Not used by edge */
-};
-
-typedef enum n2n_pc n2n_pc_t;
+} n2n_pc_t;
 
 #define N2N_FLAGS_OPTIONS               0x0080
 #define N2N_FLAGS_SOCKET                0x0040
@@ -85,11 +83,6 @@ typedef enum n2n_pc n2n_pc_t;
 #define N2N_ENOTIMPL                    -2
 #define N2N_EINVAL                      -3
 #define N2N_ENOSPACE                    -4
-
-
-typedef uint16_t n2n_flags_t;
-typedef uint16_t n2n_transform_t;       /* Encryption, compression type. */
-typedef uint32_t n2n_sa_t;              /* security association number */
 
 struct n2n_sock 
 {
@@ -118,8 +111,8 @@ struct n2n_common
 {
     /* int                 version; */
     uint8_t             ttl;
-    n2n_pc_t            pc;
-    n2n_flags_t         flags;
+    uint8_t             pc;
+    uint16_t            flags;
     n2n_community_t     community;
 };
 
@@ -150,7 +143,7 @@ struct n2n_PACKET
     n2n_mac_t           srcMac;
     n2n_mac_t           dstMac;
     n2n_sock_t          sock;
-    n2n_transform_t     transform;
+    uint16_t            transform;
 };
 
 typedef struct n2n_PACKET n2n_PACKET_t;

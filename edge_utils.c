@@ -59,6 +59,7 @@ static void check_peer(n2n_edge_t * eee,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port);
+static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
 
 /* ************************************** */
 
@@ -117,7 +118,7 @@ struct n2n_edge {
  *  This also initialises the NULL transform operation opstruct.
  */
 n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *rv) {
-  n2n_transform_id_t transop_id = conf->transop_id;
+  n2n_transform_t transop_id = conf->transop_id;
   n2n_edge_t *eee = calloc(1, sizeof(n2n_edge_t));
   int rc = -1;
 
@@ -166,15 +167,15 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
 
   switch(transop_id) {
   case N2N_TRANSFORM_ID_TWOFISH:
-    rc = n2n_transop_twofish_init(eee, &eee->transop);
+    rc = n2n_transop_twofish_init(&eee->conf, &eee->transop);
     break;
 #ifdef N2N_HAVE_AES
   case N2N_TRANSFORM_ID_AESCBC:
-    rc = n2n_transop_aes_init(eee, &eee->transop);
+    rc = n2n_transop_aes_cbc_init(&eee->conf, &eee->transop);
     break;
 #endif
   default:
-    rc = n2n_transop_null_init(eee, &eee->transop);
+    rc = n2n_transop_null_init(&eee->conf, &eee->transop);
   }
 
   if((rc < 0) || (eee->transop.fwd == NULL) || (eee->transop.transform_id != transop_id)) {
@@ -208,7 +209,7 @@ edge_init_error:
  *  REVISIT: This is a really bad idea. The edge will block completely while the
  *           hostname resolution is performed. This could take 15 seconds.
  */
-void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
+static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
   n2n_sn_name_t addr;
   const char *supernode_host;
 
@@ -786,9 +787,9 @@ static int handle_PACKET(n2n_edge_t * eee,
   {
     uint8_t decodebuf[N2N_PKT_BUF_SIZE];
     size_t eth_size;
-    n2n_transform_id_t rx_transop_id;
+    n2n_transform_t rx_transop_id;
 
-    rx_transop_id = (n2n_transform_id_t)pkt->transform;
+    rx_transop_id = (n2n_transform_t)pkt->transform;
 
     if(rx_transop_id == eee->conf.transop_id) {
 	eth_payload = decodebuf;
@@ -1575,32 +1576,7 @@ void edge_term(n2n_edge_t * eee) {
   clear_peer_list(&(eee->known_peers));
 
   eee->transop.deinit(&eee->transop);
-}
-
-/* ************************************** */
-
-// TODO check
-const char *random_device_mac(void)
-{
-  const char key[] = "0123456789abcdef";
-  static char mac[18];
-  int i;
-
-  for (i = 0; i < sizeof(mac) - 1; ++i) {
-    if ((i + 1) % 3 == 0) {
-      mac[i] = ':';
-      continue;
-    }
-#ifdef WIN32
-#define random rand
-#endif
-    mac[i] = key[random() % sizeof(key)];
-#ifdef WIN32
-#undef random
-#endif
-  }
-  mac[sizeof(mac) - 1] = '\0';
-  return mac;
+  memset(eee, 0, sizeof(*eee));
 }
 
 /* ************************************** */
@@ -1657,6 +1633,26 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port)
   }
 
   return(0);
+}
+
+/* ************************************** */
+
+void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
+  memset(conf, 0, sizeof(*conf));
+
+  conf->local_port = 0 /* any port */;
+  conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
+  conf->transop_id = N2N_TRANSFORM_ID_TWOFISH; /* use twofish for compatibility */
+  conf->drop_multicast = 1;
+
+  if(getenv("N2N_KEY"))
+    conf->encrypt_key = strdup(getenv("N2N_KEY"));
+}
+
+/* ************************************** */
+
+const n2n_edge_conf_t* edge_get_conf(const n2n_edge_t *eee) {
+  return(&eee->conf);
 }
 
 /* ************************************** */

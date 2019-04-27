@@ -87,8 +87,8 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
   va_list va_ap;
 
   if(eventTraceLevel <= traceLevel) {
-    char buf[2048];
-    char out_buf[640];
+    char buf[1024];
+    char out_buf[1280];
     char theDate[N2N_TRACE_DATESIZE];
     char *extra_msg = "";
     time_t theTime = time(NULL);

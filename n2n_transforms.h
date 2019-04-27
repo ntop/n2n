@@ -24,12 +24,12 @@
 #define N2N_TRANSFORM_ID_USER_START     64
 #define N2N_TRANSFORM_ID_MAX            65535
 
-typedef enum n2n_transform_id {
+typedef enum n2n_transform {
   N2N_TRANSFORM_ID_INVAL = 0,
   N2N_TRANSFORM_ID_NULL = 1,
   N2N_TRANSFORM_ID_TWOFISH = 2,
   N2N_TRANSFORM_ID_AESCBC = 3,
-} n2n_transform_id_t;
+} n2n_transform_t;
 
 struct n2n_trans_op;
 
@@ -50,8 +50,8 @@ typedef int             (*n2n_transform_f)( struct n2n_trans_op * arg,
  */
 typedef struct n2n_trans_op {
   void *              priv;   /* opaque data. Key schedule goes here. */
-  uint8_t             no_encryption; /* 1 if this transop does not perform encryption */ // TODO
-  n2n_transform_t     transform_id;   /* link header enum to a transform */
+  uint8_t             no_encryption; /* 1 if this transop does not perform encryption */
+  n2n_transform_t     transform_id;
   size_t              tx_cnt;
   size_t              rx_cnt;
 

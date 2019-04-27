@@ -142,7 +142,7 @@ static void help() {
 
   printf("-a <mode:address>        | Set interface address. For DHCP use '-r -a dhcp:0.0.0.0'\n");
   printf("-c <community>           | n2n community name the edge belongs to.\n");
-  printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>. Not with -K.\n");
+  printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>.\n");
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-b                       | Periodically resolve supernode IP\n");
@@ -160,14 +160,14 @@ static void help() {
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
   printf("-r                       | Enable packet forwarding through n2n community.\n");
 #ifdef N2N_HAVE_AES
-  printf("-A                       | Set AES CBC as the preferred encryption mode.\n");
+  printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
 #endif
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
   printf("\nEnvironment variables:\n");
-  printf("  N2N_KEY                | Encryption key (ASCII). Not with -K or -k.\n");
+  printf("  N2N_KEY                | Encryption key (ASCII). Not with -k.\n");
 
   exit(0);
 }
@@ -536,20 +536,6 @@ static void daemonize() {
 
 /* *************************************************** */
 
-void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
-  memset(conf, 0, sizeof(*conf));
-
-  conf->local_port = 0 /* any port */;
-  conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
-  conf->transop_id = N2N_TRANSFORM_ID_TWOFISH; /* use twofish for compatibility */
-  conf->drop_multicast = 1;
-
-  if(getenv("N2N_KEY"))
-    conf->encrypt_key = strdup(getenv("N2N_KEY"));
-}
-
-/* *************************************************** */
-
 /** Entry point to program from kernel. */
 int main(int argc, char* argv[]) {
   int keep_on_running = 1;
@@ -564,6 +550,7 @@ int main(int argc, char* argv[]) {
 
   /* Defaults */
   edge_init_conf_defaults(&conf);
+  memset(&ec, 0, sizeof(ec));
   ec.mtu = DEFAULT_MTU;
   ec.daemon = 1;    /* By default run in daemon mode. */
 #ifndef WIN32
@@ -579,6 +566,8 @@ int main(int argc, char* argv[]) {
   snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
   snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
 
+  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
+
 #ifndef WIN32
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &conf, &ec);
@@ -590,8 +579,6 @@ int main(int argc, char* argv[]) {
 
   if(rc < 0)
     help();
-
-  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
   if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
@@ -611,6 +598,12 @@ int main(int argc, char* argv[]) {
        ))
     help();
 
+#ifndef WIN32
+  /* If running suid root then we need to setuid before using the force. */
+  setuid(0);
+  /* setgid(0); */
+#endif
+
   if(tuntap_open(&tuntap, ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
     return(-1);
 
@@ -618,12 +611,6 @@ int main(int argc, char* argv[]) {
     traceEvent(TRACE_ERROR, "Failed in edge_init");
     exit(1);
   }
-
-#ifndef WIN32
-  /* If running suid root then we need to setuid before using the force. */
-  setuid(0);
-  /* setgid(0); */
-#endif
 
 #ifndef WIN32
   if(ec.daemon) {
@@ -644,10 +631,13 @@ int main(int argc, char* argv[]) {
 #endif
 
   traceEvent(TRACE_NORMAL, "edge started");
-
   rc = run_edge_loop(eee, &keep_on_running);
+
+  /* Cleanup */
   edge_term(eee);
   tuntap_close(&tuntap);
+
+  if(conf.encrypt_key) free(conf.encrypt_key);
 
   return(rc);
 }
