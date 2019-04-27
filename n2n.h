@@ -183,9 +183,7 @@ struct peer_info {
 
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 
-
 typedef struct n2n_edge_conf {
-  char                keyschedule[N2N_PATHNAME_MAXLEN];
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   n2n_transform_id_t  transop_id;             /**< The transop to use. */
@@ -288,23 +286,19 @@ void update_peer_address(n2n_edge_t * eee,
 			 time_t when);
 
 /* Edge conf */
-void edge_conf_init_defaults(n2n_edge_conf_t *conf);
+void edge_init_conf_defaults(n2n_edge_conf_t *conf);
+int edge_verify_conf(const n2n_edge_conf_t *conf);
 int edge_conf_add_supernode(n2n_edge_conf_t *conf, const char *ip_and_port);
 
 /* Public functions */
-void send_packet2net(n2n_edge_t * eee,
-		     uint8_t *tap_pkt, size_t len);
-int edge_init_encryption(n2n_edge_t * eee, uint8_t *encrypt_pwd, uint32_t encrypt_pwd_len);
-
-int edge_verify_conf(const n2n_edge_conf_t *conf);
 n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *rv);
 void edge_term(n2n_edge_t *eee);
-int run_edge_loop(n2n_edge_t * eee, int *keep_running);
-
+int run_edge_loop(n2n_edge_t *eee, int *keep_running);
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
 		    char *local_ip_address,
 		    char *supernode_ip_address_port,
 		    int *keep_on_running);
-  
+
+void send_packet2net(n2n_edge_t * eee, uint8_t *tap_pkt, size_t len);
 #endif /* _N2N_H_ */

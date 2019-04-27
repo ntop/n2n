@@ -143,7 +143,6 @@ static void help() {
   printf("-a <mode:address>        | Set interface address. For DHCP use '-r -a dhcp:0.0.0.0'\n");
   printf("-c <community>           | n2n community name the edge belongs to.\n");
   printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>. Not with -K.\n");
-  printf("-K <key file>            | Specify a key schedule file to load. Not with -k.\n");
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-b                       | Periodically resolve supernode IP\n");
@@ -179,21 +178,6 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
   /* traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : ""); */
 
   switch(optkey) {
-  case'K':
-    {
-      if(conf->encrypt_key) {
-        traceEvent(TRACE_ERROR, "Error: -K and -k options are mutually exclusive");
-        exit(1);
-      } else {
-        strncpy(conf->keyschedule, optargument, N2N_PATHNAME_MAXLEN-1);
-        /* strncpy does not add NULL if the source has no NULL. */
-        conf->keyschedule[N2N_PATHNAME_MAXLEN-1] = 0;
-	      
-        traceEvent(TRACE_NORMAL, "keyfile = '%s'\n", conf->keyschedule);
-      }
-      break;
-    }
-
   case 'a': /* IP address and mode of TUNTAP interface */
     {
       scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
@@ -252,14 +236,9 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
   case 'k': /* encrypt key */
     {
-      if(strlen(conf->keyschedule) > 0) {
-        traceEvent(TRACE_ERROR, "-K and -k options are mutually exclusive");
-        exit(1);
-      } else {
-        if(conf->encrypt_key) free(conf->encrypt_key);
-        conf->encrypt_key = strdup(optargument);
-        traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
-      }
+      if(conf->encrypt_key) free(conf->encrypt_key);
+      conf->encrypt_key = strdup(optargument);
+      traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
       break;
     }
 
@@ -557,7 +536,7 @@ static void daemonize() {
 
 /* *************************************************** */
 
-void edge_conf_init_defaults(n2n_edge_conf_t *conf) {
+void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   memset(conf, 0, sizeof(*conf));
 
   conf->local_port = 0 /* any port */;
@@ -584,7 +563,7 @@ int main(int argc, char* argv[]) {
     help();
 
   /* Defaults */
-  edge_conf_init_defaults(&conf);
+  edge_init_conf_defaults(&conf);
   ec.mtu = DEFAULT_MTU;
   ec.daemon = 1;    /* By default run in daemon mode. */
 #ifndef WIN32

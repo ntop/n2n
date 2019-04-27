@@ -19,7 +19,6 @@
 #if !defined(N2N_TRANSFORMS_H_)
 #define N2N_TRANSFORMS_H_
 
-#include "n2n_keyfile.h"
 #include "n2n_wire.h"
 
 #define N2N_TRANSFORM_ID_USER_START     64
@@ -34,17 +33,8 @@ typedef enum n2n_transform_id {
 
 struct n2n_trans_op;
 
-typedef struct n2n_tostat {
-  uint8_t             can_tx;         /* Does this transop have a valid SA for encoding. */
-  n2n_cipherspec_t    tx_spec;        /* If can_tx, the spec used to encode. */
-} n2n_tostat_t;
-
 typedef int             (*n2n_transdeinit_f)( struct n2n_trans_op * arg );
-typedef int             (*n2n_transaddspec_f)( struct n2n_trans_op * arg, 
-                                               const n2n_cipherspec_t * cspec );
-typedef n2n_tostat_t    (*n2n_transtick_f)( struct n2n_trans_op * arg, 
-                                            time_t now );
-
+typedef void            (*n2n_transtick_f)( struct n2n_trans_op * arg, time_t now );
 typedef int             (*n2n_transform_f)( struct n2n_trans_op * arg,
                                             uint8_t * outbuf,
                                             size_t out_len,
@@ -66,8 +56,7 @@ typedef struct n2n_trans_op {
   size_t              rx_cnt;
 
   n2n_transdeinit_f   deinit; /* destructor function */
-  n2n_transaddspec_f  addspec; /* parse opaque data from a key schedule file. */
-  n2n_transtick_f     tick;   /* periodic maintenance */
+  n2n_transtick_f    tick;   /* periodic maintenance */
   n2n_transform_f     fwd;    /* encode a payload */
   n2n_transform_f     rev;    /* decode a payload */
 } n2n_trans_op_t;

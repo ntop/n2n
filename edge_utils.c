@@ -59,7 +59,6 @@ static void check_peer(n2n_edge_t * eee,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port);
-static int edge_init_keyschedule(n2n_edge_t * eee);
 
 /* ************************************** */
 
@@ -162,7 +161,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   supernode2addr(&(eee->supernode), conf->sn_ip_array[eee->sn_idx]);
 
   /* Set active transop */
-  if((conf->encrypt_key == NULL) && (strlen(eee->conf.keyschedule) == 0))
+  if(conf->encrypt_key == NULL)
     transop_id = N2N_TRANSFORM_ID_NULL;
 
   switch(transop_id) {
@@ -745,21 +744,6 @@ static const char * supernode_ip(const n2n_edge_t * eee) {
 
 /* ************************************** */
 
-/** Called periodically to roll keys and do any periodic maintenance in the
- *  tranform operations state machines. */
-static int n2n_tick_transop(n2n_edge_t *eee, time_t now) {
-  n2n_tostat_t tst = eee->transop.tick(&eee->transop, now);
-
-  if(!tst.can_tx) {
-    traceEvent(TRACE_ERROR, "transop.tick can_tx=0, no packets can be sent!");
-    return(-1);
-  }
-
-  return 0;
-}
-
-/* ************************************** */
-
 /** A PACKET has arrived containing an encapsulated ethernet datagram - usually
  *  encrypted. */
 static int handle_PACKET(n2n_edge_t * eee,
@@ -895,7 +879,6 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 			      "  help    This help message\n"
 			      "  +verb   Increase verbosity of logging\n"
 			      "  -verb   Decrease verbosity of logging\n"
-			      "  reload  Re-read the keyschedule\n"
 			      "  <enter> Display statistics\n\n");
 
 	  sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
@@ -944,25 +927,6 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 	  sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 		 (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
 	  return;
-        }
-    }
-
-  if(recvlen >= 6)
-    {
-      if(0 == memcmp(udp_buf, "reload", 6))
-        {
-	  if(strlen(eee->conf.keyschedule) > 0)
-            {
-	      if(edge_init_keyschedule(eee) == 0)
-                {
-		  msg_len=0;
-		  msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-				      "> OK\n");
-		  sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
-			 (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
-                }
-	      return;
-            }
         }
     }
 
@@ -1518,8 +1482,8 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     /* Make sure ciphers are updated before the packet is treated. */
     if((nowTime - lastTransop) > TRANSOP_TICK_INTERVAL) {
       lastTransop = nowTime;
-      
-      n2n_tick_transop(eee, nowTime);
+
+      eee->transop.tick(&eee->transop, nowTime);
     }
     
     if(rc > 0) {
@@ -1592,59 +1556,6 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   closesocket(eee->udp_sock);
 
   return(0);
-}
-
-/* ************************************** */
-
-/** Read in a key-schedule file, parse the lines and pass each line to the
- *  appropriate trans_op for parsing of key-data and adding key-schedule
- *  entries. The lookup table of time->trans_op is constructed such that
- *  encoding can be passed to the correct trans_op. The trans_op internal table
- *  will then determine the best SA for that trans_op from the key schedule to
- *  use for encoding. */
-
-// TODO call me
-static int edge_init_keyschedule(n2n_edge_t *eee) {
-#define N2N_NUM_CIPHERSPECS 32
-
-  int retval = -1;
-  ssize_t numSpecs=0;
-  n2n_cipherspec_t specs[N2N_NUM_CIPHERSPECS];
-  size_t i;
-  time_t now = time(NULL);
-
-  numSpecs = n2n_read_keyfile(specs, N2N_NUM_CIPHERSPECS, eee->conf.keyschedule);
-
-  if(numSpecs > 0)
-    {
-      traceEvent(TRACE_NORMAL, "keyfile = %s read -> %d specs.\n", optarg, (signed int)numSpecs);
-
-      for (i=0; i < (size_t)numSpecs; ++i)
-        {
-	  n2n_transform_t idx = (n2n_transform_t) specs[i].t;
-	  if(idx != eee->transop.transform_id) {
-	    traceEvent(TRACE_ERROR, "changing transop in keyschedule is not supported");
-	    retval = -1;
-	  }
-
-	  if(eee->transop.addspec != NULL)
-	    retval = eee->transop.addspec(&eee->transop, &(specs[i]));
-
-	  if (0 != retval)
-            {
-	      traceEvent(TRACE_ERROR, "keyschedule failed to add spec[%u] to transop[%d].\n",
-			 (unsigned int)i, idx);
-
-	      return retval;
-            }
-        }
-
-      n2n_tick_transop(eee, now);
-    }
-  else    
-    traceEvent(TRACE_ERROR, "Failed to process '%s'", eee->conf.keyschedule);
-    
-  return retval;
 }
 
 /* ************************************** */
@@ -1774,7 +1685,7 @@ int quick_edge_init(char *device_name, char *community_name,
   int rv;
 
   /* Setup the configuration */
-  edge_conf_init_defaults(&conf);
+  edge_init_conf_defaults(&conf);
   conf.encrypt_key = encrypt_key;
   snprintf((char*)conf.community_name, sizeof(conf.community_name), "%s", community_name);
   edge_conf_add_supernode(&conf, supernode_ip_address_port);
