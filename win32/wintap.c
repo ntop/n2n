@@ -40,6 +40,7 @@ int open_wintap(struct tuntap_dev *device,
   ULONG status = TRUE;
 
   strncpy(config_device_name, device->config_device_name, N2N_IFNAMSIZ);
+  config_device_name[N2N_IFNAMSIZ - 1] = '\0';
 
   memset(device, 0, sizeof(struct tuntap_dev));
   device->device_handle = INVALID_HANDLE_VALUE;
@@ -280,6 +281,7 @@ int tuntap_open(struct tuntap_dev *device,
                 int mtu) {
 
     strncpy(device->config_device_name, dev, N2N_IFNAMSIZ);
+	device->config_device_name[N2N_IFNAMSIZ - 1] = '\0';
     return(open_wintap(device, address_mode, device_ip, device_mask, device_mac, mtu));
 }
 
