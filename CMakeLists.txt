@@ -61,7 +61,6 @@ add_library(n2n n2n.c
                 tuntap_netbsd.c
                 tuntap_linux.c
                 tuntap_osx.c
-                version.c
             )
 
 if(DEFINED WIN32)
