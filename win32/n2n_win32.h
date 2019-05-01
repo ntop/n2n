@@ -7,6 +7,11 @@
 #ifndef _N2N_WIN32_H_
 #define _N2N_WIN32_H_
 
+#ifndef N2N_IFNAMSIZ
+#define N2N_IFNAMSIZ  16 /* 15 chars * NULL */
+#endif
+
+
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -95,6 +100,7 @@ struct ip {
 
 typedef struct tuntap_dev {
 	HANDLE device_handle;
+	char config_device_name[N2N_IFNAMSIZ];
 	char *device_name;
 	char *ifName;
 	OVERLAPPED overlap_read, overlap_write;

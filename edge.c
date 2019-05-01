@@ -118,7 +118,7 @@ static void help() {
 	 );
   printf("edge "
 #if defined(N2N_CAN_NAME_IFACE)
-	 "-d <tun device> "
+	 "-d <tun/windows-tap device> "
 #endif /* #if defined(N2N_CAN_NAME_IFACE) */
 	 "-a [static:|dhcp:]<tun IP address> "
 	 "-c <community> "
@@ -138,8 +138,8 @@ static void help() {
 	 "[-p <local port>] [-M <mtu>] "
 	 "[-r] [-E] [-v] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
 
-#ifdef __linux__
-  printf("-d <tun device>          | tun device name\n");
+#if defined(N2N_CAN_NAME_IFACE)
+  printf("-d <tun/windows-tap device>          | tun device name. In Windows, it's tap adapter name\n");
 #endif
 
   printf("-a <mode:address>        | Set interface address. For DHCP use '-r -a dhcp:0.0.0.0'\n");

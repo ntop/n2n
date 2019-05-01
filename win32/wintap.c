@@ -33,16 +33,23 @@ int open_wintap(struct tuntap_dev *device,
   char adapterid[1024];
   char adaptername[1024];
   char tapname[1024];
+  char config_device_name[N2N_IFNAMSIZ];
   long len;
   int found = 0;
   int err, i;
   ULONG status = TRUE;
+
+  strncpy(config_device_name, device->config_device_name, N2N_IFNAMSIZ);
 
   memset(device, 0, sizeof(struct tuntap_dev));
   device->device_handle = INVALID_HANDLE_VALUE;
   device->device_name = NULL;
   device->ifName = NULL;
   device->ip_addr = inet_addr(device_ip);
+
+  if(config_device_name[0] != 0){
+    printf("Trying to find tap device [name=%s] ...\n", config_device_name);
+  }
 
   /* Open registry and look for network adapters */
   if((rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, NETWORK_CONNECTIONS_KEY, 0, KEY_READ, &key))) {
@@ -89,15 +96,24 @@ int open_wintap(struct tuntap_dev *device,
 	continue;
     }
 
-    _snprintf(tapname, sizeof(tapname), USERMODEDEVICEDIR "%s" TAPSUFFIX, adapterid);
-    device->device_handle = CreateFile(tapname, GENERIC_WRITE | GENERIC_READ,
-				       0, /* Don't let other processes share or open
-					     the resource until the handle's been closed */
-				       0, OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
-    if(device->device_handle != INVALID_HANDLE_VALUE) {
-      found = 1;
-      break;
+    if(config_device_name[0] != 0){
+        if(!strcmp(config_device_name, adaptername)) {
+            printf("tap device [name=%s] found\n", adaptername);
+            found = 1;
+            break;
+        }
+    }else{
+        _snprintf(tapname, sizeof(tapname), USERMODEDEVICEDIR "%s" TAPSUFFIX, adapterid);
+        device->device_handle = CreateFile(tapname, GENERIC_WRITE | GENERIC_READ,
+                       0, /* Don't let other processes share or open
+                         the resource until the handle's been closed */
+                       0, OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
+        if(device->device_handle != INVALID_HANDLE_VALUE) {
+          found = 1;
+          break;
+        }
     }
+    
   }
 
   RegCloseKey(key);
@@ -262,6 +278,8 @@ int tuntap_open(struct tuntap_dev *device,
                 char *device_mask, 
                 const char * device_mac, 
                 int mtu) {
+
+    strncpy(device->config_device_name, dev, N2N_IFNAMSIZ);
     return(open_wintap(device, address_mode, device_ip, device_mask, device_mac, mtu));
 }
 

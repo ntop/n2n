@@ -38,6 +38,7 @@
 #ifdef WIN32
 #include "win32/n2n_win32.h"
 #include "win32/winconfig.h"
+#define N2N_CAN_NAME_IFACE 1
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_SETUID
 #else
