@@ -70,7 +70,7 @@ uint8_t PKT_CONTENT[]={
 
 /* Prototypes */
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
-static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, uint8_t *pktbuf, n2n_community_t c);
+static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf);
 static int perform_decryption = 0;
 
 static void usage() {
@@ -93,34 +93,44 @@ static void parseArgs(int argc, char * argv[]) {
 
 int main(int argc, char * argv[]) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
-  n2n_community_t c;
-  n2n_trans_op_t transop_null, transop_twofish, transop_aes_cbc;
-  u_char encrypt_pwd[] = "SoMEVer!S$cUREPassWORD";
+  n2n_trans_op_t transop_null, transop_twofish;
+#ifdef N2N_HAVE_AES
+  n2n_trans_op_t transop_aes_cbc;
+#endif
+  n2n_edge_conf_t conf;
 
   parseArgs(argc, argv);
 
-  memset(c,0,sizeof(N2N_COMMUNITY_SIZE));
-  memcpy(c, "abc123def456", 12);
+  /* Init configuration */
+  edge_init_conf_defaults(&conf);
+  strncpy((char*)conf.community_name, "abc123def456", sizeof(conf.community_name));
+  conf.encrypt_key = "SoMEVer!S$cUREPassWORD";
 
   /* Init transopts */
-  memset(&transop_null, 0, sizeof(transop_null));
-  transop_null_init(&transop_null);
-  memset(&transop_twofish, 0, sizeof(transop_twofish));
-  transop_twofish_init(&transop_twofish);
-  transop_twofish_setup_psk(&transop_twofish, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
-  memset(&transop_aes_cbc, 0, sizeof(transop_aes_cbc));
-  transop_aes_init(&transop_aes_cbc);
-  transop_aes_setup_psk(&transop_aes_cbc, 0, encrypt_pwd, sizeof(encrypt_pwd)-1);
+  n2n_transop_null_init(&conf, &transop_null);
+  n2n_transop_twofish_init(&conf, &transop_twofish);
+#ifdef N2N_HAVE_AES
+  n2n_transop_aes_cbc_init(&conf, &transop_aes_cbc);
+#endif
 
   /* Run the tests */
-  run_transop_benchmark("transop_null", &transop_null, pktbuf, c);
-  run_transop_benchmark("transop_twofish", &transop_twofish, pktbuf, c);
-  run_transop_benchmark("transop_aes", &transop_aes_cbc, pktbuf, c);
+  run_transop_benchmark("transop_null", &transop_null, &conf, pktbuf);
+  run_transop_benchmark("transop_twofish", &transop_twofish, &conf, pktbuf);
+#ifdef N2N_HAVE_AES
+  run_transop_benchmark("transop_aes", &transop_aes_cbc, &conf, pktbuf);
+#endif
+
+  /* Cleanup */
+  transop_null.deinit(&transop_null);
+  transop_twofish.deinit(&transop_twofish);
+#ifdef N2N_HAVE_AES
+  transop_aes_cbc.deinit(&transop_aes_cbc);
+#endif
 
   return 0;
 }
 
-static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, uint8_t *pktbuf, n2n_community_t c) {
+static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf) {
   n2n_common_t cmn;
   n2n_PACKET_t pkt;
   n2n_mac_t mac_buf;
@@ -142,7 +152,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, ui
   gettimeofday( &t1, NULL );
 
   while(tdiff < target_usec) {
-    nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, c);
+    nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, conf->community_name);
 
     nw += op_fn->fwd(op_fn,
 	  pktbuf+nw, N2N_PKT_BUF_SIZE-nw,

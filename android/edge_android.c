@@ -137,6 +137,7 @@ static int scan_address(char * ip_addr, size_t addr_size,
 
 /* *************************************************** */
 
+//TODO use new API
 int start_edge(const n2n_edge_cmd_t* cmd)
 {
     int     keep_on_running = 0;
@@ -177,13 +178,7 @@ int start_edge(const n2n_edge_cmd_t* cmd)
         return 1;
     }
     eee.device.fd = cmd->vpn_fd;
-    if (cmd->enc_key_file)
-    {
-        strncpy(eee.keyschedule, cmd->enc_key_file, N2N_PATHNAME_MAXLEN-1);
-        eee.keyschedule[N2N_PATHNAME_MAXLEN-1]=0; /* strncpy does not add NULL if the source has no NULL. */
-        traceEvent(TRACE_DEBUG, "keyfile = '%s'\n", eee.keyschedule);
-    }
-    else if (cmd->enc_key)
+    if (cmd->enc_key)
     {
         encrypt_key = strdup(cmd->enc_key);
         traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", encrypt_key);
@@ -242,7 +237,7 @@ int start_edge(const n2n_edge_cmd_t* cmd)
         traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (eee.sn_ip_array[i]));
     }
     supernode2addr(&(eee.supernode), eee.sn_ip_array[eee.sn_idx]);
-    if (encrypt_key == NULL && strlen(eee.keyschedule) == 0)
+    if (encrypt_key == NULL)
     {
         traceEvent(TRACE_WARNING, "Encryption is disabled in edge.");
         eee.null_transop = 1;
@@ -276,15 +271,6 @@ int start_edge(const n2n_edge_cmd_t* cmd)
         }
         free(encrypt_key);
         encrypt_key = NULL;
-    }
-    else if (strlen(eee.keyschedule) > 0)
-    {
-        if (edge_init_keyschedule(&eee) != 0)
-        {
-            traceEvent(TRACE_ERROR, "keyschedule setup failed.\n");
-            free(encrypt_key);
-            return 1;
-        }
     }
     /* else run in NULL mode */
     eee.udp_sock = open_socket(local_port, 1 /*bind ANY*/ );

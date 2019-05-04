@@ -35,22 +35,20 @@
 
 /* ***************************************************** */
 
-typedef struct {
-  int     local_port;
-  int     mgmt_port;
-  char    tuntap_dev_name[N2N_IFNAMSIZ];
-  char    ip_mode[N2N_IF_MODE_SIZE];
-  char    ip_addr[N2N_NETMASK_STR_SIZE];
-  char    netmask[N2N_NETMASK_STR_SIZE];
-  int     mtu;
-  int     got_s;
-  char    device_mac[N2N_MACNAMSIZ];
-  char *  encrypt_key;
+typedef struct n2n_priv_config {
+  char                tuntap_dev_name[N2N_IFNAMSIZ];
+  char                ip_mode[N2N_IF_MODE_SIZE];
+  char                ip_addr[N2N_NETMASK_STR_SIZE];
+  char                netmask[N2N_NETMASK_STR_SIZE];
+  char                device_mac[N2N_MACNAMSIZ];
+  int                 mtu;
+  uint8_t             got_s;
+  uint8_t             daemon;
 #ifndef WIN32
-  uid_t   userid;
-  gid_t   groupid;
+  uid_t               userid;
+  gid_t               groupid;
 #endif
-} edge_conf_t;
+} n2n_priv_config_t;
 
 /* ***************************************************** */
 
@@ -144,8 +142,7 @@ static void help() {
 
   printf("-a <mode:address>        | Set interface address. For DHCP use '-r -a dhcp:0.0.0.0'\n");
   printf("-c <community>           | n2n community name the edge belongs to.\n");
-  printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>. Not with -K.\n");
-  printf("-K <key file>            | Specify a key schedule file to load. Not with -k.\n");
+  printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>.\n");
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-b                       | Periodically resolve supernode IP\n");
@@ -163,39 +160,24 @@ static void help() {
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
   printf("-r                       | Enable packet forwarding through n2n community.\n");
 #ifdef N2N_HAVE_AES
-  printf("-A                       | Set AES CBC as the preferred encryption mode.\n");
+  printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
 #endif
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
   printf("\nEnvironment variables:\n");
-  printf("  N2N_KEY                | Encryption key (ASCII). Not with -K or -k.\n");
+  printf("  N2N_KEY                | Encryption key (ASCII). Not with -k.\n");
 
   exit(0);
 }
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t *eee) {
+static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_edge_conf_t *conf) {
   /* traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : ""); */
 
   switch(optkey) {
-  case'K':
-    {
-      if(ec->encrypt_key) {
-        traceEvent(TRACE_ERROR, "Error: -K and -k options are mutually exclusive");
-        exit(1);
-      } else {
-        strncpy(eee->keyschedule, optargument, N2N_PATHNAME_MAXLEN-1);
-        /* strncpy does not add NULL if the source has no NULL. */
-        eee->keyschedule[N2N_PATHNAME_MAXLEN-1] = 0;
-	      
-        traceEvent(TRACE_NORMAL, "keyfile = '%s'\n", eee->keyschedule);
-      }
-      break;
-    }
-
   case 'a': /* IP address and mode of TUNTAP interface */
     {
       scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
@@ -206,14 +188,14 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
 
   case 'c': /* community as a string */
     {
-      memset(eee->community_name, 0, N2N_COMMUNITY_SIZE);
-      strncpy((char *)eee->community_name, optargument, N2N_COMMUNITY_SIZE);
+      memset(conf->community_name, 0, N2N_COMMUNITY_SIZE);
+      strncpy((char *)conf->community_name, optargument, N2N_COMMUNITY_SIZE);
       break;
     }
 
   case 'E': /* multicast ethernet addresses accepted. */
     {
-      eee->drop_multicast=0;
+      conf->drop_multicast=0;
       traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic");
       break;
     }
@@ -235,7 +217,7 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
 #ifndef WIN32
   case 'f' : /* do not fork as daemon */
     {
-      eee->daemon=0;
+      ec->daemon=0;
       break;
     }
 #endif /* #ifndef WIN32 */
@@ -254,37 +236,29 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
 
   case 'k': /* encrypt key */
     {
-      if(strlen(eee->keyschedule) > 0) {
-        traceEvent(TRACE_ERROR, "-K and -k options are mutually exclusive");
-        exit(1);
-      } else {
-        traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", ec->encrypt_key);
-        ec->encrypt_key = strdup(optargument);
-      }
+      if(conf->encrypt_key) free(conf->encrypt_key);
+      conf->encrypt_key = strdup(optargument);
+      traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
       break;
     }
 
   case 'r': /* enable packet routing across n2n endpoints */
     {
-      eee->allow_routing = 1;
+      conf->allow_routing = 1;
       break;
     }
 
 #ifdef N2N_HAVE_AES
   case 'A':
     {
-      eee->preferred_aes = 1;
+      conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
       break;
     }
 #endif
     
   case 'l': /* supernode-list */
     if(optargument) {
-      if(eee->sn_num < N2N_EDGE_NUM_SUPERNODES) {
-        strncpy((eee->sn_ip_array[eee->sn_num]), optargument, N2N_EDGE_SN_HOST_SIZE);
-        traceEvent(TRACE_NORMAL, "Adding supernode[%u] = %s", (unsigned int)eee->sn_num, (eee->sn_ip_array[eee->sn_num]));
-        ++eee->sn_num;
-      } else {
+      if(edge_conf_add_supernode(conf, optargument) != 0) {
         traceEvent(TRACE_WARNING, "Too many supernodes!");
         exit(1);
       }
@@ -301,19 +275,19 @@ static int setOption(int optkey, char *optargument, edge_conf_t *ec, n2n_edge_t 
 
   case 'b':
     {
-      eee->re_resolve_supernode_ip = 1;
+      conf->re_resolve_supernode_ip = 1;
       break;
     }
 
   case 'p':
     {
-      ec->local_port = atoi(optargument);
+      conf->local_port = atoi(optargument);
       break;
     }
 
   case 't':
     {
-      ec->mgmt_port = atoi(optargument);
+      conf->mgmt_port = atoi(optargument);
       break;
     }
 
@@ -363,7 +337,7 @@ static const struct option long_options[] = {
 /* *************************************************** */
 
 /* read command line options */
-static int loadFromCLI(int argc, char *argv[], edge_conf_t *ec, n2n_edge_t *eee) {
+static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_config_t *ec) {
   u_char c;
 
   while((c = getopt_long(argc, argv,
@@ -374,7 +348,7 @@ static int loadFromCLI(int argc, char *argv[], edge_conf_t *ec, n2n_edge_t *eee)
 			 ,
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
-    setOption(c, optarg, ec, eee);
+    setOption(c, optarg, ec, conf);
   }
 
   return 0;
@@ -400,7 +374,7 @@ static char *trim(char *s) {
 /* *************************************************** */
 
 /* parse the configuration file */
-static int loadFromFile(const char *path, edge_conf_t *ec, n2n_edge_t *eee) {
+static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_priv_config_t *ec) {
   char buffer[4096], *line, *key, *value;
   u_int line_len, opt_name_len;
   FILE *fd;
@@ -414,7 +388,6 @@ static int loadFromFile(const char *path, edge_conf_t *ec, n2n_edge_t *eee) {
   }
 
   while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
-
     line = trim(line);
     value = NULL;
 
@@ -437,7 +410,7 @@ static int loadFromFile(const char *path, edge_conf_t *ec, n2n_edge_t *eee) {
 	  if(line_len > opt_name_len + 1) value = trim(&key[opt_name_len + 1]);
 
 	  // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
-	  setOption(opt->val, value, ec, eee);
+	  setOption(opt->val, value, ec, conf);
 	  break;
 	}
 
@@ -449,7 +422,7 @@ static int loadFromFile(const char *path, edge_conf_t *ec, n2n_edge_t *eee) {
       if(line_len > 2) value = trim(&key[2]);
 
       // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
-      setOption(key[0], value, ec, eee);
+      setOption(key[0], value, ec, conf);
     } else {
       traceEvent(TRACE_WARNING, "Skipping unrecognized line: %s", line);
       continue;
@@ -565,104 +538,86 @@ static void daemonize() {
 
 /** Entry point to program from kernel. */
 int main(int argc, char* argv[]) {
-  int     keep_on_running = 1;
-  int     rc;
-  int     i;
-  n2n_edge_t eee; /* single instance for this program */
-  edge_conf_t ec;
+  int keep_on_running = 1;
+  int rc;
+  tuntap_dev tuntap;    /* a tuntap device */
+  n2n_edge_t *eee;      /* single instance for this program */
+  n2n_edge_conf_t conf; /* generic N2N edge config */
+  n2n_priv_config_t ec; /* config used for standalone program execution */
 
   if(argc == 1)
     help();
-  
-  ec.local_port = 0 /* any port */;
-  ec.mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
-  snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), "edge0");
-  snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
-  snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
-  ec.ip_addr[0] = '\0';
-  ec.device_mac[0] = '\0';
+
+  /* Defaults */
+  edge_init_conf_defaults(&conf);
+  memset(&ec, 0, sizeof(ec));
   ec.mtu = DEFAULT_MTU;
-  ec.got_s = 0;
-  ec.encrypt_key = NULL;
+  ec.daemon = 1;    /* By default run in daemon mode. */
 #ifndef WIN32
   ec.userid = 0; /* root is the only guaranteed ID */
   ec.groupid = 0; /* root is the only guaranteed ID */
 #endif
 
-  if(-1 == edge_init(&eee)) {
-    traceEvent(TRACE_ERROR, "Failed in edge_init");
-    exit(1);
-  }
-  
-  if(getenv("N2N_KEY")) {
-    ec.encrypt_key = strdup(getenv("N2N_KEY"));
-  }
-  
 #ifdef WIN32
   ec.tuntap_dev_name[0] = '\0';
+#else
+  snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), "edge0");
 #endif
-  memset(&(eee.supernode), 0, sizeof(eee.supernode));
-  eee.supernode.family = AF_INET;
+  snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
+  snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
+
+  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
 #ifndef WIN32
   if((argc >= 2) && (argv[1][0] != '-')) {
-    rc = loadFromFile(argv[1], &ec, &eee);
+    rc = loadFromFile(argv[1], &conf, &ec);
     if(argc > 2)
-      rc = loadFromCLI(argc, argv, &ec, &eee);
+      rc = loadFromCLI(argc, argv, &conf, &ec);
   } else
 #endif
-    rc = loadFromCLI(argc, argv, &ec, &eee);
+    rc = loadFromCLI(argc, argv, &conf, &ec);
 
-  if((rc < 0) || (eee.sn_num == 0))
+  if(rc < 0)
     help();
-  
-  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
-  for (i=0; i<eee.sn_num; ++i)
-    traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (eee.sn_ip_array[i]));
+  if(0 == strcmp("dhcp", ec.ip_mode)) {
+    traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
 
-  supernode2addr(&(eee.supernode), eee.sn_ip_array[eee.sn_idx]);
+    conf.dyn_ip_mode = 1;
+  } else
+    traceEvent(TRACE_NORMAL, "ip_mode='%s'", ec.ip_mode);
+
+  if(edge_verify_conf(&conf) != 0)
+    help();
 
   if(!(
 #ifdef __linux__
        (ec.tuntap_dev_name[0] != 0) &&
 #endif
-       (eee.community_name[0] != 0) &&
        (ec.ip_addr[0] != 0)
        ))
-    {
-      help();
-    }
+    help();
 
-#ifndef WIN32
-  if(eee.daemon) {
-    setUseSyslog(1); /* traceEvent output now goes to syslog. */
-    daemonize();
-  }
-#endif /* #ifndef WIN32 */
-  
-  if((NULL == ec.encrypt_key) && (0 == strlen(eee.keyschedule)))
-    {
-      traceEvent(TRACE_WARNING, "Encryption is disabled in edge.");
-      
-      eee.null_transop = 1;
-    }
-  
 #ifndef WIN32
   /* If running suid root then we need to setuid before using the force. */
   setuid(0);
   /* setgid(0); */
 #endif
 
-  if(0 == strcmp("dhcp", ec.ip_mode)) {
-    traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
-    
-    eee.dyn_ip_mode = 1;
-  } else
-    traceEvent(TRACE_NORMAL, "ip_mode='%s'", ec.ip_mode);    
-
-  if(tuntap_open(&(eee.device), ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
+  if(tuntap_open(&tuntap, ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
     return(-1);
+
+  if((eee = edge_init(&tuntap, &conf, &rc)) == NULL) {
+    traceEvent(TRACE_ERROR, "Failed in edge_init");
+    exit(1);
+  }
+
+#ifndef WIN32
+  if(ec.daemon) {
+    setUseSyslog(1); /* traceEvent output now goes to syslog. */
+    daemonize();
+  }
+#endif /* #ifndef WIN32 */
 
 #ifndef WIN32
   if((ec.userid != 0) || (ec.groupid != 0)) {
@@ -675,30 +630,16 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
-  if(ec.local_port > 0)
-    traceEvent(TRACE_NORMAL, "Binding to local port %d", (signed int)ec.local_port);
-
-  if(ec.encrypt_key) {
-    if(edge_init_encryption(&eee, (uint8_t *)ec.encrypt_key, strlen(ec.encrypt_key)) != 0) {
-      traceEvent(TRACE_ERROR, "Error: encryption setup failed");
-      return(-1);
-    }
-  } else if(strlen(eee.keyschedule) > 0) {
-    if(edge_init_keyschedule(&eee) < 0) {
-      traceEvent(TRACE_ERROR, "Error: keyschedule setup failed");
-      return(-1);
-    }
-  }
-  /* else run in NULL mode */
-
-  if(edge_init_sockets(&eee, ec.local_port, ec.mgmt_port) < 0) {
-    traceEvent(TRACE_ERROR, "Error: socket setup failed");
-    return(-1);
-  }
-
   traceEvent(TRACE_NORMAL, "edge started");
+  rc = run_edge_loop(eee, &keep_on_running);
 
-  return run_edge_loop(&eee, &keep_on_running);
+  /* Cleanup */
+  edge_term(eee);
+  tuntap_close(&tuntap);
+
+  if(conf.encrypt_key) free(conf.encrypt_key);
+
+  return(rc);
 }
 
 /* ************************************** */
