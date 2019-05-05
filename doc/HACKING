@@ -35,10 +35,22 @@ socket to which the initiating UDP packets were sent. This means that when an
 inside host sends UDP to some outside socket; other hosts cannot piggyback on
 this opening in the firewall to send data to the inside host.
 
-When two inside hosts are both behind symmetric NAT, peer-to-peer packet
-exchange is not possible via n2n. These hosts will require the supernode to
-relay packets.
+For example, an asymmetric NAT would keep the mapping:
+   <UDP,ExtPort> -> <IntIP, IntPort>
+and would redirect all the packets on external port ExtPort to the internal host
+regardless of the remote IP.
 
+Whereas a symmetric NAT would keep the mapping:
+   <UDP,RemoteIP,ExtPort> -> <IntIP, IntPort>
+so only RemoteIP can send packets to the internal host. RemoteIP is the supernode
+IP in case of n2n, to which the internal host has registered.
+
+In n2n, P2P can work monodirecitonally if only one of the two peers is behind a symmetric
+NAT. For example, if A is behind symmetric NAT and B is behind asymmetric NAT
+   - A->B packets are P2P (will have the B public IP as destination)
+   - B->A packets must go through the supernode
+
+If both the peers are behind symmetric NAT, then no P2P communication is possible.
 
 ARP CACHE
 ---------

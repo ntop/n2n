@@ -39,6 +39,12 @@ truncated to take the first 16 bytes.
 \-h
 write usage then exit.
 .TP
+\-i <register_interval>
+Supernode registration interval. It specifies the interval in seconds
+between consecutive REGISTER_SUPER packets and it's used to keep NAT hole
+open via the UDP NAT hole punching technique. This only works for asymmetric
+NATs and allows for P2P communication.
+.TP
 \-k <keystring>
 sets the twofish encryption key from ASCII text (see also N2N_KEY in
 ENVIRONMENT). All edges communicating must use the same key and community

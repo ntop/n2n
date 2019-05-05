@@ -28,16 +28,9 @@
 #include <tun2tap/tun2tap.h>
 #endif /* __ANDROID_NDK__ */
 
-#if defined(DEBUG)
-#define SOCKET_TIMEOUT_INTERVAL_SECS    5
-#define REGISTER_SUPER_INTERVAL_DFL     20 /* sec */
-#else  /* #if defined(DEBUG) */
-#define SOCKET_TIMEOUT_INTERVAL_SECS    10
-#define REGISTER_SUPER_INTERVAL_DFL     60 /* sec */
-#endif /* #if defined(DEBUG) */
 
-#define REGISTER_SUPER_INTERVAL_MIN     5    /* sec */
-#define REGISTER_SUPER_INTERVAL_MAX     3600 /* sec */
+#define SOCKET_TIMEOUT_INTERVAL_SECS    10
+#define REGISTER_SUPER_INTERVAL_DFL     20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL           (10) /* sec */
@@ -75,6 +68,9 @@ int edge_verify_conf(const n2n_edge_conf_t *conf) {
   if(conf->sn_num == 0)
     return(-2);
 
+  if(conf->register_interval < 1)
+    return(-3);
+
   return(0);
 }
 
@@ -104,7 +100,6 @@ struct n2n_edge {
 
   /* Timers */
   time_t              last_register_req;      /**< Check if time to re-register with super*/
-  size_t              register_lifetime;      /**< Time distance after last_register_req at which to re-register. */
   time_t              last_p2p;               /**< Last time p2p traffic was received. */
   time_t              last_sup;               /**< Last time a packet arrived from supernode. */
   time_t              start_time;             /**< For calculating uptime */
@@ -151,7 +146,6 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
 
   eee->known_peers    = NULL;
   eee->pending_peers  = NULL;
-  eee->register_lifetime = REGISTER_SUPER_INTERVAL_DFL;
   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
 #ifdef NOT_USED
@@ -673,10 +667,10 @@ static void send_register_ack(n2n_edge_t * eee,
 static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
   u_int sn_idx;
   
-  if(eee->sn_wait && (nowTime > (eee->last_register_req + (eee->register_lifetime/10)))) {
+  if(eee->sn_wait && (nowTime > (eee->last_register_req + (eee->conf.register_interval/10)))) {
     /* fall through */
     traceEvent(TRACE_DEBUG, "update_supernode_reg: doing fast retry.");
-  } else if(nowTime < (eee->last_register_req + eee->register_lifetime))
+  } else if(nowTime < (eee->last_register_req + eee->conf.register_interval))
     return; /* Too early */
 
   if(0 == eee->sup_attempts) {
@@ -1403,10 +1397,9 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		  eee->sn_wait=0;
 		  eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
-		  /* REVISIT: store sn_back */
-		  eee->register_lifetime = ra.lifetime;
-		  eee->register_lifetime = MAX(eee->register_lifetime, REGISTER_SUPER_INTERVAL_MIN);
-		  eee->register_lifetime = MIN(eee->register_lifetime, REGISTER_SUPER_INTERVAL_MAX);
+		  /* NOTE: the register_interval should be chosen by the edge node
+		   * based on its NAT configuration. */
+		  //eee->conf.register_interval = ra.lifetime;
                 }
 	      else
                 {
@@ -1639,6 +1632,7 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   conf->transop_id = N2N_TRANSFORM_ID_TWOFISH; /* use twofish for compatibility */
   conf->drop_multicast = 1;
+  conf->register_interval = REGISTER_SUPER_INTERVAL_DFL;
 
   if(getenv("N2N_KEY"))
     conf->encrypt_key = strdup(getenv("N2N_KEY"));

@@ -120,7 +120,7 @@ static void help() {
 #endif /* #if defined(N2N_CAN_NAME_IFACE) */
 	 "-a [static:|dhcp:]<tun IP address> "
 	 "-c <community> "
-	 "[-k <encrypt key> | -K <key file>]\n"
+	 "[-k <encrypt key>]\n"
 	 "    "
 	 "[-s <netmask>] "
 #ifndef WIN32
@@ -134,7 +134,7 @@ static void help() {
 	 "-l <supernode host:port>\n"
 	 "    "
 	 "[-p <local port>] [-M <mtu>] "
-	 "[-r] [-E] [-v] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
 
 #ifdef __linux__
   printf("-d <tun device>          | tun device name\n");
@@ -145,6 +145,7 @@ static void help() {
   printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>.\n");
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
+  printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
   printf("-b                       | Periodically resolve supernode IP\n");
   printf("                         | (when supernodes are running on dynamic IPs)\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
@@ -265,6 +266,10 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
+  case 'i': /* supernode registration interval */
+    conf->register_interval = atoi(optarg);
+    break;
+
 #if defined(N2N_CAN_NAME_IFACE)
   case 'd': /* TUNTAP name */
     {
@@ -341,7 +346,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:"
+			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:"
 #ifdef N2N_HAVE_AES
 			 "A"
 #endif
