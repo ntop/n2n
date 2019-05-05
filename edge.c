@@ -541,9 +541,29 @@ static void daemonize() {
 
 /* *************************************************** */
 
+static int keep_on_running;
+
+#ifdef __linux__
+
+static void term_handler(int sig) {
+  static int called = 0;
+
+  if(called) {
+    traceEvent(TRACE_NORMAL, "Ok I am leaving now");
+    _exit(0);
+  } else {
+    traceEvent(TRACE_NORMAL, "Shutting down...");
+    called = 1;
+  }
+
+  keep_on_running = 0;
+}
+#endif
+
+/* *************************************************** */
+
 /** Entry point to program from kernel. */
 int main(int argc, char* argv[]) {
-  int keep_on_running = 1;
   int rc;
   tuntap_dev tuntap;    /* a tuntap device */
   n2n_edge_t *eee;      /* single instance for this program */
@@ -635,8 +655,15 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
+#ifdef __linux__
+  signal(SIGTERM, term_handler);
+  signal(SIGINT,  term_handler);
+#endif
+
+  keep_on_running = 1;
   traceEvent(TRACE_NORMAL, "edge started");
   rc = run_edge_loop(eee, &keep_on_running);
+  print_edge_stats(eee);
 
   /* Cleanup */
   edge_term(eee);

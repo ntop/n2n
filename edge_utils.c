@@ -76,6 +76,15 @@ int edge_verify_conf(const n2n_edge_conf_t *conf) {
 
 /* ************************************** */
 
+struct n2n_edge_stats {
+  uint32_t tx_p2p;
+  uint32_t rx_p2p;
+  uint32_t tx_sup;
+  uint32_t rx_sup;
+};
+
+/* ************************************** */
+
 struct n2n_edge {
   n2n_edge_conf_t     conf;
 
@@ -105,10 +114,7 @@ struct n2n_edge {
   time_t              start_time;             /**< For calculating uptime */
 
   /* Statistics */
-  size_t              tx_p2p;
-  size_t              rx_p2p;
-  size_t              tx_sup;
-  size_t              rx_sup;
+  struct n2n_edge_stats stats;
 };
 
 /* ************************************** */
@@ -328,7 +334,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
 
     memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
     scan->sock = *peer;
-    scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
+    update_peer_seen(scan, time(NULL)); /* Don't change this it marks the pending peer for removal. */
 
     peer_list_add(&(eee->pending_peers), scan);
 
@@ -431,7 +437,7 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 		 (unsigned int)peer_list_size(eee->known_peers));
 
 
-      scan->last_seen = time(NULL);
+      update_peer_seen(scan, time(NULL));
     }
   else
     {
@@ -757,12 +763,12 @@ static int handle_PACKET(n2n_edge_t * eee,
 
   if(from_supernode)
     {
-      ++(eee->rx_sup);
+      ++(eee->stats.rx_sup);
       eee->last_sup=now;
     }
   else
     {
-      ++(eee->rx_p2p);
+      ++(eee->stats.rx_p2p);
       eee->last_p2p=now;
     }
 
@@ -929,10 +935,10 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
 		      "paths  super:%u,%u p2p:%u,%u\n",
-		      (unsigned int)eee->tx_sup,
-		      (unsigned int)eee->rx_sup,
-		      (unsigned int)eee->tx_p2p,
-		      (unsigned int)eee->rx_p2p);
+		      (unsigned int)eee->stats.tx_sup,
+		      (unsigned int)eee->stats.rx_sup,
+		      (unsigned int)eee->stats.tx_p2p,
+		      (unsigned int)eee->stats.rx_p2p);
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
 		      "transop |%6u|%6u|\n",
@@ -1050,19 +1056,19 @@ static int send_packet(n2n_edge_t * eee,
 		       n2n_mac_t dstMac,
 		       const uint8_t * pktbuf,
 		       size_t pktlen) {
-  int dest;
+  int is_p2p;
   /*ssize_t s; */
   n2n_sock_str_t sockbuf;
   n2n_sock_t destination;
 
   /* hexdump(pktbuf, pktlen); */
 
-  dest = find_peer_destination(eee, dstMac, &destination);
+  is_p2p = find_peer_destination(eee, dstMac, &destination);
 
-  if(dest)
-    ++(eee->tx_p2p);
+  if(is_p2p)
+    ++(eee->stats.tx_p2p);
   else
-    ++(eee->tx_sup);
+    ++(eee->stats.tx_sup);
 
   traceEvent(TRACE_INFO, "send_packet to %s", sock_to_cstr(sockbuf, &destination));
 
@@ -1419,6 +1425,20 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       } /* switch(msg_type) */
   } else /* if (community match) */
     traceEvent(TRACE_WARNING, "Received packet with invalid community");
+}
+
+/* ************************************** */
+
+void print_edge_stats(const n2n_edge_t *eee) {
+  const struct n2n_edge_stats *s = &eee->stats;
+
+  traceEvent(TRACE_NORMAL, "**********************************");
+  traceEvent(TRACE_NORMAL, "Packet stats:");
+  traceEvent(TRACE_NORMAL, "    TX P2P: %u pkts", s->tx_p2p);
+  traceEvent(TRACE_NORMAL, "    RX P2P: %u pkts", s->rx_p2p);
+  traceEvent(TRACE_NORMAL, "    TX Supernode: %u pkts", s->tx_sup);
+  traceEvent(TRACE_NORMAL, "    RX Supernode: %u pkts", s->rx_sup);
+  traceEvent(TRACE_NORMAL, "**********************************");
 }
 
 /* ************************************** */

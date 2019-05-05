@@ -260,6 +260,7 @@ char* msg_type2str(uint16_t msg_type);
 void hexdump(const uint8_t * buf, size_t len);
 void print_n2n_version();
 int is_empty_ip_address(const n2n_sock_t * sock);
+void print_edge_stats(const n2n_edge_t *eee);
 
 /* Sockets */
 char* sock_to_cstr( n2n_sock_str_t out,
