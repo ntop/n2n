@@ -327,7 +327,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
-  /* TODO: remove from pending_peers after a timeout was reached to retry */
+  /* NOTE: pending_peers are purged periodically with purge_expired_registrations */
   if(scan == NULL) {
     scan = calloc(1, sizeof(struct peer_info));
 
@@ -528,7 +528,6 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
 	  /* Don't worry about what the supernode reports, it could be seeing a different socket. */
       }
   } else
-    /* TODO add max registration check */
     update_peer_seen(scan, when);
 }
 
@@ -1035,7 +1034,7 @@ static int find_peer_destination(n2n_edge_t * eee,
 	   * since the peer address may have changed. */
 	  traceEvent(TRACE_DEBUG, "Refreshing idle known peer");
 	  remove_peer_from_list(&eee->known_peers, prev, scan);
-	  register_with_new_peer(eee, mac_address, destination);
+	  /* NOTE: registration will be performed upon the receival of the next response packet */
 	} else {
 	  /* Valid known peer found */
 	  memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
