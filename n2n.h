@@ -277,11 +277,6 @@ size_t purge_peer_list( struct peer_info ** peer_list,
                         time_t purge_before );
 size_t clear_peer_list( struct peer_info ** peer_list );
 size_t purge_expired_registrations( struct peer_info ** peer_list );
-void update_peer_address(n2n_edge_t * eee,
-			 uint8_t from_supernode,
-			 const n2n_mac_t mac,
-			 const n2n_sock_t * peer,
-			 time_t when);
 
 /* Edge conf */
 void edge_init_conf_defaults(n2n_edge_conf_t *conf);

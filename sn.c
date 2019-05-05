@@ -157,7 +157,7 @@ static int update_edge(n2n_sn_t * sss,
     } else  {
       /* Known */
       if((0 != memcmp(community, scan->community_name, sizeof(n2n_community_t))) ||
-	 (0 != sock_equal(sender_sock, &(scan->sock))))
+	 (!sock_equal(sender_sock, &(scan->sock))))
         {
 	  memcpy(scan->community_name, community, sizeof(n2n_community_t));
 	  memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
@@ -500,7 +500,9 @@ static int process_udp(n2n_sn_t * sss,
 
   --(cmn.ttl); /* The value copied into all forwarded packets. */
 
-  if(msg_type == MSG_TYPE_PACKET) {
+  switch(msg_type) {
+  case MSG_TYPE_PACKET:
+  {
     /* PACKET from one edge to another edge via supernode. */
 
     /* pkt will be modified in place and recoded to an output of potentially
@@ -556,8 +558,10 @@ static int process_udp(n2n_sn_t * sss,
       try_forward(sss, &cmn, pkt.dstMac, rec_buf, encx);
     else
       try_broadcast(sss, &cmn, pkt.srcMac, rec_buf, encx);
-  }/* MSG_TYPE_PACKET */
-  else if(msg_type == MSG_TYPE_REGISTER) {
+    break;
+  }
+  case MSG_TYPE_REGISTER:
+  {
     /* Forwarding a REGISTER from one edge to the next */
 
     n2n_REGISTER_t                  reg;
@@ -606,9 +610,13 @@ static int process_udp(n2n_sn_t * sss,
       try_forward(sss, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
       traceEvent(TRACE_ERROR, "Rx REGISTER with multicast destination");
-  } else if(msg_type == MSG_TYPE_REGISTER_ACK)
+    break;
+  }
+  case MSG_TYPE_REGISTER_ACK:
     traceEvent(TRACE_DEBUG, "Rx REGISTER_ACK (NOT IMPLEMENTED) SHould not be via supernode");
-  else if(msg_type == MSG_TYPE_REGISTER_SUPER) {
+    break;
+  case MSG_TYPE_REGISTER_SUPER:
+  {
     n2n_REGISTER_SUPER_t            reg;
     n2n_REGISTER_SUPER_ACK_t        ack;
     n2n_common_t                    cmn2;
@@ -657,11 +665,15 @@ static int process_udp(n2n_sn_t * sss,
       traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
 		 macaddr_str(mac_buf, reg.edgeMac),
 		 sock_to_cstr(sockbuf, &(ack.sock)));
-    } else {
+    } else
       traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
 		 (char*)cmn.community);
-    }    
+    break;
   }
+  default:
+    /* Not a known message type */
+    traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
+  } /* switch(msg_type) */
 
   return 0;
 }

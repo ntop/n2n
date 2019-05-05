@@ -54,12 +54,17 @@
 
 static const char * supernode_ip(const n2n_edge_t * eee);
 static void send_register(n2n_edge_t * eee, const n2n_sock_t * remote_peer);
-static void check_peer(n2n_edge_t * eee,
+static void check_peer_registration_needed(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port);
 static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
+static void check_known_peer_sock_change(n2n_edge_t * eee,
+			 uint8_t from_supernode,
+			 const n2n_mac_t mac,
+			 const n2n_sock_t * peer,
+			 time_t when);
 
 /* ************************************** */
 
@@ -205,6 +210,26 @@ edge_init_error:
 
 /* ***************************************************** */
 
+static inline void update_peer_seen(struct peer_info *peer, time_t t) {
+  peer->last_seen = t;
+}
+
+/* ***************************************************** */
+
+static void remove_peer_from_list(struct peer_info **head, struct peer_info *prev,
+			 struct peer_info *scan) {
+  /* Remove the peer. */
+  if(prev == NULL)
+    /* scan was head of list */
+    *head = scan->next;
+  else
+    prev->next = scan->next;
+
+  free(scan);
+}
+
+/* ***************************************************** */
+
 /** Resolve the supernode IP address.
  *
  *  REVISIT: This is a really bad idea. The edge will block completely while the
@@ -294,7 +319,7 @@ static void register_with_local_peers(n2n_edge_t * eee) {
  *
  *  Called from the main loop when Rx a packet for our device mac.
  */
-static void try_send_register(n2n_edge_t * eee,
+static void register_with_new_peer(n2n_edge_t * eee,
 			      uint8_t from_supernode,
 			      const n2n_mac_t mac,
 			      const n2n_sock_t * peer) {
@@ -303,6 +328,7 @@ static void try_send_register(n2n_edge_t * eee,
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
+  /* TODO: remove from pending_peers after a timeout was reached to retry */
   if(scan == NULL) {
     scan = calloc(1, sizeof(struct peer_info));
 
@@ -329,7 +355,7 @@ static void try_send_register(n2n_edge_t * eee,
 /* ************************************** */
 
 /** Update the last_seen time for this peer, or get registered. */
-static void check_peer(n2n_edge_t * eee,
+static void check_peer_registration_needed(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer) {
@@ -337,27 +363,25 @@ static void check_peer(n2n_edge_t * eee,
   
   if(scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
-    try_send_register(eee, from_supernode, mac, peer);
+    register_with_new_peer(eee, from_supernode, mac, peer);
   } else {
     /* Already in known_peers. */
     time_t now = time(NULL);
 
     if((now - scan->last_seen) > 0 /* >= 1 sec */) {
       /* Don't register too often */
-      update_peer_address(eee, from_supernode, mac, peer, now);
+      check_known_peer_sock_change(eee, from_supernode, mac, peer, now);
     }
   }
 }
 /* ************************************** */
 
 
-/* Move the peer from the pending_peers list to the known_peers lists.
+/* Confirm that a pending peer is reachable directly via P2P.
  *
  * peer must be a pointer to an element of the pending_peers list.
- *
- * Called by main loop when Rx a REGISTER_ACK.
  */
-static void set_peer_operational(n2n_edge_t * eee,
+static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 			  const n2n_mac_t mac,
 			  const n2n_sock_t * peer) {
   struct peer_info * prev = NULL;
@@ -365,7 +389,7 @@ static void set_peer_operational(n2n_edge_t * eee,
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
-  traceEvent(TRACE_INFO, "set_peer_operational: %s -> %s",
+  traceEvent(TRACE_INFO, "peer_set_p2p_confirmed: %s -> %s",
 	     macaddr_str(mac_buf, mac),
 	     sock_to_cstr(sockbuf, peer));
 
@@ -409,7 +433,7 @@ static void set_peer_operational(n2n_edge_t * eee,
       traceEvent(TRACE_INFO, "Pending peers list size=%u",
 		 (unsigned int)peer_list_size(eee->pending_peers));
 
-      traceEvent(TRACE_INFO, "Operational peers list size=%u",
+      traceEvent(TRACE_INFO, "Known peers list size=%u",
 		 (unsigned int)peer_list_size(eee->known_peers));
 
 
@@ -457,14 +481,9 @@ int is_empty_ip_address(const n2n_sock_t * sock) {
 
 /* ************************************** */
 
-/** Keep the known_peers list straight.
- *
- *  Ignore broadcast L2 packets, and packets with invalid public_ip.
- *  If the dst_mac is in known_peers make sure the entry is correct:
- *  - if the public_ip socket has changed, erase the entry
- *  - if the same, update its last_seen = when
+/** Check if a known peer socket has changed and possibly register again.
  */
-void update_peer_address(n2n_edge_t * eee,
+static void check_known_peer_sock_change(n2n_edge_t * eee,
 			 uint8_t from_supernode,
 			 const n2n_mac_t mac,
 			 const n2n_sock_t * peer,
@@ -476,69 +495,41 @@ void update_peer_address(n2n_edge_t * eee,
   macstr_t mac_buf;
 
   if(is_empty_ip_address(peer))
-    {
-      /* Not to be registered. */
-      return;
-    }
+    return;
 
-  if(0 == memcmp(mac, broadcast_mac, N2N_MAC_SIZE))
-    {
-      /* Not to be registered. */
-      return;
-    }
+  if(!memcmp(mac, broadcast_mac, N2N_MAC_SIZE))
+    return;
 
-
-  while(scan != NULL)
-    {
+  /* Search the peer in known_peers */
+  while(scan != NULL) {
       if(memcmp(mac, scan->mac_addr, N2N_MAC_SIZE) == 0)
-        {
 	  break;
-        }
 
       prev = scan;
       scan = scan->next;
-    }
+  }
 
-  if(NULL == scan)
-    {
-      /* Not in known_peers. */
-      return;
-    }
+  if(!scan)
+    /* Not in known_peers */
+    return;
 
-  if(0 != sock_equal(&(scan->sock), peer))
-    {
-      if(0 == from_supernode)
-        {
+  if(!sock_equal(&(scan->sock), peer)) {
+      if(!from_supernode) {
+	  /* This is a P2P packet */
 	  traceEvent(TRACE_NORMAL, "Peer changed %s: %s -> %s",
 		     macaddr_str(mac_buf, scan->mac_addr),
 		     sock_to_cstr(sockbuf1, &(scan->sock)),
 		     sock_to_cstr(sockbuf2, peer));
-
 	  /* The peer has changed public socket. It can no longer be assumed to be reachable. */
-	  /* Remove the peer. */
-	  if(NULL == prev)
-            {
-	      /* scan was head of list */
-	      eee->known_peers = scan->next;
-            }
-	  else
-            {
-	      prev->next = scan->next;
-            }
-	  free(scan);
+	  remove_peer_from_list(&eee->known_peers, prev, scan);
 
-	  try_send_register(eee, from_supernode, mac, peer);
-        }
-      else
-        {
+	  register_with_new_peer(eee, 0 /* p2p */, mac, peer);
+      } else {
 	  /* Don't worry about what the supernode reports, it could be seeing a different socket. */
-        }
-    }
-  else
-    {
-      /* Found and unchanged. */
-      scan->last_seen = when;
-    }
+      }
+  } else
+    /* TODO add max registration check */
+    update_peer_seen(scan, when);
 }
 
 /* ************************************** */
@@ -782,7 +773,7 @@ static int handle_PACKET(n2n_edge_t * eee,
     }
 
   /* Update the sender in peer table entry */
-  check_peer(eee, from_supernode, pkt->srcMac, orig_sender);
+  check_peer_registration_needed(eee, from_supernode, pkt->srcMac, orig_sender);
 
   /* Handle transform. */
   {
@@ -1308,7 +1299,9 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   from_supernode= cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
 
   if(0 == memcmp(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE)) {
-      if(msg_type == MSG_TYPE_PACKET) {
+      switch(msg_type) {
+      case MSG_TYPE_PACKET:
+      {
 	  /* process PACKET - most frequent so first in list. */
 	  n2n_PACKET_t pkt;
 
@@ -1324,7 +1317,10 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf2, orig_sender));
 
 	  handle_PACKET(eee, &cmn, &pkt, orig_sender, udp_buf+idx, recvlen-idx);
-        } else if(msg_type == MSG_TYPE_REGISTER) {
+	  break;
+      }
+      case MSG_TYPE_REGISTER:
+      {
 	  /* Another edge is registering with us */
 	  n2n_REGISTER_t reg;
 	  n2n_mac_t null_mac = { '\0' };
@@ -1342,11 +1338,11 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf2, orig_sender));
 
 	  if(!memcmp(reg.dstMac, eee->device.mac_addr, 6))
-	    check_peer(eee, from_supernode, reg.srcMac, orig_sender);
+	    check_peer_registration_needed(eee, from_supernode, reg.srcMac, orig_sender);
 	  else if(// (sender.port == N2N_MULTICAST_PORT) &&
 		  (!memcmp(reg.dstMac, null_mac, 6))) { /* Announce via a multicast socket */
 	    if(memcmp(reg.srcMac, eee->device.mac_addr, 6)) /* It's not our self-announce */
-	      check_peer(eee, from_supernode, reg.srcMac, orig_sender);
+	      check_peer_registration_needed(eee, from_supernode, reg.srcMac, orig_sender);
 	    else {
 	      traceEvent(TRACE_INFO, "Skipping REGISTER from self");
 	      skip_register = 1; /* do not register with ourselves */
@@ -1355,9 +1351,10 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	  if(!skip_register)
 	    send_register_ack(eee, orig_sender, &reg);
-        }
-      else if(msg_type == MSG_TYPE_REGISTER_ACK)
-        {
+	  break;
+      }
+      case MSG_TYPE_REGISTER_ACK:
+      {
 	  /* Peer edge is acknowledging our register request */
 	  n2n_REGISTER_ACK_t ra;
 
@@ -1372,11 +1369,11 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf1, &sender),
 		     sock_to_cstr(sockbuf2, orig_sender));
 
-	  /* Move from pending_peers to known_peers; ignore if not in pending. */
-	  set_peer_operational(eee, ra.srcMac, &sender);
-        }
-      else if(msg_type == MSG_TYPE_REGISTER_SUPER_ACK)
-        {
+	  peer_set_p2p_confirmed(eee, ra.srcMac, &sender);
+	  break;
+      }
+      case MSG_TYPE_REGISTER_SUPER_ACK:
+      {
 	  n2n_REGISTER_SUPER_ACK_t ra;
 
 	  if(eee->sn_wait)
@@ -1420,18 +1417,15 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
             {
 	      traceEvent(TRACE_WARNING, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER.");
             }
-        }
-      else
-        {
-	  /* Not a known message type */
-	  traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
-	  return;
-        }
-    } /* if (community match) */
-  else
-    {
-      traceEvent(TRACE_WARNING, "Received packet with invalid community");
-    }
+	  break;
+      }
+      default:
+        /* Not a known message type */
+        traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
+        return;
+      } /* switch(msg_type) */
+  } else /* if (community match) */
+    traceEvent(TRACE_WARNING, "Received packet with invalid community");
 }
 
 /* ************************************** */

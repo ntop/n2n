@@ -460,27 +460,24 @@ extern char * sock_to_cstr(n2n_sock_str_t out,
   }
 }
 
-/* @return zero if the two sockets are equivalent. */
+/* @return 1 if the two sockets are equivalent. */
 int sock_equal(const n2n_sock_t * a,
 	       const n2n_sock_t * b) {
-  if(a->port != b->port)     { return 1; }
-  if(a->family != b->family) { return 1; }
-  
-  switch(a->family) {
-    case AF_INET:
-      if(0 != memcmp(a->addr.v4, b->addr.v4, IPV4_SIZE)) {
-	return 1;
-      }
-      break;
-      
-    default:
-      if(0 != memcmp(a->addr.v6, b->addr.v6, IPV6_SIZE)) {
-	return 1;
-      }
-      
-      break;
-    }
+  if(a->port != b->port)     { return(0); }
+  if(a->family != b->family) { return(0); }
 
-  return 0;
+  switch(a->family) {
+  case AF_INET:
+    if(memcmp(a->addr.v4, b->addr.v4, IPV4_SIZE))
+      return(0);
+    break;
+  default:
+    if(memcmp(a->addr.v6, b->addr.v6, IPV6_SIZE))
+      return(0);
+    break;
+  }
+
+  /* equal */
+  return(1);
 }
 
