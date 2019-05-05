@@ -320,7 +320,6 @@ static void register_with_local_peers(n2n_edge_t * eee) {
  *  Called from the main loop when Rx a packet for our device mac.
  */
 static void register_with_new_peer(n2n_edge_t * eee,
-			      uint8_t from_supernode,
 			      const n2n_mac_t mac,
 			      const n2n_sock_t * peer) {
   /* REVISIT: purge of pending_peers not yet done. */
@@ -334,6 +333,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
 
     memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
     scan->sock = *peer;
+    scan->timeout = REGISTER_SUPER_INTERVAL_DFL; /* TODO: should correspond to the peer supernode registration timeout */
     update_peer_seen(scan, time(NULL)); /* Don't change this it marks the pending peer for removal. */
 
     peer_list_add(&(eee->pending_peers), scan);
@@ -363,7 +363,7 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
   
   if(scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
-    register_with_new_peer(eee, from_supernode, mac, peer);
+    register_with_new_peer(eee, mac, peer);
   } else {
     /* Already in known_peers. */
     time_t now = time(NULL);
@@ -523,7 +523,7 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
 	  /* The peer has changed public socket. It can no longer be assumed to be reachable. */
 	  remove_peer_from_list(&eee->known_peers, prev, scan);
 
-	  register_with_new_peer(eee, 0 /* p2p */, mac, peer);
+	  register_with_new_peer(eee, mac, peer);
       } else {
 	  /* Don't worry about what the supernode reports, it could be seeing a different socket. */
       }
@@ -1011,10 +1011,12 @@ static int is_ethMulticast(const void * buf, size_t bufsize) {
 static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_mac_t mac_address,
                                  n2n_sock_t * destination) {
-  const struct peer_info *scan = eee->known_peers;
+  struct peer_info *scan = eee->known_peers;
+  struct peer_info *prev = NULL;
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
   int retval=0;
+  time_t now = time(NULL);
 
   traceEvent(TRACE_DEBUG, "Searching destination peer for MAC %02X:%02X:%02X:%02X:%02X:%02X",
 	     mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
@@ -1027,19 +1029,28 @@ static int find_peer_destination(n2n_edge_t * eee,
 	       );
 
     if((scan->last_seen > 0) &&
-       (memcmp(mac_address, scan->mac_addr, N2N_MAC_SIZE) == 0))
-      {
-	memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
-	retval=1;
+       (memcmp(mac_address, scan->mac_addr, N2N_MAC_SIZE) == 0)) {
+	if((now - scan->last_seen) >= (scan->timeout / 2)) {
+	  /* Too much time passed since we saw the peer, need to register again
+	   * since the peer address may have changed. */
+	  traceEvent(TRACE_DEBUG, "Refreshing idle known peer");
+	  remove_peer_from_list(&eee->known_peers, prev, scan);
+	  register_with_new_peer(eee, mac_address, destination);
+	} else {
+	  /* Valid known peer found */
+	  memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
+	  retval=1;
+	}
+
 	break;
-      }
+    }
+
+    prev = scan;
     scan = scan->next;
   }
 
-  if(0 == retval)
-    {
-      memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
-    }
+  if(retval == 0)
+    memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
 
   traceEvent(TRACE_DEBUG, "find_peer_address (%s) -> [%s]",
 	     macaddr_str(mac_buf, mac_address),
