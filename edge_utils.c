@@ -228,6 +228,22 @@ static void remove_peer_from_list(struct peer_info **head, struct peer_info *pre
   free(scan);
 }
 
+/* ************************************** */
+
+static uint32_t localhost_v4 = 0x7f000001;
+static uint8_t localhost_v6[IPV6_SIZE] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+
+/* Exclude localhost as it may be received when an edge node runs
+ * in the same supernode host.
+ */
+static int is_valid_peer_sock(const n2n_sock_t *sock) {
+  if(((sock->family == AF_INET) && (*((uint32_t*)sock->addr.v4) != htonl(localhost_v4)))
+     || ((sock->family == AF_INET6) && memcmp(sock->addr.v6, localhost_v6, IPV6_SIZE)))
+    return(1);
+
+  return(0);
+}
+
 /* ***************************************************** */
 
 /** Resolve the supernode IP address.
@@ -447,10 +463,6 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 
 /* ************************************** */
 
-n2n_mac_t broadcast_mac = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-
-/* ************************************** */
-
 int is_empty_ip_address(const n2n_sock_t * sock) {
   const uint8_t * ptr=NULL;
   size_t len=0;
@@ -480,6 +492,8 @@ int is_empty_ip_address(const n2n_sock_t * sock) {
 }
 
 /* ************************************** */
+
+static n2n_mac_t broadcast_mac = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 /** Check if a known peer socket has changed and possibly register again.
  */
@@ -1317,10 +1331,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	  decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
-	  if(pkt.sock.family)
-            {
-	      orig_sender = &(pkt.sock);
-            }
+	  if(is_valid_peer_sock(&pkt.sock))
+	    orig_sender = &(pkt.sock);
 
 	  traceEvent(TRACE_INFO, "Rx PACKET from %s (%s)",
 		     sock_to_cstr(sockbuf1, &sender),
@@ -1338,7 +1350,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  
 	  decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
-	  if(reg.sock.family)
+	  if(is_valid_peer_sock(&reg.sock))
 	    orig_sender = &(reg.sock);
 
 	  traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s (%s)",
@@ -1370,7 +1382,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	  decode_REGISTER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
 
-	  if(ra.sock.family)
+	  if(is_valid_peer_sock(&ra.sock))
 	    orig_sender = &(ra.sock);
 
 	  traceEvent(TRACE_INFO, "Rx REGISTER_ACK src=%s dst=%s from peer %s (%s)",
@@ -1390,10 +1402,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
             {
 	      decode_REGISTER_SUPER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
 
-	      if(ra.sock.family)
-                {
+	      if(is_valid_peer_sock(&ra.sock))
 		  orig_sender = &(ra.sock);
-                }
 
 	      traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s). Attempts %u",
 			 macaddr_str(mac_buf1, ra.edgeMac),
