@@ -120,7 +120,7 @@ struct n2n_edge {
 n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *rv) {
   n2n_transform_t transop_id = conf->transop_id;
   n2n_edge_t *eee = calloc(1, sizeof(n2n_edge_t));
-  int rc = -1;
+  int rc = -1, i;
 
   if((rc = edge_verify_conf(conf)) != 0) {
     traceEvent(TRACE_ERROR, "Invalid configuration");
@@ -135,6 +135,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
 #ifdef WIN32
   initWin32();
 #endif
+
   memcpy(&eee->conf, conf, sizeof(*conf));
   memcpy(&eee->device, dev, sizeof(*dev));
   eee->start_time = time(NULL);
@@ -155,7 +156,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   }
 #endif
 
-  for(int i=0; i<conf->sn_num; ++i)
+  for(i=0; i<conf->sn_num; ++i)
     traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (conf->sn_ip_array[i]));
 
   /* Set the active supernode */
