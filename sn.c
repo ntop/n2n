@@ -859,6 +859,7 @@ static int run_loop( n2n_sn_t * sss )
 {
   uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
   int keep_running=1;
+  time_t last_purge_edges = 0;
 
   sss->start_time = time(NULL);
 
@@ -934,7 +935,7 @@ static int run_loop( n2n_sn_t * sss )
 	  traceEvent( TRACE_DEBUG, "timeout" );
         }
 
-      purge_expired_registrations( &(sss->edges) );
+      purge_expired_registrations( &(sss->edges), &last_purge_edges );
 
     } /* while */
 

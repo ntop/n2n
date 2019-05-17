@@ -297,7 +297,7 @@ size_t peer_list_size( const struct peer_info * list );
 size_t purge_peer_list( struct peer_info ** peer_list, 
                         time_t purge_before );
 size_t clear_peer_list( struct peer_info ** peer_list );
-size_t purge_expired_registrations( struct peer_info ** peer_list );
+size_t purge_expired_registrations( struct peer_info ** peer_list, time_t* p_last_purge );
 
 /* version.c */
 extern char *n2n_sw_version, *n2n_sw_osName, *n2n_sw_buildDate;
