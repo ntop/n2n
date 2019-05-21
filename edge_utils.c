@@ -119,6 +119,17 @@ struct n2n_edge {
 
 /* ************************************** */
 
+static const char* transop_str(enum n2n_transform tr) {
+  switch(tr) {
+  case N2N_TRANSFORM_ID_NULL:    return("null");
+  case N2N_TRANSFORM_ID_TWOFISH: return("twofish");
+  case N2N_TRANSFORM_ID_AESCBC:  return("AES-CBC");
+  default:                       return("invalid");
+  };
+}
+
+/* ************************************** */
+
 /** Initialise an edge to defaults.
  *
  *  This also initialises the NULL transform operation opstruct.
@@ -577,7 +588,7 @@ static ssize_t sendto_sock(int fd, const void * buf,
 /** Send a REGISTER_SUPER packet to the current supernode. */
 static void send_register_super(n2n_edge_t * eee,
 				const n2n_sock_t * supernode) {
-  uint8_t pktbuf[N2N_PKT_BUF_SIZE];
+  uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
   size_t idx;
   /* ssize_t sent; */
   n2n_common_t cmn;
@@ -832,8 +843,9 @@ static int handle_PACKET(n2n_edge_t * eee,
       }
     else
       {
-	traceEvent(TRACE_ERROR, "invalid transop ID: %u, expected %u",
-		   rx_transop_id, eee->conf.transop_id);
+	traceEvent(TRACE_ERROR, "invalid transop ID: expected %s(%u), got %s(%u)",
+		   transop_str(eee->conf.transop_id), eee->conf.transop_id,
+		   transop_str(rx_transop_id), rx_transop_id);
       }
   }
 
@@ -1604,7 +1616,7 @@ void edge_term(n2n_edge_t * eee) {
   clear_peer_list(&(eee->known_peers));
 
   eee->transop.deinit(&eee->transop);
-  memset(eee, 0, sizeof(*eee));
+  free(eee);
 }
 
 /* ************************************** */

@@ -435,7 +435,8 @@ static int load_allowed_n2n_communities(char *path) {
     s = (struct n2n_allowed_communities*)malloc(sizeof(struct n2n_allowed_communities));
 
     if(s != NULL) {
-      strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE);
+      strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE-1);
+      s->community[N2N_COMMUNITY_SIZE-1] = '\0';
       HASH_ADD_STR(allowed_communities, community, s);
       num_communities++;
       traceEvent(TRACE_INFO, "Added allowed community '%s' [total: %u]",

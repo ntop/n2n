@@ -100,7 +100,8 @@ static int scan_address(char * ip_addr, size_t addr_size,
   else
     {
       /* colon is not present */
-      strncpy(ip_addr, s, addr_size);
+      strncpy(ip_addr, s, addr_size-1);
+      ip_addr[addr_size-1] = '\0';
     }
 
   return retval;
@@ -191,6 +192,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
     {
       memset(conf->community_name, 0, N2N_COMMUNITY_SIZE);
       strncpy((char *)conf->community_name, optargument, N2N_COMMUNITY_SIZE);
+      conf->community_name[N2N_COMMUNITY_SIZE-1] = '\0';
       break;
     }
 
@@ -226,6 +228,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
   case 'm' : /* TUNTAP MAC address */
     {
       strncpy(ec->device_mac,optargument,N2N_MACNAMSIZ);
+      ec->device_mac[N2N_MACNAMSIZ-1] = '\0';
       break;
     }
 
@@ -274,6 +277,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
   case 'd': /* TUNTAP name */
     {
       strncpy(ec->tuntap_dev_name, optargument, N2N_IFNAMSIZ);
+      ec->tuntap_dev_name[N2N_IFNAMSIZ-1] = '\0';
       break;
     }
 #endif
@@ -302,6 +306,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
         traceEvent(TRACE_WARNING, "Multiple subnet masks supplied");
       }
       strncpy(ec->netmask, optargument, N2N_NETMASK_STR_SIZE);
+      ec->netmask[N2N_NETMASK_STR_SIZE - 1] = '\0';
       ec->got_s = 1;
       break;
     }

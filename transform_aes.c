@@ -144,8 +144,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
              * Using two calls to rand() because RAND_MAX is usually < 64bit
              * (e.g. linux) and sometimes < 32bit (e.g. Windows).
              */
-            ((uint32_t*)&iv_seed)[0] = rand();
-            ((uint32_t*)&iv_seed)[1] = rand();
+            iv_seed = ((((uint64_t)rand() & 0xFFFFFFFF)) << 32) | rand();
             encode_buf(outbuf, &idx, &iv_seed, sizeof(iv_seed));
 
             /* Encrypt the assembly contents and write the ciphertext after the SA. */

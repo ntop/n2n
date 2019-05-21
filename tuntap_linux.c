@@ -84,7 +84,8 @@ int tuntap_open(tuntap_dev *device,
 
   memset(&ifr, 0, sizeof(ifr));
   ifr.ifr_flags = IFF_TAP|IFF_NO_PI; /* Want a TAP device for layer 2 frames. */
-  strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+  strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
+  ifr.ifr_name[IFNAMSIZ-1] = '\0';
   rc = ioctl(device->fd, TUNSETIFF, (void *)&ifr);
 
   if(rc < 0) {

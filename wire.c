@@ -228,7 +228,7 @@ int decode_sock( n2n_sock_t * sock,
                  size_t * idx )
 {
     size_t * idx0=idx;
-    uint16_t f;
+    uint16_t f=0;
     
     decode_uint16( &f, base, rem, idx );
 
