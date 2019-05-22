@@ -241,6 +241,9 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
   case 'k': /* encrypt key */
     {
       if(conf->encrypt_key) free(conf->encrypt_key);
+      if(conf->transop_id == N2N_TRANSFORM_ID_NULL)
+        conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
+
       conf->encrypt_key = strdup(optargument);
       traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
       break;

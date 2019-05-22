@@ -71,6 +71,10 @@ int edge_verify_conf(const n2n_edge_conf_t *conf) {
   if(conf->register_interval < 1)
     return(-3);
 
+  if(((conf->encrypt_key == NULL) && (conf->transop_id != N2N_TRANSFORM_ID_NULL)) ||
+     ((conf->encrypt_key != NULL) && (conf->transop_id == N2N_TRANSFORM_ID_NULL)))
+    return(-4);
+
   return(0);
 }
 
@@ -179,9 +183,6 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   supernode2addr(&(eee->supernode), conf->sn_ip_array[eee->sn_idx]);
 
   /* Set active transop */
-  if(conf->encrypt_key == NULL)
-    transop_id = N2N_TRANSFORM_ID_NULL;
-
   switch(transop_id) {
   case N2N_TRANSFORM_ID_TWOFISH:
     rc = n2n_transop_twofish_init(&eee->conf, &eee->transop);
@@ -1693,12 +1694,14 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
 
   conf->local_port = 0 /* any port */;
   conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
-  conf->transop_id = N2N_TRANSFORM_ID_TWOFISH; /* use twofish for compatibility */
+  conf->transop_id = N2N_TRANSFORM_ID_NULL;
   conf->drop_multicast = 1;
   conf->register_interval = REGISTER_SUPER_INTERVAL_DFL;
 
-  if(getenv("N2N_KEY"))
+  if(getenv("N2N_KEY")) {
     conf->encrypt_key = strdup(getenv("N2N_KEY"));
+    conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
+  }
 }
 
 /* ************************************** */
@@ -1735,6 +1738,7 @@ int quick_edge_init(char *device_name, char *community_name,
   /* Setup the configuration */
   edge_init_conf_defaults(&conf);
   conf.encrypt_key = encrypt_key;
+  conf.transop_id = N2N_TRANSFORM_ID_TWOFISH;
   snprintf((char*)conf.community_name, sizeof(conf.community_name), "%s", community_name);
   edge_conf_add_supernode(&conf, supernode_ip_address_port);
 
