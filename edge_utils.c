@@ -46,7 +46,7 @@
 /* ************************************** */
 
 static const char * supernode_ip(const n2n_edge_t * eee);
-static void send_register(n2n_edge_t * eee, const n2n_sock_t * remote_peer);
+static void send_register(n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac);
 static void check_peer_registration_needed(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
@@ -328,7 +328,7 @@ static void register_with_local_peers(n2n_edge_t * eee) {
   /* no send registration to the local multicast group */
   traceEvent(TRACE_INFO, "Registering with multicast group %s:%u",
 	     N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);    
-  send_register(eee, &(eee->multicast_peer));   
+  send_register(eee, &(eee->multicast_peer), NULL);
 }
 
 /* ************************************** */
@@ -373,7 +373,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
 	       (unsigned int)peer_list_size(eee->pending_peers));
 
     /* trace Sending REGISTER */
-    send_register(eee, &(scan->sock));
+    send_register(eee, &(scan->sock), mac);
 
     register_with_local_peers(eee);
   }
@@ -624,7 +624,8 @@ static void send_register_super(n2n_edge_t * eee,
 
 /** Send a REGISTER packet to another edge. */
 static void send_register(n2n_edge_t * eee,
-		   const n2n_sock_t * remote_peer) {
+		   const n2n_sock_t * remote_peer,
+		   const n2n_mac_t peer_mac) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   size_t idx;
   /* ssize_t sent; */
@@ -643,6 +644,12 @@ static void send_register(n2n_edge_t * eee,
   encode_uint32(reg.cookie, &idx, 123456789);
   idx=0;
   encode_mac(reg.srcMac, &idx, eee->device.mac_addr);
+
+  if(peer_mac) {
+    /* Can be NULL for multicast registrations */
+    idx=0;
+    encode_mac(reg.dstMac, &idx, peer_mac);
+  }
 
   idx=0;
   encode_REGISTER(pktbuf, &idx, &cmn, &reg);
