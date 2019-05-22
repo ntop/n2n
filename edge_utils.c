@@ -1455,8 +1455,10 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
         traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
         return;
       } /* switch(msg_type) */
-  } else /* if (community match) */
-    traceEvent(TRACE_WARNING, "Received packet with invalid community");
+  } else if(from_supernode) /* if (community match) */
+    traceEvent(TRACE_WARNING, "Received packet with unknown community");
+  else
+    traceEvent(TRACE_INFO, "Ignoring packet with unknown community");
 }
 
 /* ************************************** */
