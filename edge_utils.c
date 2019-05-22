@@ -242,6 +242,28 @@ static void remove_peer_from_list(struct peer_info **head, struct peer_info *pre
 
 /* ************************************** */
 
+static int find_and_remove_peer(struct peer_info **head, const n2n_mac_t mac) {
+  struct peer_info *prev = NULL;
+  struct peer_info *scan = *head;
+
+  while(scan != NULL) {
+    if(memcmp(scan->mac_addr, mac, N2N_MAC_SIZE) == 0)
+      break; /* found. */
+
+    prev = scan;
+    scan = scan->next;
+  }
+
+  if(scan) {
+    remove_peer_from_list(head, prev, scan);
+    return(1);
+  }
+
+  return(0);
+}
+
+/* ************************************** */
+
 static uint32_t localhost_v4 = 0x7f000001;
 static uint8_t localhost_v6[IPV6_SIZE] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
 
@@ -417,7 +439,7 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
-  traceEvent(TRACE_INFO, "peer_set_p2p_confirmed: %s -> %s",
+  traceEvent(TRACE_NORMAL, "P2P TX connection enstablished: %s [%s]",
 	     macaddr_str(mac_buf, mac),
 	     sock_to_cstr(sockbuf, peer));
 
@@ -1082,8 +1104,10 @@ static int find_peer_destination(n2n_edge_t * eee,
     scan = scan->next;
   }
 
-  if(retval == 0)
+  if(retval == 0) {
     memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
+    traceEvent(TRACE_DEBUG, "P2P Peer not found, using supernode");
+  }
 
   traceEvent(TRACE_DEBUG, "find_peer_address (%s) -> [%s]",
 	     macaddr_str(mac_buf, mac_address),
@@ -1372,6 +1396,16 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	  if(is_valid_peer_sock(&reg.sock))
 	    orig_sender = &(reg.sock);
+
+	  if(!from_supernode) {
+	    /* This is a P2P registration from the peer. We purge a pending
+	     * registration towards the possibly nat-ted peer address as we now have
+	     * a valid channel. We still use check_peer_registration_needed below
+	     * to double check this.
+	     */
+	    traceEvent(TRACE_DEBUG, "Got P2P register");
+	    find_and_remove_peer(&eee->pending_peers, reg.srcMac);
+	  }
 
 	  traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s (%s)",
 		     macaddr_str(mac_buf1, reg.srcMac),
