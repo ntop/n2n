@@ -1419,6 +1419,8 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   size_t numPurged;
   time_t lastIfaceCheck=0;
   time_t lastTransop=0;
+  time_t last_purge_known = 0;
+  time_t last_purge_pending = 0;
 #ifdef __ANDROID_NDK__
     time_t lastArpPeriod=0;
 #endif
@@ -1502,8 +1504,8 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 
     update_supernode_reg(eee, nowTime);
 
-    numPurged =  purge_expired_registrations(&(eee->known_peers));
-    numPurged += purge_expired_registrations(&(eee->pending_peers));
+    numPurged =  purge_expired_registrations(&(eee->known_peers), &last_purge_known);
+    numPurged += purge_expired_registrations(&(eee->pending_peers), &last_purge_pending);
 
     if(numPurged > 0) {
       traceEvent(TRACE_NORMAL, "Peer removed: pending=%u, operational=%u",
