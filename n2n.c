@@ -22,14 +22,8 @@
 
 #include <assert.h>
 
-#if defined(DEBUG)
-#   define PURGE_REGISTRATION_FREQUENCY   60
-#   define REGISTRATION_TIMEOUT          120
-#else /* #if defined(DEBUG) */
-#   define PURGE_REGISTRATION_FREQUENCY   60
-#   define REGISTRATION_TIMEOUT          (60*20)
-#endif /* #if defined(DEBUG) */
-
+#define PURGE_REGISTRATION_FREQUENCY   30
+#define REGISTRATION_TIMEOUT           60
 
 static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
