@@ -1697,7 +1697,11 @@ else
        EXTRA_DEPS=""
        LIBRRD=""
      else
-       EXTN="i386"
+       if test $MACHINE = "aarch64"; then
+         EXTN="arm64"
+       else
+         EXTN="i386"
+       fi
      fi
   fi
 fi
