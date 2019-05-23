@@ -370,6 +370,7 @@ static void register_with_local_peers(n2n_edge_t * eee) {
  *  Called from the main loop when Rx a packet for our device mac.
  */
 static void register_with_new_peer(n2n_edge_t * eee,
+			      uint8_t from_supernode,
 			      const n2n_mac_t mac,
 			      const n2n_sock_t * peer) {
   /* REVISIT: purge of pending_peers not yet done. */
@@ -397,6 +398,9 @@ static void register_with_new_peer(n2n_edge_t * eee,
 
     /* trace Sending REGISTER */
     send_register(eee, &(scan->sock), mac);
+    if(from_supernode) {
+      send_register(eee, &(eee->supernode), mac);
+    }
 
     register_with_local_peers(eee);
   }
@@ -413,7 +417,7 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
   
   if(scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
-    register_with_new_peer(eee, mac, peer);
+    register_with_new_peer(eee, from_supernode, mac, peer);
   } else {
     /* Already in known_peers. */
     time_t now = time(NULL);
@@ -571,7 +575,7 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
 	  /* The peer has changed public socket. It can no longer be assumed to be reachable. */
 	  remove_peer_from_list(&eee->known_peers, prev, scan);
 
-	  register_with_new_peer(eee, mac, peer);
+	  register_with_new_peer(eee, from_supernode, mac, peer);
       } else {
 	  /* Don't worry about what the supernode reports, it could be seeing a different socket. */
       }

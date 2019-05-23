@@ -583,7 +583,7 @@ static int process_udp(n2n_sn_t * sss,
 		 macaddr_str(mac_buf2, reg.dstMac),
 		 ((cmn.flags & N2N_FLAGS_FROM_SUPERNODE)?"from sn":"local"));
 
-      if(0 != (cmn.flags & N2N_FLAGS_FROM_SUPERNODE)) {
+      if(0 == (cmn.flags & N2N_FLAGS_FROM_SUPERNODE)) {
 	memcpy(&cmn2, &cmn, sizeof(n2n_common_t));
 
 	/* We are going to add socket even if it was not there before */
