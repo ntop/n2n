@@ -143,7 +143,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-A] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -155,6 +155,7 @@ static void help() {
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
+  printf("-L <reg_ttl>             | TTL for registration packet when UDP NAT hole punching through supernode (default 0 for not set )\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
 #ifndef WIN32
   printf("-u <UID>                 | User ID (numeric) to use when privileges are dropped.\n");
@@ -303,6 +304,10 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
     conf->register_interval = atoi(optargument);
     break;
 
+  case 'L': /* supernode registration interval */
+    conf->register_ttl = atoi(optarg);
+    break;
+
 #if defined(N2N_CAN_NAME_IFACE)
   case 'd': /* TUNTAP name */
     {
@@ -393,7 +398,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SD"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:"
 #ifdef N2N_HAVE_AES
 			 "A"
 #endif
