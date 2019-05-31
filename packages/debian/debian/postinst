@@ -34,7 +34,6 @@ if systemctl -q is-active edge; then
 fi
 
 # Restart specific services if already running
-deb-systemd-invoke enable 'edge@*.service' 'edge-ntopng@*.service'
 deb-systemd-invoke restart 'edge@*.service' 'edge-ntopng@*.service'
 
 # Enable supernode

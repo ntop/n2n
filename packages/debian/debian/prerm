@@ -6,18 +6,13 @@ if [ -f /.dockerenv ]; then exit 0; fi
 
 . /usr/share/debconf/confmodule
 
-case "$1" in
-	upgrade)
-	;;
-
-	*)
+if [ "$1" = "remove" ]; then
 	deb-systemd-invoke stop edge.service 'edge@*.service' 'edge-ntopng@*.service'
 	deb-systemd-invoke disable edge.service 'edge@*.service' 'edge-ntopng@*.service'
 	deb-systemd-invoke stop supernode.service
 	deb-systemd-invoke disable supernode.service
 	systemctl daemon-reload
 	systemctl reset-failed
-	;;
-esac
+fi
 
 exit 0
