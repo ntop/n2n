@@ -39,9 +39,6 @@
 #define TRANSOP_AES_IV_KEY_BYTES (AES128_KEY_BYTES) /* use AES128 for IV encryption */
 #define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_IV_SEED_SIZE)
 
-/* AES ciphertext preamble */
-#define TRANSOP_AES_NONCE_SIZE   4
-
 const uint8_t RAND_BYTES = log2(RAND_MAX) / 8; /* number of random bytes returned from rand() function */
 
 typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
@@ -98,10 +95,9 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
     int len2=-1;
     transop_aes_t * priv = (transop_aes_t *)arg->priv;
     uint8_t assembly[N2N_PKT_BUF_SIZE] = {0};
-    uint32_t * pnonce;
 
-    if ( (in_len + TRANSOP_AES_NONCE_SIZE) <= N2N_PKT_BUF_SIZE ) {
-        if ( (in_len + TRANSOP_AES_NONCE_SIZE + TRANSOP_AES_PREAMBLE_SIZE) <= out_len ) {
+    if ( in_len <= N2N_PKT_BUF_SIZE ) {
+        if ( (in_len + TRANSOP_AES_PREAMBLE_SIZE) <= out_len ) {
             int len=-1;
             size_t idx=0;
             size_t tx_sa_num = 0; // Not used
@@ -130,14 +126,12 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             encode_buf(outbuf, &idx, iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
             /* Encrypt the assembly contents and write the ciphertext after the SA. */
-            len = in_len + TRANSOP_AES_NONCE_SIZE;
+            len = in_len;
 
-            /* The assembly buffer is a source for encrypting data. The nonce is
-             * written in first followed by the packet payload. The whole
+            /* The assembly buffer is a source for encrypting data.
+             * Packet payload gets written in. The whole
              * contents of assembly are encrypted. */
-            pnonce = (uint32_t *)assembly;
-            *pnonce = rand();
-            memcpy( assembly + TRANSOP_AES_NONCE_SIZE, inbuf, in_len );
+            memcpy( assembly, inbuf, in_len );
 
             /* Need at least one encrypted byte at the end for the padding. */
             len2 = ( (len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
@@ -175,7 +169,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
     uint8_t assembly[N2N_PKT_BUF_SIZE];
 
     if ( ( (in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */
-         && (in_len >= (TRANSOP_AES_PREAMBLE_SIZE + TRANSOP_AES_NONCE_SIZE) ) /* Has at least version, SA, iv seed and nonce */
+         && (in_len >= TRANSOP_AES_PREAMBLE_SIZE ) /* Has at least version, SA, and iv seed */
         )
     {
         uint32_t sa_rx=0; // Not used
@@ -216,7 +210,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                  * AES_BLOCKSIZE-1 */
                 padding = assembly[ len-1 ] & 0xff; 
 
-                if ( len >= (padding + TRANSOP_AES_NONCE_SIZE))
+                if ( len >= padding )
                 {
                     /* strictly speaking for this to be an ethernet packet
                      * it is going to need to be even bigger; but this is
@@ -224,11 +218,8 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                     traceEvent( TRACE_DEBUG, "padding = %u", padding );
                     len -= padding;
 
-                    len -= TRANSOP_AES_NONCE_SIZE; /* size of ethernet packet */
-
-                    /* Step over 4-byte random nonce value */
                     memcpy( outbuf, 
-                            assembly + TRANSOP_AES_NONCE_SIZE, 
+                            assembly, 
                             len );
                 } else
                     traceEvent( TRACE_WARNING, "UDP payload decryption failed." );
