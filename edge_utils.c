@@ -1274,13 +1274,13 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
 /* ************************************** */
 
 #ifdef WIN32
-static DWORD tunReadThread(LPVOID lpArg) {
+static DWORD* tunReadThread(LPVOID lpArg) {
   n2n_edge_t *eee = (n2n_edge_t*)lpArg;
 
   while(1)
     readFromTAPSocket(eee);
 
-  return((DWORD)NULL);
+  return((DWORD*)NULL);
 }
 
 /* ************************************** */
@@ -1704,14 +1704,14 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port)
     u_int enable_reuse = 1;
     
     /* allow multiple sockets to use the same PORT number */
-    setsockopt(eee->udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, &enable_reuse, sizeof(enable_reuse));
+    setsockopt(eee->udp_multicast_sock, SOL_SOCKET, SO_REUSEADDR, (char *)&enable_reuse, sizeof(enable_reuse));
 #ifdef SO_REUSEPORT /* no SO_REUSEPORT in Windows / old linux versions */
     setsockopt(eee->udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
 #endif
 
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
     mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    if (setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
+    if (setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
       traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u [errno %u]",
 		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
 
