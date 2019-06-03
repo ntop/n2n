@@ -407,7 +407,7 @@ static int load_allowed_n2n_communities(char *path) {
   char buffer[4096], *line;
   FILE *fd = fopen(path, "r");
   struct n2n_allowed_communities *s, *tmp;
-  u_int32_t num_communities = 0;
+  uint32_t num_communities = 0;
   
   if(fd == NULL) {
     traceEvent(TRACE_WARNING, "File %s not found", path);
