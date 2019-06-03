@@ -71,7 +71,7 @@ static int transop_deinit_aes(n2n_trans_op_t *arg) {
  */
 static size_t aes_best_keysize(size_t numBytes)
 {
-    if (numBytes >= AES256_KEY_BYTES )
+    if (numBytes >= AES256_KEY_BYTES)
     {
         return AES256_KEY_BYTES;
     }
@@ -123,8 +123,8 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
     uint8_t assembly[N2N_PKT_BUF_SIZE] = {0};
     uint32_t * pnonce;
 
-    if ( (in_len + TRANSOP_AES_NONCE_SIZE) <= N2N_PKT_BUF_SIZE ) {
-        if ( (in_len + TRANSOP_AES_NONCE_SIZE + TRANSOP_AES_PREAMBLE_SIZE) <= out_len ) {
+    if ( (in_len + TRANSOP_AES_NONCE_SIZE) <= N2N_PKT_BUF_SIZE) {
+        if ( (in_len + TRANSOP_AES_NONCE_SIZE + TRANSOP_AES_PREAMBLE_SIZE) <= out_len) {
             int len=-1;
             size_t idx=0;
             size_t tx_sa_num = 0; // Not used
@@ -132,13 +132,13 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             uint8_t padding = 0;
             n2n_aes_ivec_t enc_ivec = {0};
 
-            traceEvent( TRACE_DEBUG, "encode_aes %lu", in_len);
+            traceEvent(TRACE_DEBUG, "encode_aes %lu", in_len);
 
             /* Encode the aes format version. */
-            encode_uint8( outbuf, &idx, N2N_AES_TRANSFORM_VERSION );
+            encode_uint8( outbuf, &idx, N2N_AES_TRANSFORM_VERSION);
 
             /* Encode the security association (SA) number */
-            encode_uint32( outbuf, &idx, tx_sa_num ); // Not used
+            encode_uint32( outbuf, &idx, tx_sa_num); // Not used
 
             /* Generate and encode the IV seed.
              * Using two calls to rand() because RAND_MAX is usually < 64bit
@@ -155,26 +155,26 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
              * contents of assembly are encrypted. */
             pnonce = (uint32_t *)assembly;
             *pnonce = rand();
-            memcpy( assembly + TRANSOP_AES_NONCE_SIZE, inbuf, in_len );
+            memcpy( assembly + TRANSOP_AES_NONCE_SIZE, inbuf, in_len);
 
             /* Need at least one encrypted byte at the end for the padding. */
             len2 = ( (len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
             padding = (len2-len);
             assembly[len2 - 1] = padding;
-            traceEvent( TRACE_DEBUG, "padding = %u, seed = %016" PRIx64, padding, iv_seed );
+            traceEvent(TRACE_DEBUG, "padding = %u, seed = %016", padding, iv_seed);
 
             set_aes_cbc_iv(priv, enc_ivec, iv_seed);
 
             AES_cbc_encrypt( assembly, /* source */
                              outbuf + TRANSOP_AES_PREAMBLE_SIZE, /* dest */
                              len2, /* enc size */
-                             &(priv->enc_key), enc_ivec, AES_ENCRYPT );
+                             &(priv->enc_key), enc_ivec, AES_ENCRYPT);
 
             len2 += TRANSOP_AES_PREAMBLE_SIZE; /* size of data carried in UDP. */
         } else
-            traceEvent( TRACE_ERROR, "encode_aes outbuf too small." );
+            traceEvent(TRACE_ERROR, "encode_aes outbuf too small.");
     } else
-        traceEvent( TRACE_ERROR, "encode_aes inbuf too big to encrypt." );
+        traceEvent(TRACE_ERROR, "encode_aes inbuf too big to encrypt.");
 
     return len2;
 }
@@ -190,9 +190,9 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
     transop_aes_t * priv = (transop_aes_t *)arg->priv;
     uint8_t assembly[N2N_PKT_BUF_SIZE];
 
-    if ( ( (in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */
-         && (in_len >= (TRANSOP_AES_PREAMBLE_SIZE + TRANSOP_AES_NONCE_SIZE) ) /* Has at least version, SA, iv seed and nonce */
-        )
+    if ( ( (in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* Cipher text fits in assembly */
+         && (in_len >= (TRANSOP_AES_PREAMBLE_SIZE + TRANSOP_AES_NONCE_SIZE)) /* Has at least version, SA, iv seed and nonce */
+       )
     {
         uint32_t sa_rx=0; // Not used
         size_t rem=in_len;
@@ -201,20 +201,20 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
         uint64_t iv_seed=0;
 
         /* Get the encoding version to make sure it is supported */
-        decode_uint8( &aes_enc_ver, inbuf, &rem, &idx );
+        decode_uint8( &aes_enc_ver, inbuf, &rem, &idx);
 
-        if ( N2N_AES_TRANSFORM_VERSION == aes_enc_ver ) {
+        if ( N2N_AES_TRANSFORM_VERSION == aes_enc_ver) {
             /* Get the SA number and make sure we are decrypting with the right one. - Not used*/
-            decode_uint32( &sa_rx, inbuf, &rem, &idx );
+            decode_uint32( &sa_rx, inbuf, &rem, &idx);
 
             /* Get the IV seed */
             decode_buf((uint8_t *)&iv_seed, sizeof(iv_seed), inbuf, &rem, &idx);
 
-            traceEvent( TRACE_DEBUG, "decode_aes %lu with seed %016" PRIx64, in_len, iv_seed );
+            traceEvent(TRACE_DEBUG, "decode_aes %lu with seed %016", in_len, iv_seed);
 
             len = (in_len - TRANSOP_AES_PREAMBLE_SIZE);
             
-            if ( 0 == (len % AES_BLOCK_SIZE ) ) {
+            if ( 0 == (len % AES_BLOCK_SIZE)) {
                 uint8_t padding;
                 n2n_aes_ivec_t dec_ivec = {0};
 
@@ -224,7 +224,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                                  assembly, /* destination */
                                  len, 
                                  &(priv->dec_key),
-                                 dec_ivec, AES_DECRYPT );
+                                 dec_ivec, AES_DECRYPT);
 
                 /* last byte is how much was padding: max value should be
                  * AES_BLOCKSIZE-1 */
@@ -235,7 +235,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                     /* strictly speaking for this to be an ethernet packet
                      * it is going to need to be even bigger; but this is
                      * enough to prevent segfaults. */
-                    traceEvent( TRACE_DEBUG, "padding = %u", padding );
+                    traceEvent(TRACE_DEBUG, "padding = %u", padding);
                     len -= padding;
 
                     len -= TRANSOP_AES_NONCE_SIZE; /* size of ethernet packet */
@@ -243,17 +243,17 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                     /* Step over 4-byte random nonce value */
                     memcpy( outbuf, 
                             assembly + TRANSOP_AES_NONCE_SIZE, 
-                            len );
+                            len);
                 } else
-                    traceEvent( TRACE_WARNING, "UDP payload decryption failed." );
+                    traceEvent(TRACE_WARNING, "UDP payload decryption failed.");
             } else {
-                traceEvent( TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE );
+                traceEvent(TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE);
                 len = 0;
             }
         } else
-            traceEvent( TRACE_ERROR, "decode_aes unsupported aes version %u.", aes_enc_ver );
+            traceEvent(TRACE_ERROR, "decode_aes unsupported aes version %u.", aes_enc_ver);
     } else
-        traceEvent( TRACE_ERROR, "decode_aes inbuf wrong size (%ul) to decrypt.", in_len );
+        traceEvent(TRACE_ERROR, "decode_aes inbuf wrong size (%ul) to decrypt.", in_len);
 
     return len;
 }
@@ -264,10 +264,10 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
     struct sha512_keybuf keybuf;
 
     /* Clear out any old possibly longer key matter. */
-    memset( &(priv->enc_key), 0, sizeof(priv->enc_key) );
-    memset( &(priv->dec_key), 0, sizeof(priv->dec_key) );
-    memset( &(priv->iv_enc_key), 0, sizeof(priv->iv_enc_key) );
-    memset( &(priv->iv_ext_val), 0, sizeof(priv->iv_ext_val) );
+    memset( &(priv->enc_key), 0, sizeof(priv->enc_key));
+    memset( &(priv->dec_key), 0, sizeof(priv->dec_key));
+    memset( &(priv->iv_enc_key), 0, sizeof(priv->iv_enc_key));
+    memset( &(priv->iv_ext_val), 0, sizeof(priv->iv_ext_val));
 
     /* We still use aes_best_keysize (even not necessary since we hash the key
      * into the 256bits enc_dec_key) to let the users choose the degree of encryption.
@@ -287,7 +287,7 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
     AES_set_encrypt_key(keybuf.iv_enc_key, sizeof(keybuf.iv_enc_key) * 8, &(priv->iv_enc_key));
     memcpy(priv->iv_ext_val, keybuf.iv_ext_val, sizeof(keybuf.iv_ext_val));
 
-    traceEvent( TRACE_DEBUG, "AES %u bits setup completed\n",
+    traceEvent(TRACE_DEBUG, "AES %u bits setup completed\n",
                 aes_keysize_bits, key);
 
     return(0);
