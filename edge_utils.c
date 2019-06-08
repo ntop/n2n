@@ -1077,6 +1077,12 @@ static int find_peer_destination(n2n_edge_t * eee,
   int retval=0;
   time_t now = time(NULL);
 
+  if(!memcmp(mac_address, broadcast_mac, 6)) {
+    traceEvent(TRACE_DEBUG, "Broadcast destination peer, using supernode");
+    memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
+    return(0);
+  }
+
   traceEvent(TRACE_DEBUG, "Searching destination peer for MAC %02X:%02X:%02X:%02X:%02X:%02X",
 	     mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
 	     mac_address[3] & 0xFF, mac_address[4] & 0xFF, mac_address[5] & 0xFF);
@@ -1110,7 +1116,9 @@ static int find_peer_destination(n2n_edge_t * eee,
 
   if(retval == 0) {
     memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
-    traceEvent(TRACE_DEBUG, "P2P Peer not found, using supernode");
+    traceEvent(TRACE_DEBUG, "P2P Peer [MAC=%02X:%02X:%02X:%02X:%02X:%02X] not found, using supernode",
+        mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
+        mac_address[3] & 0xFF, mac_address[4] & 0xFF, mac_address[5] & 0xFF);
   }
 
   traceEvent(TRACE_DEBUG, "find_peer_address (%s) -> [%s]",
@@ -1394,12 +1402,24 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  /* Another edge is registering with us */
 	  n2n_REGISTER_t reg;
 	  n2n_mac_t null_mac = { '\0' };
-	  int skip_register = 0;
+	  int via_multicast;
 
 	  decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
 	  if(is_valid_peer_sock(&reg.sock))
 	    orig_sender = &(reg.sock);
+
+	  via_multicast = !memcmp(reg.dstMac, null_mac, 6);
+
+	  if(via_multicast && !memcmp(reg.srcMac, eee->device.mac_addr, 6)) {
+	    traceEvent(TRACE_DEBUG, "Skipping REGISTER from self");
+	    break;
+	  }
+
+	  if(!via_multicast && memcmp(reg.dstMac, eee->device.mac_addr, 6)) {
+	    traceEvent(TRACE_DEBUG, "Skipping REGISTER for other peer");
+	    break;
+	  }
 
 	  if(!from_supernode) {
 	    /* This is a P2P registration from the peer. We purge a pending
@@ -1417,20 +1437,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf1, &sender),
 		     sock_to_cstr(sockbuf2, orig_sender));
 
-	  if(!memcmp(reg.dstMac, eee->device.mac_addr, 6))
-	    check_peer_registration_needed(eee, from_supernode, reg.srcMac, orig_sender);
-	  else if(// (sender.port == N2N_MULTICAST_PORT) &&
-		  (!memcmp(reg.dstMac, null_mac, 6))) { /* Announce via a multicast socket */
-	    if(memcmp(reg.srcMac, eee->device.mac_addr, 6)) /* It's not our self-announce */
-	      check_peer_registration_needed(eee, from_supernode, reg.srcMac, orig_sender);
-	    else {
-	      traceEvent(TRACE_INFO, "Skipping REGISTER from self");
-	      skip_register = 1; /* do not register with ourselves */
-	    }
-	  }
-
-	  if(!skip_register)
-	    send_register_ack(eee, orig_sender, &reg);
+	  check_peer_registration_needed(eee, from_supernode, reg.srcMac, orig_sender);
+	  send_register_ack(eee, orig_sender, &reg);
 	  break;
       }
       case MSG_TYPE_REGISTER_ACK:
