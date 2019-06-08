@@ -422,6 +422,9 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
     /* Already in known_peers. */
     time_t now = time(NULL);
 
+    if(!from_supernode)
+      scan->last_p2p = now;
+
     if((now - scan->last_seen) > 0 /* >= 1 sec */) {
       /* Don't register too often */
       check_known_peer_sock_change(eee, from_supernode, mac, peer, now);
@@ -1095,7 +1098,7 @@ static int find_peer_destination(n2n_edge_t * eee,
 
     if((scan->last_seen > 0) &&
        (memcmp(mac_address, scan->mac_addr, N2N_MAC_SIZE) == 0)) {
-	if((now - scan->last_seen) >= (scan->timeout / 2)) {
+	if((now - scan->last_p2p) >= (scan->timeout / 2)) {
 	  /* Too much time passed since we saw the peer, need to register again
 	   * since the peer address may have changed. */
 	  traceEvent(TRACE_DEBUG, "Refreshing idle known peer");

@@ -173,6 +173,7 @@ struct peer_info {
   n2n_sock_t          sock;
   int                 timeout;
   time_t              last_seen;
+  time_t              last_p2p;
 };
 
 #define N2N_EDGE_SN_HOST_SIZE   48
@@ -245,7 +246,7 @@ int getTraceLevel();
 void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
 
 /* Tuntap API */
-int tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip, 
+int tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
 			char *device_mask, const char * device_mac, int mtu);
 int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
 int tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
@@ -267,7 +268,7 @@ void print_edge_stats(const n2n_edge_t *eee);
 char* sock_to_cstr( n2n_sock_str_t out,
                             const n2n_sock_t * sock );
 SOCKET open_socket(int local_port, int bind_any);
-int sock_equal( const n2n_sock_t * a, 
+int sock_equal( const n2n_sock_t * a,
                        const n2n_sock_t * b );
 
 /* Operations on peer_info lists. */
@@ -276,7 +277,7 @@ struct peer_info * find_peer_by_mac( struct peer_info * list,
 void peer_list_add( struct peer_info * * list,
                       struct peer_info * newp );
 size_t peer_list_size( const struct peer_info * list );
-size_t purge_peer_list( struct peer_info ** peer_list, 
+size_t purge_peer_list( struct peer_info ** peer_list,
                         time_t purge_before );
 size_t clear_peer_list( struct peer_info ** peer_list );
 size_t purge_expired_registrations( struct peer_info ** peer_list, time_t* p_last_purge );
