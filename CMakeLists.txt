@@ -48,8 +48,8 @@ endif()
 #message(${N2N_OPTION_AES})
 ## DEBUG FOR CMAKE
 
+# Add SHARED to build DLL
 add_library(n2n n2n.c
-                n2n_keyfile.c
                 edge_utils.c
                 wire.c
                 minilzo.c
@@ -61,7 +61,6 @@ add_library(n2n n2n.c
                 tuntap_netbsd.c
                 tuntap_linux.c
                 tuntap_osx.c
-                version.c
             )
 
 if(DEFINED WIN32)
