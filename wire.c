@@ -29,7 +29,7 @@
 #include "n2n_wire.h"
 #include <string.h>
 
-int encode_uint8( uint8_t * base, 
+int encode_uint8( uint8_t * base,
                   size_t * idx,
                   const uint8_t v )
 {
@@ -51,7 +51,7 @@ int decode_uint8( uint8_t * out,
     return 1;
 }
 
-int encode_uint16( uint8_t * base, 
+int encode_uint16( uint8_t * base,
                    size_t * idx,
                    const uint16_t v )
 {
@@ -75,7 +75,7 @@ int decode_uint16( uint16_t * out,
     return 2;
 }
 
-int encode_uint32( uint8_t * base, 
+int encode_uint32( uint8_t * base,
                    size_t * idx,
                    const uint32_t v )
 {
@@ -103,9 +103,9 @@ int decode_uint32( uint32_t * out,
     return 4;
 }
 
-int encode_buf( uint8_t * base, 
+int encode_buf( uint8_t * base,
                 size_t * idx,
-                const void * p, 
+                const void * p,
                 size_t s)
 {
     memcpy( (base + (*idx)), p, s );
@@ -130,7 +130,7 @@ int decode_buf( uint8_t * out,
 
 
 
-int encode_mac( uint8_t * base, 
+int encode_mac( uint8_t * base,
                 size_t * idx,
                 const n2n_mac_t m )
 {
@@ -147,7 +147,7 @@ int decode_mac( uint8_t * out, /* of size N2N_MAC_SIZE. This clearer than passin
 
 
 
-int encode_common( uint8_t * base, 
+int encode_common( uint8_t * base,
                    size_t * idx,
                    const n2n_common_t * common )
 {
@@ -160,7 +160,7 @@ int encode_common( uint8_t * base,
 
     encode_uint16( base, idx, flags );
     encode_buf( base, idx, common->community, N2N_COMMUNITY_SIZE );
-    
+
     return -1;
 }
 
@@ -177,7 +177,7 @@ int decode_common( n2n_common_t * out,
     {
         return -1;
     }
-    
+
     decode_uint8( &(out->ttl), base, rem, idx );
     decode_uint16( &(out->flags), base, rem, idx );
     out->pc = ( out->flags & N2N_FLAGS_TYPE_MASK );
@@ -189,14 +189,14 @@ int decode_common( n2n_common_t * out,
 }
 
 
-int encode_sock( uint8_t * base, 
+int encode_sock( uint8_t * base,
                  size_t * idx,
                  const n2n_sock_t * sock )
 {
     int retval=0;
     uint16_t f;
 
-    switch (sock->family) 
+    switch (sock->family)
     {
     case AF_INET:
     {
@@ -229,7 +229,7 @@ int decode_sock( n2n_sock_t * sock,
 {
     size_t * idx0=idx;
     uint16_t f=0;
-    
+
     decode_uint16( &f, base, rem, idx );
 
     if( f & 0x8000 )
@@ -251,9 +251,9 @@ int decode_sock( n2n_sock_t * sock,
     return (idx-idx0);
 }
 
-int encode_REGISTER( uint8_t * base, 
+int encode_REGISTER( uint8_t * base,
                      size_t * idx,
-                     const n2n_common_t * common, 
+                     const n2n_common_t * common,
                      const n2n_REGISTER_t * reg )
 {
     int retval=0;
@@ -289,9 +289,9 @@ int decode_REGISTER( n2n_REGISTER_t * reg,
     return retval;
 }
 
-int encode_REGISTER_SUPER( uint8_t * base, 
+int encode_REGISTER_SUPER( uint8_t * base,
                            size_t * idx,
-                           const n2n_common_t * common, 
+                           const n2n_common_t * common,
                            const n2n_REGISTER_SUPER_t * reg )
 {
     int retval=0;
@@ -320,9 +320,9 @@ int decode_REGISTER_SUPER( n2n_REGISTER_SUPER_t * reg,
     return retval;
 }
 
-int encode_REGISTER_ACK( uint8_t * base, 
+int encode_REGISTER_ACK( uint8_t * base,
                          size_t * idx,
-                         const n2n_common_t * common, 
+                         const n2n_common_t * common,
                          const n2n_REGISTER_ACK_t * reg )
 {
     int retval=0;
@@ -413,8 +413,8 @@ int decode_REGISTER_SUPER_ACK( n2n_REGISTER_SUPER_ACK_t * reg,
     return retval;
 }
 
-int fill_sockaddr( struct sockaddr * addr, 
-                   size_t addrlen, 
+int fill_sockaddr( struct sockaddr * addr,
+                   size_t addrlen,
                    const n2n_sock_t * sock )
 {
     int retval=-1;
@@ -435,9 +435,9 @@ int fill_sockaddr( struct sockaddr * addr,
 }
 
 
-int encode_PACKET( uint8_t * base, 
+int encode_PACKET( uint8_t * base,
                    size_t * idx,
-                   const n2n_common_t * common, 
+                   const n2n_common_t * common,
                    const n2n_PACKET_t * pkt )
 {
     int retval=0;
@@ -475,3 +475,58 @@ int decode_PACKET( n2n_PACKET_t * pkt,
     return retval;
 }
 
+int encode_PEER_INFO( uint8_t * base,
+                      size_t * idx,
+                      const n2n_common_t * common,
+                      const n2n_PEER_INFO_t * pkt )
+{
+    int retval=0;
+    retval += encode_common( base, idx, common );
+    retval += encode_uint16( base, idx, pkt->aflags );
+    retval += encode_mac( base, idx, pkt->mac );
+    retval += encode_sock( base, idx, &pkt->sock );
+
+    return retval;
+}
+
+int decode_PEER_INFO( n2n_PEER_INFO_t * pkt,
+                           const n2n_common_t * cmn, /* info on how to interpret it */
+                           const uint8_t * base,
+                           size_t * rem,
+                           size_t * idx )
+{
+    size_t retval=0;
+    memset( pkt, 0, sizeof(n2n_PEER_INFO_t) );
+    retval += decode_uint16( &(pkt->aflags), base, rem, idx );
+    retval += decode_mac( pkt->mac, base, rem, idx );
+    retval += decode_sock( &pkt->sock, base, rem, idx );
+
+    return retval;
+}
+
+int encode_QUERY_PEER( uint8_t * base,
+                      size_t * idx,
+                      const n2n_common_t * common,
+                      const n2n_QUERY_PEER_t * pkt )
+{
+    int retval=0;
+    retval += encode_common( base, idx, common );
+    retval += encode_mac( base, idx, pkt->srcMac );
+    retval += encode_mac( base, idx, pkt->targetMac );
+
+    return retval;
+}
+
+int decode_QUERY_PEER( n2n_QUERY_PEER_t * pkt,
+                           const n2n_common_t * cmn, /* info on how to interpret it */
+                           const uint8_t * base,
+                           size_t * rem,
+                           size_t * idx )
+{
+    size_t retval=0;
+    memset( pkt, 0, sizeof(n2n_QUERY_PEER_t) );
+    retval += decode_mac( pkt->srcMac, base, rem, idx );
+    retval += decode_mac( pkt->targetMac, base, rem, idx );
+
+    return retval;
+}

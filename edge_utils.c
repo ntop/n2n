@@ -405,7 +405,8 @@ static void register_with_new_peer(n2n_edge_t * eee,
     }
 
     register_with_local_peers(eee);
-  }
+  } else
+    scan->sock = *peer;
 }
 
 /* ************************************** */
@@ -655,6 +656,32 @@ static void send_register_super(n2n_edge_t * eee,
 }
 
 /* ************************************** */
+
+/** Send a QUERY_PEER packet to the current supernode. */
+static void send_query_peer( n2n_edge_t * eee,
+                             const n2n_mac_t dstMac) {
+    uint8_t pktbuf[N2N_PKT_BUF_SIZE];
+    size_t idx;
+    n2n_common_t cmn = {0};
+    n2n_QUERY_PEER_t query = {{0}};
+
+    cmn.ttl=N2N_DEFAULT_TTL;
+    cmn.pc = n2n_query_peer;
+    cmn.flags = 0;
+    memcpy( cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE );
+
+    idx=0;
+    encode_mac( query.srcMac, &idx, eee->device.mac_addr );
+    idx=0;
+    encode_mac( query.targetMac, &idx, dstMac );
+
+    idx=0;
+    encode_QUERY_PEER( pktbuf, &idx, &cmn, &query );
+
+    traceEvent( TRACE_DEBUG, "send QUERY_PEER to supernode" );
+
+    sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
+}
 
 /** Send a REGISTER packet to another edge. */
 static void send_register(n2n_edge_t * eee,
@@ -1076,6 +1103,37 @@ static int is_ethMulticast(const void * buf, size_t bufsize) {
 
 /* ************************************** */
 
+static int check_query_peer_info(n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
+  struct peer_info *scan = eee->pending_peers;
+
+  while(scan != NULL) {
+    if(memcmp(scan->mac_addr, mac, N2N_MAC_SIZE) == 0)
+      break;
+
+    scan = scan->next;
+  }
+
+  if(!scan) {
+    scan = calloc(1, sizeof(struct peer_info));
+
+    memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
+    scan->timeout = REGISTER_SUPER_INTERVAL_DFL; /* TODO: should correspond to the peer supernode registration timeout */
+    update_peer_seen(scan, now); /* Don't change this it marks the pending peer for removal. */
+
+    peer_list_add(&(eee->pending_peers), scan);
+  }
+
+  if(now - scan->last_sent_query > REGISTER_SUPER_INTERVAL_DFL) {
+    send_query_peer(eee, scan->mac_addr);
+    scan->last_sent_query = now;
+    return(0);
+  }
+
+  return(1);
+}
+
+/* ************************************** */
+
 /* @return 1 if destination is a peer, 0 if destination is supernode */
 static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_mac_t mac_address,
@@ -1129,6 +1187,8 @@ static int find_peer_destination(n2n_edge_t * eee,
     traceEvent(TRACE_DEBUG, "P2P Peer [MAC=%02X:%02X:%02X:%02X:%02X:%02X] not found, using supernode",
         mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
         mac_address[3] & 0xFF, mac_address[4] & 0xFF, mac_address[5] & 0xFF);
+
+    check_query_peer_info(eee, now, mac_address);
   }
 
   traceEvent(TRACE_DEBUG, "find_peer_address (%s) -> [%s]",
@@ -1174,7 +1234,7 @@ static int send_packet(n2n_edge_t * eee,
 /* ************************************** */
 
 /** A layer-2 packet was received at the tunnel and needs to be sent via UDP. */
-void send_packet2net(n2n_edge_t * eee,
+static void send_packet2net(n2n_edge_t * eee,
 		     uint8_t *tap_pkt, size_t len) {
   ipstr_t ip_buf;
   n2n_mac_t destMac;
@@ -1517,6 +1577,32 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	      traceEvent(TRACE_WARNING, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER.");
             }
 	  break;
+      } case MSG_TYPE_PEER_INFO: {
+        n2n_PEER_INFO_t pi;
+        struct peer_info *  scan;
+        decode_PEER_INFO( &pi, &cmn, udp_buf, &rem, &idx );
+
+        if(!is_valid_peer_sock(&pi.sock)) {
+          char sockbuf[64];
+
+          traceEvent(TRACE_DEBUG, "Skip invalid PEER_INFO %s [%s]",
+                     sock_to_cstr(sockbuf, &pi.sock),
+                     macaddr_str(mac_buf1, pi.mac) );
+          break;
+        }
+
+        scan = find_peer_by_mac( eee->pending_peers, pi.mac );
+        if (scan) {
+            scan->sock = pi.sock;
+            traceEvent(TRACE_INFO, "Rx PEER_INFO on %s",
+                       macaddr_str(mac_buf1, pi.mac) );
+            send_register(eee, &scan->sock, scan->mac_addr);
+        } else {
+            traceEvent(TRACE_INFO, "Rx PEER_INFO unknown peer %s",
+                       macaddr_str(mac_buf1, pi.mac) );
+        }
+
+        break;
       }
       default:
         /* Not a known message type */

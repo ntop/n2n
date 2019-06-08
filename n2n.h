@@ -150,6 +150,8 @@ typedef struct tuntap_dev {
 #define MSG_TYPE_REGISTER_SUPER_ACK     6
 #define MSG_TYPE_REGISTER_SUPER_NAK     7
 #define MSG_TYPE_FEDERATION             8
+#define MSG_TYPE_PEER_INFO              9
+#define MSG_TYPE_QUERY_PEER            10
 
 /* Set N2N_COMPRESSION_ENABLED to 0 to disable lzo1x compression of ethernet
  * frames. Doing this will break compatibility with the standard n2n packet
@@ -174,6 +176,7 @@ struct peer_info {
   int                 timeout;
   time_t              last_seen;
   time_t              last_p2p;
+  time_t              last_sent_query;
 };
 
 #define N2N_EDGE_SN_HOST_SIZE   48
@@ -298,5 +301,4 @@ int quick_edge_init(char *device_name, char *community_name,
 		    char *supernode_ip_address_port,
 		    int *keep_on_running);
 
-void send_packet2net(n2n_edge_t * eee, uint8_t *tap_pkt, size_t len);
 #endif /* _N2N_H_ */
