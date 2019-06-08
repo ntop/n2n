@@ -442,7 +442,8 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
  */
 static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 			  const n2n_mac_t mac,
-			  const n2n_sock_t * peer) {
+			  const n2n_sock_t * peer,
+			  time_t now) {
   struct peer_info * prev = NULL;
   struct peer_info * scan;
   macstr_t mac_buf;
@@ -480,6 +481,7 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
       eee->known_peers = scan;
 
       scan->sock = *peer;
+      scan->last_p2p = now;
 
       traceEvent(TRACE_NORMAL, "P2P connection enstablished: %s [%s]",
             macaddr_str(mac_buf, mac),
@@ -496,7 +498,7 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 		 (unsigned int)peer_list_size(eee->known_peers));
 
 
-      update_peer_seen(scan, time(NULL));
+      update_peer_seen(scan, now);
     }
   else
     {
@@ -1469,7 +1471,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf1, &sender),
 		     sock_to_cstr(sockbuf2, orig_sender));
 
-	  peer_set_p2p_confirmed(eee, ra.srcMac, &sender);
+	  peer_set_p2p_confirmed(eee, ra.srcMac, &sender, now);
 	  break;
       }
       case MSG_TYPE_REGISTER_SUPER_ACK:
