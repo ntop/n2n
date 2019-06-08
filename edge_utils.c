@@ -85,6 +85,8 @@ struct n2n_edge_stats {
   uint32_t rx_p2p;
   uint32_t tx_sup;
   uint32_t rx_sup;
+  uint32_t tx_sup_broadcast;
+  uint32_t rx_sup_broadcast;
 };
 
 /* ************************************** */
@@ -824,6 +826,9 @@ static int handle_PACKET(n2n_edge_t * eee,
 
   if(from_supernode)
     {
+      if(!memcmp(pkt->dstMac, broadcast_mac, 6))
+        ++(eee->stats.rx_sup_broadcast);
+
       ++(eee->stats.rx_sup);
       eee->last_sup=now;
     }
@@ -1150,8 +1155,12 @@ static int send_packet(n2n_edge_t * eee,
 
   if(is_p2p)
     ++(eee->stats.tx_p2p);
-  else
+  else {
     ++(eee->stats.tx_sup);
+
+    if(!memcmp(dstMac, broadcast_mac, 6))
+      ++(eee->stats.tx_sup_broadcast);
+  }
 
   traceEvent(TRACE_INFO, "send_packet to %s", sock_to_cstr(sockbuf, &destination));
 
@@ -1527,8 +1536,8 @@ void print_edge_stats(const n2n_edge_t *eee) {
   traceEvent(TRACE_NORMAL, "Packet stats:");
   traceEvent(TRACE_NORMAL, "    TX P2P: %u pkts", s->tx_p2p);
   traceEvent(TRACE_NORMAL, "    RX P2P: %u pkts", s->rx_p2p);
-  traceEvent(TRACE_NORMAL, "    TX Supernode: %u pkts", s->tx_sup);
-  traceEvent(TRACE_NORMAL, "    RX Supernode: %u pkts", s->rx_sup);
+  traceEvent(TRACE_NORMAL, "    TX Supernode: %u pkts (%u broadcast)", s->tx_sup, s->tx_sup_broadcast);
+  traceEvent(TRACE_NORMAL, "    RX Supernode: %u pkts (%u broadcast)", s->rx_sup, s->rx_sup_broadcast);
   traceEvent(TRACE_NORMAL, "**********************************");
 }
 
