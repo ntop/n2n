@@ -706,6 +706,8 @@ static int process_udp(n2n_sn_t * sss,
         traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
                     macaddr_str( mac_buf, query.targetMac ) );
     }
+
+    break;
   }
   default:
     /* Not a known message type */

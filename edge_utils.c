@@ -1503,6 +1503,9 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	     */
 	    traceEvent(TRACE_DEBUG, "Got P2P register");
 	    find_and_remove_peer(&eee->pending_peers, reg.srcMac);
+
+	    /* NOTE: only ACK to peers */
+	    send_register_ack(eee, orig_sender, &reg);
 	  }
 
 	  traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s (%s)",
@@ -1512,7 +1515,6 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf2, orig_sender));
 
 	  check_peer_registration_needed(eee, from_supernode, reg.srcMac, orig_sender);
-	  send_register_ack(eee, orig_sender, &reg);
 	  break;
       }
       case MSG_TYPE_REGISTER_ACK:
