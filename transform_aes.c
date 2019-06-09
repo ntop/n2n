@@ -137,7 +137,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             padding = (len2-len);
             assembly[len2 - 1] = padding;
 
-	    traceEvent( TRACE_DEBUG, "padding = %u, seed = %016lx", padding, iv_seed );
+	    traceEvent( TRACE_DEBUG, "padding = %u, seed = %016llx", padding, iv_seed );
             set_aes_cbc_iv(priv, enc_ivec, iv_seed);
 
             AES_cbc_encrypt( assembly, /* source */
@@ -185,7 +185,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
             /* Get the IV seed */
 	    decode_buf((uint8_t *)&iv_seed, TRANSOP_AES_IV_SEED_SIZE, inbuf, &rem, &idx);
 
-	    traceEvent( TRACE_DEBUG, "decode_aes %lu with seed %016lx", in_len, iv_seed );
+	    traceEvent( TRACE_DEBUG, "decode_aes %lu with seed %016llx", in_len, iv_seed );
 
             len = (in_len - TRANSOP_AES_PREAMBLE_SIZE);
  
