@@ -319,7 +319,7 @@ static int try_broadcast(n2n_sn_t * sss,
       }
     }
   } else
-    traceEvent(TRACE_WARNING, "ignoring broadcast on unknown community %s\n",
+    traceEvent(TRACE_INFO, "ignoring broadcast on unknown community %s\n",
       cmn->community);
 
   return 0;
