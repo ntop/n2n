@@ -29,7 +29,7 @@
 
 #define N2N_SN_MGMT_PORT                5645
 
-struct sn_stats {
+typedef struct sn_stats {
   size_t errors;              /* Number of errors encountered. */
   size_t reg_super;           /* Number of REGISTER_SUPER requests received. */
   size_t reg_super_nak;       /* Number of REGISTER_SUPER requests declined. */
@@ -37,28 +37,27 @@ struct sn_stats {
   size_t broadcast;           /* Number of messages broadcast to a community. */
   time_t last_fwd;            /* Time when last message was forwarded. */
   time_t last_reg_super;      /* Time when last REGISTER_SUPER was received. */
+} sn_stats_t;
+
+struct sn_community {
+  char community[N2N_COMMUNITY_SIZE];
+  struct peer_info *edges;          /* Link list of registered edges. */
+
+  UT_hash_handle   hh; /* makes this structure hashable */
 };
 
-typedef struct sn_stats sn_stats_t;
-
-struct n2n_sn {
+typedef struct n2n_sn {
   time_t              start_time;     /* Used to measure uptime. */
   sn_stats_t          stats;
   int                 daemon;         /* If non-zero then daemonise. */
   uint16_t            lport;          /* Local UDP port to bind to. */
   int                 sock;           /* Main socket for UDP traffic with edges. */
   int                 mgmt_sock;      /* management socket. */
-  struct peer_info *  edges;          /* Link list of registered edges. */
-};
+  int 	              lock_communities; /* If true, only loaded communities can be used. */
+  struct sn_community *communities;
+} n2n_sn_t;
 
-typedef struct n2n_sn n2n_sn_t;
-
-struct n2n_allowed_communities {
-  char  community[N2N_COMMUNITY_SIZE];
-  UT_hash_handle   hh; /* makes this structure hashable */
-};
-
-static struct n2n_allowed_communities *allowed_communities = NULL;
+#define HASH_FIND_COMMUNITY(head,name,out) HASH_FIND_STR(head,name,out)
 
 static int try_forward(n2n_sn_t * sss,
 		       const n2n_common_t * cmn,
@@ -85,7 +84,6 @@ static int init_sn(n2n_sn_t * sss) {
   sss->lport = N2N_SN_LPORT_DEFAULT;
   sss->sock = -1;
   sss->mgmt_sock = -1;
-  sss->edges = NULL;
 
   return 0; /* OK */
 }
@@ -94,6 +92,8 @@ static int init_sn(n2n_sn_t * sss) {
  *  it. */
 static void deinit_sn(n2n_sn_t * sss)
 {
+  struct sn_community *community, *tmp;
+
   if(sss->sock >= 0)
     {
       closesocket(sss->sock);
@@ -106,7 +106,11 @@ static void deinit_sn(n2n_sn_t * sss)
     }
   sss->mgmt_sock=-1;
 
-  clear_peer_list(&sss->edges);
+  HASH_ITER(hh, sss->communities, community, tmp) {
+    clear_peer_list(&community->edges);
+    HASH_DEL(sss->communities, community);
+    free(community);
+  }
 }
 
 
@@ -125,7 +129,7 @@ static uint16_t reg_lifetime(n2n_sn_t * sss) {
  *  supernode. */
 static int update_edge(n2n_sn_t * sss,
 		       const n2n_mac_t edgeMac,
-		       const n2n_community_t community,
+		       struct sn_community *community,
 		       const n2n_sock_t * sender_sock,
 		       time_t now) {
   macstr_t            mac_buf;
@@ -136,18 +140,18 @@ static int update_edge(n2n_sn_t * sss,
 	     macaddr_str(mac_buf, edgeMac),
 	     sock_to_cstr(sockbuf, sender_sock));
 
-  HASH_FIND_PEER(sss->edges, edgeMac, scan);
+  HASH_FIND_PEER(community->edges, edgeMac, scan);
 
   if(NULL == scan) {
       /* Not known */
 
       scan = (struct peer_info*)calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
 
-      memcpy(scan->community_name, community, sizeof(n2n_community_t));
+      memcpy(scan->community_name, community->community, sizeof(n2n_community_t));
       memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
       memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
-      HASH_ADD_PEER(sss->edges, scan);
+      HASH_ADD_PEER(community->edges, scan);
 
       traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
 		 macaddr_str(mac_buf, edgeMac),
@@ -212,11 +216,6 @@ static ssize_t sendto_sock(n2n_sn_t * sss,
     }
 }
 
-
-
-/** Try to forward a message to a unicast MAC. If the MAC is unknown then
- *  broadcast to all edges in the destination community.
- */
 static int try_forward(n2n_sn_t * sss,
 		       const n2n_common_t * cmn,
 		       const n2n_mac_t dstMac,
@@ -224,10 +223,18 @@ static int try_forward(n2n_sn_t * sss,
 		       size_t pktsize)
 {
   struct peer_info *  scan;
+  struct sn_community *community;
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
-  HASH_FIND_PEER(sss->edges, dstMac, scan);
+  HASH_FIND_COMMUNITY(sss->communities, (char*)cmn->community, community);
+
+  if(!community) {
+    traceEvent(TRACE_DEBUG, "try_forward unknown community %s", cmn->community);
+    return(-1);
+  }
+
+  HASH_FIND_PEER(community->edges, dstMac, scan);
 
   if(NULL != scan)
     {
@@ -257,9 +264,10 @@ static int try_forward(n2n_sn_t * sss,
       traceEvent(TRACE_DEBUG, "try_forward unknown MAC");
 
       /* Not a known MAC so drop. */
+      return(-2);
     }
 
-  return 0;
+  return(0);
 }
 
 
@@ -275,16 +283,18 @@ static int try_broadcast(n2n_sn_t * sss,
 			 size_t pktsize)
 {
   struct peer_info *scan, *tmp;
+  struct sn_community *community;
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
   traceEvent(TRACE_DEBUG, "try_broadcast");
 
-  HASH_ITER(hh, sss->edges, scan, tmp) {
-      if(0 == (memcmp(scan->community_name, cmn->community, sizeof(n2n_community_t)))
-	 && (0 != memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t))))
-	/* REVISIT: exclude if the destination socket is where the packet came from. */
-        {
+  HASH_FIND_COMMUNITY(sss->communities, (char*)cmn->community, community);
+
+  if(community) {
+    HASH_ITER(hh, community->edges, scan, tmp) {
+      if(memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t)) != 0) {
+	  /* REVISIT: exclude if the destination socket is where the packet came from. */
 	  int data_sent_len;
 
 	  data_sent_len = sendto_sock(sss, &(scan->sock), pktbuf, pktsize);
@@ -306,8 +316,11 @@ static int try_broadcast(n2n_sn_t * sss,
 			 sock_to_cstr(sockbuf, &(scan->sock)),
 			 macaddr_str(mac_buf, scan->mac_addr));
             }
-        }
-  }
+      }
+    }
+  } else
+    traceEvent(TRACE_WARNING, "ignoring broadcast on unknown community %s\n",
+      cmn->community);
 
   return 0;
 }
@@ -321,7 +334,9 @@ static int process_mgmt(n2n_sn_t * sss,
 {
   char resbuf[N2N_SN_PKTBUF_SIZE];
   size_t ressize=0;
+  uint num_edges=0;
   ssize_t r;
+  struct sn_community *community, *tmp;
 
   traceEvent(TRACE_DEBUG, "process_mgmt");
 
@@ -331,9 +346,13 @@ static int process_mgmt(n2n_sn_t * sss,
   ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
 		      "uptime    %lu\n", (now - sss->start_time));
 
+  HASH_ITER(hh, sss->communities, community, tmp) {
+    num_edges += HASH_COUNT(community->edges);
+  }
+
   ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
 		      "edges     %u\n",
-		      HASH_COUNT(sss->edges));
+		      num_edges);
 
   ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
 		      "errors    %u\n",
@@ -376,31 +395,13 @@ static int process_mgmt(n2n_sn_t * sss,
   return 0;
 }
 
-/** Check if the specified community is allowed by the
- *  supernode configuration
- *  @return 0 = community not allowed, 1 = community allowed
- *
- */
-static int allowed_n2n_community(n2n_common_t *cmn) {
-  if(allowed_communities != NULL) {
-    struct n2n_allowed_communities *c;
-
-    HASH_FIND_STR(allowed_communities, (const char*)cmn->community, c);
-    return((c == NULL) ? 0 : 1);
-  } else {
-    /* If no allowed community is defined, all communities are allowed */
-  }
-
-  return(1);
-}
-
 /** Load the list of allowed communities. Existing/previous ones will be removed
  *
  */
-static int load_allowed_n2n_communities(char *path) {
+static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
   char buffer[4096], *line;
   FILE *fd = fopen(path, "r");
-  struct n2n_allowed_communities *s, *tmp;
+  struct sn_community *s, *tmp;
   uint32_t num_communities = 0;
 
   if(fd == NULL) {
@@ -408,8 +409,10 @@ static int load_allowed_n2n_communities(char *path) {
     return -1;
   }
 
-  HASH_ITER(hh, allowed_communities, s, tmp)
+  HASH_ITER(hh, sss->communities, s, tmp) {
+    HASH_DEL(sss->communities, s);
     free(s);
+  }
 
   while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
     int len = strlen(line);
@@ -426,12 +429,12 @@ static int load_allowed_n2n_communities(char *path) {
 	break;
     }
 
-    s = (struct n2n_allowed_communities*)malloc(sizeof(struct n2n_allowed_communities));
+    s = (struct sn_community*)calloc(1,sizeof(struct sn_community));
 
     if(s != NULL) {
       strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE-1);
       s->community[N2N_COMMUNITY_SIZE-1] = '\0';
-      HASH_ADD_STR(allowed_communities, community, s);
+      HASH_ADD_STR(sss->communities, community, s);
       num_communities++;
       traceEvent(TRACE_INFO, "Added allowed community '%s' [total: %u]",
 		 (char*)s->community, num_communities);
@@ -442,6 +445,9 @@ static int load_allowed_n2n_communities(char *path) {
 
   traceEvent(TRACE_NORMAL, "Loaded %u communities from %s",
 	     num_communities, path);
+
+  /* No new communities will be allowed */
+  sss->lock_communities = 1;
 
   return(0);
 }
@@ -617,11 +623,14 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                    cmn2;
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
+    struct sn_community          *community;
 
     /* Edge requesting registration with us.  */
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
     decode_REGISTER_SUPER(&reg, &cmn, udp_buf, &rem, &idx);
+
+    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, community);
 
     /*
       Before we move any further, we need to check if the requested
@@ -629,7 +638,19 @@ static int process_udp(n2n_sn_t * sss,
       not report any message back to the edge to hide the supernode
       existance (better from the security standpoint)
     */
-    if(allowed_n2n_community(&cmn)) {
+    if(!community && !sss->lock_communities) {
+      community = calloc(1, sizeof(struct sn_community));
+
+      if(community) {
+	strncpy(community->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
+	community->community[N2N_COMMUNITY_SIZE-1] = '\0';
+	HASH_ADD_STR(sss->communities, community, community);
+
+	traceEvent(TRACE_INFO, "New community: %s", community->community);
+      }
+    }
+
+    if(community) {
       cmn2.ttl = N2N_DEFAULT_TTL;
       cmn2.pc = n2n_register_super_ack;
       cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
@@ -650,7 +671,7 @@ static int process_udp(n2n_sn_t * sss,
 		 macaddr_str(mac_buf, reg.edgeMac),
 		 sock_to_cstr(sockbuf, &(ack.sock)));
 
-      update_edge(sss, reg.edgeMac, cmn.community, &(ack.sock), now);
+      update_edge(sss, reg.edgeMac, community, &(ack.sock), now);
 
       encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
 
@@ -670,7 +691,7 @@ static int process_udp(n2n_sn_t * sss,
     size_t encx=0;
     n2n_common_t cmn2;
     n2n_PEER_INFO_t pi;
-    struct peer_info *scan;
+    struct sn_community *community;
 
     decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
@@ -678,27 +699,33 @@ static int process_udp(n2n_sn_t * sss,
                 macaddr_str( mac_buf,  query.srcMac ),
                 macaddr_str( mac_buf2, query.targetMac ) );
 
-    HASH_FIND_PEER(sss->edges, query.targetMac, scan);
-    if (scan) {
-        cmn2.ttl = N2N_DEFAULT_TTL;
-        cmn2.pc = n2n_peer_info;
-        cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
-        memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
+    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, community);
 
-        pi.aflags = 0;
-        memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
-        pi.sock = scan->sock;
+    if(community) {
+      struct peer_info *scan;
+      HASH_FIND_PEER(community->edges, query.targetMac, scan);
 
-        encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+      if (scan) {
+	  cmn2.ttl = N2N_DEFAULT_TTL;
+	  cmn2.pc = n2n_peer_info;
+	  cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
+	  memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
 
-        sendto( sss->sock, encbuf, encx, 0,
-                (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
+	  pi.aflags = 0;
+	  memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
+	  pi.sock = scan->sock;
 
-        traceEvent( TRACE_DEBUG, "Tx PEER_INFO to %s",
-                    macaddr_str( mac_buf, query.srcMac ) );
-    } else {
-        traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
-                    macaddr_str( mac_buf, query.targetMac ) );
+	  encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+
+	  sendto( sss->sock, encbuf, encx, 0,
+		  (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
+
+	  traceEvent( TRACE_DEBUG, "Tx PEER_INFO to %s",
+		      macaddr_str( mac_buf, query.srcMac ) );
+      } else {
+	  traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
+		      macaddr_str( mac_buf, query.targetMac ) );
+      }
     }
 
     break;
@@ -754,7 +781,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     break;
 
   case 'c': /* community file */
-    load_allowed_n2n_communities(optarg);
+    load_allowed_sn_community(sss, optarg);
     break;
 
   case 'f': /* foreground */
@@ -889,6 +916,7 @@ static int loadFromFile(const char *path, n2n_sn_t *sss) {
 /* *************************************************** */
 
 static void dump_registrations(int signo) {
+  struct sn_community *comm, *ctmp;
   struct peer_info *list, *tmp;
   char buf[32];
   time_t now = time(NULL);
@@ -896,19 +924,21 @@ static void dump_registrations(int signo) {
 
   traceEvent(TRACE_NORMAL, "====================================");
 
-  HASH_ITER(hh, sss_node.edges, list, tmp) {
-    if(list->sock.family == AF_INET)
-      traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][community: %s][last seen: %u sec ago]",
-		 ++num, macaddr_str(buf, list->mac_addr),
-		 list->sock.addr.v4[0], list->sock.addr.v4[1], list->sock.addr.v4[2], list->sock.addr.v4[3],
-		 list->sock.port,
-		 (char*)list->community_name,
-		 now-list->last_seen);
-    else
-      traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][community: %s][last seen: %u sec ago]",
-		 ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
-		 (char*)list->community_name,
-		 now-list->last_seen);
+  HASH_ITER(hh, sss_node.communities, comm, ctmp) {
+    HASH_ITER(hh, comm->edges, list, tmp) {
+      if(list->sock.family == AF_INET)
+	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][community: %s][last seen: %u sec ago]",
+		   ++num, macaddr_str(buf, list->mac_addr),
+		   list->sock.addr.v4[0], list->sock.addr.v4[1], list->sock.addr.v4[2], list->sock.addr.v4[3],
+		   list->sock.port,
+		   (char*)list->community_name,
+		   now-list->last_seen);
+      else
+	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][community: %s][last seen: %u sec ago]",
+		   ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
+		   (char*)list->community_name,
+		   now-list->last_seen);
+    }
   }
 
   traceEvent(TRACE_NORMAL, "====================================");
@@ -981,6 +1011,7 @@ static int run_loop(n2n_sn_t * sss) {
   uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
   int keep_running=1;
   time_t last_purge_edges = 0;
+  struct sn_community *comm, *tmp;
 
   sss->start_time = time(NULL);
 
@@ -1055,7 +1086,9 @@ static int run_loop(n2n_sn_t * sss) {
       traceEvent(TRACE_DEBUG, "timeout");
     }
 
-    purge_expired_registrations( &sss->edges, &last_purge_edges );
+    HASH_ITER(hh, sss->communities, comm, tmp) {
+      purge_expired_registrations( &comm->edges, &last_purge_edges );
+    }
 
   } /* while */
 
