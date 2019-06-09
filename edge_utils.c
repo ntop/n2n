@@ -222,42 +222,15 @@ edge_init_error:
   return(NULL);
 }
 
-/* ***************************************************** */
-
-static inline void update_peer_seen(struct peer_info *peer, time_t t) {
-  peer->last_seen = t;
-}
-
-/* ***************************************************** */
-
-static void remove_peer_from_list(struct peer_info **head, struct peer_info *prev,
-			 struct peer_info *scan) {
-  /* Remove the peer. */
-  if(prev == NULL)
-    /* scan was head of list */
-    *head = scan->next;
-  else
-    prev->next = scan->next;
-
-  free(scan);
-}
-
 /* ************************************** */
 
 static int find_and_remove_peer(struct peer_info **head, const n2n_mac_t mac) {
-  struct peer_info *prev = NULL;
-  struct peer_info *scan = *head;
+  struct peer_info *peer;
 
-  while(scan != NULL) {
-    if(memcmp(scan->mac_addr, mac, N2N_MAC_SIZE) == 0)
-      break; /* found. */
-
-    prev = scan;
-    scan = scan->next;
-  }
-
-  if(scan) {
-    remove_peer_from_list(head, prev, scan);
+  HASH_FIND_PEER(*head, mac, peer);
+  if(peer) {
+    HASH_DEL(*head, peer);
+    free(peer);
     return(1);
   }
 
@@ -376,9 +349,11 @@ static void register_with_new_peer(n2n_edge_t * eee,
 			      const n2n_mac_t mac,
 			      const n2n_sock_t * peer) {
   /* REVISIT: purge of pending_peers not yet done. */
-  struct peer_info * scan = find_peer_by_mac(eee->pending_peers, mac);
+  struct peer_info * scan;
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
+
+  HASH_FIND_PEER(eee->pending_peers, mac, scan);
 
   /* NOTE: pending_peers are purged periodically with purge_expired_registrations */
   if(scan == NULL) {
@@ -387,16 +362,16 @@ static void register_with_new_peer(n2n_edge_t * eee,
     memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
     scan->sock = *peer;
     scan->timeout = REGISTER_SUPER_INTERVAL_DFL; /* TODO: should correspond to the peer supernode registration timeout */
-    update_peer_seen(scan, time(NULL)); /* Don't change this it marks the pending peer for removal. */
+    scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
 
-    peer_list_add(&(eee->pending_peers), scan);
+    HASH_ADD_PEER(eee->pending_peers, scan);
 
     traceEvent(TRACE_DEBUG, "=== new pending %s -> %s",
 	       macaddr_str(mac_buf, scan->mac_addr),
 	       sock_to_cstr(sockbuf, &(scan->sock)));
 
     traceEvent(TRACE_INFO, "Pending peers list size=%u",
-	       (unsigned int)peer_list_size(eee->pending_peers));
+	       HASH_COUNT(eee->pending_peers));
 
     /* trace Sending REGISTER */
     send_register(eee, &(scan->sock), mac);
@@ -416,7 +391,9 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer) {
-  struct peer_info * scan = find_peer_by_mac(eee->known_peers, mac);
+  struct peer_info *scan;
+
+  HASH_FIND_PEER(eee->known_peers, mac, scan);
 
   if(scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
@@ -445,66 +422,38 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 			  const n2n_mac_t mac,
 			  const n2n_sock_t * peer,
 			  time_t now) {
-  struct peer_info * prev = NULL;
-  struct peer_info * scan;
+  struct peer_info *scan;
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
-  scan=eee->pending_peers;
+  HASH_FIND_PEER(eee->pending_peers, mac, scan);
 
-  while (NULL != scan)
-    {
-      if(0 == memcmp(scan->mac_addr, mac, N2N_MAC_SIZE))
-        {
-	  break; /* found. */
-        }
+  if(scan) {
+    HASH_DEL(eee->pending_peers, scan);
 
-      prev = scan;
-      scan = scan->next;
-    }
+    /* Add scan to known_peers. */
+    HASH_ADD_PEER(eee->known_peers, scan);
 
-  if(scan)
-    {
+    scan->sock = *peer;
+    scan->last_p2p = now;
 
+    traceEvent(TRACE_NORMAL, "P2P connection enstablished: %s [%s]",
+	  macaddr_str(mac_buf, mac),
+	  sock_to_cstr(sockbuf, peer));
 
-      /* Remove scan from pending_peers. */
-      if(prev)
-        {
-	  prev->next = scan->next;
-        }
-      else
-        {
-	  eee->pending_peers = scan->next;
-        }
+    traceEvent(TRACE_DEBUG, "=== new peer %s -> %s",
+	       macaddr_str(mac_buf, scan->mac_addr),
+	       sock_to_cstr(sockbuf, &(scan->sock)));
 
-      /* Add scan to known_peers. */
-      scan->next = eee->known_peers;
-      eee->known_peers = scan;
+    traceEvent(TRACE_INFO, "Pending peers list size=%u",
+	       HASH_COUNT(eee->pending_peers));
 
-      scan->sock = *peer;
-      scan->last_p2p = now;
+    traceEvent(TRACE_INFO, "Known peers list size=%u",
+	       HASH_COUNT(eee->known_peers));
 
-      traceEvent(TRACE_NORMAL, "P2P connection enstablished: %s [%s]",
-            macaddr_str(mac_buf, mac),
-            sock_to_cstr(sockbuf, peer));
-
-      traceEvent(TRACE_DEBUG, "=== new peer %s -> %s",
-		 macaddr_str(mac_buf, scan->mac_addr),
-		 sock_to_cstr(sockbuf, &(scan->sock)));
-
-      traceEvent(TRACE_INFO, "Pending peers list size=%u",
-		 (unsigned int)peer_list_size(eee->pending_peers));
-
-      traceEvent(TRACE_INFO, "Known peers list size=%u",
-		 (unsigned int)peer_list_size(eee->known_peers));
-
-
-      update_peer_seen(scan, now);
-    }
-  else
-    {
-      traceEvent(TRACE_DEBUG, "Failed to find sender in pending_peers.");
-    }
+    scan->last_seen = now;
+  } else
+    traceEvent(TRACE_DEBUG, "Failed to find sender in pending_peers.");
 }
 
 /* ************************************** */
@@ -548,8 +497,7 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
 			 const n2n_mac_t mac,
 			 const n2n_sock_t * peer,
 			 time_t when) {
-  struct peer_info *scan = eee->known_peers;
-  struct peer_info *prev = NULL; /* use to remove bad registrations. */
+  struct peer_info *scan;
   n2n_sock_str_t sockbuf1;
   n2n_sock_str_t sockbuf2; /* don't clobber sockbuf1 if writing two addresses to trace */
   macstr_t mac_buf;
@@ -561,13 +509,7 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
     return;
 
   /* Search the peer in known_peers */
-  while(scan != NULL) {
-      if(memcmp(mac, scan->mac_addr, N2N_MAC_SIZE) == 0)
-	  break;
-
-      prev = scan;
-      scan = scan->next;
-  }
+  HASH_FIND_PEER(eee->known_peers, mac, scan);
 
   if(!scan)
     /* Not in known_peers */
@@ -581,14 +523,15 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
 		     sock_to_cstr(sockbuf1, &(scan->sock)),
 		     sock_to_cstr(sockbuf2, peer));
 	  /* The peer has changed public socket. It can no longer be assumed to be reachable. */
-	  remove_peer_from_list(&eee->known_peers, prev, scan);
+	  HASH_DEL(eee->known_peers, scan);
+	  free(scan);
 
 	  register_with_new_peer(eee, from_supernode, mac, peer);
       } else {
 	  /* Don't worry about what the supernode reports, it could be seeing a different socket. */
       }
   } else
-    update_peer_seen(scan, when);
+    scan->last_seen = when;
 }
 
 /* ************************************** */
@@ -1043,8 +986,8 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
 		      "peers  pend:%u full:%u\n",
-		      (unsigned int)peer_list_size(eee->pending_peers),
-		      (unsigned int)peer_list_size(eee->known_peers));
+		      HASH_COUNT(eee->pending_peers),
+		      HASH_COUNT(eee->known_peers));
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
 		      "last super:%lu(%ld sec ago) p2p:%lu(%ld sec ago)\n",
@@ -1104,23 +1047,18 @@ static int is_ethMulticast(const void * buf, size_t bufsize) {
 /* ************************************** */
 
 static int check_query_peer_info(n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
-  struct peer_info *scan = eee->pending_peers;
+  struct peer_info *scan;
 
-  while(scan != NULL) {
-    if(memcmp(scan->mac_addr, mac, N2N_MAC_SIZE) == 0)
-      break;
-
-    scan = scan->next;
-  }
+  HASH_FIND_PEER(eee->pending_peers, mac, scan);
 
   if(!scan) {
     scan = calloc(1, sizeof(struct peer_info));
 
     memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
     scan->timeout = REGISTER_SUPER_INTERVAL_DFL; /* TODO: should correspond to the peer supernode registration timeout */
-    update_peer_seen(scan, now); /* Don't change this it marks the pending peer for removal. */
+    scan->last_seen = now; /* Don't change this it marks the pending peer for removal. */
 
-    peer_list_add(&(eee->pending_peers), scan);
+    HASH_ADD_PEER(eee->pending_peers, scan);
   }
 
   if(now - scan->last_sent_query > REGISTER_SUPER_INTERVAL_DFL) {
@@ -1138,8 +1076,7 @@ static int check_query_peer_info(n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
 static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_mac_t mac_address,
                                  n2n_sock_t * destination) {
-  struct peer_info *scan = eee->known_peers;
-  struct peer_info *prev = NULL;
+  struct peer_info *scan;
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
   int retval=0;
@@ -1155,31 +1092,21 @@ static int find_peer_destination(n2n_edge_t * eee,
 	     mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
 	     mac_address[3] & 0xFF, mac_address[4] & 0xFF, mac_address[5] & 0xFF);
 
-  while(scan != NULL) {
-    traceEvent(TRACE_DEBUG, "Evaluating peer [MAC=%02X:%02X:%02X:%02X:%02X:%02X]",
-	       scan->mac_addr[0] & 0xFF, scan->mac_addr[1] & 0xFF, scan->mac_addr[2] & 0xFF,
-	       scan->mac_addr[3] & 0xFF, scan->mac_addr[4] & 0xFF, scan->mac_addr[5] & 0xFF
-	       );
+  HASH_FIND_PEER(eee->known_peers, mac_address, scan);
 
-    if((scan->last_seen > 0) &&
-       (memcmp(mac_address, scan->mac_addr, N2N_MAC_SIZE) == 0)) {
-	if((now - scan->last_p2p) >= (scan->timeout / 2)) {
-	  /* Too much time passed since we saw the peer, need to register again
-	   * since the peer address may have changed. */
-	  traceEvent(TRACE_DEBUG, "Refreshing idle known peer");
-	  remove_peer_from_list(&eee->known_peers, prev, scan);
-	  /* NOTE: registration will be performed upon the receival of the next response packet */
-	} else {
-	  /* Valid known peer found */
-	  memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
-	  retval=1;
-	}
-
-	break;
+  if(scan && (scan->last_seen > 0)) {
+    if((now - scan->last_p2p) >= (scan->timeout / 2)) {
+      /* Too much time passed since we saw the peer, need to register again
+       * since the peer address may have changed. */
+      traceEvent(TRACE_DEBUG, "Refreshing idle known peer");
+      HASH_DEL(eee->known_peers, scan);
+      free(scan);
+      /* NOTE: registration will be performed upon the receival of the next response packet */
+    } else {
+      /* Valid known peer found */
+      memcpy(destination, &scan->sock, sizeof(n2n_sock_t));
+      retval=1;
     }
-
-    prev = scan;
-    scan = scan->next;
   }
 
   if(retval == 0) {
@@ -1593,7 +1520,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
           break;
         }
 
-        scan = find_peer_by_mac( eee->pending_peers, pi.mac );
+	HASH_FIND_PEER(eee->pending_peers, pi.mac, scan);
         if (scan) {
             scan->sock = pi.sock;
             traceEvent(TRACE_INFO, "Rx PEER_INFO on %s",
@@ -1728,14 +1655,14 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     /* Finished processing select data. */
     update_supernode_reg(eee, nowTime);
 
-    numPurged =  purge_expired_registrations(&(eee->known_peers), &last_purge_known);
-    numPurged += purge_expired_registrations(&(eee->pending_peers), &last_purge_pending);
+    numPurged =  purge_expired_registrations(&eee->known_peers, &last_purge_known);
+    numPurged += purge_expired_registrations(&eee->pending_peers, &last_purge_pending);
 
     if(numPurged > 0) {
      traceEvent(TRACE_INFO, "%u peers removed. now: pending=%u, operational=%u",
 		 numPurged,
-		 (unsigned int)peer_list_size(eee->pending_peers),
-		 (unsigned int)peer_list_size(eee->known_peers));
+		 HASH_COUNT(eee->pending_peers),
+		 HASH_COUNT(eee->known_peers));
     }
 
     if(eee->conf.dyn_ip_mode &&
@@ -1773,8 +1700,8 @@ void edge_term(n2n_edge_t * eee) {
   if(eee->udp_multicast_sock >= 0)
     closesocket(eee->udp_multicast_sock);
 
-  clear_peer_list(&(eee->pending_peers));
-  clear_peer_list(&(eee->known_peers));
+  clear_peer_list(&eee->pending_peers);
+  clear_peer_list(&eee->known_peers);
 
   eee->transop.deinit(&eee->transop);
   free(eee);

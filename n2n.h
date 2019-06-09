@@ -169,15 +169,21 @@ typedef char ipstr_t[32];
 typedef char macstr_t[N2N_MACSTR_SIZE];
 
 struct peer_info {
-  struct peer_info *  next;
-  n2n_community_t     community_name;
   n2n_mac_t           mac_addr;
+  n2n_community_t     community_name;
   n2n_sock_t          sock;
   int                 timeout;
   time_t              last_seen;
   time_t              last_p2p;
   time_t              last_sent_query;
+
+  UT_hash_handle hh; /* makes this structure hashable */
 };
+
+#define HASH_ADD_PEER(head,add)                                                \
+    HASH_ADD(hh,head,mac_addr,sizeof(n2n_mac_t),add)
+#define HASH_FIND_PEER(head,mac,out)                                           \
+    HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
 
 #define N2N_EDGE_SN_HOST_SIZE   48
 #define N2N_EDGE_NUM_SUPERNODES 2
@@ -275,11 +281,6 @@ int sock_equal( const n2n_sock_t * a,
                        const n2n_sock_t * b );
 
 /* Operations on peer_info lists. */
-struct peer_info * find_peer_by_mac( struct peer_info * list,
-                                     const n2n_mac_t mac );
-void peer_list_add( struct peer_info * * list,
-                      struct peer_info * newp );
-size_t peer_list_size( const struct peer_info * list );
 size_t purge_peer_list( struct peer_info ** peer_list,
                         time_t purge_before );
 size_t clear_peer_list( struct peer_info ** peer_list );

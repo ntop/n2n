@@ -106,7 +106,7 @@ static void deinit_sn(n2n_sn_t * sss)
     }
   sss->mgmt_sock=-1;
 
-  purge_peer_list(&(sss->edges), 0xffffffff);
+  clear_peer_list(&sss->edges);
 }
 
 
@@ -136,7 +136,7 @@ static int update_edge(n2n_sn_t * sss,
 	     macaddr_str(mac_buf, edgeMac),
 	     sock_to_cstr(sockbuf, sender_sock));
 
-  scan = find_peer_by_mac(sss->edges, edgeMac);
+  HASH_FIND_PEER(sss->edges, edgeMac, scan);
 
   if(NULL == scan) {
       /* Not known */
@@ -147,9 +147,7 @@ static int update_edge(n2n_sn_t * sss,
       memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
       memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
-      /* insert this guy at the head of the edges list */
-      scan->next = sss->edges;     /* first in list */
-      sss->edges = scan;           /* head of list points to new scan */
+      HASH_ADD_PEER(sss->edges, scan);
 
       traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
 		 macaddr_str(mac_buf, edgeMac),
@@ -229,7 +227,7 @@ static int try_forward(n2n_sn_t * sss,
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
-  scan = find_peer_by_mac(sss->edges, dstMac);
+  HASH_FIND_PEER(sss->edges, dstMac, scan);
 
   if(NULL != scan)
     {
@@ -276,15 +274,13 @@ static int try_broadcast(n2n_sn_t * sss,
 			 const uint8_t * pktbuf,
 			 size_t pktsize)
 {
-  struct peer_info *  scan;
+  struct peer_info *scan, *tmp;
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
   traceEvent(TRACE_DEBUG, "try_broadcast");
 
-  scan = sss->edges;
-  while(scan != NULL)
-    {
+  HASH_ITER(hh, sss->edges, scan, tmp) {
       if(0 == (memcmp(scan->community_name, cmn->community, sizeof(n2n_community_t)))
 	 && (0 != memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t))))
 	/* REVISIT: exclude if the destination socket is where the packet came from. */
@@ -311,9 +307,7 @@ static int try_broadcast(n2n_sn_t * sss,
 			 macaddr_str(mac_buf, scan->mac_addr));
             }
         }
-
-      scan = scan->next;
-    } /* while */
+  }
 
   return 0;
 }
@@ -339,7 +333,7 @@ static int process_mgmt(n2n_sn_t * sss,
 
   ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
 		      "edges     %u\n",
-		      (unsigned int)peer_list_size(sss->edges));
+		      HASH_COUNT(sss->edges));
 
   ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
 		      "errors    %u\n",
@@ -684,7 +678,7 @@ static int process_udp(n2n_sn_t * sss,
                 macaddr_str( mac_buf,  query.srcMac ),
                 macaddr_str( mac_buf2, query.targetMac ) );
 
-    scan = find_peer_by_mac( sss->edges, query.targetMac );
+    HASH_FIND_PEER(sss->edges, query.targetMac, scan);
     if (scan) {
         cmn2.ttl = N2N_DEFAULT_TTL;
         cmn2.pc = n2n_peer_info;
@@ -895,14 +889,14 @@ static int loadFromFile(const char *path, n2n_sn_t *sss) {
 /* *************************************************** */
 
 static void dump_registrations(int signo) {
-  struct peer_info * list = sss_node.edges;
+  struct peer_info *list, *tmp;
   char buf[32];
   time_t now = time(NULL);
   u_int num = 0;
 
   traceEvent(TRACE_NORMAL, "====================================");
 
-  while(list != NULL) {
+  HASH_ITER(hh, sss_node.edges, list, tmp) {
     if(list->sock.family == AF_INET)
       traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][community: %s][last seen: %u sec ago]",
 		 ++num, macaddr_str(buf, list->mac_addr),
@@ -915,8 +909,6 @@ static void dump_registrations(int signo) {
 		 ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
 		 (char*)list->community_name,
 		 now-list->last_seen);
-
-    list = list->next;
   }
 
   traceEvent(TRACE_NORMAL, "====================================");
@@ -1063,7 +1055,7 @@ static int run_loop(n2n_sn_t * sss) {
       traceEvent(TRACE_DEBUG, "timeout");
     }
 
-    purge_expired_registrations( &(sss->edges), &last_purge_edges );
+    purge_expired_registrations( &sss->edges, &last_purge_edges );
 
   } /* while */
 

@@ -263,57 +263,6 @@ void print_n2n_version() {
 
 /* *********************************************** */ 
 
-/** Find the peer entry in list with mac_addr equal to mac.
- *
- *  Does not modify the list.
- *
- *  @return NULL if not found; otherwise pointer to peer entry.
- */
-struct peer_info * find_peer_by_mac(struct peer_info * list, const n2n_mac_t mac)
-{
-  while(list != NULL)
-    {
-      if(0 == memcmp(mac, list->mac_addr, 6))
-        {
-	  return list;
-        }
-      list = list->next;
-    }
-
-  return NULL;
-}
-
-
-/** Return the number of elements in the list.
- *
- */
-size_t peer_list_size(const struct peer_info * list)
-{
-  size_t retval=0;
-
-  while(list)
-    {
-      ++retval;
-      list = list->next;
-    }
-
-  return retval;
-}
-
-/** Add new to the head of list. If list is NULL; create it.
- *
- *  The item new is added to the head of the list. New is modified during
- *  insertion. list takes ownership of new.
- */
-void peer_list_add(struct peer_info * * list,
-		   struct peer_info * newp)
-{
-  newp->next = *list;
-  newp->last_seen = time(NULL);
-  *list = newp;
-}
-
-
 size_t purge_expired_registrations(struct peer_info ** peer_list, time_t* p_last_purge) {
   time_t now = time(NULL);
   size_t num_reg = 0;
@@ -334,37 +283,16 @@ size_t purge_expired_registrations(struct peer_info ** peer_list, time_t* p_last
 size_t purge_peer_list(struct peer_info ** peer_list,
 		       time_t purge_before)
 {
-  struct peer_info *scan;
-  struct peer_info *prev;
+  struct peer_info *scan, *tmp;
   size_t retval=0;
 
-  scan = *peer_list;
-  prev = NULL;
-  while(scan != NULL)
-    {
-      if(scan->last_seen < purge_before)
-        {
-	  struct peer_info *next = scan->next;
-
-	  if(prev == NULL)
-            {
-	      *peer_list = next;
-            }
-	  else
-            {
-	      prev->next = next;
-            }
-
-	  ++retval;
-	  free(scan);
-	  scan = next;
-        }
-      else
-        {
-	  prev = scan;
-	  scan = scan->next;
-        }
+  HASH_ITER(hh, *peer_list, scan, tmp) {
+    if(scan->last_seen < purge_before) {
+      HASH_DEL(*peer_list, scan);
+      retval++;
+      free(scan);
     }
+  }
 
   return retval;
 }
@@ -372,29 +300,14 @@ size_t purge_peer_list(struct peer_info ** peer_list,
 /** Purge all items from the peer_list and return the number of items that were removed. */
 size_t clear_peer_list(struct peer_info ** peer_list)
 {
-  struct peer_info *scan;
-  struct peer_info *prev;
+  struct peer_info *scan, *tmp;
   size_t retval=0;
 
-  scan = *peer_list;
-  prev = NULL;
-  while(scan != NULL)
-    {
-      struct peer_info *next = scan->next;
-
-      if(prev == NULL)
-        {
-	  *peer_list = next;
-        }
-      else
-        {
-	  prev->next = next;
-        }
-
-      ++retval;
-      free(scan);
-      scan = next;
-    }
+  HASH_ITER(hh, *peer_list, scan, tmp) {
+    HASH_DEL(*peer_list, scan);
+    retval++;
+    free(scan);
+  }
 
   return retval;
 }
