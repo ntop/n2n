@@ -946,6 +946,27 @@ static void dump_registrations(int signo) {
 
 /* *************************************************** */
 
+static int keep_running;
+
+#ifdef __linux__
+
+static void term_handler(int sig) {
+  static int called = 0;
+
+  if(called) {
+    traceEvent(TRACE_NORMAL, "Ok I am leaving now");
+    _exit(0);
+  } else {
+    traceEvent(TRACE_NORMAL, "Shutting down...");
+    called = 1;
+  }
+
+  keep_running = 0;
+}
+#endif
+
+/* *************************************************** */
+
 /** Main program entry point from kernel. */
 int main(int argc, char * const argv[]) {
   int rc;
@@ -997,10 +1018,13 @@ int main(int argc, char * const argv[]) {
 
   traceEvent(TRACE_NORMAL, "supernode started");
 
-#ifndef WIN32
+#ifdef __linux__
+  signal(SIGTERM, term_handler);
+  signal(SIGINT, term_handler);
   signal(SIGHUP, dump_registrations);
 #endif
 
+  keep_running = 1;
   return run_loop(&sss_node);
 }
 
@@ -1009,7 +1033,6 @@ int main(int argc, char * const argv[]) {
  *  daemonisation on some platforms. */
 static int run_loop(n2n_sn_t * sss) {
   uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
-  int keep_running=1;
   time_t last_purge_edges = 0;
   struct sn_community *comm, *tmp;
 
