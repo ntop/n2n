@@ -34,15 +34,13 @@
 /* AES plaintext preamble */
 #define TRANSOP_AES_VER_SIZE     1       /* Support minor variants in encoding in one module. */
 #define TRANSOP_AES_SA_SIZE      4
-#define TRANSOP_AES_IV_SEED_SIZE 8	/* size of transmitted random part of IV in bytes, between 0 .. 16 */
+#define TRANSOP_AES_IV_SEED_SIZE 8	/* size of transmitted random part of IV in bytes; leave it set to 8 for now */
 #define TRANSOP_AES_IV_PADDING_SIZE (N2N_AES_IVEC_SIZE - TRANSOP_AES_IV_SEED_SIZE)
 #define TRANSOP_AES_IV_KEY_BYTES (AES128_KEY_BYTES) /* use AES128 for IV encryption */
 #define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_IV_SEED_SIZE)
 
 /* AES ciphertext preamble */
 #define TRANSOP_AES_NONCE_SIZE   4
-
-const uint8_t RAND_BYTES = log2(RAND_MAX) / 8; /* number of random bytes returned from rand() function */
 
 typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
 
@@ -67,7 +65,7 @@ static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint8_t *iv
 
     /* Extend the seed to full block size with padding value */
     memcpy(iv_full, priv->iv_pad_val, TRANSOP_AES_IV_PADDING_SIZE);
-    memcpy(iv_full + TRANSOP_AES_IV_PADDING_SIZE, iv_seed, TRANSOP_AES_IV_SEED_SIZE);
+    memcpy(iv_full + TRANSOP_AES_IV_PADDING_SIZE, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
     /* Encrypt the IV with secret key to make it unpredictable.
      * As discussed in https://github.com/ntop/n2n/issues/72, it's important to
@@ -105,7 +103,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             int len=-1;
             size_t idx=0;
             size_t tx_sa_num = 0; // Not used
-            uint8_t iv_seed[TRANSOP_AES_IV_SEED_SIZE];
+            uint64_t iv_seed = 0;
             uint8_t padding = 0;
             n2n_aes_ivec_t enc_ivec = {0};
 
@@ -118,16 +116,11 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             encode_uint32( outbuf, &idx, tx_sa_num ); // Not used
 
             /* Generate and encode the IV seed.
-             * Assume rand() to deliver 'RAND_BYTES' random bytes and re-calling rand() 
-             * because RAND_MAX is usually < 64bit (e.g. linux) 
-             * and sometimes < 32bit (e.g. Windows).
+             * Using two calls to rand() because RAND_MAX is usually < 64bit
+             * (e.g. linux) and sometimes < 32bit (e.g. Windows).
              */
-	    uint32_t random_int;
-	    for (int i=0; i < TRANSOP_AES_IV_SEED_SIZE; i++) {
-		if ((i % RAND_BYTES) == 0) random_int = rand();
-		iv_seed[i] = (random_int >> ((i % RAND_BYTES) * 8)) & 0xFF;
-            }
-            encode_buf(outbuf, &idx, iv_seed, TRANSOP_AES_IV_SEED_SIZE);
+            iv_seed = ((((uint64_t)rand() & 0xFFFFFFFF)) << 32) | rand();
+            encode_buf(outbuf, &idx, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
             /* Encrypt the assembly contents and write the ciphertext after the SA. */
             len = in_len + TRANSOP_AES_NONCE_SIZE;
@@ -144,9 +137,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             padding = (len2-len);
             assembly[len2 - 1] = padding;
 
-	    char * iv_seed_output[TRANSOP_AES_IV_SEED_SIZE*2];
-	    for (int i=0; i < TRANSOP_AES_IV_SEED_SIZE; i++) sprintf(iv_seed_output, "%s%02x", iv_seed_output,iv_seed[i]);
-            traceEvent( TRACE_DEBUG, "padding = %u, seed = %s", padding, iv_seed_output );
+	    traceEvent( TRACE_DEBUG, "padding = %u, seed = %016lx", padding, iv_seed );
             set_aes_cbc_iv(priv, enc_ivec, iv_seed);
 
             AES_cbc_encrypt( assembly, /* source */
@@ -182,7 +173,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
         size_t rem=in_len;
         size_t idx=0;
         uint8_t aes_enc_ver=0;
-        uint8_t iv_seed[TRANSOP_AES_IV_SEED_SIZE];
+        uint64_t iv_seed = 0;
 
         /* Get the encoding version to make sure it is supported */
         decode_uint8( &aes_enc_ver, inbuf, &rem, &idx );
@@ -192,11 +183,9 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
             decode_uint32( &sa_rx, inbuf, &rem, &idx );
 
             /* Get the IV seed */
-	    decode_buf(iv_seed, TRANSOP_AES_IV_SEED_SIZE, inbuf, &rem, &idx);
+	    decode_buf((uint8_t *)&iv_seed, TRANSOP_AES_IV_SEED_SIZE, inbuf, &rem, &idx);
 
-	    char * iv_seed_output[TRANSOP_AES_IV_SEED_SIZE*2];
-	    for (int i=0; i < TRANSOP_AES_IV_SEED_SIZE; i++) sprintf(iv_seed_output, "%s%02x", iv_seed_output,iv_seed[i]);
-            traceEvent( TRACE_DEBUG, "decode_aes %lu with seed %s", in_len, iv_seed_output);
+	    traceEvent( TRACE_DEBUG, "decode_aes %lu with seed %016lx", in_len, iv_seed );
 
             len = (in_len - TRANSOP_AES_PREAMBLE_SIZE);
  
@@ -247,8 +236,6 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_size) {
     size_t aes_key_size_bytes;
     size_t aes_key_size_bits;
-    uint8_t * key_mat_buf;
-    size_t key_mat_buf_length;
 
     /* Clear out any old possibly longer key matter. */
     memset( &(priv->enc_key), 0, sizeof(priv->enc_key) );
@@ -270,9 +257,8 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
      * the hashes for the aes key material, key_mat_buf_lengh indicates the
      * actual "filling level" of the buffer
      */
-    key_mat_buf = calloc(1, SHA512_DIGEST_LENGTH + SHA256_DIGEST_LENGTH);
-    if(!key_mat_buf)
-        return(1);
+    uint8_t key_mat_buf[SHA512_DIGEST_LENGTH + SHA256_DIGEST_LENGTH];
+    size_t key_mat_buf_length;
 
     if (key_size >= 65)
     {
@@ -318,7 +304,6 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
     traceEvent( TRACE_DEBUG, "AES %u bits setup completed\n",
                 aes_key_size_bits);
 
-    free(key_mat_buf);
     return(0);
 }
 
