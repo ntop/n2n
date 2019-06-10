@@ -25,7 +25,7 @@
 #include "openssl/sha.h"
 
 #define N2N_AES_TRANSFORM_VERSION       1  /* version of the transform encoding */
-#define N2N_AES_IVEC_SIZE               32 /* Enough space for biggest AES ivec */
+#define N2N_AES_IVEC_SIZE               (AES_BLOCK_SIZE)
 
 #define AES256_KEY_BYTES (256/8)
 #define AES192_KEY_BYTES (192/8)
@@ -34,7 +34,9 @@
 /* AES plaintext preamble */
 #define TRANSOP_AES_VER_SIZE     1       /* Support minor variants in encoding in one module. */
 #define TRANSOP_AES_SA_SIZE      4
-#define TRANSOP_AES_IV_SEED_SIZE 8
+#define TRANSOP_AES_IV_SEED_SIZE 8	/* size of transmitted random part of IV in bytes; leave it set to 8 for now */
+#define TRANSOP_AES_IV_PADDING_SIZE (N2N_AES_IVEC_SIZE - TRANSOP_AES_IV_SEED_SIZE)
+#define TRANSOP_AES_IV_KEY_BYTES (AES128_KEY_BYTES) /* use AES128 for IV encryption */
 #define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_VER_SIZE + TRANSOP_AES_SA_SIZE + TRANSOP_AES_IV_SEED_SIZE)
 
 /* AES ciphertext preamble */
@@ -46,14 +48,8 @@ typedef struct transop_aes {
     AES_KEY             enc_key;        /* tx key */
     AES_KEY             dec_key;        /* tx key */
     AES_KEY             iv_enc_key;     /* key used to encrypt the IV */
-    uint8_t             iv_ext_val[AES128_KEY_BYTES]; /* key used to extend the random IV seed to full block size */
+    uint8_t             iv_pad_val[TRANSOP_AES_IV_PADDING_SIZE]; /* key used to pad the random IV seed to full block size */
 } transop_aes_t;
-
-struct sha512_keybuf {
-    uint8_t enc_dec_key[AES256_KEY_BYTES];          /* The key to use for AES CBC encryption/decryption */
-    uint8_t iv_enc_key[AES128_KEY_BYTES];           /* The key to use to encrypt the IV with AES ECB */
-    uint8_t iv_ext_val[AES128_KEY_BYTES];           /* A value to extend the IV seed */
-}; /* size: SHA512_DIGEST_LENGTH */
 
 static int transop_deinit_aes(n2n_trans_op_t *arg) {
     transop_aes_t *priv = (transop_aes_t *)arg->priv;
@@ -64,33 +60,12 @@ static int transop_deinit_aes(n2n_trans_op_t *arg) {
     return 0;
 }
 
-/* Return the best acceptable AES key size (in bytes) given an input keysize. 
- *
- * The value returned will be one of AES128_KEY_BYTES, AES192_KEY_BYTES or
- * AES256_KEY_BYTES.
- */
-static size_t aes_best_keysize(size_t numBytes)
-{
-    if (numBytes >= AES256_KEY_BYTES)
-    {
-        return AES256_KEY_BYTES;
-    }
-    else if (numBytes >= AES192_KEY_BYTES)
-    {
-        return AES192_KEY_BYTES;
-    }
-    else
-    {
-        return AES128_KEY_BYTES;
-    }
-}
-
 static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint64_t iv_seed) {
-    uint8_t iv_full[AES_BLOCK_SIZE];
+    uint8_t iv_full[N2N_AES_IVEC_SIZE];
 
-    /* Extend the seed to full block size via the fixed ext value */
-    memcpy(iv_full, priv->iv_ext_val, sizeof(iv_seed)); // note: only 64bits used of 128 available
-    memcpy(iv_full + sizeof(iv_seed), &iv_seed, sizeof(iv_seed));
+    /* Extend the seed to full block size with padding value */
+    memcpy(iv_full, priv->iv_pad_val, TRANSOP_AES_IV_PADDING_SIZE);
+    memcpy(iv_full + TRANSOP_AES_IV_PADDING_SIZE, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
     /* Encrypt the IV with secret key to make it unpredictable.
      * As discussed in https://github.com/ntop/n2n/issues/72, it's important to
@@ -145,7 +120,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
              * (e.g. linux) and sometimes < 32bit (e.g. Windows).
              */
             iv_seed = ((((uint64_t)rand() & 0xFFFFFFFF)) << 32) | rand();
-            encode_buf(outbuf, &idx, &iv_seed, sizeof(iv_seed));
+            encode_buf(outbuf, &idx, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
             /* Encrypt the assembly contents and write the ciphertext after the SA. */
             len = in_len + TRANSOP_AES_NONCE_SIZE;
@@ -201,19 +176,19 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
         uint64_t iv_seed=0;
 
         /* Get the encoding version to make sure it is supported */
-        decode_uint8( &aes_enc_ver, inbuf, &rem, &idx);
+        decode_uint8( &aes_enc_ver, inbuf, &rem, &idx );
 
         if ( N2N_AES_TRANSFORM_VERSION == aes_enc_ver) {
             /* Get the SA number and make sure we are decrypting with the right one. - Not used*/
             decode_uint32( &sa_rx, inbuf, &rem, &idx);
 
             /* Get the IV seed */
-            decode_buf((uint8_t *)&iv_seed, sizeof(iv_seed), inbuf, &rem, &idx);
+            decode_buf((uint8_t *)&iv_seed, TRANSOP_AES_IV_SEED_SIZE, inbuf, &rem, &idx);
 
             traceEvent(TRACE_DEBUG, "decode_aes %lu with seed %016llx", in_len, iv_seed);
 
             len = (in_len - TRANSOP_AES_PREAMBLE_SIZE);
-            
+
             if ( 0 == (len % AES_BLOCK_SIZE)) {
                 uint8_t padding;
                 n2n_aes_ivec_t dec_ivec = {0};
@@ -259,36 +234,76 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 }
 
 static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_size) {
-    size_t aes_keysize_bytes;
-    size_t aes_keysize_bits;
-    struct sha512_keybuf keybuf;
+    size_t aes_key_size_bytes;
+    size_t aes_key_size_bits;
+
+    uint8_t key_mat_buf[SHA512_DIGEST_LENGTH + SHA256_DIGEST_LENGTH];
+    size_t key_mat_buf_length;
 
     /* Clear out any old possibly longer key matter. */
-    memset( &(priv->enc_key), 0, sizeof(priv->enc_key));
-    memset( &(priv->dec_key), 0, sizeof(priv->dec_key));
-    memset( &(priv->iv_enc_key), 0, sizeof(priv->iv_enc_key));
-    memset( &(priv->iv_ext_val), 0, sizeof(priv->iv_ext_val));
+    memset( &(priv->enc_key), 0, sizeof(priv->enc_key) );
+    memset( &(priv->dec_key), 0, sizeof(priv->dec_key) );
+    memset( &(priv->iv_enc_key), 0, sizeof(priv->iv_enc_key) );
+    memset( &(priv->iv_pad_val), 0, sizeof(priv->iv_pad_val) );
 
-    /* We still use aes_best_keysize (even not necessary since we hash the key
-     * into the 256bits enc_dec_key) to let the users choose the degree of encryption.
-     * Long keys will pick AES192 or AES256 with more robust but expensive encryption.
+    /* Let the user choose the degree of encryption:
+     * Long input keys will pick AES192 or AES256 with more robust but expensive encryption.
+     *
+     * The input key always gets hashed to make a more unpredictable use of the key space and
+     * also to derive some additional material (key for IV encrpytion, IV padding).
+     *
+     * The following scheme for key setup was discussed on github:
+     * https://github.com/ntop/n2n/issues/101
      */
-    aes_keysize_bytes = aes_best_keysize(key_size);
-    aes_keysize_bits = 8 * aes_keysize_bytes;
 
-    /* Hash the main key to generate subkeys */
-    SHA512(key, key_size, (u_char*)&keybuf);
+    /* create a working buffer of maximal occuring hashes size and generate
+     * the hashes for the aes key material, key_mat_buf_lengh indicates the
+     * actual "filling level" of the buffer
+     */
+
+    if (key_size >= 65)
+    {
+        aes_key_size_bytes = AES256_KEY_BYTES;
+        SHA512(key, key_size, key_mat_buf);
+        key_mat_buf_length = SHA512_DIGEST_LENGTH;
+    }
+    else if (key_size >= 44)
+    {
+        aes_key_size_bytes = AES192_KEY_BYTES;
+        SHA384(key, key_size, key_mat_buf);
+	/* append a hash of the first hash to create enough material for IV padding */
+        SHA256(key_mat_buf, SHA384_DIGEST_LENGTH, key_mat_buf + SHA384_DIGEST_LENGTH);
+	key_mat_buf_length = SHA384_DIGEST_LENGTH + SHA256_DIGEST_LENGTH;
+    }
+    else
+    {
+        aes_key_size_bytes = AES128_KEY_BYTES;
+        SHA256(key, key_size, key_mat_buf);
+	/* append a hash of the first hash to create enough material for IV padding */
+        SHA256(key_mat_buf, SHA256_DIGEST_LENGTH, key_mat_buf + SHA256_DIGEST_LENGTH);
+        key_mat_buf_length = 2 * SHA256_DIGEST_LENGTH;
+    }
+
+    /* is there enough material available? */
+    if (key_mat_buf_length < (aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES + TRANSOP_AES_IV_PADDING_SIZE))
+    {
+        /* this should never happen */
+	traceEvent( TRACE_ERROR, "AES missing %u bits hashed key material\n",
+                    (aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES + TRANSOP_AES_IV_PADDING_SIZE - key_mat_buf_length) * 8);
+	return(1);
+    }
 
     /* setup of enc_key/dec_key, used for the CBC encryption */
-    AES_set_encrypt_key(keybuf.enc_dec_key, aes_keysize_bits, &(priv->enc_key));
-    AES_set_decrypt_key(keybuf.enc_dec_key, aes_keysize_bits, &(priv->dec_key));
+    aes_key_size_bits = 8 * aes_key_size_bytes;
+    AES_set_encrypt_key(key_mat_buf, aes_key_size_bits, &(priv->enc_key));
+    AES_set_decrypt_key(key_mat_buf, aes_key_size_bits, &(priv->dec_key));
 
-    /* setup of iv_enc_key and iv_ext_val, used for generating the CBC IV */
-    AES_set_encrypt_key(keybuf.iv_enc_key, sizeof(keybuf.iv_enc_key) * 8, &(priv->iv_enc_key));
-    memcpy(priv->iv_ext_val, keybuf.iv_ext_val, sizeof(keybuf.iv_ext_val));
+    /* setup of iv_enc_key (AES128 key) and iv_pad_val, used for generating the CBC IV */
+    AES_set_encrypt_key(key_mat_buf + aes_key_size_bytes, TRANSOP_AES_IV_KEY_BYTES * 8, &(priv->iv_enc_key));
+    memcpy(priv->iv_pad_val, key_mat_buf + aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES, TRANSOP_AES_IV_PADDING_SIZE);
 
     traceEvent(TRACE_DEBUG, "AES %u bits setup completed\n",
-                aes_keysize_bits, key);
+                aes_key_size_bits);
 
     return(0);
 }
