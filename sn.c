@@ -147,7 +147,6 @@ static int update_edge(n2n_sn_t * sss,
 
       scan = (struct peer_info*)calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
 
-      memcpy(scan->community_name, comm->community, sizeof(n2n_community_t));
       memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
       memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
@@ -158,10 +157,7 @@ static int update_edge(n2n_sn_t * sss,
 		 sock_to_cstr(sockbuf, sender_sock));
     } else  {
       /* Known */
-      if((0 != memcmp(comm, scan->community_name, sizeof(n2n_community_t))) ||
-	 (!sock_equal(sender_sock, &(scan->sock))))
-        {
-	  memcpy(scan->community_name, comm, sizeof(n2n_community_t));
+      if(!sock_equal(sender_sock, &(scan->sock))) {
 	  memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
 	  traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
@@ -925,18 +921,18 @@ static void dump_registrations(int signo) {
   traceEvent(TRACE_NORMAL, "====================================");
 
   HASH_ITER(hh, sss_node.communities, comm, ctmp) {
+    traceEvent(TRACE_NORMAL, "Dumping community: %s", comm->community);
+
     HASH_ITER(hh, comm->edges, list, tmp) {
       if(list->sock.family == AF_INET)
-	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][community: %s][last seen: %u sec ago]",
+	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][last seen: %u sec ago]",
 		   ++num, macaddr_str(buf, list->mac_addr),
 		   list->sock.addr.v4[0], list->sock.addr.v4[1], list->sock.addr.v4[2], list->sock.addr.v4[3],
 		   list->sock.port,
-		   (char*)list->community_name,
 		   now-list->last_seen);
       else
-	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][community: %s][last seen: %u sec ago]",
+	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][last seen: %u sec ago]",
 		   ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
-		   (char*)list->community_name,
 		   now-list->last_seen);
     }
   }

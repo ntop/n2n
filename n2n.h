@@ -170,7 +170,6 @@ typedef char macstr_t[N2N_MACSTR_SIZE];
 
 struct peer_info {
   n2n_mac_t           mac_addr;
-  n2n_community_t     community_name;
   n2n_sock_t          sock;
   int                 timeout;
   time_t              last_seen;
