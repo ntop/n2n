@@ -129,7 +129,7 @@ static uint16_t reg_lifetime(n2n_sn_t * sss) {
  *  supernode. */
 static int update_edge(n2n_sn_t * sss,
 		       const n2n_mac_t edgeMac,
-		       struct sn_community *community,
+		       struct sn_community *comm,
 		       const n2n_sock_t * sender_sock,
 		       time_t now) {
   macstr_t            mac_buf;
@@ -140,28 +140,28 @@ static int update_edge(n2n_sn_t * sss,
 	     macaddr_str(mac_buf, edgeMac),
 	     sock_to_cstr(sockbuf, sender_sock));
 
-  HASH_FIND_PEER(community->edges, edgeMac, scan);
+  HASH_FIND_PEER(comm->edges, edgeMac, scan);
 
   if(NULL == scan) {
       /* Not known */
 
       scan = (struct peer_info*)calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
 
-      memcpy(scan->community_name, community->community, sizeof(n2n_community_t));
+      memcpy(scan->community_name, comm->community, sizeof(n2n_community_t));
       memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
       memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
-      HASH_ADD_PEER(community->edges, scan);
+      HASH_ADD_PEER(comm->edges, scan);
 
       traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
 		 macaddr_str(mac_buf, edgeMac),
 		 sock_to_cstr(sockbuf, sender_sock));
     } else  {
       /* Known */
-      if((0 != memcmp(community, scan->community_name, sizeof(n2n_community_t))) ||
+      if((0 != memcmp(comm, scan->community_name, sizeof(n2n_community_t))) ||
 	 (!sock_equal(sender_sock, &(scan->sock))))
         {
-	  memcpy(scan->community_name, community, sizeof(n2n_community_t));
+	  memcpy(scan->community_name, comm, sizeof(n2n_community_t));
 	  memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
 	  traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
@@ -623,14 +623,14 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                    cmn2;
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
-    struct sn_community          *community;
+    struct sn_community          *comm;
 
     /* Edge requesting registration with us.  */
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
     decode_REGISTER_SUPER(&reg, &cmn, udp_buf, &rem, &idx);
 
-    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, community);
+    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, comm);
 
     /*
       Before we move any further, we need to check if the requested
@@ -638,19 +638,19 @@ static int process_udp(n2n_sn_t * sss,
       not report any message back to the edge to hide the supernode
       existance (better from the security standpoint)
     */
-    if(!community && !sss->lock_communities) {
-      community = calloc(1, sizeof(struct sn_community));
+    if(!comm && !sss->lock_communities) {
+      comm = calloc(1, sizeof(struct sn_community));
 
-      if(community) {
-	strncpy(community->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
-	community->community[N2N_COMMUNITY_SIZE-1] = '\0';
-	HASH_ADD_STR(sss->communities, community, community);
+      if(comm) {
+	strncpy(comm->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
+	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
+	HASH_ADD_STR(sss->communities, community, comm);
 
-	traceEvent(TRACE_INFO, "New community: %s", community->community);
+	traceEvent(TRACE_INFO, "New community: %s", comm->community);
       }
     }
 
-    if(community) {
+    if(comm) {
       cmn2.ttl = N2N_DEFAULT_TTL;
       cmn2.pc = n2n_register_super_ack;
       cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
@@ -671,7 +671,7 @@ static int process_udp(n2n_sn_t * sss,
 		 macaddr_str(mac_buf, reg.edgeMac),
 		 sock_to_cstr(sockbuf, &(ack.sock)));
 
-      update_edge(sss, reg.edgeMac, community, &(ack.sock), now);
+      update_edge(sss, reg.edgeMac, comm, &(ack.sock), now);
 
       encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
 
@@ -1111,6 +1111,12 @@ static int run_loop(n2n_sn_t * sss) {
 
     HASH_ITER(hh, sss->communities, comm, tmp) {
       purge_expired_registrations( &comm->edges, &last_purge_edges );
+
+      if(comm->edges == NULL) {
+	traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
+	HASH_DEL(sss->communities, comm);
+	free(comm);
+      }
     }
 
   } /* while */
