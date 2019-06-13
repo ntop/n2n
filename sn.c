@@ -777,7 +777,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     break;
 
   case 'c': /* community file */
-    load_allowed_sn_community(sss, optarg);
+    load_allowed_sn_community(sss, _optarg);
     break;
 
   case 'f': /* foreground */
