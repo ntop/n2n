@@ -972,13 +972,11 @@ int main(int argc, char * const argv[]) {
 
   init_sn(&sss_node);
 
-#ifndef WIN32
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &sss_node);
     if(argc > 2)
       rc = loadFromCLI(argc, argv, &sss_node);
   } else
-#endif
     rc = loadFromCLI(argc, argv, &sss_node);
 
   if(rc < 0)
