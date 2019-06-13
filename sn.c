@@ -330,7 +330,7 @@ static int process_mgmt(n2n_sn_t * sss,
 {
   char resbuf[N2N_SN_PKTBUF_SIZE];
   size_t ressize=0;
-  uint num_edges=0;
+  uint32_t num_edges=0;
   ssize_t r;
   struct sn_community *community, *tmp;
 
@@ -777,7 +777,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     break;
 
   case 'c': /* community file */
-    load_allowed_sn_community(sss, optarg);
+    load_allowed_sn_community(sss, _optarg);
     break;
 
   case 'f': /* foreground */
