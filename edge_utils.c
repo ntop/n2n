@@ -437,7 +437,7 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
     scan->sock = *peer;
     scan->last_p2p = now;
 
-    traceEvent(TRACE_NORMAL, "P2P connection enstablished: %s [%s]",
+    traceEvent(TRACE_NORMAL, "P2P connection established: %s [%s]",
 	  macaddr_str(mac_buf, mac),
 	  sock_to_cstr(sockbuf, peer));
 
