@@ -20,9 +20,6 @@
 
 #include "n2n.h"
 
-#ifdef WIN32
-#include <signal.h>
-#endif
 
 #define N2N_SN_LPORT_DEFAULT 7654
 #define N2N_SN_PKTBUF_SIZE   2048
@@ -944,7 +941,6 @@ static void dump_registrations(int signo) {
 
 static int keep_running;
 
-#ifdef __linux__
 
 static void term_handler(int sig) {
   static int called = 0;
@@ -959,7 +955,6 @@ static void term_handler(int sig) {
 
   keep_running = 0;
 }
-#endif
 
 /* *************************************************** */
 
@@ -1012,11 +1007,11 @@ int main(int argc, char * const argv[]) {
 
   traceEvent(TRACE_NORMAL, "supernode started");
 
-#ifdef __linux__
   signal(SIGTERM, term_handler);
   signal(SIGINT, term_handler);
+#ifndef WIN32
   signal(SIGHUP, dump_registrations);
-#endif
+#endif /* #ifndef WIN32 */
 
   keep_running = 1;
   return run_loop(&sss_node);

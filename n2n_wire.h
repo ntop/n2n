@@ -20,6 +20,7 @@
 #define N2N_WIRE_H_
 
 #include <stdlib.h>
+#include <time.h>
 
 #if defined(WIN32)
 #include "win32/n2n_win32.h"

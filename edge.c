@@ -551,7 +551,6 @@ static void daemonize() {
 
 static int keep_on_running;
 
-#ifdef __linux__
 
 static void term_handler(int sig) {
   static int called = 0;
@@ -566,7 +565,6 @@ static void term_handler(int sig) {
 
   keep_on_running = 0;
 }
-#endif
 
 /* *************************************************** */
 
@@ -663,10 +661,8 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
-#ifdef __linux__
   signal(SIGTERM, term_handler);
   signal(SIGINT,  term_handler);
-#endif
 
   keep_on_running = 1;
   traceEvent(TRACE_NORMAL, "edge started");
