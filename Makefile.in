@@ -69,9 +69,6 @@ all: $(APPS) $(DOCS) benchmark
 edge: edge.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
 	$(CC) $(CFLAGS) edge.c $(N2N_LIB) $(LIBS_EDGE) -o edge
 
-test: test.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
-	$(CC) $(CFLAGS) test.c $(N2N_LIB) $(LIBS_EDGE) -o test
-
 supernode: sn.c $(N2N_LIB) n2n.h Makefile
 	$(CC) $(CFLAGS) sn.c $(N2N_LIB) $(LIBS_SN) -o supernode
 

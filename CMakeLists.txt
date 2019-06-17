@@ -79,9 +79,6 @@ target_link_libraries(edge n2n)
 add_executable(supernode sn.c)
 target_link_libraries(supernode n2n)
 
-add_executable(test test.c)
-target_link_libraries(test n2n)
-
 add_executable(benchmark benchmark.c)
 target_link_libraries(benchmark n2n)
 
