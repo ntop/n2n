@@ -17,6 +17,16 @@ esac
 
 umask 022
 
+if ! grep -q n2n /etc/group; then
+    echo 'Creating n2n group'
+    /usr/sbin/groupadd -r n2n
+fi
+
+if ! /usr/bin/id -u n2n > /dev/null 2>&1; then
+    echo "Creating n2n user..."
+    /usr/sbin/useradd -M -N -g n2n -r -s /bin/false n2n
+fi
+
 echo "Rebuilding ld cache..."
 /sbin/ldconfig
 
