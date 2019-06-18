@@ -993,6 +993,11 @@ int main(int argc, char * const argv[]) {
   }
 #endif /* #if defined(N2N_HAVE_DAEMON) */
 
+#ifndef WIN32
+  if((getuid() == 0) || (getgid() == 0))
+    traceEvent(TRACE_WARNING, "Running as root is discouraged");
+#endif
+
   traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
   sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/);

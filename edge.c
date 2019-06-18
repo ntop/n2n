@@ -19,6 +19,8 @@
 #include "n2n.h"
 #ifdef WIN32
 #include <sys/stat.h>
+#else
+#include <pwd.h>
 #endif
 
 #define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
@@ -577,6 +579,9 @@ int main(int argc, char* argv[]) {
   n2n_edge_t *eee;      /* single instance for this program */
   n2n_edge_conf_t conf; /* generic N2N edge config */
   n2n_priv_config_t ec; /* config used for standalone program execution */
+#ifndef WIN32
+  struct passwd *pw = NULL;
+#endif
 
   if(argc == 1)
     help();
@@ -586,9 +591,13 @@ int main(int argc, char* argv[]) {
   memset(&ec, 0, sizeof(ec));
   ec.mtu = DEFAULT_MTU;
   ec.daemon = 1;    /* By default run in daemon mode. */
+
 #ifndef WIN32
-  ec.userid = 0; /* root is the only guaranteed ID */
-  ec.groupid = 0; /* root is the only guaranteed ID */
+  if(((pw = getpwnam("n2n")) != NULL) ||
+     ((pw = getpwnam("nobody")) != NULL)) {
+    ec.userid = pw->pw_uid;
+    ec.groupid = pw->pw_gid;
+  }
 #endif
 
 #ifdef WIN32
@@ -658,9 +667,15 @@ int main(int argc, char* argv[]) {
 	       (signed int)ec.userid, (signed int)ec.groupid);
 
     /* Finished with the need for root privileges. Drop to unprivileged user. */
-    setreuid(ec.userid, ec.userid);
-    setregid(ec.groupid, ec.groupid);
+    if((setgid(ec.groupid) != 0)
+       || (setuid(ec.userid) != 0)) {
+      traceEvent(TRACE_ERROR, "Unable to drop privileges [%u/%s]", errno, strerror(errno));
+      exit(1);
+    }
   }
+
+  if((getuid() == 0) || (getgid() == 0))
+    traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
 #endif
 
 #ifdef __linux__
