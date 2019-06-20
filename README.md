@@ -74,7 +74,7 @@ $ sudo ip route add supernode.ntop.org via 192.168.1.1
 
 # Forward all the internet traffic via host1
 $ sudo ip route del default
-$ sudo ip route add default 192.168.100.1
+$ sudo ip route add default via 192.168.100.1
 ```
 
 This process can be greatly simplified by using the [n2n_gateway.sh](https://github.com/ntop/n2n/blob/dev/doc/n2n_gateway.sh) script.
