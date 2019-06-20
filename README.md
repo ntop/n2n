@@ -29,6 +29,52 @@ Now the two hosts can ping each other.
 
 **IMPORTANT** It is strongly adviced to choose a custom community name (-c) and a secret encryption key (-k) in order to prevent other users to connect to your PC. For privacy and to reduce the above server load, it is also suggested to set up a custom supernode as exmplained below.
 
+Setting up a custom Supernode
+-----------------------------
+
+You can create your own infrastructure by setting up a supernode on a public server (e.g. a VPS). You just need to open a single port (1234 in the example below) on your firewall (usually iptables).
+
+1. Install the n2n package
+2. Edit `/etc/n2n/supernode.conf` and add the following:
+```
+-l=1234
+```
+3. Start the supernode service with `sudo systemctl start supernode`
+4. Optionally enable supernode start on boot: `sudo systemctl enable supernode`
+
+Now the supernode service should be up and running on port 1234. On your edge nodes you can now specify `-l your_supernode_ip:1234` to use it. All the edge nodes must use the same supernode.
+
+Routing the traffic
+-------------------
+
+On linux, n2n provides a standard TAP interface, so routing works gracefully via the standard system utilities as follows.
+
+In this example host1 is the edge router (with n2n IP 192.168.100.1), whereas host2 is the client.
+
+Here is how to configure host1:
+
+1. Add the `-r` option to the edge options to enable routing
+2. Enable packet forwarding with `sudo sysctl -w net.ipv4.ip_forward=1`
+3. Possibly configure iptables to `ACCEPT` the packets on the `FORWARD` chain.
+
+On host2, run the `edge` program as normal to join the host1 community.
+
+In order to forward all the internet traffic via host2:
+
+```sh
+# Determine the current gateway (e.g. 192.168.1.1)
+$ ip route show default
+
+# Add a route to reach the supernode via such gateway
+$ sudo ip route add supernode.ntop.org via 192.168.1.1
+
+# Forward all the internet traffic via host1
+$ sudo ip route del default
+$ sudo ip route add default 192.168.100.1
+```
+
+This process can be greatly simplified by using the [n2n_gateway.sh](https://github.com/ntop/n2n/blob/dev/doc/n2n_gateway.sh) script.
+
 Manual Compilation
 ------------------
 
@@ -47,59 +93,56 @@ For Windows, check out [Windows.md](doc/Windows.md) for compilation and run inst
 
 For MacOS, check out [n2n_on_MacOS.txt](https://github.com/ntop/n2n/blob/dev/doc/n2n_on_MacOS.txt).
 
-Setting up a custom Supernode
------------------------------
+Running edge as a service
+-------------------------
 
-You can create your own infrastructure by setting up a supernode on a public server (e.g. a VPS). You just need to open a single port (1234 in the example below) on your firewall (usually iptables).
+edge can also be run as a service instead of cli:
 
-1. Install the n2n package
-2. Edit `/etc/n2n/supernode.conf` and add the following:
-```
--l=1234
-```
-3. Start the supernode service with `sudo systemctl start supernode`
+1. Edit `/etc/n2n/edge` with your custom options. See `/etc/n2n/edge.conf.sample`.
+2. Start the service: `sudo systemctl start edge`
+3. Optionally enable edge start on boot: `sudo systemctl enable edge`
 
-Now the supernode service should be up and running on port 1234. On your edge nodes you can now specify `-l your_supernode_ip:1234` to use it. All the edge nodes must use the same supernode.
+You can run multiple edge service instances by creating `/etc/n2n/edge-instance1` and
+starting it with `sudo systemctl start edge@instance1`.
 
 IPv6 Support
 ------------
 
-n2n supports the carriage of IPv6 packets within the n2n tunnel. N2n does not
-yet use IPv6 for transport between edges and supernodes.
+N2n can tunnel IPv6 traffic into the virtual network but does not support
+IPv6 for edge-to-supernode communication yet.
 
-To make IPv6 carriage work you need to manually add IPv6 addresses to the TAP
-interfaces at each end. There is currently no way to specify an IPv6 address on
-the edge command line.
+Check out [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more information.
 
-eg. under linux:
+Security considerations
+-----------------------
 
-on hostA:
-`[hostA] $ /sbin/ip -6 addr add fc00:abcd:1234::7/48 dev n2n0`
+n2n edge nodes use twofish encryption by default for compatibility reasons with existing versions.
 
-on hostB:
-`[hostB] $ /sbin/ip -6 addr add fc00​:abcd:​1234::6/48 dev n2n0`
+Recently AES encryption support has been implemented, which increases both security and performance,
+so it is recommended to enable it on all the edge nodes by specifying the `-A` option.
 
-You may find it useful to make use of tunctl from the uml-utilities
-package. Tunctl allow you to bring up a TAP interface and configure addressing
-prior to starting edge. It also allows edge to be restarted without the
-interface closing (which would normally affect routing tables).
+A benchmark of the encryption methods is available when compiled from source with `./benchmark`.
 
-Once the IPv6 addresses are configured and edge started, IPv6 neighbor discovery
-packets flow (get broadcast) and IPv6 entities self arrange. Test your IPv6
-setup with ping6 - the IPv6 ping command.
+Contribution
+------------
 
-## Docker registry
+You can contribute to n2n in variuos ways:
 
-*NOTE*: docker packages may be outdated.
+- Update an [open issue](https://github.com/ntop/n2n/issues) or create a new one with detailed information
+- Propose new features
+- Improve the documentation
+- Provide pull requests with enhancenents
 
-- [DockerHub](https://hub.docker.com/r/supermock/supernode/)
-- [DockerStore](https://store.docker.com/community/images/supermock/supernode/)
+For details about the internals of n2n check out [Hacking guide](https://github.com/ntop/n2n/blob/dev/doc/HACKING).
 
-Run with:
+Related Projects
+----------------
 
-```sh
-$ docker run --rm -d -p 5645:5645/udp -p 7654:7654/udp supermock/supernode:[TAGNAME]
-```
+Here is a list of third-party projects connected to this repository.
+
+- N2n for android: [hin2n](https://github.com/switch-iot/hin2n)
+- N2n v1 and v2 version from meyerd: [meyerd n2n](https://github.com/meyerd/n2n)
+- Docker images: [DockerHub](https://hub.docker.com/r/supermock/supernode/) - [DockerStore](https://store.docker.com/community/images/supermock/supernode/)
 
 -----------------
 (C) 2007-2019 - ntop.org and contributors
