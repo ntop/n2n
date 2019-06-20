@@ -1,73 +1,65 @@
 # N2N
 
-Edge node
----------
+N2n is a light VPN software which make it easy to create virtual networks bypassing intermediate firewalls. In order to start using N2N, two elements are required:
 
-You need to start an edge node on each host you want to connect with the *same*
-community.
+- A *supernode*: it allows edge nodes to announce and discover other nodes. It must have a port publicly accessible on internet.
 
-Enable the edge process
+- *Edge* nodes: the nodes which will be part of the virtual networks
+
+A virtual network shared between multiple edge nodes in n2n is called a *community*. A single supernode can relay multiple communities and a single PC can be part of multiple communities at the same time. An encryption key can be used by the edge nodes to encrypt the packets within their community.
+
+Quick Setup
+-----------
+
+Some linux distributions already provide n2n as a package so a simple `sudo apt-get install n2n` will do the work. Alternatively, up to date packages for most distributions are available on [ntop repositories](http://packages.ntop.org/).
+
+On host1 run:
 
 ```sh
-$ sudo ./edge -d n2n0 -c mynetwork -k encryptme -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
+$ sudo edge -c mynetwork -k mysecretpass -a 192.168.100.1 -f -l supernode.ntop.org:7777
 ```
 
-or
+On host2 run:
 
 ```sh
-$ N2N_KEY=encryptme sudo ./edge -d n2n0 -c mynetwork -u 99 -g 99 -m 3C:A0:12:34:56:78 -a 1.2.3.4 -l a.b.c.d:xyw
+$ sudo edge -c mynetwork -k mysecretpass -a 192.168.100.2 -f -l supernode.ntop.org:7777
 ```
 
-By defaul the edge will run in background but you can use the `-f` option to keep it in foreground.
+Now the two hosts can ping each other.
 
-Windows
--------
+**IMPORTANT** It is strongly adviced to choose a custom community name (-c) and a secret encryption key (-k) in order to prevent other users to connect to your PC. For privacy and to reduce the above server load, it is also suggested to set up a custom supernode as exmplained below.
 
-Check out doc/Windows.md for compilation and run instuctions.
+Manual Compilation
+------------------
 
-Note that `-d`, `-u`, `-g` and `-f` options are not available for Windows.
+On linux, compilation from source is straight forward:
 
-Supernode
---------
+```sh
+./autogen.sh
+./configure
+make
 
-You need to start the supernode once (no need to be root unless you want to use a privileged port)
+# optionally install
+make install
+```
 
-1. `./supernode -l 1234 -v`
+For Windows, check out [Windows.md](doc/Windows.md) for compilation and run instuctions.
 
-Dropping Root Privileges and SUID-Root Executables (UNIX)
---------------------------------------------------
+For MacOS, check out [n2n_on_MacOS.txt](https://github.com/ntop/n2n/blob/dev/doc/n2n_on_MacOS.txt).
 
-The edge node uses superuser privileges to create a TAP network interface
-device. Once this is created root privileges are not required and can constitute
-a security hazard if there is some way for an attacker to take control of an
-edge process while it is running. Edge will drop to a non-privileged user if you
-specify the `-u <uid>` and `-g <gid>` options. These are numeric IDs. Consult
-`/etc/passwd`.
+Setting up a custom Supernode
+-----------------------------
 
-You may choose to install edge SUID-root to do this:
+You can create your own infrastructure by setting up a supernode on a public server (e.g. a VPS). You just need to open a single port (1234 in the example below) on your firewall (usually iptables).
 
-1. Become root
-2. `chown root:root edge`
-3. `chmod +s edge`
-4. done
+1. Install the n2n package
+2. Edit `/etc/n2n/supernode.conf` and add the following:
+```
+-l=1234
+```
+3. Start the supernode service with `sudo systemctl start supernode`
 
-Any user can now run edge. You may not want this, but it may be convenient and
-safe if your host has only one login user.
-
-
-Running As a Daemon (UNIX)
---------------------------
-
-Unless given `-f` as a command line option, edge will call daemon(3) after
-successful setup. This causes the process to fork a child which closes stdin,
-stdout and stderr then sets itself as process group leader. When this is done,
-the edge command returns immediately and you will only see the edge process in
-the process listings, eg. from ps or top.
-
-If the edge command returns 0 then the daemon started successfully. If it
-returns non-zero then edge failed to start up for some reason. When edge starts
-running as a daemon, all logging goes to syslog daemon.info facility.
-
+Now the supernode service should be up and running on port 1234. On your edge nodes you can now specify `-l your_supernode_ip:1234` to use it. All the edge nodes must use the same supernode.
 
 IPv6 Support
 ------------
@@ -96,64 +88,18 @@ Once the IPv6 addresses are configured and edge started, IPv6 neighbor discovery
 packets flow (get broadcast) and IPv6 entities self arrange. Test your IPv6
 setup with ping6 - the IPv6 ping command.
 
-
-Performance Notes
------------------
-
-The time taken to perform a ping test for various ciphers is given below:
-
-Test: `ping -f -l 8 -s 800 -c 10000 <far_edge>`
-
-AES  (-O0) 11820
-TF   (-O0) 25761
-
-TF   (-O2) 20554
-
-AES  (-O3) 12532
-TF   (-O3) 14046
-NULL (-O3) 10659
-
-# N2N Builder (Supernode Docker Image based on Debian)
-
-## Running the supernode image
-
-```sh
-$ docker run --rm -d -p 5645:5645/udp -p 7654:7654/udp supermock/supernode:[TAGNAME]
-```
-
-## Binary packages
-If you don't like to compile from source, we build stable and nightly builds that you can find at [packages.ntop.org](http://packages.ntop.org).
-
 ## Docker registry
+
+*NOTE*: docker packages may be outdated.
 
 - [DockerHub](https://hub.docker.com/r/supermock/supernode/)
 - [DockerStore](https://store.docker.com/community/images/supermock/supernode/)
 
-## Documentation
-
-### 1. Build image and binaries
-
-Use `make` command to build the images. Before starting the arm32v7 platform build, you need to run this registry, so you can perform a cross-build. Just follow the documentation: https://github.com/multiarch/qemu-user-static/blob/master/README.md
-
-```sh
-$ TARGET_ARCHITECTURE=[arm32v7, x86_64, (nothing to build all architectures)] make
-```
-
-### 2. Push it
-
-Use `make push` command to push the image, TARGET_ARCHITECTURE is necessary.
-
-```sh
-$ TARGET_ARCHITECTURE=[arm32v7, x86_64] make push
-```
-
-### 3. Test it
-
-Once the image is built, it's ready to run:
+Run with:
 
 ```sh
 $ docker run --rm -d -p 5645:5645/udp -p 7654:7654/udp supermock/supernode:[TAGNAME]
 ```
 
 -----------------
-(C) 2007-2018 - ntop.org and contributors
+(C) 2007-2019 - ntop.org and contributors
