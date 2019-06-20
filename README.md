@@ -1,12 +1,16 @@
 # N2N
 
-N2n is a light VPN software which make it easy to create virtual networks bypassing intermediate firewalls. In order to start using N2N, two elements are required:
+N2n is a light VPN software which make it easy to create virtual networks bypassing intermediate firewalls.
+
+In order to start using N2N, two elements are required:
 
 - A *supernode*: it allows edge nodes to announce and discover other nodes. It must have a port publicly accessible on internet.
 
 - *Edge* nodes: the nodes which will be part of the virtual networks
 
 A virtual network shared between multiple edge nodes in n2n is called a *community*. A single supernode can relay multiple communities and a single PC can be part of multiple communities at the same time. An encryption key can be used by the edge nodes to encrypt the packets within their community.
+
+N2n tries to enstablish a direct P2P connection between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
 
 Quick Setup
 -----------
@@ -117,6 +121,12 @@ Security considerations
 -----------------------
 
 n2n edge nodes use twofish encryption by default for compatibility reasons with existing versions.
+
+**IMPORTANT** Encryption is only applied to the packet payload. Some metadata like the virtual MAC address
+of the edge nodes, their IP address and the community are sent in cleartext.
+
+When encryption is enabled, the supernode will not be able to decrypt the traffic exchanged between
+two edge nodes, but it will now that edge A is talking with edge B.
 
 Recently AES encryption support has been implemented, which increases both security and performance,
 so it is recommended to enable it on all the edge nodes by specifying the `-A` option.
