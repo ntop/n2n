@@ -21,6 +21,8 @@
 
 #ifdef WIN32
 #include <process.h>
+/* Multicast peers discovery disabled due to https://github.com/ntop/n2n/issues/65 */
+#define SKIP_MULTICAST_PEERS_DISCOVERY
 #endif
 
 #ifdef __ANDROID_NDK__
@@ -104,10 +106,13 @@ struct n2n_edge {
 
   /* Sockets */
   n2n_sock_t          supernode;
-  n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
   int                 udp_sock;
   int                 udp_mgmt_sock;          /**< socket for status info. */
+
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
+  n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
   int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
+#endif
 
   /* Peers */
   struct peer_info *  known_peers;            /**< Edges we are connected to. */
@@ -323,10 +328,14 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
  * Register over multicast in case there is a peer on the same network listening
  */
 static void register_with_local_peers(n2n_edge_t * eee) {
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   /* no send registration to the local multicast group */
   traceEvent(TRACE_INFO, "Registering with multicast group %s:%u",
 	     N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
   send_register(eee, &(eee->multicast_peer), NULL);
+#else
+  traceEvent(TRACE_DEBUG, "Multicast peers discovery is disabled, skipping");
+#endif
 }
 
 /* ************************************** */
@@ -1594,8 +1603,11 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     FD_SET(eee->udp_sock, &socket_mask);
     FD_SET(eee->udp_mgmt_sock, &socket_mask);
     max_sock = max(eee->udp_sock, eee->udp_mgmt_sock);
+
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
     FD_SET(eee->udp_multicast_sock, &socket_mask);
     max_sock = max(eee->udp_sock, eee->udp_multicast_sock);
+#endif
 
 #ifndef WIN32
     FD_SET(eee->device.fd, &socket_mask);
@@ -1623,12 +1635,15 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 	readFromIPSocket(eee, eee->udp_sock);
       }
 
+
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
       if(FD_ISSET(eee->udp_multicast_sock, &socket_mask)) {
-	/* Read a cooked socket from the internet socket (multicast). Writes on the TAP
-	 * socket. */
-	traceEvent(TRACE_INFO, "Received packet from multicast socket");
-	readFromIPSocket(eee, eee->udp_multicast_sock);
+	      /* Read a cooked socket from the internet socket (multicast). Writes on the TAP
+	       * socket. */
+	      traceEvent(TRACE_INFO, "Received packet from multicast socket");
+	      readFromIPSocket(eee, eee->udp_multicast_sock);
       }
+#endif
 
 #ifdef __ANDROID_NDK__
       if (uip_arp_len != 0) {
@@ -1697,8 +1712,10 @@ void edge_term(n2n_edge_t * eee) {
   if(eee->udp_mgmt_sock >= 0)
     closesocket(eee->udp_mgmt_sock);
 
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   if(eee->udp_multicast_sock >= 0)
     closesocket(eee->udp_multicast_sock);
+#endif
 
   clear_peer_list(&eee->pending_peers);
   clear_peer_list(&eee->known_peers);
@@ -1710,14 +1727,6 @@ void edge_term(n2n_edge_t * eee) {
 /* ************************************** */
 
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port) {
-  /* Populate the multicast group for local edge */
-  eee->multicast_peer.family     = AF_INET;
-  eee->multicast_peer.port       = N2N_MULTICAST_PORT;
-  eee->multicast_peer.addr.v4[0] = 224; /* N2N_MULTICAST_GROUP */
-  eee->multicast_peer.addr.v4[1] = 0;
-  eee->multicast_peer.addr.v4[2] = 0;
-  eee->multicast_peer.addr.v4[3] = 68;
-
   if(udp_local_port > 0)
     traceEvent(TRACE_NORMAL, "Binding to local port %d", udp_local_port);
 
@@ -1732,6 +1741,15 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port)
     traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", mgmt_port);
     return(-2);
   }
+
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
+  /* Populate the multicast group for local edge */
+  eee->multicast_peer.family     = AF_INET;
+  eee->multicast_peer.port       = N2N_MULTICAST_PORT;
+  eee->multicast_peer.addr.v4[0] = 224; /* N2N_MULTICAST_GROUP */
+  eee->multicast_peer.addr.v4[1] = 0;
+  eee->multicast_peer.addr.v4[2] = 0;
+  eee->multicast_peer.addr.v4[3] = 68;
 
   eee->udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
   if(eee->udp_multicast_sock < 0)
@@ -1759,6 +1777,7 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port)
       return(-4);
     }
   }
+#endif
 
   return(0);
 }
