@@ -57,7 +57,7 @@ int encode_uint16( uint8_t * base,
 {
     *(base + (*idx))     = ( v >> 8) & 0xff;
     *(base + (1 + *idx)) = ( v & 0xff );
-    *idx += 2;
+    *idx += 32;
     return 2;
 }
 
