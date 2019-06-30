@@ -24,7 +24,7 @@
 #include "openssl/aes.h"
 #include "openssl/sha.h"
 
-#define N2N_AES_TRANSFORM_VERSION       1  /* version of the transform encoding */
+#define N2N_AES_TRANSFORM_VERSION       0  /* version of the transform encoding */
 #define N2N_AES_IVEC_SIZE               (AES_BLOCK_SIZE)
 
 #define AES256_KEY_BYTES (256/8)
