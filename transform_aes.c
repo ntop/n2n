@@ -75,12 +75,11 @@ static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint64_t iv
 /** The aes packet format consists of:
  *
  *  - a 8-bit aes encoding version in clear text
- *  - a 32-bit SA number in clear text
  *  - a 64-bit random IV seed
- *  - ciphertext encrypted from a 32-bit nonce followed by the payload.
+ *  - encrypted payload.
  *
- *  [V|SSSS|II|nnnnDDDDDDDDDDDDDDDDDDDDD]
- *            |<------ encrypted ------>|
+ *  [V|II|DDDDDDDDDDDDDDDDDDDDD]
+ *       |<---- encrypted ---->|
  */
 static int transop_encode_aes( n2n_trans_op_t * arg,
                                    uint8_t * outbuf,
@@ -97,7 +96,6 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
         if ( (in_len + TRANSOP_AES_PREAMBLE_SIZE) <= out_len) {
             int len=-1;
             size_t idx=0;
-            size_t tx_sa_num = 0; // Not used
             uint64_t iv_seed = 0;
             uint8_t padding = 0;
             n2n_aes_ivec_t enc_ivec = {0};
