@@ -79,6 +79,8 @@ $ sudo ip route add default via 192.168.100.1
 
 This process can be greatly simplified by using the [n2n_gateway.sh](https://github.com/ntop/n2n/blob/dev/doc/n2n_gateway.sh) script.
 
+See [Routing.md](https://github.com/ntop/n2n/blob/dev/doc/Routing.md) for other use cases and in depth explanation.
+
 Manual Compilation
 ------------------
 
