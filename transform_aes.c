@@ -60,7 +60,7 @@ static int transop_deinit_aes(n2n_trans_op_t *arg) {
     return 0;
 }
 
-static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint8_t *iv_seed) {
+static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint64_t iv_seed) {
     uint8_t iv_full[N2N_AES_IVEC_SIZE];
 
     /* Extend the seed to full block size with padding value */
@@ -237,6 +237,9 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
     size_t aes_key_size_bytes;
     size_t aes_key_size_bits;
 
+    uint8_t key_mat_buf[SHA512_DIGEST_LENGTH + SHA256_DIGEST_LENGTH];
+    size_t key_mat_buf_length;
+
     /* Clear out any old possibly longer key matter. */
     memset( &(priv->enc_key), 0, sizeof(priv->enc_key) );
     memset( &(priv->dec_key), 0, sizeof(priv->dec_key) );
@@ -257,8 +260,6 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
      * the hashes for the aes key material, key_mat_buf_lengh indicates the
      * actual "filling level" of the buffer
      */
-    uint8_t key_mat_buf[SHA512_DIGEST_LENGTH + SHA256_DIGEST_LENGTH];
-    size_t key_mat_buf_length;
 
     if (key_size >= 65)
     {
