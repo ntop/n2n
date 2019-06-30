@@ -173,6 +173,11 @@ static void help() {
   printf("\nEnvironment variables:\n");
   printf("  N2N_KEY                | Encryption key (ASCII). Not with -k.\n");
 
+#ifdef WIN32
+  printf("\nAvailable TAP adapters:\n");
+  win_print_available_adapters();
+#endif
+
   exit(0);
 }
 

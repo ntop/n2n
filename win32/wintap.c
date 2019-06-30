@@ -5,6 +5,8 @@
 #include "../n2n.h"
 #include "n2n_win32.h"
 
+/* ***************************************************** */
+
 void initWin32() {
   WSADATA wsaData;
   int err;
@@ -18,29 +20,24 @@ void initWin32() {
   }
 }
 
-int open_wintap(struct tuntap_dev *device,
-                const char * devname,
-                const char * address_mode, /* "static" or "dhcp" */
-                char *device_ip, 
-                char *device_mask,
-                const char *device_mac, 
-                int mtu) {
-  HKEY key, key2;
-  LONG rc;
-  char regpath[1024], cmd[256];
+struct win_adapter_info {
+  HANDLE handle;
   char adapterid[1024];
   char adaptername[1024];
+};
+
+/* ***************************************************** */
+
+static void iterate_win_network_adapters(
+    int (*callback)(struct win_adapter_info*, struct tuntap_dev *),
+    void *userdata) {
+  HKEY key, key2;
+  char regpath[1024];
   char tapname[1024];
-  long len;
+  long len, rc;
   int found = 0;
   int err, i;
-  ULONG status = TRUE;
-
-  memset(device, 0, sizeof(struct tuntap_dev));
-  device->device_handle = INVALID_HANDLE_VALUE;
-  device->device_name = devname[0] ? devname : NULL;
-  device->ifName = NULL;
-  device->ip_addr = inet_addr(device_ip);
+  struct win_adapter_info adapter;
 
   /* Open registry and look for network adapters */
   if((rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, NETWORK_CONNECTIONS_KEY, 0, KEY_READ, &key))) {
@@ -53,78 +50,103 @@ int open_wintap(struct tuntap_dev *device,
   }
 
   for (i = 0; ; i++) {
-    len = sizeof(adapterid);
-    if(RegEnumKeyEx(key, i, (LPTSTR)adapterid, &len, 0, 0, 0, NULL))
+    len = sizeof(adapter.adapterid);
+    if(RegEnumKeyEx(key, i, (LPTSTR)adapter.adapterid, &len, 0, 0, 0, NULL))
       break;
 
     /* Find out more about this adapter */
 
-    _snprintf(regpath, sizeof(regpath), "%s\\%s\\Connection", NETWORK_CONNECTIONS_KEY, adapterid);
+    _snprintf(regpath, sizeof(regpath), "%s\\%s\\Connection", NETWORK_CONNECTIONS_KEY, adapter.adapterid);
     if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, (LPCSTR)regpath, 0, KEY_READ, &key2))
       continue;
 
-    len = sizeof(adaptername);
-    err = RegQueryValueEx(key2, "Name", 0, 0, adaptername, &len);
+    len = sizeof(adapter.adaptername);
+    err = RegQueryValueEx(key2, "Name", 0, 0, adapter.adaptername, &len);
 
     RegCloseKey(key2);
 
     if(err)
       continue;
 
-    if(device->device_name) {
-      if(!strcmp(device->device_name, adapterid)) {
-	found = 1;
-	break;
-      } else
-	continue;
-    }
-
-    if(device->ifName) {
-      if(!strcmp(device->ifName, adaptername)) {
-	found = 1;
-	break;
-      } else
-	continue;
-    }
-
-    _snprintf(tapname, sizeof(tapname), USERMODEDEVICEDIR "%s" TAPSUFFIX, adapterid);
-    device->device_handle = CreateFile(tapname, GENERIC_WRITE | GENERIC_READ,
-				       0, /* Don't let other processes share or open
-					     the resource until the handle's been closed */
-				       0, OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
-    if(device->device_handle != INVALID_HANDLE_VALUE) {
-      found = 1;
-      break;
+    _snprintf(tapname, sizeof(tapname), USERMODEDEVICEDIR "%s" TAPSUFFIX, adapter.adapterid);
+    adapter.handle = CreateFile(tapname, GENERIC_WRITE | GENERIC_READ,
+               0, /* Don't let other processes share or open
+               the resource until the handle's been closed */
+               0, OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
+    if(adapter.handle != INVALID_HANDLE_VALUE) {
+      /* Valid device, use the callback */
+      if(!callback(&adapter, userdata))
+        break;
+      else
+        CloseHandle(adapter.handle);
+      /* continue */
     }
   }
 
   RegCloseKey(key);
+}
 
-  if(!found) {
-    printf("No Windows tap device found!\n");
+/* ***************************************************** */
+
+static int print_adapter_callback(struct win_adapter_info *adapter, void *userdata) {
+  printf("  %s - %s\n", adapter->adapterid, adapter->adaptername);
+}
+
+void win_print_available_adapters() {
+  iterate_win_network_adapters(print_adapter_callback, NULL);
+}
+
+/* ***************************************************** */
+
+static int choose_adapter_callback(struct win_adapter_info *adapter, void *userdata) {
+  struct tuntap_dev *device = (struct tuntap_dev *)userdata;
+
+  if(device->device_name) {
+    /* A device name filter was set, name must match */
+    if(strcmp(device->device_name, adapter->adapterid) &&
+       strcmp(device->device_name, adapter->adaptername)) {
+      /* Not found, continue */
+      return(1);
+    }
+  } /* otherwise just pick the first available adapter */
+
+  /* Adapter found, break */
+  device->device_handle = adapter->handle;
+  device->device_name = _strdup(adapter->adapterid);
+  device->ifName = _strdup(adapter->adaptername);
+  return(0);
+}
+
+/* ***************************************************** */
+
+int open_wintap(struct tuntap_dev *device,
+                const char * devname,
+                const char * address_mode, /* "static" or "dhcp" */
+                char *device_ip, 
+                char *device_mask,
+                const char *device_mac, 
+                int mtu) {
+  char cmd[256];
+  int len;
+  ULONG status = TRUE;
+
+  memset(device, 0, sizeof(struct tuntap_dev));
+  device->device_handle = INVALID_HANDLE_VALUE;
+  device->device_name = devname[0] ? devname : NULL;
+  device->ifName = NULL;
+  device->ip_addr = inet_addr(device_ip);
+
+  iterate_win_network_adapters(choose_adapter_callback, device);
+
+  if(device->device_handle == INVALID_HANDLE_VALUE) {
+    if(!devname)
+      printf("No Windows tap devices found, did you run tapinstall.exe?\n");
+    else
+      printf("Cannot find tap device \"%s\"\n", devname);
     exit(0);
   }
 
   /* ************************************** */
-
-  if(!device->device_name)
-    device->device_name = _strdup(adapterid);
-
-  if(!device->ifName)
-    device->ifName = _strdup(adaptername);
-
-  /* Try to open the corresponding tap device->device_name */
-
-  if(device->device_handle == INVALID_HANDLE_VALUE) {
-    _snprintf(tapname, sizeof(tapname), USERMODEDEVICEDIR "%s" TAPSUFFIX, device->device_name);
-    device->device_handle = CreateFile(tapname, GENERIC_WRITE | GENERIC_READ, 0, 0, 
-									   OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
-  }
-
-  if(device->device_handle == INVALID_HANDLE_VALUE) {
-    printf("%s (%s) is not a usable Windows tap device\n", device->device_name, device->ifName);
-    exit(-1);
-  }
 
     /* Get MAC address from tap device->device_name */
 
