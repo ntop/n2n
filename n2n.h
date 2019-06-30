@@ -126,8 +126,12 @@ typedef struct ether_hdr ether_hdr_t;
 #include "n2n_wire.h"
 #include "n2n_transforms.h"
 
-/* N2N_IFNAMSIZ is needed on win32 even if dev_name is not used after declaration */
+#ifdef WIN32
+#define N2N_IFNAMSIZ            64
+#else
 #define N2N_IFNAMSIZ            16 /* 15 chars * NULL */
+#endif
+
 #ifndef WIN32
 typedef struct tuntap_dev {
   int           fd;
