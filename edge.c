@@ -139,7 +139,7 @@ static void help() {
 	 "[-p <local port>] [-M <mtu>] "
 	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
 
-#ifdef __linux__
+#if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
 #endif
 

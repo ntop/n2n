@@ -22,6 +22,7 @@ void initWin32() {
 }
 
 int open_wintap(struct tuntap_dev *device,
+                const char * devname,
                 const char * address_mode, /* "static" or "dhcp" */
                 char *device_ip, 
                 char *device_mask,
@@ -40,7 +41,7 @@ int open_wintap(struct tuntap_dev *device,
 
   memset(device, 0, sizeof(struct tuntap_dev));
   device->device_handle = INVALID_HANDLE_VALUE;
-  device->device_name = NULL;
+  device->device_name = devname[0] ? devname : NULL;
   device->ifName = NULL;
   device->ip_addr = inet_addr(device_ip);
 
@@ -262,7 +263,7 @@ int tuntap_open(struct tuntap_dev *device,
                 char *device_mask, 
                 const char * device_mac, 
                 int mtu) {
-    return(open_wintap(device, address_mode, device_ip, device_mask, device_mac, mtu));
+    return(open_wintap(device, dev, address_mode, device_ip, device_mask, device_mac, mtu));
 }
 
 /* ************************************************ */
