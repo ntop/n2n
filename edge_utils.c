@@ -1266,7 +1266,7 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
   if((len <= 0) || (len > N2N_PKT_BUF_SIZE))
     {
       traceEvent(TRACE_WARNING, "read()=%d [%d/%s]",
-		 (signed int)len, errno, strerror(errno));
+                (signed int)len, errno, strerror(errno));
     }
   else
     {
@@ -1292,11 +1292,17 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
 /* ************************************** */
 
 #ifdef WIN32
-static DWORD* tunReadThread(LPVOID lpArg) {
-  n2n_edge_t *eee = (n2n_edge_t*)lpArg;
 
-  while(1)
-    readFromTAPSocket(eee);
+struct tunread_arg {
+   n2n_edge_t *eee;
+   int *keep_running;
+};
+
+static DWORD* tunReadThread(LPVOID lpArg) {
+  struct tunread_arg *arg = (struct tunread_arg*)lpArg;
+
+  while(*arg->keep_running)
+    readFromTAPSocket(arg->eee);
 
   return((DWORD*)NULL);
 }
@@ -1305,16 +1311,15 @@ static DWORD* tunReadThread(LPVOID lpArg) {
 
 /** Start a second thread in Windows because TUNTAP interfaces do not expose
  *  file descriptors. */
-static void startTunReadThread(n2n_edge_t *eee) {
-  HANDLE hThread;
+static HANDLE startTunReadThread(struct tunread_arg *arg) {
   DWORD dwThreadId;
 
-  hThread = CreateThread(NULL,         /* security attributes */
+  return(CreateThread(NULL,         /* security attributes */
 			 0,            /* use default stack size */
 			 (LPTHREAD_START_ROUTINE)tunReadThread, /* thread function */
-			 (void*)eee,   /* argument to thread function */
+			 (void*)arg,   /* argument to thread function */
 			 0,            /* thread creation flags */
-			 &dwThreadId); /* thread id out */
+			 &dwThreadId)); /* thread id out */
 }
 #endif
 
@@ -1580,7 +1585,10 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif
 
 #ifdef WIN32
-  startTunReadThread(eee);
+  struct tunread_arg arg;
+  arg.eee = eee;
+  arg.keep_running = keep_running;
+  HANDLE tun_read_thread = startTunReadThread(&arg);
 #endif
 
   *keep_running = 1;
@@ -1694,6 +1702,10 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     }
 #endif /* #ifdef __ANDROID_NDK__ */
   } /* while */
+
+#ifndef WIN32
+  WaitForSingleObject(tun_read_thread, INFINITE);
+#endif
 
   send_deregister(eee, &(eee->supernode));
 

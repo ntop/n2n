@@ -558,8 +558,6 @@ static void daemonize() {
 
 static int keep_on_running;
 
-#ifdef __linux__
-
 static void term_handler(int sig) {
   static int called = 0;
 
@@ -573,6 +571,20 @@ static void term_handler(int sig) {
 
   keep_on_running = 0;
 }
+
+/* *************************************************** */
+
+#ifdef WIN32
+
+BOOL WINAPI CtrlHandler(DWORD fdwCtrlType) {
+  if(fdwCtrlType == CTRL_C_EVENT) {
+    term_handler(0);
+    return(TRUE);
+  }
+
+  return(FALSE);
+}
+
 #endif
 
 /* *************************************************** */
@@ -689,6 +701,9 @@ int main(int argc, char* argv[]) {
 #ifdef __linux__
   signal(SIGTERM, term_handler);
   signal(SIGINT,  term_handler);
+#endif
+#ifdef WIN32
+  SetConsoleCtrlHandler(CtrlHandler, TRUE);
 #endif
 
   keep_on_running = 1;
