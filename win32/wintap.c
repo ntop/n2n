@@ -16,7 +16,7 @@ void initWin32() {
     /* Tell the user that we could not find a usable */
     /* WinSock DLL.                                  */
     printf("FATAL ERROR: unable to initialise Winsock 2.x.");
-    exit(-1);
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -28,12 +28,23 @@ struct win_adapter_info {
 
 /* ***************************************************** */
 
+static HANDLE open_tap_device(const char *adapterid) {
+  char tapname[1024];
+  _snprintf(tapname, sizeof(tapname), USERMODEDEVICEDIR "%s" TAPSUFFIX, adapterid);
+
+  return(CreateFile(tapname, GENERIC_WRITE | GENERIC_READ,
+               0, /* Don't let other processes share or open
+               the resource until the handle's been closed */
+               0, OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0));
+}
+
+/* ***************************************************** */
+
 static void iterate_win_network_adapters(
     int (*callback)(struct win_adapter_info*, struct tuntap_dev *),
     void *userdata) {
   HKEY key, key2;
   char regpath[1024];
-  char tapname[1024];
   long len, rc;
   int found = 0;
   int err, i;
@@ -42,7 +53,7 @@ static void iterate_win_network_adapters(
   /* Open registry and look for network adapters */
   if((rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, NETWORK_CONNECTIONS_KEY, 0, KEY_READ, &key))) {
     printf("Unable to read registry: [rc=%d]\n", rc);
-    exit(-1);
+    exit(EXIT_FAILURE);
     /* MSVC Note: If you keep getting rc=2 errors, make sure you set:
        Project -> Properties -> Configuration Properties -> General -> Character set
        to: "Use Multi-Byte Character Set"
@@ -68,11 +79,9 @@ static void iterate_win_network_adapters(
     if(err)
       continue;
 
-    _snprintf(tapname, sizeof(tapname), USERMODEDEVICEDIR "%s" TAPSUFFIX, adapter.adapterid);
-    adapter.handle = CreateFile(tapname, GENERIC_WRITE | GENERIC_READ,
-               0, /* Don't let other processes share or open
-               the resource until the handle's been closed */
-               0, OPEN_EXISTING, FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
+    
+    adapter.handle = open_tap_device(adapter.adapterid);
+
     if(adapter.handle != INVALID_HANDLE_VALUE) {
       /* Valid device, use the callback */
       if(!callback(&adapter, userdata))
@@ -90,10 +99,100 @@ static void iterate_win_network_adapters(
 
 static int print_adapter_callback(struct win_adapter_info *adapter, void *userdata) {
   printf("  %s - %s\n", adapter->adapterid, adapter->adaptername);
+
+  /* continue */
+  return(1);
 }
 
 void win_print_available_adapters() {
   iterate_win_network_adapters(print_adapter_callback, NULL);
+}
+
+/* ***************************************************** */
+
+static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, size_t regpath_size) {
+  HKEY key, key2;
+  long len, rc;
+  char index[16];
+  int err, i;
+  char adapter_name[N2N_IFNAMSIZ];
+  int rv = 0;
+
+  if((rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, ADAPTER_INFO_KEY, 0, KEY_READ, &key))) {
+    printf("Unable to read registry: %s, [rc=%d]\n", ADAPTER_INFO_KEY, rc);
+    exit(EXIT_FAILURE);
+  }
+
+  for(i = 0; ; i++) {
+    len = sizeof(index);
+    if(RegEnumKeyEx(key, i, (LPTSTR)index, &len, 0, 0, 0, NULL))
+      break;
+
+    _snprintf(regpath, regpath_size, "%s\\%s", ADAPTER_INFO_KEY, index);
+    if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, (LPCSTR)regpath, 0, KEY_READ, &key2))
+      continue;
+
+    len = sizeof(adapter_name);
+    err = RegQueryValueEx(key2, "NetCfgInstanceId", 0, 0, adapter_name, &len);
+
+    RegCloseKey(key2);
+
+    if(err)
+      continue;
+
+    if(!strcmp(adapter_name, target_adapter)) {
+      rv = 1;
+      break;
+    }
+  }
+
+  RegCloseKey(key);
+  return(rv);
+}
+
+/* ***************************************************** */
+
+static void set_interface_mac(struct tuntap_dev *device, const char *mac_str) {
+  char cmd[256];
+  char mac_buf[18];
+  char adapter_info_reg[1024];
+
+  uint64_t mac = 0;
+  uint8_t *ptr = (u_int8_t*)&mac;
+
+  if(strlen(mac_str) != 17) {
+    printf("Invalid MAC: %s\n", mac_str);
+    exit(EXIT_FAILURE);
+  }
+
+  /* Remove the colons */
+  for(int i=0; i<6; i++) {
+    mac_buf[i*2] = mac_str[2*i + i];
+    mac_buf[i*2+1] = mac_str[2*i + i + 1];
+  }
+  mac_buf[12] = '\0';
+
+  if(!lookup_adapter_info_reg(device->device_name, adapter_info_reg, sizeof(adapter_info_reg))) {
+    printf("Could not determine adapter MAC registry key\n");
+    exit(EXIT_FAILURE);
+  }
+
+  _snprintf(cmd, sizeof(cmd),
+      "reg add HKEY_LOCAL_MACHINE\\%s /v MAC /d %s /f > nul", adapter_info_reg, mac_buf);
+  system(cmd);
+
+  /* Put down then up again to apply */
+  CloseHandle(device->device_handle);
+  _snprintf(cmd, sizeof(cmd), "netsh interface set interface \"%s\" disabled > nul", device->ifName);
+  system(cmd);
+  _snprintf(cmd, sizeof(cmd), "netsh interface set interface \"%s\" enabled > nul", device->ifName);
+  system(cmd);
+
+  device->device_handle = open_tap_device(device->device_name);
+  if(device->device_handle == INVALID_HANDLE_VALUE) {
+    printf("Reopening TAP device \"%s\" failed\n", device->device_name);
+    exit(EXIT_FAILURE);
+  }
 }
 
 /* ***************************************************** */
@@ -139,14 +238,17 @@ int open_wintap(struct tuntap_dev *device,
   iterate_win_network_adapters(choose_adapter_callback, device);
 
   if(device->device_handle == INVALID_HANDLE_VALUE) {
-    if(!devname)
+    if(!devname[0])
       printf("No Windows tap devices found, did you run tapinstall.exe?\n");
     else
       printf("Cannot find tap device \"%s\"\n", devname);
-    exit(0);
+    exit(EXIT_FAILURE);
   }
 
   /* ************************************** */
+
+  if(device_mac[0])
+    set_interface_mac(device, device_mac);
 
     /* Get MAC address from tap device->device_name */
 
