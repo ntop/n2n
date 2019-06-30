@@ -171,34 +171,36 @@ int open_wintap(struct tuntap_dev *device,
 
   /* ****************** */
 
-  printf("Setting %s device address...\n", device->ifName);
-
   if ( 0 == strcmp("dhcp", address_mode) )
   {
       _snprintf(cmd, sizeof(cmd),
-                "netsh interface ip set address \"%s\" dhcp",
+                "netsh interface ip set address \"%s\" dhcp > nul",
                 device->ifName);
   }
   else
   {
       _snprintf(cmd, sizeof(cmd),
-                "netsh interface ip set address \"%s\" static %s %s",
+                "netsh interface ip set address \"%s\" static %s %s > nul",
                 device->ifName, device_ip, device_mask);
   }
 
   if(system(cmd) == 0) {
     device->ip_addr = inet_addr(device_ip);
     device->device_mask = inet_addr(device_mask);
-    printf("Device %s set to %s/%s\n",
-	   device->ifName, device_ip, device_mask);
   } else
     printf("WARNING: Unable to set device %s IP address [%s]\n",
 			device->ifName, cmd);
 
   /* ****************** */
 
-  if(device->mtu != DEFAULT_MTU)
-	printf("WARNING: MTU set is not supported on Windows\n");
+  /* MTU */
+  _snprintf(cmd, sizeof(cmd),
+    "netsh interface ipv4 set subinterface \"%s\" mtu=%d store=persistent > nul",
+    device->ifName, mtu);
+
+  if(system(cmd) != 0)
+    printf("WARNING: Unable to set device %s MTU [%s]\n",
+      device->ifName, cmd);
 
   /* set driver media status to 'connected' (i.e. set the interface up) */
   if (!DeviceIoControl (device->device_handle, TAP_IOCTL_SET_MEDIA_STATUS,
