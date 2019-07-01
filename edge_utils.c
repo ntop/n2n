@@ -1703,7 +1703,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif /* #ifdef __ANDROID_NDK__ */
   } /* while */
 
-#ifndef WIN32
+#ifdef WIN32
   WaitForSingleObject(tun_read_thread, INFINITE);
 #endif
 
