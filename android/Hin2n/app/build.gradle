@@ -18,7 +18,7 @@ def getVersionCode = { ->
 
 def getVersionName = { ->
     def ver = 'v0.5.2'
-	return ver
+	return ver;
     try {
         def stdout = new ByteArrayOutputStream()
         exec {
@@ -28,7 +28,7 @@ def getVersionName = { ->
         return stdout.toString().trim()
     }
     catch (ignored) {
-        return null
+        return null;
     }
 }
 
@@ -49,7 +49,7 @@ def getEnvOrConsole = { env, prompt ->
 
 android {
     compileSdkVersion 25
-    buildToolsVersion '25.0.0'
+    buildToolsVersion '27.0.3'
     defaultConfig {
         applicationId "wang.switchy.hin2n"
         minSdkVersion 14
@@ -73,9 +73,9 @@ android {
 
         release {
             storeFile file("Hin2n.jks")
-            storePassword getEnvOrConsole("HIN2N_KSTOREPWD", "Keystore password")
-            keyAlias "Hin2n"
-            keyPassword getEnvOrConsole("HIN2N_KEYPWD", "Key password")
+            storePassword "yourpassword"
+            keyAlias "Hin2nalias"
+            keyPassword "yourpassword"
         }
     }
 
@@ -97,7 +97,7 @@ android {
     }
 
     applicationVariants.all { variant ->
-        variant.outputs.each { output ->
+        variant.outputs.all { output ->
             def outputFile = output.outputFile
             def fileName = null
             if (outputFile != null && outputFile.name.endsWith('.apk')) {
@@ -105,7 +105,7 @@ android {
                 def channel = variant.mergedFlavor.manifestPlaceholders.CHANNEL_VALUE
                 def arch = variant.mergedFlavor.manifestPlaceholders.ARCH
                 fileName = "hin2n_${variant.mergedFlavor.versionName}_${channel}_${arch}_${variant.buildType.name}.apk"
-                output.outputFile = new File(output.outputFile.parent, fileName)
+                outputFileName = fileName
             }
         }
     }
@@ -133,11 +133,7 @@ android {
         }
     }
 
-    externalNativeBuild {
-        cmake {
-            path "CMakeLists.txt"
-        }
-    }
+
 }
 
 greendao {
@@ -147,14 +143,14 @@ greendao {
 }
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile 'com.android.support:design:25.2.0'
-    testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:25.+'
-    compile 'org.greenrobot:eventbus:3.1.1'
+    implementation 'com.android.support:design:25.4.0'
+    testImplementation 'junit:junit:4.12'
+    implementation 'com.android.support:appcompat-v7:25.+'
+    implementation 'org.greenrobot:eventbus:3.1.1'
 
-    compile 'org.greenrobot:greendao:3.2.0'
+    implementation 'org.greenrobot:greendao:3.2.0'
 }

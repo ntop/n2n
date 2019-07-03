@@ -1,6 +1,12 @@
 - Install jdk.
-- Generate app keystore by commond keytool -genkey -alias Hin2n -keystore Hin2n.jks. And remember these two passwords.
-- Move Hin2n.jks to android/Hin2n/app directory. We will use this file to sign the application.
+- Generate app keystore by commond keytool -genkey -alias Hin2n -keystore Hin2n.jks. And remember these two passwords:
+
+  keytool -genkey -dname "CN=Unknown,O=Unknown,C=Unknown" -keystore Hin2n.jks -keysize 1024 -alias Hin2nalias -validity 14000 -keypass yourpassword -storepass yourpassword
+
+- Move Hin2n.jks to android/Hin2n/app directory. We will use this file to sign the application
+- In the file app/build.gradle replace "yourpassword" with the password used to generate the keystore.
+
+
 - Download android tools from https://developer.android.com/, and unzip it.
 
 - Install android development environment.
