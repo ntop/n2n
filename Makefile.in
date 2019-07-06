@@ -1,3 +1,10 @@
+
+# NOTE: these are needed by the configure.in inside the packages folder
+N2N_VERSION_SHORT=@N2N_VERSION_SHORT@
+GIT_COMMITS=@GIT_COMMITS@
+
+########
+
 CC?=gcc
 DEBUG?=-g3
 #OPTIMIZATION?=-O2
@@ -97,7 +104,7 @@ install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 
 # Docker builder section
 DOCKER_IMAGE_NAME=ntop/supernode
-DOCKER_IMAGE_VERSION=@N2N_VERSION_SHORT@
+DOCKER_IMAGE_VERSION=$N2N_VERSION_SHORT
 N2N_COMMIT_HASH=@GIT_REVISION@
 
 default: steps

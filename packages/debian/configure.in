@@ -1,5 +1,9 @@
 AC_INIT([Makefile.in], 1.0)
 
+# NOTE: this file is not actually used. You need to edit configure as well!
+N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
+GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
+
 MACHINE=`uname -m`
 SHORT_MACHINE=`uname -m | cut -b1-3`
 
@@ -29,6 +33,8 @@ DATE=`date -R`
 
 AC_SUBST(APP)
 AC_SUBST(MACHINE)
+AC_SUBST(N2N_VERSION_SHORT)
+AC_SUBST(GIT_COMMITS)
 AC_SUBST(EXTN)
 AC_SUBST(DATE)
 

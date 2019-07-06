@@ -2,12 +2,15 @@ odnl> Do not add anything above
 AC_INIT([edge],@N2N_VERSION_SHORT@)
 dnl> Do not add anything above
 
+N2N_VERSION_SHORT=${PACKAGE_VERSION}
+
 if test -d ".git"; then
+# NOTE: keep in sync with the definitions for configure.in files under the packages folder
 GIT_COMMITS=`git rev-list --count HEAD`
 GIT_REVISION=`git rev-parse --short HEAD`
-GIT_RELEASE="@N2N_VERSION_SHORT@.r${GIT_COMMITS}.${GIT_REVISION}"
+GIT_RELEASE="${N2N_VERSION_SHORT}.r${GIT_COMMITS}.${GIT_REVISION}"
 else
-GIT_RELEASE=@N2N_VERSION_SHORT@
+GIT_RELEASE=${N2N_VERSION_SHORT}
 fi
 
 AC_CHECK_LIB([crypto], [AES_cbc_encrypt])

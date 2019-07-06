@@ -583,12 +583,11 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+N2N_VERSION_SHORT
 GIT_COMMITS
-GIT_RELEASE
 DATE
 EXTN
 MACHINE
-N2N_VERS
 APP
 target_alias
 host_alias
@@ -1706,9 +1705,8 @@ else
 fi
 
 APP=n2n
-N2N_VERS=`grep N2N_VERSION ../../Makefile | head -1| cut -d "=" -f 2`
-GIT_RELEASE=`git rev-parse HEAD`
-GIT_COMMITS=`git rev-list --all |wc -l | tr -d '[:space:]'`
+N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
+GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
 DATE=`date -R`
 
 
