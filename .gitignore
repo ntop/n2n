@@ -11,3 +11,11 @@ edge
 example_edge_embed
 supernode
 build
+packages/debian/debian/changelog
+packages/debian/debian/control
+packages/debian/debian/files
+packages/debian/debian/rules
+packages/etc/systemd/system/edge-ntopng@.service
+packages/etc/systemd/system/edge.service
+packages/etc/systemd/system/edge@.service
+packages/etc/systemd/system/supernode.service
