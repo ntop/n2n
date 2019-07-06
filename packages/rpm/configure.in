@@ -20,20 +20,12 @@ else
 fi
 
 APP=n2n
-N2N_VERS=`grep N2N_VERSION ../../Makefile | head -1| cut -d "=" -f 2`
-GIT_RELEASE=`git rev-parse HEAD`
-GIT_COMMITS=`git rev-list --all |wc -l | tr -d '[[:space:]]'`
 DATE=`date -R`
-REVISION=`git log --pretty=oneline | wc -l`
 
 AC_SUBST(APP)
-AC_SUBST(N2N_VERS)
 AC_SUBST(MACHINE)
 AC_SUBST(EXTN)
 AC_SUBST(DATE)
-AC_SUBST(GIT_RELEASE)
-AC_SUBST(GIT_COMMITS)
-AC_SUBST(REVISION)
 
 AC_CONFIG_FILES(n2n.spec)
 AC_CONFIG_FILES(../etc/systemd/system/edge.service)

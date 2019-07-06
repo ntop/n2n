@@ -257,8 +257,8 @@ void hexdump(const uint8_t * buf, size_t len)
 void print_n2n_version() {
   printf("Welcome to n2n v.%s for %s\n"
          "Built on %s\n"
-	 "Copyright 2007-18 - ntop.org and contributors\n\n",
-         PACKAGE_VERSION, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
+	 "Copyright 2007-19 - ntop.org and contributors\n\n",
+         GIT_RELEASE, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
 }
 
 /* *********************************************** */ 

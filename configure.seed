@@ -1,8 +1,14 @@
 odnl> Do not add anything above
-AC_INIT([edge],2.5.0)
+AC_INIT([edge],@N2N_VERSION_SHORT@)
 dnl> Do not add anything above
 
-N2N_VERSION=2.5.0
+if test -d ".git"; then
+GIT_COMMITS=`git rev-list --count HEAD`
+GIT_REVISION=`git rev-parse --short HEAD`
+GIT_RELEASE="@N2N_VERSION_SHORT@.r${GIT_COMMITS}.${GIT_REVISION}"
+else
+GIT_RELEASE=@N2N_VERSION_SHORT@
+fi
 
 AC_CHECK_LIB([crypto], [AES_cbc_encrypt])
 
@@ -30,6 +36,7 @@ dnl> wget -O config.guess 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=bl
    OSNAME=`./config.guess`
 fi
 AC_DEFINE_UNQUOTED(PACKAGE_OSNAME, "${OSNAME}", [OS name])
+AC_DEFINE_UNQUOTED(GIT_RELEASE, "${GIT_RELEASE}", [GIT release])
 
 if test $MACHINE = "x86_64"; then
    EXTN="amd64"
@@ -41,7 +48,13 @@ fi
 
 DATE=`date +"%Y-%m-%d"`
 
-AC_SUBST(N2N_VERSION)
+AC_SUBST(N2N_MAJOR)
+AC_SUBST(N2N_MINOR)
+AC_SUBST(N2N_PATCH)
+AC_SUBST(N2N_VERSION_SHORT)
+AC_SUBST(GIT_COMMITS)
+AC_SUBST(GIT_REVISION)
+AC_SUBST(GIT_RELEASE)
 AC_SUBST(N2N_DEFINES)
 AC_SUBST(N2N_LIBS)
 AC_CONFIG_HEADERS(config.h)

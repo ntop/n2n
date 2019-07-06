@@ -2,6 +2,7 @@
 *.a
 *.gz
 configure
+configure.ac
 config.*
 Makefile
 autom4te.cache
