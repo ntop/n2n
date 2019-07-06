@@ -112,6 +112,7 @@ struct n2n_edge {
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
   int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
+  int                 multicast_joined;       /**< 1 if the group has been joined.*/
 #endif
 
   /* Peers */
@@ -329,10 +330,12 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
  */
 static void register_with_local_peers(n2n_edge_t * eee) {
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-  /* no send registration to the local multicast group */
-  traceEvent(TRACE_INFO, "Registering with multicast group %s:%u",
-	     N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
-  send_register(eee, &(eee->multicast_peer), NULL);
+  if(eee->multicast_joined) {
+    /* send registration to the local multicast group */
+    traceEvent(TRACE_INFO, "Registering with multicast group %s:%u",
+        N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
+    send_register(eee, &(eee->multicast_peer), NULL);
+  }
 #else
   traceEvent(TRACE_DEBUG, "Multicast peers discovery is disabled, skipping");
 #endif
@@ -572,6 +575,30 @@ static ssize_t sendto_sock(int fd, const void * buf,
 
 /* ************************************** */
 
+/* Bind eee->udp_multicast_sock to multicast group */
+static void check_join_multicast_group(n2n_edge_t *eee) {
+  if(!eee->multicast_joined) {
+    struct ip_mreq mreq;
+    mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+
+    if(setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
+      traceEvent(TRACE_WARNING, "Failed to bind to local multicast group %s:%u [errno %u]",
+        N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
+
+#ifdef WIN32
+      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
+    } else {
+      traceEvent(TRACE_NORMAL, "Successfully joined multicast group %s:%u",
+        N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
+      eee->multicast_joined = 1;
+    }
+  }
+}
+
+/* ************************************** */
+
 /** Send a REGISTER_SUPER packet to the current supernode. */
 static void send_register_super(n2n_edge_t * eee,
 				const n2n_sock_t * supernode) {
@@ -722,6 +749,8 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
     traceEvent(TRACE_DEBUG, "update_supernode_reg: doing fast retry.");
   } else if(nowTime < (eee->last_register_req + eee->conf.register_interval))
     return; /* Too early */
+
+  check_join_multicast_group(eee);
 
   if(0 == eee->sup_attempts) {
     /* Give up on that supernode and try the next one. */
@@ -1767,8 +1796,6 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port)
   if(eee->udp_multicast_sock < 0)
     return(-3);
   else {
-    /* Bind eee->udp_multicast_sock to multicast group */
-    struct ip_mreq mreq;
     u_int enable_reuse = 1;
 
     /* allow multiple sockets to use the same PORT number */
@@ -1776,18 +1803,6 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port)
 #ifdef SO_REUSEPORT /* no SO_REUSEPORT in Windows / old linux versions */
     setsockopt(eee->udp_multicast_sock, SOL_SOCKET, SO_REUSEPORT, &enable_reuse, sizeof(enable_reuse));
 #endif
-
-    mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    if (setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
-      traceEvent(TRACE_ERROR, "Failed to bind to local multicast group %s:%u [errno %u]",
-		 N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
-
-#ifdef WIN32
-      traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
-#endif
-      return(-4);
-    }
   }
 #endif
 
