@@ -21,8 +21,13 @@
 
 #ifdef N2N_HAVE_AES
 
-#include "openssl/aes.h"
-#include "openssl/sha.h"
+#ifdef USE_LIBCRYPTO_PATH
+#include <crypto/aes.h>
+#include <crypto/sha.h>
+#else
+#include <openssl/aes.h>
+#include <openssl/sha.h>
+#endif
 
 #define N2N_AES_TRANSFORM_VERSION       1  /* version of the transform encoding */
 #define N2N_AES_IVEC_SIZE               (AES_BLOCK_SIZE)
