@@ -19,6 +19,7 @@
 #if !defined(N2N_TRANSFORMS_H_)
 #define N2N_TRANSFORMS_H_
 
+#include <time.h>
 #include "n2n_wire.h"
 
 #define N2N_TRANSFORM_ID_USER_START     64
