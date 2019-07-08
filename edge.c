@@ -620,13 +620,11 @@ int main(int argc, char* argv[]) {
 
   traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
-#ifndef WIN32
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &conf, &ec);
     if(argc > 2)
       rc = loadFromCLI(argc, argv, &conf, &ec);
   } else
-#endif
     rc = loadFromCLI(argc, argv, &conf, &ec);
 
   if(rc < 0)
