@@ -97,7 +97,7 @@ static void iterate_win_network_adapters(
 
 /* ***************************************************** */
 
-static int print_adapter_callback(struct win_adapter_info *adapter, void *userdata) {
+static int print_adapter_callback(struct win_adapter_info *adapter, struct tuntap_dev *device) {
   printf("  %s - %s\n", adapter->adapterid, adapter->adaptername);
 
   /* continue */
@@ -158,7 +158,7 @@ static void set_interface_mac(struct tuntap_dev *device, const char *mac_str) {
   char adapter_info_reg[1024];
 
   uint64_t mac = 0;
-  uint8_t *ptr = (u_int8_t*)&mac;
+  uint8_t *ptr = (uint8_t*)&mac;
 
   if(strlen(mac_str) != 17) {
     printf("Invalid MAC: %s\n", mac_str);
@@ -197,9 +197,7 @@ static void set_interface_mac(struct tuntap_dev *device, const char *mac_str) {
 
 /* ***************************************************** */
 
-static int choose_adapter_callback(struct win_adapter_info *adapter, void *userdata) {
-  struct tuntap_dev *device = (struct tuntap_dev *)userdata;
-
+static int choose_adapter_callback(struct win_adapter_info *adapter, struct tuntap_dev *device) {
   if(device->device_name) {
     /* A device name filter was set, name must match */
     if(strcmp(device->device_name, adapter->adapterid) &&
@@ -211,6 +209,7 @@ static int choose_adapter_callback(struct win_adapter_info *adapter, void *userd
 
   /* Adapter found, break */
   device->device_handle = adapter->handle;
+  if(device->device_name) free(device->device_name);
   device->device_name = _strdup(adapter->adapterid);
   device->ifName = _strdup(adapter->adaptername);
   return(0);
@@ -226,12 +225,12 @@ int open_wintap(struct tuntap_dev *device,
                 const char *device_mac, 
                 int mtu) {
   char cmd[256];
-  int len;
+  DWORD len;
   ULONG status = TRUE;
 
   memset(device, 0, sizeof(struct tuntap_dev));
   device->device_handle = INVALID_HANDLE_VALUE;
-  device->device_name = devname[0] ? devname : NULL;
+  device->device_name = devname[0] ? _strdup(devname) : NULL;
   device->ifName = NULL;
   device->ip_addr = inet_addr(device_ip);
 
