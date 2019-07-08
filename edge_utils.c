@@ -577,6 +577,7 @@ static ssize_t sendto_sock(int fd, const void * buf,
 
 /* Bind eee->udp_multicast_sock to multicast group */
 static void check_join_multicast_group(n2n_edge_t *eee) {
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   if(!eee->multicast_joined) {
     struct ip_mreq mreq;
     mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
@@ -595,6 +596,7 @@ static void check_join_multicast_group(n2n_edge_t *eee) {
       eee->multicast_joined = 1;
     }
   }
+#endif
 }
 
 /* ************************************** */
