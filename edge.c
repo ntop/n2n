@@ -558,7 +558,12 @@ static void daemonize() {
 
 static int keep_on_running;
 
-static void term_handler(int sig) {
+#ifdef WIN32
+BOOL WINAPI term_handler(DWORD sig)
+#else
+static void term_handler(int sig)
+#endif
+{
   static int called = 0;
 
   if(called) {
@@ -570,22 +575,10 @@ static void term_handler(int sig) {
   }
 
   keep_on_running = 0;
-}
-
-/* *************************************************** */
-
 #ifdef WIN32
-
-BOOL WINAPI CtrlHandler(DWORD fdwCtrlType) {
-  if(fdwCtrlType == CTRL_C_EVENT) {
-    term_handler(0);
-    return(TRUE);
-  }
-
-  return(FALSE);
-}
-
+  return(TRUE);
 #endif
+}
 
 /* *************************************************** */
 
@@ -703,7 +696,7 @@ int main(int argc, char* argv[]) {
   signal(SIGINT,  term_handler);
 #endif
 #ifdef WIN32
-  SetConsoleCtrlHandler(CtrlHandler, TRUE);
+  SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
   keep_on_running = 1;
