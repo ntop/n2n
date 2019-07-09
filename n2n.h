@@ -102,7 +102,6 @@ typedef struct ether_hdr ether_hdr_t;
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <signal.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -113,10 +112,9 @@ typedef struct ether_hdr ether_hdr_t;
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
 
+#include <signal.h>
 #include <string.h>
-
 #include <stdarg.h>
-
 #include "uthash.h"
 
 #ifdef WIN32

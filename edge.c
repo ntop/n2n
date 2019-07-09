@@ -23,6 +23,8 @@
 #include <pwd.h>
 #endif
 
+#define EDGE_DEFAULT_CONF "edge.conf" /* edge default configuration file name */
+
 #define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ           18 /* AA:BB:CC:DD:EE:FF + NULL*/
 #define N2N_IF_MODE_SIZE        16 /* static | dhcp */
@@ -593,9 +595,6 @@ int main(int argc, char* argv[]) {
   struct passwd *pw = NULL;
 #endif
 
-  if(argc == 1)
-    help();
-
   /* Defaults */
   edge_init_conf_defaults(&conf);
   memset(&ec, 0, sizeof(ec));
@@ -619,6 +618,14 @@ int main(int argc, char* argv[]) {
   snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
 
   traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
+
+	if (argc == 1) {
+		if ((access(EDGE_DEFAULT_CONF, F_OK)) == 0) {
+			rc = loadFromFile(EDGE_DEFAULT_CONF, &conf, &ec);
+		} else {
+			help();
+		}
+	}
 
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &conf, &ec);

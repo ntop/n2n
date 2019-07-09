@@ -20,9 +20,7 @@
 
 #include "n2n.h"
 
-#ifdef WIN32
-#include <signal.h>
-#endif
+#define SN_DEFAULT_CONF "supernode.conf" /* supernode default configuration file name */
 
 #define N2N_SN_LPORT_DEFAULT 7654
 #define N2N_SN_PKTBUF_SIZE   2048
@@ -972,10 +970,15 @@ static void term_handler(int sig)
 int main(int argc, char * const argv[]) {
   int rc;
 
-  if(argc == 1)
-    help();
+	init_sn(&sss_node);
 
-  init_sn(&sss_node);
+	if (argc == 1) {
+		if ((access(SN_DEFAULT_CONF, F_OK)) == 0) {
+			rc = loadFromFile(SN_DEFAULT_CONF, &sss_node);
+		} else {
+			help();
+		}
+	}
 
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &sss_node);
