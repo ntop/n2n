@@ -988,7 +988,7 @@ int main(int argc, char * const argv[]) {
     rc = loadFromCLI(argc, argv, &sss_node);
 
   if(rc < 0)
-    return(-1);
+	  help();
 
 #if defined(N2N_HAVE_DAEMON)
   if(sss_node.daemon) {

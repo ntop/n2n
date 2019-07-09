@@ -617,8 +617,6 @@ int main(int argc, char* argv[]) {
   snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
   snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
 
-  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
-
 	if (argc == 1) {
 		if ((access(EDGE_DEFAULT_CONF, F_OK)) == 0) {
 			rc = loadFromFile(EDGE_DEFAULT_CONF, &conf, &ec);
@@ -637,7 +635,9 @@ int main(int argc, char* argv[]) {
   if(rc < 0)
     help();
 
-  if(0 == strcmp("dhcp", ec.ip_mode)) {
+	traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
+
+	if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
 
     conf.dyn_ip_mode = 1;
