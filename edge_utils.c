@@ -44,6 +44,8 @@
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
 #define IP4_DSTOFFSET 16
+#define IP4_MIN_SIZE  20
+#define UDP_SIZE      8
 
 /* ************************************** */
 
@@ -870,11 +872,15 @@ static int handle_PACKET(n2n_edge_t * eee,
 	++(eee->transop.rx_cnt); /* stats */
 
 	if(!(eee->conf.allow_routing)) {
-	  if(ntohs(eh->type) == 0x0800) {
+	  if((ntohs(eh->type) == 0x0800) && (eth_size >= ETH_FRAMESIZE + IP4_MIN_SIZE)) {
 	    uint32_t *dst = (uint32_t*)&eth_payload[ETH_FRAMESIZE + IP4_DSTOFFSET];
+	    u_int8_t *dst_mac = (u_int8_t*)eth_payload;
 
 	    /* Note: all elements of the_ip are in network order */
-	    if(*dst != eee->device.ip_addr) {
+	    if(!memcmp(dst_mac, broadcast_mac, 6))
+	      traceEvent(TRACE_DEBUG, "Broadcast packet [%s]",
+			 intoa(ntohl(*dst), ip_buf, sizeof(ip_buf)));
+	    else if((*dst != eee->device.ip_addr)) {
 	      /* This is a packet that needs to be routed */
 	      traceEvent(TRACE_INFO, "Discarding routed packet [%s]",
 			 intoa(ntohl(*dst), ip_buf, sizeof(ip_buf)));
@@ -1268,7 +1274,7 @@ static void send_packet2net(n2n_edge_t * eee,
 
 #ifdef MTU_ASSERT_VALUE
   {
-    const u_int eth_udp_overhead = 14 + 20 + 8;
+    const u_int eth_udp_overhead = ETH_FRAMESIZE + IP4_MIN_SIZE + UDP_SIZE;
 
     // MTU assertion which avoids fragmentation by N2N
     assert(idx + eth_udp_overhead <= MTU_ASSERT_VALUE);
