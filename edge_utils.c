@@ -1258,12 +1258,19 @@ static void send_packet2net(n2n_edge_t * eee,
 
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
-  traceEvent(TRACE_DEBUG, "encoded PACKET header of size=%u transform %u",
-	     (unsigned int)idx, tx_transop_idx);
 
   idx += eee->transop.fwd(&eee->transop,
 					  pktbuf+idx, N2N_PKT_BUF_SIZE-idx,
 					  tap_pkt, len, pkt.dstMac);
+
+  traceEvent(TRACE_DEBUG, "Encode %u B PACKET [%u B data, %u B overhead] transform %u",
+     (u_int)idx, (u_int)len, (u_int)(idx-len), tx_transop_idx);
+
+#if 0
+   // MTU assertion to avoid fragmentation
+   assert(idx <= 1500);
+#endif
+
   eee->transop.tx_cnt++; /* stats */
 
   send_packet(eee, destMac, pktbuf, idx); /* to peer or supernode */
