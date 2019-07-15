@@ -1266,9 +1266,13 @@ static void send_packet2net(n2n_edge_t * eee,
   traceEvent(TRACE_DEBUG, "Encode %u B PACKET [%u B data, %u B overhead] transform %u",
      (u_int)idx, (u_int)len, (u_int)(idx-len), tx_transop_idx);
 
-#if 0
-   // MTU assertion to avoid fragmentation
-   assert(idx <= 1500);
+#ifdef MTU_ASSERT_VALUE
+  {
+    const u_int eth_udp_overhead = 14 + 20 + 8;
+
+    // MTU assertion which avoids fragmentation by N2N
+    assert(idx + eth_udp_overhead <= MTU_ASSERT_VALUE);
+  }
 #endif
 
   eee->transop.tx_cnt++; /* stats */
