@@ -209,6 +209,7 @@ typedef struct n2n_edge_conf {
   uint8_t             dyn_ip_mode;            /**< Interface IP address is dynamically allocated, eg. DHCP. */
   uint8_t             allow_routing;          /**< Accept packet no to interface address. */
   uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
+  uint8_t             allow_p2p;              /**< Allow P2P connection */
   uint8_t             sn_num;                 /**< Number of supernode addresses defined. */
   char                *encrypt_key;
   int                 register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */

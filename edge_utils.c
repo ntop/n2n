@@ -332,7 +332,7 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
  */
 static void register_with_local_peers(n2n_edge_t * eee) {
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-  if(eee->multicast_joined) {
+  if(eee->multicast_joined && eee->conf.allow_p2p) {
     /* send registration to the local multicast group */
     traceEvent(TRACE_DEBUG, "Registering with multicast group %s:%u",
         N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
@@ -677,6 +677,11 @@ static void send_register(n2n_edge_t * eee,
   n2n_REGISTER_t reg;
   n2n_sock_str_t sockbuf;
 
+  if(!eee->conf.allow_p2p) {
+    traceEvent(TRACE_DEBUG, "Skipping register as P2P is disabled");
+    return;
+  }
+
   memset(&cmn, 0, sizeof(cmn));
   memset(&reg, 0, sizeof(reg));
   cmn.ttl=N2N_DEFAULT_TTL;
@@ -716,6 +721,11 @@ static void send_register_ack(n2n_edge_t * eee,
   n2n_common_t cmn;
   n2n_REGISTER_ACK_t ack;
   n2n_sock_str_t sockbuf;
+
+  if(!eee->conf.allow_p2p) {
+    traceEvent(TRACE_DEBUG, "Skipping register ACK as P2P is disabled");
+    return;
+  }
 
   memset(&cmn, 0, sizeof(cmn));
   memset(&ack, 0, sizeof(reg));
@@ -1839,6 +1849,7 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   conf->transop_id = N2N_TRANSFORM_ID_NULL;
   conf->drop_multicast = 1;
+  conf->allow_p2p = 1;
   conf->register_interval = REGISTER_SUPER_INTERVAL_DFL;
 
   if(getenv("N2N_KEY")) {

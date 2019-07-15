@@ -167,6 +167,7 @@ static void help() {
   printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
 #endif
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
+  printf("-S                       | Do not connect P2P. Always use the supernode.\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
@@ -321,6 +322,12 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
+  case 'S':
+    {
+      conf->allow_p2p = 0;
+      break;
+    }
+
   case 'h': /* help */
     {
       help();
@@ -361,7 +368,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:"
+			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:S"
 #ifdef N2N_HAVE_AES
 			 "A"
 #endif
