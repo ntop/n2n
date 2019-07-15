@@ -789,7 +789,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     break;
 
   case 'v': /* verbose */
-    setTraceLevel(4); /* DEBUG */
+    setTraceLevel(getTraceLevel() + 1);
     break;
 
   default:

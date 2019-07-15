@@ -328,7 +328,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
     }
 
   case 'v': /* verbose */
-    setTraceLevel(4); /* DEBUG */
+    setTraceLevel(getTraceLevel() + 1);
     break;
 
   default:

@@ -334,7 +334,7 @@ static void register_with_local_peers(n2n_edge_t * eee) {
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   if(eee->multicast_joined) {
     /* send registration to the local multicast group */
-    traceEvent(TRACE_INFO, "Registering with multicast group %s:%u",
+    traceEvent(TRACE_DEBUG, "Registering with multicast group %s:%u",
         N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
     send_register(eee, &(eee->multicast_peer), NULL);
   }
@@ -384,7 +384,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
 	       macaddr_str(mac_buf, scan->mac_addr),
 	       sock_to_cstr(sockbuf, &(scan->sock)));
 
-    traceEvent(TRACE_INFO, "Pending peers list size=%u",
+    traceEvent(TRACE_DEBUG, "Pending peers list size=%u",
 	       HASH_COUNT(eee->pending_peers));
 
     /* trace Sending REGISTER */
@@ -459,10 +459,10 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 	       macaddr_str(mac_buf, scan->mac_addr),
 	       sock_to_cstr(sockbuf, &(scan->sock)));
 
-    traceEvent(TRACE_INFO, "Pending peers list size=%u",
+    traceEvent(TRACE_DEBUG, "Pending peers list size=%u",
 	       HASH_COUNT(eee->pending_peers));
 
-    traceEvent(TRACE_INFO, "Known peers list size=%u",
+    traceEvent(TRACE_DEBUG, "Known peers list size=%u",
 	       HASH_COUNT(eee->known_peers));
 
     scan->last_seen = now;
@@ -632,7 +632,7 @@ static void send_register_super(n2n_edge_t * eee,
   idx=0;
   encode_REGISTER_SUPER(pktbuf, &idx, &cmn, &reg);
 
-  traceEvent(TRACE_INFO, "send REGISTER_SUPER to %s",
+  traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
 	     sock_to_cstr(sockbuf, supernode));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
@@ -698,7 +698,7 @@ static void send_register(n2n_edge_t * eee,
   idx=0;
   encode_REGISTER(pktbuf, &idx, &cmn, &reg);
 
-  traceEvent(TRACE_INFO, "send REGISTER %s",
+  traceEvent(TRACE_INFO, "Send REGISTER to %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
@@ -765,8 +765,7 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
       eee->sn_idx=0;
     }
 
-    traceEvent(TRACE_WARNING, "Supernode not responding - moving to %u of %u",
-	       (unsigned int)eee->sn_idx, (unsigned int)eee->conf.sn_num);
+    traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
 
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
   }
@@ -893,7 +892,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	}
 
 	/* Write ethernet packet to tap device. */
-	traceEvent(TRACE_INFO, "sending to TAP %u", (unsigned int)eth_size);
+	traceEvent(TRACE_DEBUG, "sending to TAP %u", (unsigned int)eth_size);
 	data_sent_len = tuntap_write(&(eee->device), eth_payload, eth_size);
 
 	if (data_sent_len == eth_size)
@@ -1183,6 +1182,7 @@ static int send_packet(n2n_edge_t * eee,
   /*ssize_t s; */
   n2n_sock_str_t sockbuf;
   n2n_sock_t destination;
+  macstr_t mac_buf;
 
   /* hexdump(pktbuf, pktlen); */
 
@@ -1197,7 +1197,9 @@ static int send_packet(n2n_edge_t * eee,
       ++(eee->stats.tx_sup_broadcast);
   }
 
-  traceEvent(TRACE_INFO, "send_packet to %s", sock_to_cstr(sockbuf, &destination));
+  traceEvent(TRACE_INFO, "Tx PACKET to %s (dest=%s) [%u B]",
+    sock_to_cstr(sockbuf, &destination),
+    macaddr_str(mac_buf, dstMac), pktlen);
 
   /* s = */ sendto_sock(eee->udp_sock, pktbuf, pktlen, &destination);
 
@@ -1319,7 +1321,7 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
   else
     {
       const uint8_t * mac = eth_pkt;
-      traceEvent(TRACE_INFO, "### Rx TAP packet (%4d) for %s",
+      traceEvent(TRACE_DEBUG, "### Rx TAP packet (%4d) for %s",
 		 (signed int)len, macaddr_str(mac_buf, mac));
 
       if(eee->conf.drop_multicast &&
@@ -1423,7 +1425,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
    * hop as sender. */
   orig_sender=&sender;
 
-  traceEvent(TRACE_INFO, "### Rx N2N UDP (%d) from %s",
+  traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
 	     (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
 
   /* hexdump(udp_buf, recvlen); */
@@ -1453,9 +1455,10 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  if(is_valid_peer_sock(&pkt.sock))
 	    orig_sender = &(pkt.sock);
 
-	  traceEvent(TRACE_INFO, "Rx PACKET from %s (%s)",
+	  traceEvent(TRACE_INFO, "Rx PACKET from %s (sender=%s) [%u B]",
 		     sock_to_cstr(sockbuf1, &sender),
-		     sock_to_cstr(sockbuf2, orig_sender));
+		     sock_to_cstr(sockbuf2, orig_sender),
+		     recvlen);
 
 	  handle_PACKET(eee, &cmn, &pkt, orig_sender, udp_buf+idx, recvlen-idx);
 	  break;
@@ -1574,10 +1577,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
         decode_PEER_INFO( &pi, &cmn, udp_buf, &rem, &idx );
 
         if(!is_valid_peer_sock(&pi.sock)) {
-          char sockbuf[64];
-
           traceEvent(TRACE_DEBUG, "Skip invalid PEER_INFO %s [%s]",
-                     sock_to_cstr(sockbuf, &pi.sock),
+                     sock_to_cstr(sockbuf1, &pi.sock),
                      macaddr_str(mac_buf1, pi.mac) );
           break;
         }
@@ -1585,8 +1586,9 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	HASH_FIND_PEER(eee->pending_peers, pi.mac, scan);
         if (scan) {
             scan->sock = pi.sock;
-            traceEvent(TRACE_INFO, "Rx PEER_INFO on %s",
-                       macaddr_str(mac_buf1, pi.mac) );
+            traceEvent(TRACE_INFO, "Rx PEER_INFO for %s: is at %s",
+                       macaddr_str(mac_buf1, pi.mac),
+                       sock_to_cstr(sockbuf1, &pi.sock));
             send_register(eee, &scan->sock, scan->mac_addr);
         } else {
             traceEvent(TRACE_INFO, "Rx PEER_INFO unknown peer %s",
@@ -1696,7 +1698,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
       if(FD_ISSET(eee->udp_multicast_sock, &socket_mask)) {
 	      /* Read a cooked socket from the internet socket (multicast). Writes on the TAP
 	       * socket. */
-	      traceEvent(TRACE_INFO, "Received packet from multicast socket");
+	      traceEvent(TRACE_DEBUG, "Received packet from multicast socket");
 	      readFromIPSocket(eee, eee->udp_multicast_sock);
       }
 #endif

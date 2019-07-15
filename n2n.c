@@ -269,12 +269,12 @@ size_t purge_expired_registrations(struct peer_info ** peer_list, time_t* p_last
 
   if((now - (*p_last_purge)) < PURGE_REGISTRATION_FREQUENCY) return 0;
 
-  traceEvent(TRACE_INFO, "Purging old registrations");
+  traceEvent(TRACE_DEBUG, "Purging old registrations");
 
   num_reg = purge_peer_list(peer_list, now-REGISTRATION_TIMEOUT);
 
   (*p_last_purge) = now;
-  traceEvent(TRACE_INFO, "Remove %ld registrations", num_reg);
+  traceEvent(TRACE_DEBUG, "Remove %ld registrations", num_reg);
 
   return num_reg;
 }
