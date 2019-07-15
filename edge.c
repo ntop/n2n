@@ -133,6 +133,9 @@ static void help() {
 #ifndef WIN32
 	 "[-f]"
 #endif /* #ifndef WIN32 */
+#ifdef __linux__
+"[-T <tos>]"
+#endif
 	 "[-m <MAC address>] "
 	 "-l <supernode host:port>\n"
 	 "    "
@@ -168,6 +171,9 @@ static void help() {
 #endif
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
+#ifdef __linux__
+  printf("-T <tos>                 | TOS for packets (e.g. 0x48 for SSH like priority)\n");
+#endif
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
@@ -311,6 +317,18 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
+#ifdef __linux__
+  case 'T':
+    {
+      if((optargument[0] == '0') && (optargument[1] == 'x'))
+        conf->tos = strtol(&optargument[2], NULL, 16);
+      else
+        conf->tos = atoi(optargument);
+
+      break;
+    }
+#endif
+
   case 's': /* Subnet Mask */
     {
       if(0 != ec->got_s) {
@@ -371,6 +389,9 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
 			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:S"
 #ifdef N2N_HAVE_AES
 			 "A"
+#endif
+#ifdef __linux__
+			 "T:"
 #endif
 			 ,
 			 long_options, NULL)) != '?') {

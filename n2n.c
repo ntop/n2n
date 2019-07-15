@@ -34,7 +34,7 @@ static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x
 SOCKET open_socket(int local_port, int bind_any) {
   SOCKET sock_fd;
   struct sockaddr_in local_address;
-  int sockopt = 1;
+  int sockopt;
 
   if((sock_fd = socket(PF_INET, SOCK_DGRAM, 0))  < 0) {
     traceEvent(TRACE_ERROR, "Unable to create socket [%s][%d]\n",
@@ -46,7 +46,8 @@ SOCKET open_socket(int local_port, int bind_any) {
   /* fcntl(sock_fd, F_SETFL, O_NONBLOCK); */
 #endif
 
-  setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR,(char *)&sockopt, sizeof(sockopt));
+  sockopt = 1;
+  setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt));
 
   memset(&local_address, 0, sizeof(local_address));
   local_address.sin_family = AF_INET;

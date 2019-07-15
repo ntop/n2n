@@ -55,7 +55,7 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
-static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port);
+static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos);
 static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
 static void check_known_peer_sock_change(n2n_edge_t * eee,
 			 uint8_t from_supernode,
@@ -214,7 +214,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   if(eee->transop.no_encryption)
     traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
-  if(edge_init_sockets(eee, conf->local_port, conf->mgmt_port) < 0) {
+  if(edge_init_sockets(eee, conf->local_port, conf->mgmt_port, conf->tos) < 0) {
     traceEvent(TRACE_ERROR, "Error: socket setup failed");
     goto edge_init_error;
   }
@@ -1798,7 +1798,7 @@ void edge_term(n2n_edge_t * eee) {
 
 /* ************************************** */
 
-static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port) {
+static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos) {
   if(udp_local_port > 0)
     traceEvent(TRACE_NORMAL, "Binding to local port %d", udp_local_port);
 
@@ -1807,6 +1807,18 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port)
     traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", udp_local_port);
     return(-1);
   }
+
+#ifdef __linux__
+  if(tos) {
+    /* https://www.tucny.com/Home/dscp-tos */
+    int sockopt = tos;
+
+    if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_TOS, &sockopt, sizeof(sockopt)) == 0)
+      traceEvent(TRACE_NORMAL, "TOS set to 0x%x", tos);
+    else
+      traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", tos, errno, strerror(errno));
+  }
+#endif
 
   eee->udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
   if(eee->udp_mgmt_sock < 0) {

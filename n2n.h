@@ -211,6 +211,7 @@ typedef struct n2n_edge_conf {
   uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
   uint8_t             allow_p2p;              /**< Allow P2P connection */
   uint8_t             sn_num;                 /**< Number of supernode addresses defined. */
+  uint8_t             tos;                    /** TOS for sent packets */
   char                *encrypt_key;
   int                 register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
   int                 local_port;
