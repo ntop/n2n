@@ -287,7 +287,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
     }
 
   case 'i': /* supernode registration interval */
-    conf->register_interval = atoi(optarg);
+    conf->register_interval = atoi(optargument);
     break;
 
 #if defined(N2N_CAN_NAME_IFACE)
