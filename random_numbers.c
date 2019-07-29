@@ -59,13 +59,13 @@ static int32_t set_seed (uint64_t seed) {
 	/* otherwise, entropy seed */
 	/* use whatever it was before, no wiping */
 	rn_current_state.a ^= 0xBF58476D1CE4E5B9;
-	/* time(NULL) = currenctUTC in seconds; 
+	/* time(NULL) = currenctUTC in seconds;
 	   clock() = clock_ticks since program start */
 	rn_current_state.a ^= (uint64_t)time(NULL) * (uint64_t)clock();
 	/* rv_usec = second fraction of current time */
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	rn_current_state.a ^= (uint32_t)tv.tv_usec << 16;
+	rn_current_state.a ^= (uint64_t)tv.tv_usec << 16;
     }
     /* stabilize in case of weak seed with only a few bits set */
     for (int i = 0; i < 32; i++)
