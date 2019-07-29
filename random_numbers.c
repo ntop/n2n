@@ -1,10 +1,14 @@
 
 /* The following code offers an alterate pseudo random number generator
-   namely XORSHIFT128+ to use instead of C's pretty simple rand(). Its
-   performance is on par with C's rand().
+   namely XORSHIFT128+ to use instead of C's rand(). Its performance is 
+   on par with C's rand().
  */
 
 #include <stdint.h>
+#ifdef __GNUC__
+#include <sys/time.h>
+#endif
+#include <time.h>
 #include "random_numbers.h"
 
 struct rn_generator_state_t {
@@ -19,6 +23,29 @@ static struct rn_generator_state_t rn_current_state
 			           .b    = 0xBF58476D1CE4E5B9
 };
 
+/* taken from benchmark.c */
+#if defined(WIN32) && !defined(__GNUC__)
+#include <windows.h>
+static int gettimeofday(struct timeval *tp, void *tzp)
+{
+    time_t clock;
+    struct tm tm;
+    SYSTEMTIME wtm;
+    GetLocalTime(&wtm);
+    tm.tm_year = wtm.wYear - 1900;
+    tm.tm_mon = wtm.wMonth - 1;
+    tm.tm_mday = wtm.wDay;
+    tm.tm_hour = wtm.wHour;
+    tm.tm_min = wtm.wMinute;
+    tm.tm_sec = wtm.wSecond;
+    tm.tm_isdst = -1;
+    clock = mktime(&tm);
+    tp->tv_sec = clock;
+    tp->tv_usec = wtm.wMilliseconds * 1000;
+    return (0);
+}
+#endif
+
 static int32_t set_seed (uint64_t seed) {
     /* shift a --> b , so
        call this function 2 times to enter full 128 bit seed */
@@ -29,9 +56,20 @@ static int32_t set_seed (uint64_t seed) {
 	rn_current_state.a = seed;
     }
     else {
-	/* otherwise, default seed */
-	rn_current_state.a = 0x9E3779B97F4A7C15;
+	/* otherwise, entropy seed */
+	/* use whatever it was before, no wiping */
+	rn_current_state.a ^= 0xBF58476D1CE4E5B9;
+	/* time(NULL) = currenctUTC in seconds; 
+	   clock() = clock_ticks since program start */
+	rn_current_state.a ^= (uint64_t)time(NULL) * (uint64_t)clock();
+	/* rv_usec = second fraction of current time */
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	rn_current_state.a ^= (uint32_t)tv.tv_usec << 16;
     }
+    /* stabilize in case of weak seed with only a few bits set */
+    for (int i = 0; i < 32; i++)
+	random_number_64();
     return (0);
 }
 
@@ -77,16 +115,4 @@ uint64_t random_number_64 () {
 
 uint32_t random_number_32 () {
     return (xorshift128p_32 ());
-}
-
-// !!!
-#include <stdio.h>
-#include "n2n.h"
-int main() {
-  random_number_seed(1);
-  random_number_seed(1);
-  printf ("key: %llx %llx %llx\n", random_number_64(), random_number_64(), random_number_32());
-
-
-  return (0);
 }

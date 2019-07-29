@@ -40,8 +40,8 @@
 #include <time.h>
 #include <ctype.h>
 #include <sys/types.h>
-#include "random_numbers.h"
 #include "twofish.h"
+#include "random_numbers.h"
 
 /* Fixed 8x8 permutation S-boxes */
 static const uint8_t TwoFish_P[2][256] =

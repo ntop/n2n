@@ -172,9 +172,8 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   memcpy(&eee->device, dev, sizeof(*dev));
   eee->start_time = time(NULL);
 
-  /* REVISIT: BbMaj7 : Should choose something with less predictability
-           * particularly for embedded targets with no real-time clock. */
-  random_number_seed(eee->start_time);
+  /* parameter == 0 uses timer- and clock speed-dependent seed procedure */
+  random_number_seed(0);
 
   eee->known_peers    = NULL;
   eee->pending_peers  = NULL;
