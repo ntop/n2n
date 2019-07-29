@@ -18,6 +18,7 @@
 
 #include "n2n.h"
 #include "n2n_transforms.h"
+#include "random_numbers.h"
 
 #ifdef N2N_HAVE_AES
 
@@ -106,10 +107,8 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             encode_uint8( outbuf, &idx, N2N_AES_TRANSFORM_VERSION);
 
             /* Generate and encode the IV seed.
-             * Using two calls to rand() because RAND_MAX is usually < 64bit
-             * (e.g. linux) and sometimes < 32bit (e.g. Windows).
              */
-            iv_seed = ((((uint64_t)rand() & 0xFFFFFFFF)) << 32) | rand();
+            iv_seed = random_number_64();
             encode_buf(outbuf, &idx, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
             /* Encrypt the assembly contents and write the ciphertext after the iv seed. */

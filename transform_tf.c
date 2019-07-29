@@ -19,6 +19,7 @@
 #include "n2n.h"
 #include "n2n_transforms.h"
 #include "twofish.h"
+#include "random_numbers.h"
 #ifndef _MSC_VER
 /* Not included in Visual Studio 2008 */
 #include <strings.h> /* index() */
@@ -89,7 +90,7 @@ static int transop_encode_twofish( n2n_trans_op_t * arg,
 	   * written in first followed by the packet payload. The whole
 	   * contents of assembly are encrypted. */
 	  pnonce = (uint32_t *)assembly;
-	  *pnonce = rand();
+	  *pnonce = random_number_32();
 	  memcpy( assembly + TRANSOP_TF_NONCE_SIZE, inbuf, in_len );
 
 	  /* Encrypt the assembly contents and write the ciphertext after the SA. */

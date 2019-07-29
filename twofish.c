@@ -40,6 +40,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <sys/types.h>
+#include "random_numbers.h"
 #include "twofish.h"
 
 /* Fixed 8x8 permutation S-boxes */
@@ -403,7 +404,7 @@ uint32_t TwoFishEncrypt(uint8_t *in,
 	*out=TwoFishAlloc(ilen,binhex,FALSE,tfdata);  /* ...we'll (re-)allocate buffer space. */
       if(*out!=NULL)
 	{	tfdata->output=*out;							/* set output buffer. */
-	  tfdata->header.salt=rand()*65536+rand();		/* toss in some salt. */
+	  tfdata->header.salt=random_number_32()*65536+random_number_32();		/* toss in some salt. */
 	  tfdata->header.length[0]= (uint8_t)(ilen);
 	  tfdata->header.length[1]= (uint8_t)(ilen>>8);
 	  tfdata->header.length[2]= (uint8_t)(ilen>>16);
@@ -980,7 +981,7 @@ int main(int argc, char* argv[])
 
     for ( i=0; i<TEST_DATA_SIZE; ++i )
     {
-        in[i] = rand() & 0xff;
+        in[i] = random_number_32() & 0xff;
     }
 
     outp=outbuf;

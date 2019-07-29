@@ -18,6 +18,7 @@
 
 #include "n2n.h"
 #include "lzoconf.h"
+#include "random_numbers.h"
 
 #ifdef WIN32
 #include <process.h>
@@ -173,7 +174,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
 
   /* REVISIT: BbMaj7 : Should choose something with less predictability
            * particularly for embedded targets with no real-time clock. */
-  srand(eee->start_time);
+  random_number_seed(eee->start_time);
 
   eee->known_peers    = NULL;
   eee->pending_peers  = NULL;
@@ -621,7 +622,7 @@ static void send_register_super(n2n_edge_t * eee,
   memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
   for(idx=0; idx < N2N_COOKIE_SIZE; ++idx)
-    eee->last_cookie[idx] = rand() % 0xff;
+    eee->last_cookie[idx] = random_number_32() % 0xff;
 
   memcpy(reg.cookie, eee->last_cookie, N2N_COOKIE_SIZE);
   reg.auth.scheme=0; /* No auth yet */
