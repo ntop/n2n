@@ -93,8 +93,8 @@ static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint64_t iv
  *
  *  - a 8-bit aes encoding version in clear text
  *  - a 64-bit random IV seed
- *  - a 8-bit compression indicating field; encrypted, together with the following...
- *  - encrypted payload
+ *  - a 8-bit data flags field; encrypted together with the following...
+ *  - UDP payload data
  *
  *  [V|II|cDDDDDDDDDDDDDDDDDDDD]
  *       |<---- encrypted ---->|
