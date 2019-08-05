@@ -39,7 +39,10 @@
 #define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_VER_SIZE + TRANSOP_AES_IV_SEED_SIZE)
 
 /* AES ciphertext preamble */
-#define TRANSOP_AES_COMPRESSION_SIZE   1
+#define TRANSOP_AES_ENC_DATA_FLAGS_SIZE   		1	/* this 8-bit flag indicates any special treatment of the following data
+								   applied before encryption at the beginning of the data block */
+#define TRANSOP_AES_ENC_DATA_FLAGS_NONE			0	/* no special data treatment */
+#define TRANSOP_AES_ENC_DATA_FLAGS_COMPRESSION_MINILZO	1	/* minilzo compression */
 
 #define COMPRESSION_ENABLED	/* defines if compression is enabled for outgoing packets; comment out for no compression */
 				/* compressed packets can always be decoded */
@@ -107,8 +110,8 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
     transop_aes_t * priv = (transop_aes_t *)arg->priv;
     uint8_t assembly[N2N_PKT_BUF_SIZE] = {0};
 
-    if ( (in_len + TRANSOP_AES_COMPRESSION_SIZE) <= N2N_PKT_BUF_SIZE) {
-        if ( (in_len + TRANSOP_AES_PREAMBLE_SIZE + TRANSOP_AES_COMPRESSION_SIZE) <= out_len) {
+    if ( (in_len + TRANSOP_AES_ENC_DATA_FLAGS_SIZE) <= N2N_PKT_BUF_SIZE) {
+        if ( (in_len + TRANSOP_AES_PREAMBLE_SIZE + TRANSOP_AES_ENC_DATA_FLAGS_SIZE) <= out_len) {
             int len=-1;
             size_t idx=0;
             uint64_t iv_seed = 0;
@@ -129,17 +132,17 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 
 	    len = in_len;
 #ifdef COMPRESSION_ENABLED
-	    /* test for compressability and set compression indicator accordingly */
+	    /* test for compressability and set data flags accordingly */
 	    uint8_t * compression_buffer;
 	    lzo_uint compression_len;
- 	    uint8_t *compression;
-	    compression = (uint8_t *)assembly;
-	    *compression= 0x00;
+ 	    uint8_t *data_flags;
+	    data_flags = (uint8_t *)assembly;
+	    *data_flags = 0x00;
             compression_buffer = malloc (in_len + in_len / 16 + 64 + 3);
             if (lzo1x_1_compress(inbuf, in_len, compression_buffer, &compression_len, wrkmem) == LZO_E_OK) {
-                /* compressible? then set compression type (0x01)! */
+                /* compressible? then set compression type (TRANSOP_AES_ENC_DATA_FLAGS_COMPRESSION_MINILZO)! */
 		if (compression_len < in_len) {
-		    *compression = 0x01;
+		    *data_flags = TRANSOP_AES_ENC_DATA_FLAGS_COMPRESSION_MINILZO;
 		    /* correct the previously calculated length */
 		    len -= (in_len - compression_len);
 		    traceEvent (TRACE_DEBUG, "payload compression: compressed %u bytes to %u bytes\n",
@@ -147,17 +150,17 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 		}
             }
             /* The assembly buffer will be the source for encrypting data. */
-            if (*compression == 0x01) {
-                memcpy( assembly + TRANSOP_AES_COMPRESSION_SIZE, compression_buffer, compression_len );
+            if (*data_flags == TRANSOP_AES_ENC_DATA_FLAGS_COMPRESSION_MINILZO) {
+                memcpy( assembly + TRANSOP_AES_ENC_DATA_FLAGS_SIZE, compression_buffer, compression_len );
                 free (compression_buffer);
 	    } else
 #endif
-                memcpy( assembly + TRANSOP_AES_COMPRESSION_SIZE, inbuf, in_len );
+                memcpy( assembly + TRANSOP_AES_ENC_DATA_FLAGS_SIZE, inbuf, in_len );
 
 	    /* len is set to the length of the cipher plain text to be encrpyted
                which is (in this case) identical to (maybe compressed) packet lentgh plus
 	       the length of compression indication field */
-            len += TRANSOP_AES_COMPRESSION_SIZE;
+            len += TRANSOP_AES_ENC_DATA_FLAGS_SIZE;
 
             /* Need at least one encrypted byte at the end for the padding. */
             len2 = ( (len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
@@ -194,7 +197,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
     uint8_t assembly[N2N_PKT_BUF_SIZE];
 
     if ( ( (in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* Cipher text fits in assembly */
-         && (in_len >= TRANSOP_AES_PREAMBLE_SIZE + TRANSOP_AES_COMPRESSION_SIZE) /* Has at least version, iv seed, compression field */
+         && (in_len >= TRANSOP_AES_PREAMBLE_SIZE + TRANSOP_AES_ENC_DATA_FLAGS_SIZE) /* Has at least version, iv seed, data flags */
        )
     {
         size_t rem=in_len;
@@ -229,23 +232,23 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                  * AES_BLOCKSIZE-1 */
                 padding = assembly[ len-1 ] & 0xff;
 
-                if ( len >= (padding + TRANSOP_AES_COMPRESSION_SIZE) )
+                if ( len >= (padding + TRANSOP_AES_ENC_DATA_FLAGS_SIZE) )
                 {
                     /* strictly speaking for this to be an ethernet packet
                      * it is going to need to be even bigger; but this is
                      * enough to prevent segfaults. */
                     traceEvent(TRACE_DEBUG, "padding = %u", padding);
                     len -= padding;
-		    len -= TRANSOP_AES_COMPRESSION_SIZE;
+		    len -= TRANSOP_AES_ENC_DATA_FLAGS_SIZE;
 
 		    /* decompress if necessary */
-		    uint8_t compressed = assembly[0];
+		    uint8_t data_flags = assembly[0];
 		    uint8_t * deflation_buffer;
 		    lzo_uint deflated_len;
-		    if (compressed == 0x01) {
+		    if (data_flags == TRANSOP_AES_ENC_DATA_FLAGS_COMPRESSION_MINILZO) {
 			deflation_buffer = malloc (N2N_PKT_BUF_SIZE);
                         /* decompress */
-			lzo1x_decompress (assembly + TRANSOP_AES_COMPRESSION_SIZE, len, deflation_buffer, &deflated_len, NULL);
+			lzo1x_decompress (assembly + TRANSOP_AES_ENC_DATA_FLAGS_SIZE, len, deflation_buffer, &deflated_len, NULL);
 			traceEvent (TRACE_DEBUG, "payload compression: deflated %u bytes to %u bytes",
                                                  len, (int)deflated_len);
                         memcpy( outbuf,
@@ -253,13 +256,13 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                                 deflated_len );
 			free (deflation_buffer);
 			len = deflated_len;
-		    } else if (compressed == 0x00) {
-                        /* Step over 1-byte compression indicator */
+		    } else if (data_flags == TRANSOP_AES_ENC_DATA_FLAGS_NONE) {
+                        /* Step over 1-byte data flags */
                         memcpy( outbuf,
-                                assembly + TRANSOP_AES_COMPRESSION_SIZE,
+                                assembly + TRANSOP_AES_ENC_DATA_FLAGS_SIZE,
                                 len );
 		    } else {
-			traceEvent (TRACE_DEBUG, "payload compression: unknown compression type %u", compressed);
+			traceEvent (TRACE_DEBUG, "payload treatment: unknown data flags %u", data_flags);
 		    }
                 } else
                     traceEvent(TRACE_WARNING, "UDP payload decryption failed.");
