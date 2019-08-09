@@ -17,7 +17,9 @@
  */
 
 #include "n2n.h"
+#ifdef N2N_COMPRESSION_ENABLED
 #include "lzoconf.h"
+#endif
 
 #ifdef WIN32
 #include <process.h>
@@ -179,7 +181,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   eee->pending_peers  = NULL;
   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
-#ifdef NOT_USED
+#ifdef N2N_COMPRESSION_ENABLED
   if(lzo_init() != LZO_E_OK) {
     traceEvent(TRACE_ERROR, "LZO compression error");
     goto edge_init_error;
@@ -1255,7 +1257,7 @@ static void send_packet2net(n2n_edge_t * eee,
     }
   }
 
-  /* Optionally compress then apply transforms, eg encryption. */
+  /* Optionally compress (performed in transforms if applicable) then apply transforms, eg encryption. */
 
   /* Once processed, send to destination in PACKET */
 

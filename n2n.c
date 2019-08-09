@@ -18,7 +18,9 @@
 
 #include "n2n.h"
 
+#ifdef N2N_COMPRESSION_ENABLED
 #include "minilzo.h"
+#endif
 
 #include <assert.h>
 

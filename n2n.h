@@ -108,7 +108,17 @@ typedef struct ether_hdr ether_hdr_t;
 #include <unistd.h>
 #include <assert.h>
 #include <sys/stat.h>
+
+/* Define N2N_COMPRESSION_ENABLED to enable lzo1x compression of ethernet
+ * frames. Doing this will break compatibility with the standard n2n packet
+ * format so do it only for experimentation. All edges must be built with the
+ * same value if they are to understand each other. Comment out to disable. 
+ * Changing this setting requires a clean rebuild. */
+#define N2N_COMPRESSION_ENABLED
+
+#ifdef N2N_COMPRESSION_ENABLED
 #include "minilzo.h"
+#endif
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
@@ -157,12 +167,6 @@ typedef struct tuntap_dev {
 #define MSG_TYPE_FEDERATION             8
 #define MSG_TYPE_PEER_INFO              9
 #define MSG_TYPE_QUERY_PEER            10
-
-/* Set N2N_COMPRESSION_ENABLED to 0 to disable lzo1x compression of ethernet
- * frames. Doing this will break compatibility with the standard n2n packet
- * format so do it only for experimentation. All edges must be built with the
- * same value if they are to understand each other. */
-#define N2N_COMPRESSION_ENABLED 1
 
 #define DEFAULT_MTU   1390
 

@@ -39,20 +39,19 @@
 #define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_VER_SIZE + TRANSOP_AES_IV_SEED_SIZE)
 
 /* AES ciphertext preamble */
-#define TRANSOP_AES_ENC_DATA_FLAGS_SIZE   		1	/* this 8-bit flag indicates any special treatment of the following data
+#ifdef N2N_COMPRESSION_ENABLED
+#define TRANSOP_AES_ENC_DATA_FLAGS_SIZE   		1	/* these 8-bit flags indicates any special treatment of the following data
 								   applied before encryption at the beginning of the data block */
 #define TRANSOP_AES_ENC_DATA_FLAGS_NONE			0	/* no special data treatment */
 #define TRANSOP_AES_ENC_DATA_FLAGS_COMPRESSION_MINILZO	1	/* minilzo compression */
 
-#define COMPRESSION_ENABLED	/* defines if compression is enabled for outgoing packets; comment out for no compression */
-				/* compressed packets can always be decoded */
-
 /* Work-memory needed for compression. Allocate memory in units
  * of 'lzo_align_t' (instead of 'char') to make sure it is properly aligned.
  */
-#ifdef COMPRESSION_ENABLED
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
 static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
+#else
+#define TRANSOP_AES_ENC_DATA_FLAGS_SIZE   		0	/* no compression --> no flags */
 #endif
 
 typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
@@ -131,7 +130,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
             encode_buf(outbuf, &idx, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
 	    len = in_len;
-#ifdef COMPRESSION_ENABLED
+#ifdef N2N_COMPRESSION_ENABLED
 	    /* test for compressability and set data flags accordingly */
 	    uint8_t * compression_buffer;
 	    lzo_uint compression_len;
@@ -240,7 +239,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
                     traceEvent(TRACE_DEBUG, "padding = %u", padding);
                     len -= padding;
 		    len -= TRANSOP_AES_ENC_DATA_FLAGS_SIZE;
-
+#ifdef N2N_COMPRESSION_ENABLED
 		    /* decompress if necessary */
 		    uint8_t data_flags = assembly[0];
 		    uint8_t * deflation_buffer;
@@ -257,14 +256,17 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 			free (deflation_buffer);
 			len = deflated_len;
 		    } else if (data_flags == TRANSOP_AES_ENC_DATA_FLAGS_NONE) {
-                        /* Step over 1-byte data flags */
+#endif
+                        /* Step over 1-byte data flags (if present) */
                         memcpy( outbuf,
                                 assembly + TRANSOP_AES_ENC_DATA_FLAGS_SIZE,
                                 len );
+#ifdef N2N_COMPRESSION_ENABLED
 		    } else {
 			traceEvent (TRACE_DEBUG, "payload treatment: unknown data flags %u", data_flags);
 		    }
-                } else
+#endif
+		} else
                     traceEvent(TRACE_WARNING, "UDP payload decryption failed.");
             } else {
                 traceEvent(TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE);
