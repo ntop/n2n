@@ -621,9 +621,6 @@ int main(int argc, char* argv[]) {
   struct passwd *pw = NULL;
 #endif
 
-  if(argc == 1)
-    help();
-
   /* Defaults */
   edge_init_conf_defaults(&conf);
   memset(&ec, 0, sizeof(ec));
@@ -646,17 +643,27 @@ int main(int argc, char* argv[]) {
   snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
   snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
 
-  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
-
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &conf, &ec);
     if(argc > 2)
       rc = loadFromCLI(argc, argv, &conf, &ec);
-  } else
+  } else if(argc > 1)
     rc = loadFromCLI(argc, argv, &conf, &ec);
+  else
+#ifdef WIN32
+    /* Load from current directory */
+    rc = loadFromFile("edge.conf", &conf, &ec);
+#else
+    rc = -1;
+#endif
 
   if(rc < 0)
     help();
+
+  if(edge_verify_conf(&conf) != 0)
+    help();
+
+  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
   if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
@@ -664,9 +671,6 @@ int main(int argc, char* argv[]) {
     conf.dyn_ip_mode = 1;
   } else
     traceEvent(TRACE_NORMAL, "ip_mode='%s'", ec.ip_mode);
-
-  if(edge_verify_conf(&conf) != 0)
-    help();
 
   if(!(
 #ifdef __linux__
