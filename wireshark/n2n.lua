@@ -1,6 +1,6 @@
 -- (C) 2019 - ntop.org and contributors
 
-n2n_protocol = Proto("n2n", "n2n Protocol")
+n2n = Proto("n2n", "n2n Protocol")
 
 -- #############################################
 
@@ -107,7 +107,7 @@ register_super_ack_num_sn = ProtoField.uint8("n2n.register_super_ack.num_sn", "N
 
 -- #############################################
 
-n2n_protocol.fields = {
+n2n.fields = {
   version, ttl, packet_type,
   flags, from_supernode_flag, socket_flag, options_flag,
   community,
@@ -267,14 +267,14 @@ end
 
 -- #############################################
 
-function n2n_protocol.dissector(buffer, pinfo, tree)
+function n2n.dissector(buffer, pinfo, tree)
   local length = buffer:len()
   if length < 20 then return end
 
-  pinfo.cols.protocol = n2n_protocol.name
+  pinfo.cols.protocol = n2n.name
 
   local pkt_type = bit.band(buffer(2,2):uint(), packet_type_mask)
-  local subtree = tree:add(n2n_protocol, buffer(), string.format("n2n Protocol, Type: %s", pkt_type_2_str[pkt_type] or "Unknown"))
+  local subtree = tree:add(n2n, buffer(), string.format("n2n Protocol, Type: %s", pkt_type_2_str[pkt_type] or "Unknown"))
 
   -- Common
   subtree:add(version, buffer(0,1))
@@ -313,4 +313,4 @@ end
 -- #############################################
 
 local udp_port = DissectorTable.get("udp.port")
-udp_port:add(15015, n2n_protocol)
+udp_port:add(50001, n2n)
