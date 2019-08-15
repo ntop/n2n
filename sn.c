@@ -1125,7 +1125,7 @@ static int run_loop(n2n_sn_t * sss) {
     HASH_ITER(hh, sss->communities, comm, tmp) {
       purge_expired_registrations( &comm->edges, &last_purge_edges );
 
-      if(comm->edges == NULL) {
+      if((comm->edges == NULL) && (!sss->lock_communities)) {
 	traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
 	HASH_DEL(sss->communities, comm);
 	free(comm);
