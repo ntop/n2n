@@ -90,7 +90,7 @@ static int transop_encode_twofish( n2n_trans_op_t * arg,
 	   * written in first followed by the packet payload. The whole
 	   * contents of assembly are encrypted. */
 	  pnonce = (uint32_t *)assembly;
-	  *pnonce = random_number_32();
+	  *pnonce = n2n_rand();
 	  memcpy( assembly + TRANSOP_TF_NONCE_SIZE, inbuf, in_len );
 
 	  /* Encrypt the assembly contents and write the ciphertext after the SA. */

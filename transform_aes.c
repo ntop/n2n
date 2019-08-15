@@ -108,7 +108,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 
             /* Generate and encode the IV seed.
              */
-            iv_seed = random_number_64();
+            iv_seed = n2n_rand();
             encode_buf(outbuf, &idx, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
             /* Encrypt the assembly contents and write the ciphertext after the iv seed. */

@@ -18,7 +18,12 @@
 
 #include "n2n.h"
 #include "lzoconf.h"
+
 #include "random_numbers.h"
+#ifdef __linux__
+  #include <sys/syscall.h>
+  #define GRND_NONBLOCK       1
+#endif
 
 #ifdef WIN32
 #include <process.h>
@@ -172,8 +177,15 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   memcpy(&eee->device, dev, sizeof(*dev));
   eee->start_time = time(NULL);
 
-  /* parameter == 0 uses timer- and clock speed-dependent seed procedure */
-  random_number_seed(0);
+  /* seed the random number generator using some entropy if available */
+  uint64_t seed = 0;
+#ifdef SYS_getrandom
+  if ( syscall(SYS_getrandom, &seed, sizeof(seed), GRND_NONBLOCK) == sizeof(seed) )
+    traceEvent (TRACE_DEBUG, "random seed: successfully called getrandom syscall");
+#endif
+  seed ^= eee->start_time; /* UTC in seconds */
+  seed ^= clock() * 65537; /* clock ticks since program start */
+  n2n_srand(seed);
 
   eee->known_peers    = NULL;
   eee->pending_peers  = NULL;
@@ -621,7 +633,7 @@ static void send_register_super(n2n_edge_t * eee,
   memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
   for(idx=0; idx < N2N_COOKIE_SIZE; ++idx)
-    eee->last_cookie[idx] = random_number_32() % 0xff;
+    eee->last_cookie[idx] = n2n_rand() % 0xff;
 
   memcpy(reg.cookie, eee->last_cookie, N2N_COOKIE_SIZE);
   reg.auth.scheme=0; /* No auth yet */

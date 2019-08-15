@@ -1,5 +1,3 @@
-int32_t random_number_seed(uint64_t seed);
+int32_t n2n_srand(uint64_t seed);
 
-uint64_t random_number_64();
-
-uint32_t random_number_32();
+uint64_t n2n_rand();
