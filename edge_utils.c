@@ -1573,12 +1573,12 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                 }
 	      else
                 {
-		  traceEvent(TRACE_WARNING, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
+		  traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
                 }
             }
 	  else
             {
-	      traceEvent(TRACE_WARNING, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER.");
+	      traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER.");
             }
 	  break;
       } case MSG_TYPE_PEER_INFO: {
