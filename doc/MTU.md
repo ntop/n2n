@@ -53,7 +53,7 @@ has been provided:
   the sender.
 
 - 1400 B is used instead of 1500 B as the reference value for the internet interface MTU.
-  This essentially avoids fragmentation when the PMTU is lower than 1400 B.
+  This essentially avoids fragmentation when the PMTU is >= 1400 B.
 
 This is a conservative solution which should make n2n work by default. The user can manually
 specify the MTU and re-enable PMTU discovery via the CLI options.
