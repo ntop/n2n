@@ -143,7 +143,7 @@ static void help() {
 #ifdef __linux__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-A] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -155,8 +155,6 @@ static void help() {
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
-  printf("-b                       | Periodically resolve supernode IP\n");
-  printf("                         | (when supernodes are running on dynamic IPs)\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
 #ifndef WIN32
   printf("-u <UID>                 | User ID (numeric) to use when privileges are dropped.\n");
@@ -313,12 +311,6 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 #endif
-
-  case 'b':
-    {
-      conf->re_resolve_supernode_ip = 1;
-      break;
-    }
 
   case 'p':
     {
