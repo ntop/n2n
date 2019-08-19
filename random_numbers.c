@@ -11,6 +11,10 @@ struct rn_generator_state_t {
     uint64_t a, b;
  };
 
+struct splitmix64_state {
+	uint64_t s;
+};
+
 /* The state must be seeded in a way that it is not all zero, choose some
    arbitrary defaults (in this case: taken from splitmix64)
  */
@@ -19,23 +23,27 @@ static struct rn_generator_state_t rn_current_state
 			           .b    = 0xBF58476D1CE4E5B9
 };
 
+static uint64_t splitmix64(struct splitmix64_state *state) {
+	uint64_t result = state->s;
+
+	state->s = result + 0x9E3779B97f4A7C15;
+	result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9;
+	result = (result ^ (result >> 27)) * 0x94D049BB133111EB;
+	return result ^ (result >> 31);
+}
+
 int32_t n2n_srand (uint64_t seed) {
-    /* apply splitmix64 algorithm (found on same wiki page as xorshift)
-       twice on the SEED to calcualte A and B of XORSHIFT128PLUS' state */
-    rn_current_state.a = seed;
-    rn_current_state.a = (rn_current_state.a ^ (rn_current_state.a >> 30)) * 0xBF58476D1CE4E5B9;
-    rn_current_state.a = (rn_current_state.a ^ (rn_current_state.a >> 27)) * 0x94D049BB133111EB;
-    rn_current_state.a ^= rn_current_state.a >> 31;
-    /* by applying splitmix64 algorithm twice in a row, an all zero state is
-       avoidedfor any given SEED, especially due to the following line of code */
-    rn_current_state.b = seed + 0x9E3779B97F4A7C15;
-    rn_current_state.b = (rn_current_state.b ^ (rn_current_state.b >> 30)) * 0xBF58476D1CE4E5B9;
-    rn_current_state.b = (rn_current_state.b ^ (rn_current_state.b >> 27)) * 0x94D049BB133111EB;
-    rn_current_state.b ^= rn_current_state.b >> 31;
+    struct splitmix64_state smstate = {seed};
+    rn_current_state.a = 0;
+    rn_current_state.b = 0;
+
+    rn_current_state.a = splitmix64(&smstate);
+    rn_current_state.b = splitmix64(&smstate);
 
     /* stabilize in unlikely case of weak state with only a few bits set */
     for (uint8_t i = 0; i < 32; i++)
 	n2n_rand();
+
     return (0);
 }
 
