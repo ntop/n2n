@@ -746,7 +746,9 @@ static void help() {
   printf("supernode ");
   printf("-l <lport> ");
   printf("-c <path> ");
+#if defined(N2N_HAVE_DAEMON)
   printf("[-f] ");
+#endif
   printf("[-v] ");
   printf("\n\n");
 
@@ -972,20 +974,24 @@ static void term_handler(int sig)
 int main(int argc, char * const argv[]) {
   int rc;
 
-  if(argc == 1)
-    help();
-
   init_sn(&sss_node);
 
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &sss_node);
     if(argc > 2)
       rc = loadFromCLI(argc, argv, &sss_node);
-  } else
+  } else if(argc > 1)
     rc = loadFromCLI(argc, argv, &sss_node);
+  else
+#ifdef WIN32
+    /* Load from current directory */
+    rc = loadFromFile("supernode.conf", &sss_node);
+#else
+    rc = -1;
+#endif
 
   if(rc < 0)
-    return(-1);
+    help();
 
 #if defined(N2N_HAVE_DAEMON)
   if(sss_node.daemon) {
@@ -1119,7 +1125,7 @@ static int run_loop(n2n_sn_t * sss) {
     HASH_ITER(hh, sss->communities, comm, tmp) {
       purge_expired_registrations( &comm->edges, &last_purge_edges );
 
-      if(comm->edges == NULL) {
+      if((comm->edges == NULL) && (!sss->lock_communities)) {
 	traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
 	HASH_DEL(sss->communities, comm);
 	free(comm);

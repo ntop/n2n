@@ -42,3 +42,30 @@ NOTE: if cmake has problems finding the installed OpenSSL library, try to downlo
   "C:\Program Files\CMake\bin\cmake"
 
 The compiled exe files should now be available under the Release directory.
+
+# Run
+
+The `edge.exe` program reads the `edge.conf` file located into the current directory if no option is provided.
+
+Here is an example `edge.conf` file:
+
+```
+-c=mycommunity
+-k=mysecretkey
+
+# supernode IP address
+-l=1.2.3.4:5678
+
+# edge IP address
+-a=192.168.100.1
+```
+
+The `supernode.exe` program reads the `supernode.conf` file located into the current directory if no option is provided.
+
+Here is an example `supernode.conf` file:
+
+```
+-l=5678
+```
+
+See `edge.exe --help` and `supernode.exe --help` for a list of supported options.

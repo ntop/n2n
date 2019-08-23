@@ -164,10 +164,11 @@ typedef struct tuntap_dev {
  * same value if they are to understand each other. */
 #define N2N_COMPRESSION_ENABLED 1
 
-#define DEFAULT_MTU   1390
+#define DEFAULT_MTU   1290
 
-/** Uncomment this to enable the MTU check */
-//#define MTU_ASSERT_VALUE 1500
+/** Uncomment this to enable the MTU check, then try to ssh to generate a fragmented packet. */
+/** NOTE: see doc/MTU.md for an explanation on the 1400 value */
+//#define MTU_ASSERT_VALUE 1400
 
 /** Common type used to hold stringified IP addresses. */
 typedef char ipstr_t[32];
@@ -205,10 +206,10 @@ typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   n2n_transform_t     transop_id;             /**< The transop to use. */
-  uint8_t             re_resolve_supernode_ip;
   uint8_t             dyn_ip_mode;            /**< Interface IP address is dynamically allocated, eg. DHCP. */
   uint8_t             allow_routing;          /**< Accept packet no to interface address. */
   uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
+  uint8_t             disable_pmtu_discovery; /**< Disable the Path MTU discovery. */
   uint8_t             allow_p2p;              /**< Allow P2P connection */
   uint8_t             sn_num;                 /**< Number of supernode addresses defined. */
   uint8_t             tos;                    /** TOS for sent packets */

@@ -1573,12 +1573,12 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                 }
 	      else
                 {
-		  traceEvent(TRACE_WARNING, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
+		  traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
                 }
             }
 	  else
             {
-	      traceEvent(TRACE_WARNING, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER.");
+	      traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER.");
             }
 	  break;
       } case MSG_TYPE_PEER_INFO: {
@@ -1818,6 +1818,15 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port,
     else
       traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", tos, errno, strerror(errno));
   }
+
+  if(eee->conf.disable_pmtu_discovery) {
+    int sockopt = 0;
+
+    if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_MTU_DISCOVER, &sockopt, sizeof(sockopt)) < 0)
+      traceEvent(TRACE_WARNING, "Could not disable PMTU discovery[%d]: %s", errno, strerror(errno));
+    else
+      traceEvent(TRACE_DEBUG, "PMTU discovery disabled");
+  }
 #endif
 
   eee->udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
@@ -1862,6 +1871,7 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->transop_id = N2N_TRANSFORM_ID_NULL;
   conf->drop_multicast = 1;
   conf->allow_p2p = 1;
+  conf->disable_pmtu_discovery = 1;
   conf->register_interval = REGISTER_SUPER_INTERVAL_DFL;
 
   if(getenv("N2N_KEY")) {

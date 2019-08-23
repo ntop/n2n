@@ -134,13 +134,16 @@ static void help() {
 	 "[-f]"
 #endif /* #ifndef WIN32 */
 #ifdef __linux__
-"[-T <tos>]"
+	 "[-T <tos>]"
 #endif
 	 "[-m <MAC address>] "
 	 "-l <supernode host:port>\n"
 	 "    "
 	 "[-p <local port>] [-M <mtu>] "
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-b] [-A] [-h]\n\n");
+#ifdef __linux__
+	 "[-D] "
+#endif
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-A] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -152,8 +155,6 @@ static void help() {
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
-  printf("-b                       | Periodically resolve supernode IP\n");
-  printf("                         | (when supernodes are running on dynamic IPs)\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
 #ifndef WIN32
   printf("-u <UID>                 | User ID (numeric) to use when privileges are dropped.\n");
@@ -165,6 +166,10 @@ static void help() {
   printf("-m <MAC address>         | Fix MAC address for the TAP interface (otherwise it may be random)\n"
          "                         | eg. -m 01:02:03:04:05:06\n");
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
+#ifdef __linux__
+  printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but"
+         "                         | causes connections stall when not properly supported.\n");
+#endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
 #ifdef N2N_HAVE_AES
   printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
@@ -252,6 +257,14 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
+#ifdef __linux__
+  case 'D' : /* enable PMTU discovery */
+    {
+      conf->disable_pmtu_discovery = 0;
+      break;
+    }
+#endif
+
   case 'k': /* encrypt key */
     {
       if(conf->encrypt_key) free(conf->encrypt_key);
@@ -287,7 +300,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
     }
 
   case 'i': /* supernode registration interval */
-    conf->register_interval = atoi(optarg);
+    conf->register_interval = atoi(optargument);
     break;
 
 #if defined(N2N_CAN_NAME_IFACE)
@@ -298,12 +311,6 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 #endif
-
-  case 'b':
-    {
-      conf->re_resolve_supernode_ip = 1;
-      break;
-    }
 
   case 'p':
     {
@@ -621,9 +628,6 @@ int main(int argc, char* argv[]) {
   struct passwd *pw = NULL;
 #endif
 
-  if(argc == 1)
-    help();
-
   /* Defaults */
   edge_init_conf_defaults(&conf);
   memset(&ec, 0, sizeof(ec));
@@ -646,17 +650,27 @@ int main(int argc, char* argv[]) {
   snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
   snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
 
-  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
-
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &conf, &ec);
     if(argc > 2)
       rc = loadFromCLI(argc, argv, &conf, &ec);
-  } else
+  } else if(argc > 1)
     rc = loadFromCLI(argc, argv, &conf, &ec);
+  else
+#ifdef WIN32
+    /* Load from current directory */
+    rc = loadFromFile("edge.conf", &conf, &ec);
+#else
+    rc = -1;
+#endif
 
   if(rc < 0)
     help();
+
+  if(edge_verify_conf(&conf) != 0)
+    help();
+
+  traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
   if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
@@ -664,9 +678,6 @@ int main(int argc, char* argv[]) {
     conf.dyn_ip_mode = 1;
   } else
     traceEvent(TRACE_NORMAL, "ip_mode='%s'", ec.ip_mode);
-
-  if(edge_verify_conf(&conf) != 0)
-    help();
 
   if(!(
 #ifdef __linux__
