@@ -20,6 +20,8 @@
 
 #ifdef __linux__
 
+#include <net/if_arp.h>
+
 /* *************************************************** */
 
 static void read_mac(char *ifname, n2n_mac_t mac_addr) {
@@ -48,10 +50,70 @@ static void read_mac(char *ifname, n2n_mac_t mac_addr) {
 
 /* ********************************** */
 
+static int setup_ifname(int fd, const char *ifname, const char *ipaddr,
+          const char *netmask, const char *mac, int mtu) {
+  struct ifreq ifr;
+
+  strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
+  ifr.ifr_name[IFNAMSIZ-1] = '\0';
+
+  if(mac && mac[0]) {
+    str2mac((uint8_t *)ifr.ifr_hwaddr.sa_data, mac);
+    ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+
+    if(ioctl(fd, SIOCSIFHWADDR, &ifr) == -1) {
+      traceEvent(TRACE_ERROR, "ioctl(SIOCSIFHWADDR) failed [%d]: %s", errno, strerror(errno));
+      return(-1);
+    }
+  }
+
+  ifr.ifr_addr.sa_family = AF_INET;
+
+  /* Interface Address */
+  inet_pton(AF_INET, ipaddr, &((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr);
+  if(ioctl(fd, SIOCSIFADDR, &ifr) == -1) {
+    traceEvent(TRACE_ERROR, "ioctl(SIOCSIFADDR) failed [%d]: %s", errno, strerror(errno));
+    return(-2);
+  }
+
+  /* Netmask */
+  if(netmask && (((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr != 0)) {
+    inet_pton(AF_INET, netmask, &((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr);
+    if(ioctl(fd, SIOCSIFNETMASK, &ifr) == -1) {
+      traceEvent(TRACE_ERROR, "ioctl(SIOCSIFNETMASK, %s) failed [%d]: %s", netmask, errno, strerror(errno));
+      return(-3);
+    }
+  }
+
+  /* MTU */
+  ifr.ifr_mtu = mtu;
+  if(ioctl(fd, SIOCSIFMTU, &ifr) == -1) {
+    traceEvent(TRACE_ERROR, "ioctl(SIOCSIFMTU) failed [%d]: %s", errno, strerror(errno));
+    return(-4);
+  }
+
+  /* Set up and running */
+  if(ioctl(fd, SIOCGIFFLAGS, &ifr) == -1) {
+    traceEvent(TRACE_ERROR, "ioctl(SIOCGIFFLAGS) failed [%d]: %s", errno, strerror(errno));
+    return(-5);
+  }
+
+  ifr.ifr_flags |= (IFF_UP | IFF_RUNNING);
+
+  if(ioctl(fd, SIOCSIFFLAGS, &ifr) == -1) {
+    traceEvent(TRACE_ERROR, "ioctl(SIOCSIFFLAGS) failed [%d]: %s", errno, strerror(errno));
+    return(-6);
+  }
+
+  return(0);
+}
+
+/* ********************************** */
+
 /** @brief  Open and configure the TAP device for packet read/write.
  *
- *  This routine creates the interface via the tuntap driver then uses ifconfig
- *  to configure address/mask and MTU.
+ *  This routine creates the interface via the tuntap driver and then
+ *  configures it.
  *
  *  @param device      - [inout] a device info holder object
  *  @param dev         - user-defined name for the new iface, 
@@ -71,8 +133,7 @@ int tuntap_open(tuntap_dev *device,
                 const char * device_mac,
 		int mtu) {
   char *tuntap_device = "/dev/net/tun";
-#define N2N_LINUX_SYSTEMCMD_SIZE 128
-  char buf[N2N_LINUX_SYSTEMCMD_SIZE];
+  int ioctl_fd;
   struct ifreq ifr;
   int rc;
 
@@ -97,28 +158,18 @@ int tuntap_open(tuntap_dev *device,
   /* Store the device name for later reuse */
   strncpy(device->dev_name, ifr.ifr_name, MIN(IFNAMSIZ, N2N_IFNAMSIZ) );
 
-  if ( device_mac && device_mac[0] != '\0' )
-    {
-      /* Set the hw address before bringing the if up. */
-      snprintf(buf, sizeof(buf), "/sbin/ifconfig %s hw ether %s",
-               ifr.ifr_name, device_mac );
-      system(buf);
-      traceEvent(TRACE_INFO, "Setting MAC: %s", buf);
-    }
+  if((ioctl_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
+    traceEvent(TRACE_ERROR, "socket creation failed [%d]: %s", errno, strerror(errno));
+    return -1;
+  }
 
-  if ( 0 == strncmp( "dhcp", address_mode, 5 ) )
-    {
-      snprintf(buf, sizeof(buf), "/sbin/ifconfig %s %s mtu %d up",
-               ifr.ifr_name, device_ip, mtu);
-    }
-  else
-    {
-      snprintf(buf, sizeof(buf), "/sbin/ifconfig %s %s netmask %s mtu %d up",
-               ifr.ifr_name, device_ip, device_mask, mtu);
-    }
+  if(setup_ifname(ioctl_fd, device->dev_name, device_ip, device_mask, device_mac, mtu) < 0) {
+    close(ioctl_fd);
+    close(device->fd);
+    return -1;
+  }
 
-  system(buf);
-  traceEvent(TRACE_INFO, "Bringing up: %s", buf);
+  close(ioctl_fd);
 
   device->ip_addr = inet_addr(device_ip);
   device->device_mask = inet_addr(device_mask);
@@ -149,34 +200,22 @@ void tuntap_close(struct tuntap_dev *tuntap) {
 /* Fill out the ip_addr value from the interface. Called to pick up dynamic
  * address changes. */
 void tuntap_get_address(struct tuntap_dev *tuntap) {
-  FILE * fp=NULL;
-  ssize_t nread=0;
-  char buf[N2N_LINUX_SYSTEMCMD_SIZE];
-  
-  /* Would rather have a more direct way to get the inet address but a netlink
-   * socket is overkill and probably less portable than ifconfig and sed. */
+  struct ifreq ifr;
+  int fd;
 
-  /* If the interface has no address (0.0.0.0) there will be no inet addr
-   * line and the returned string will be empty. */
-  snprintf( buf, sizeof(buf),
-	    "/sbin/ifconfig %s | /bin/sed -e '/inet addr:/!d' -e 's/^.*inet addr://' -e 's/ .*$//'",
-	    tuntap->dev_name);
-  fp = popen(buf, "r");
-
-  if (fp) {
-    memset(buf, 0, N2N_LINUX_SYSTEMCMD_SIZE); /* make sure buf is NULL terminated. */
-    nread = fread(buf, N2N_LINUX_SYSTEMCMD_SIZE-1, 1, fp);
-    fclose(fp);
-    fp = NULL;
-
-    traceEvent(TRACE_INFO, "ifconfig address = %s", buf);
-
-    if(nread > 0) {
-      buf[nread] = '\0';
-      tuntap->ip_addr = inet_addr(buf);
-    }
+  if((fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
+    traceEvent(TRACE_ERROR, "socket creation failed [%d]: %s", errno, strerror(errno));
+    return;
   }
-}
 
+  ifr.ifr_addr.sa_family = AF_INET;
+  strncpy(ifr.ifr_name, tuntap->dev_name, IFNAMSIZ);
+  ifr.ifr_name[IFNAMSIZ-1] = '\0';
+
+  if(ioctl(fd, SIOCGIFADDR, &ifr) != -1)
+    tuntap->ip_addr = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+
+  close(fd);
+}
 
 #endif /* #ifdef __linux__ */
