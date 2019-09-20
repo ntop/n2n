@@ -167,7 +167,7 @@ static void help() {
          "                         | eg. -m 01:02:03:04:05:06\n");
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
 #ifdef __linux__
-  printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but"
+  printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but\n"
          "                         | causes connections stall when not properly supported.\n");
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
