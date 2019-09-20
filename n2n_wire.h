@@ -106,7 +106,9 @@ typedef struct n2n_auth
 
 typedef struct n2n_common
 {
+    /* NOTE: wire representation is different! */
     /* int                 version; */
+
     uint8_t             ttl;
     uint8_t             pc;
     uint16_t            flags;

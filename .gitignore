@@ -8,6 +8,7 @@ Makefile
 autom4te.cache
 benchmark
 edge
+n2n-decode
 example_edge_embed
 supernode
 build

@@ -261,6 +261,7 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 /* Log */
 void setTraceLevel(int level);
 void setUseSyslog(int use_syslog);
+void setTraceFile(FILE *f);
 int getTraceLevel();
 void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
 

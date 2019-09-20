@@ -64,6 +64,7 @@ SOCKET open_socket(int local_port, int bind_any) {
 
 static int traceLevel = 2 /* NORMAL */;
 static int useSyslog = 0, syslog_opened = 0;
+static FILE *traceFile = NULL;
 
 int getTraceLevel() {
   return(traceLevel);
@@ -77,9 +78,16 @@ void setUseSyslog(int use_syslog) {
   useSyslog= use_syslog;
 }
 
+void setTraceFile(FILE *f) {
+  traceFile = f;
+}
+
 #define N2N_TRACE_DATESIZE 32
 void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
   va_list va_ap;
+
+  if(traceFile == NULL)
+    traceFile = stdout;
 
   if(eventTraceLevel <= traceLevel) {
     char buf[1024];
@@ -145,16 +153,16 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
         }
         __android_log_write(eventTraceLevel, "n2n", out_buf);
 #else
-      printf("%s\n", out_buf);
-      fflush(stdout);
+      fprintf(traceFile, "%s\n", out_buf);
+      fflush(traceFile);
 #endif /* #ifdef __ANDROID_NDK__ */
     }
 #else
     /* this is the WIN32 code */
     for(i=strlen(file)-1; i>0; i--) if(file[i] == '\\') { i++; break; };
     snprintf(out_buf, sizeof(out_buf), "%s [%s:%d] %s%s", theDate, &file[i], line, extra_msg, buf);
-    printf("%s\n", out_buf);
-    fflush(stdout);
+    fprintf(traceFile, "%s\n", out_buf);
+    fflush(traceFile);
 #endif
   }
 
