@@ -140,9 +140,7 @@ static void help() {
 	 "-l <supernode host:port>\n"
 	 "    "
 	 "[-p <local port>] [-M <mtu>] "
-#ifdef __linux__
 	 "[-D] "
-#endif
 	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-A] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
@@ -166,10 +164,8 @@ static void help() {
   printf("-m <MAC address>         | Fix MAC address for the TAP interface (otherwise it may be random)\n"
          "                         | eg. -m 01:02:03:04:05:06\n");
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
-#ifdef __linux__
   printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but\n"
          "                         | causes connections stall when not properly supported.\n");
-#endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
 #ifdef N2N_HAVE_AES
   printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
@@ -257,13 +253,11 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
-#ifdef __linux__
   case 'D' : /* enable PMTU discovery */
     {
       conf->disable_pmtu_discovery = 0;
       break;
     }
-#endif
 
   case 'k': /* encrypt key */
     {
@@ -393,7 +387,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:S"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SD"
 #ifdef N2N_HAVE_AES
 			 "A"
 #endif

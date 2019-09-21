@@ -1799,6 +1799,8 @@ void edge_term(n2n_edge_t * eee) {
 /* ************************************** */
 
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos) {
+  int sockopt;
+
   if(udp_local_port > 0)
     traceEvent(TRACE_NORMAL, "Binding to local port %d", udp_local_port);
 
@@ -1808,10 +1810,9 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port,
     return(-1);
   }
 
-#ifdef __linux__
   if(tos) {
     /* https://www.tucny.com/Home/dscp-tos */
-    int sockopt = tos;
+    sockopt = tos;
 
     if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_TOS, &sockopt, sizeof(sockopt)) == 0)
       traceEvent(TRACE_NORMAL, "TOS set to 0x%x", tos);
@@ -1819,15 +1820,13 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port,
       traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", tos, errno, strerror(errno));
   }
 
-  if(eee->conf.disable_pmtu_discovery) {
-    int sockopt = 0;
+  sockopt = (eee->conf.disable_pmtu_discovery) ? IP_PMTUDISC_DONT : IP_PMTUDISC_DO;
 
-    if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_MTU_DISCOVER, &sockopt, sizeof(sockopt)) < 0)
-      traceEvent(TRACE_WARNING, "Could not disable PMTU discovery[%d]: %s", errno, strerror(errno));
-    else
-      traceEvent(TRACE_DEBUG, "PMTU discovery disabled");
-  }
-#endif
+  if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_MTU_DISCOVER, &sockopt, sizeof(sockopt)) < 0)
+    traceEvent(TRACE_WARNING, "Could not %s PMTU discovery[%d]: %s",
+      (eee->conf.disable_pmtu_discovery) ? "disable" : "enable", errno, strerror(errno));
+  else
+    traceEvent(TRACE_DEBUG, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
 
   eee->udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
   if(eee->udp_mgmt_sock < 0) {
