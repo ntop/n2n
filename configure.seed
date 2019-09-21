@@ -31,6 +31,12 @@ if test x$pcap != x; then
   ADDITIONAL_TOOLS="$ADDITIONAL_TOOLS n2n-decode"
 fi
 
+AC_CHECK_LIB([pcap], [pcap_set_immediate_mode], pcap_immediate_mode=true)
+
+if test x$pcap_immediate_mode != x; then
+  AC_DEFINE([HAVE_PCAP_IMMEDIATE_MODE], [], [Have pcap_immediate_mode])
+fi
+
 MACHINE=`uname -m`
 SYSTEM=`uname -s`
 

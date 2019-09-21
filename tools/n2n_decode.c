@@ -20,11 +20,13 @@
 #include "n2n.h"
 
 #define SNAPLEN 1500
+#define TIMEOUT 200
 
 /* *************************************************** */
 
 static int aes_mode = 0;
 static int running = 1;
+static char *ifname = NULL;
 static n2n_edge_conf_t conf;
 static n2n_trans_op_t transop;
 static pcap_t *handle;
@@ -146,16 +148,21 @@ static int run_packet_loop() {
   struct pcap_pkthdr header;
   const u_char *packet;
 
-  traceEvent(TRACE_NORMAL, "Running loop");
+  traceEvent(TRACE_NORMAL, "Capturing packets on %s...", ifname);
 
-  // TODO handle timeout
   while(running) {
-    n2n_common_t common = {0};
-    n2n_PACKET_t pkt = {0};
+    n2n_common_t common;
+    n2n_PACKET_t pkt;
     uint ipsize, common_offset;
     size_t idx, rem;
 
+    memset(&common, 0, sizeof(common));
+    memset(&pkt, 0, sizeof(pkt));
+
     packet = pcap_next(handle, &header);
+
+    if(!packet)
+      continue;
 
     if(header.caplen < MIN_LEN) {
       traceEvent(TRACE_INFO, "Skipping packet too small: size=%d", header.caplen);
@@ -219,7 +226,7 @@ static int run_packet_loop() {
 int main(int argc, char* argv[]) {
   u_char c;
   struct bpf_program fcode;
-  char *bpf_filter = NULL, *ifname = NULL, *out_fname = NULL;
+  char *bpf_filter = NULL, *out_fname = NULL;
   char errbuf[PCAP_ERRBUF_SIZE];
   int rv = 0;
   FILE *outf = stdout;
@@ -240,7 +247,7 @@ int main(int argc, char* argv[]) {
 
     switch(c) {
     case 'c':
-      strncpy((char*)conf.community_name, optarg, sizeof(conf.community_name));
+      strncpy((char*)conf.community_name, optarg, sizeof(conf.community_name)-1);
       break;
     case 'i':
       ifname = strdup(optarg);
@@ -278,11 +285,28 @@ int main(int argc, char* argv[]) {
 #endif
     n2n_transop_twofish_init(&conf, &transop);
 
-  handle = pcap_open_live(ifname, SNAPLEN, 1, 1000, errbuf);
-
-  if(handle == NULL) {
+  if((handle = pcap_create(ifname, errbuf)) == NULL) {
     traceEvent(TRACE_ERROR, "Cannot open device %s: %s", ifname, errbuf);
     return(1);
+  }
+
+  if((pcap_set_timeout(handle, TIMEOUT) != 0) ||
+     (pcap_set_snaplen(handle, SNAPLEN) != 0)) {
+    traceEvent(TRACE_ERROR, "Error while setting timeout/snaplen");
+    return(1);
+  }
+
+#ifdef HAVE_PCAP_IMMEDIATE_MODE
+  /* The timeout is not honored unless immediate mode is set.
+   * See https://github.com/mfontanini/libtins/issues/180 */
+  if(pcap_set_immediate_mode(handle, 1) != 0) {
+    traceEvent(TRACE_ERROR, "Could not set PCAP immediate mode");
+    return(1);
+  }
+#endif
+
+  if(pcap_activate(handle) != 0) {
+    traceEvent(TRACE_ERROR, "pcap_activate failed: %s", pcap_geterr(handle));
   }
 
   if(pcap_datalink(handle) != DLT_EN10MB) {

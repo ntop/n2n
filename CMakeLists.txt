@@ -1,5 +1,6 @@
 project(n2n)
 cmake_minimum_required(VERSION 2.6)
+include(CheckFunctionExists)
 
 # N2n information
 set(N2N_VERSION 2.5.1)
@@ -98,6 +99,12 @@ if(PCAP_LIB)
   add_executable(n2n-decode tools/n2n_decode.c)
   target_link_libraries(n2n-decode n2n pcap)
   install(TARGETS n2n-decode RUNTIME DESTINATION bin)
+
+  set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
+  check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
+  IF(HAVE_PCAP_IMMEDIATE_MODE)
+    ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
+  ENDIF()
 endif()
 
 install(TARGETS n2n-benchmark RUNTIME DESTINATION bin)
