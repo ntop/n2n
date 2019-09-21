@@ -42,7 +42,9 @@
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_SETUID
 #else
+#ifndef CMAKE_BUILD
 #include "config.h"
+#endif
 #endif
 
 #define PACKAGE_BUILDDATE (__DATE__ " " __TIME__)

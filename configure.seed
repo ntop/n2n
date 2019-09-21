@@ -24,6 +24,13 @@ else
   N2N_LIBS=-lcrypto
 fi
 
+AC_CHECK_LIB([pcap], [pcap_open_live], pcap=true)
+
+if test x$pcap != x; then
+  AC_DEFINE([N2N_HAVE_PCAP], [], [Have PCAP library])
+  ADDITIONAL_TOOLS="$ADDITIONAL_TOOLS n2n-decode"
+fi
+
 MACHINE=`uname -m`
 SYSTEM=`uname -s`
 
@@ -60,8 +67,10 @@ AC_SUBST(GIT_REVISION)
 AC_SUBST(GIT_RELEASE)
 AC_SUBST(N2N_DEFINES)
 AC_SUBST(N2N_LIBS)
+AC_SUBST(ADDITIONAL_TOOLS)
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_FILES(Makefile)
+AC_CONFIG_FILES(tools/Makefile)
 
 AC_OUTPUT
 

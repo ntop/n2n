@@ -16,6 +16,8 @@ if(NOT DEFINED N2N_OPTION_AES)
 set(N2N_OPTION_AES ON)
 endif(NOT DEFINED N2N_OPTION_AES)
 
+add_definitions(-DCMAKE_BUILD)
+add_definitions(-DGIT_RELEASE="" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${CMAKE_SYSTEM}")
 add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 
 if(N2N_OPTION_AES)
@@ -79,8 +81,17 @@ target_link_libraries(edge n2n)
 add_executable(supernode sn.c)
 target_link_libraries(supernode n2n)
 
-add_executable(benchmark benchmark.c)
-target_link_libraries(benchmark n2n)
+# Tools
+include_directories(.)
+
+add_executable(n2n-benchmark tools/benchmark.c)
+target_link_libraries(n2n-benchmark n2n)
+
+find_library(PCAP_LIB pcap)
+if(PCAP_LIB)
+  add_executable(n2n-decode tools/n2n_decode.c)
+  target_link_libraries(n2n-decode n2n pcap)
+endif()
 
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin

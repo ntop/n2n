@@ -8,7 +8,7 @@ GIT_COMMITS=@GIT_COMMITS@
 CC?=gcc
 DEBUG?=-g3
 #OPTIMIZATION?=-O2
-WARN?=-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs
+WARN?=-Wall
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)
@@ -63,29 +63,26 @@ endif
 APPS=edge
 APPS+=supernode
 APPS+=example_edge_embed
-APPS+=benchmark
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-all: $(APPS) $(DOCS)
+.PHONY: steps build push all clean install tools
+all: $(APPS) $(DOCS) tools
+
+tools: $(N2N_LIB)
+	$(MAKE) -C $@
 
 edge: edge.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
-	$(CC) $(CFLAGS) edge.c $(N2N_LIB) $(LIBS_EDGE) -o edge
+	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 supernode: sn.c $(N2N_LIB) n2n.h Makefile
-	$(CC) $(CFLAGS) sn.c $(N2N_LIB) $(LIBS_SN) -o supernode
-
-benchmark: benchmark.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
-	$(CC) $(CFLAGS) benchmark.c $(N2N_LIB) $(LIBS_EDGE) -o benchmark
-
-n2n-decode: n2n_decode.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
-	$(CC) $(CFLAGS) n2n_decode.c $(N2N_LIB) $(LIBS_EDGE) -lpcap -o n2n-decode
+	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_SN) -o $@
 
 example_edge_embed: example_edge_embed.c $(N2N_LIB) n2n.h
-	$(CC) $(CFLAGS) example_edge_embed.c $(N2N_LIB) $(LIBS_EDGE) -o example_edge_embed
+	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 .c.o: n2n.h n2n_transforms.h n2n_wire.h twofish.h Makefile
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c $< -o $@
 
 %.gz : %
 	gzip -c $< > $@
@@ -96,6 +93,7 @@ $(N2N_LIB): $(N2N_OBJS)
 
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test n2n-decode *.dSYM *~
+	$(MAKE) -C tools clean
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"
@@ -105,6 +103,7 @@ install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	$(INSTALL_DOC) edge.8.gz $(MAN8DIR)/
 	$(INSTALL_DOC) supernode.1.gz $(MAN1DIR)/
 	$(INSTALL_DOC) n2n.7.gz $(MAN7DIR)/
+	$(MAKE) -C tools install
 
 # Docker builder section
 DOCKER_IMAGE_NAME=ntop/supernode
@@ -140,5 +139,4 @@ push:
 		echo "Please pass TARGET_ARCHITECTURE, see README.md."; \
 	fi
 
-.PHONY: steps build push
 # End Docker builder section

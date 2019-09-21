@@ -6,11 +6,11 @@ configure.ac
 config.*
 Makefile
 autom4te.cache
-benchmark
 edge
-n2n-decode
 example_edge_embed
 supernode
+tools/n2n-benchmark
+tools/n2n-decode
 build
 packages/debian/debian/changelog
 packages/debian/debian/control
