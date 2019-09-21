@@ -81,6 +81,12 @@ target_link_libraries(edge n2n)
 add_executable(supernode sn.c)
 target_link_libraries(supernode n2n)
 
+install(TARGETS edge supernode
+        RUNTIME DESTINATION sbin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+       )
+
 # Tools
 include_directories(.)
 
@@ -91,13 +97,10 @@ find_library(PCAP_LIB pcap)
 if(PCAP_LIB)
   add_executable(n2n-decode tools/n2n_decode.c)
   target_link_libraries(n2n-decode n2n pcap)
+  install(TARGETS n2n-decode RUNTIME DESTINATION bin)
 endif()
 
-install(TARGETS edge supernode
-        RUNTIME DESTINATION sbin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-       )
+install(TARGETS n2n-benchmark RUNTIME DESTINATION bin)
 
 # Documentation
 if(DEFINED UNIX)
