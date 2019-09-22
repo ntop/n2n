@@ -707,7 +707,7 @@ int main(int argc, char* argv[]) {
 
 #ifndef WIN32
   if((ec.userid != 0) || (ec.groupid != 0)) {
-    traceEvent(TRACE_NORMAL, "Interface up. Dropping privileges to uid=%d, gid=%d",
+    traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
 	       (signed int)ec.userid, (signed int)ec.groupid);
 
     /* Finished with the need for root privileges. Drop to unprivileged user. */
