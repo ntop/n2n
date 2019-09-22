@@ -24,36 +24,10 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
-/* *************************************************** */
-
-static void read_mac(char *ifname, n2n_mac_t mac_addr) {
-  int _sock, res;
-  struct ifreq ifr;
-  macstr_t mac_addr_buf;
-
-  memset (&ifr,0,sizeof(struct ifreq));
-
-  /* Dummy socket, just to make ioctls with */
-  _sock=socket(PF_INET, SOCK_DGRAM, 0);
-  strcpy(ifr.ifr_name, ifname);
-  res = ioctl(_sock,SIOCGIFHWADDR,&ifr);
-  
-  if(res < 0) {
-    perror ("Get hw addr");
-    traceEvent(TRACE_ERROR, "Unable to read interfce %s MAC", ifname);
-  } else
-    memcpy(mac_addr, ifr.ifr_ifru.ifru_hwaddr.sa_data, 6);
-
-  traceEvent(TRACE_NORMAL, "Interface %s has MAC %s",
-	     ifname,
-	     macaddr_str(mac_addr_buf, mac_addr ));
-  close(_sock);
-}
-
 /* ********************************** */
 
 static int setup_ifname(int fd, const char *ifname, const char *ipaddr,
-          const char *netmask, const char *mac, int mtu) {
+          const char *netmask, uint8_t *mac, int mtu) {
   struct ifreq ifr;
 
   memset(&ifr, 0, sizeof(ifr));
@@ -61,14 +35,12 @@ static int setup_ifname(int fd, const char *ifname, const char *ipaddr,
   strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
   ifr.ifr_name[IFNAMSIZ-1] = '\0';
 
-  if(mac && mac[0]) {
-    str2mac((uint8_t *)ifr.ifr_hwaddr.sa_data, mac);
-    ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+  ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+  memcpy(ifr.ifr_hwaddr.sa_data, mac, 6);
 
-    if(ioctl(fd, SIOCSIFHWADDR, &ifr) == -1) {
-      traceEvent(TRACE_ERROR, "ioctl(SIOCSIFHWADDR) failed [%d]: %s", errno, strerror(errno));
-      return(-1);
-    }
+  if(ioctl(fd, SIOCSIFHWADDR, &ifr) == -1) {
+    traceEvent(TRACE_ERROR, "ioctl(SIOCSIFHWADDR) failed [%d]: %s", errno, strerror(errno));
+    return(-1);
   }
 
   ifr.ifr_addr.sa_family = AF_INET;
@@ -168,6 +140,23 @@ int tuntap_open(tuntap_dev *device,
   /* Store the device name for later reuse */
   strncpy(device->dev_name, ifr.ifr_name, MIN(IFNAMSIZ, N2N_IFNAMSIZ) );
 
+  if(device_mac && device_mac[0]) {
+    /* Use the user-provided MAC */
+    str2mac(device->mac_addr, device_mac);
+  } else {
+    /* Set an explicit random MAC to know the exact MAC in use. Manually
+     * reading the MAC address is not safe as it may change internally
+     * also after the TAP interface UP status has been notified. */
+    int i;
+
+    for(i = 0; i < 6; i++)
+      device->mac_addr[i] = rand();
+
+    device->mac_addr[0] &= ~0x01; /* Clear multicast bit */
+    device->mac_addr[0] |= 0x02;  /* Set locally-assigned bit */
+  }
+
+  /* Initialize Netlink socket */
   if((nl_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) == -1) {
     traceEvent(TRACE_ERROR, "netlink socket creation failed [%d]: %s", errno, strerror(errno));
     return -1;
@@ -198,7 +187,7 @@ int tuntap_open(tuntap_dev *device,
     return -1;
   }
 
-  if(setup_ifname(ioctl_fd, device->dev_name, device_ip, device_mask, device_mac, mtu) < 0) {
+  if(setup_ifname(ioctl_fd, device->dev_name, device_ip, device_mask, device->mac_addr, mtu) < 0) {
     close(nl_fd);
     close(ioctl_fd);
     close(device->fd);
@@ -240,7 +229,6 @@ int tuntap_open(tuntap_dev *device,
 
   device->ip_addr = inet_addr(device_ip);
   device->device_mask = inet_addr(device_mask);
-  read_mac(dev, device->mac_addr);
   return(device->fd);
 }
 

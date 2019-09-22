@@ -165,6 +165,9 @@ int start_edge(const n2n_edge_cmd_t* cmd)
     traceLevel = traceLevel < 0 ? 0 : traceLevel;   /* TRACE_ERROR */
     traceLevel = traceLevel > 4 ? 4 : traceLevel;   /* TRACE_DEBUG */
 
+    /* Random seed */
+    srand(time(NULL));
+
     if (-1 == edge_init(&eee) )
     {
         traceEvent( TRACE_ERROR, "Failed in edge_init" );

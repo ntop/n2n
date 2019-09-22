@@ -666,6 +666,9 @@ int main(int argc, char* argv[]) {
 
   traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
+  /* Random seed */
+  srand(time(NULL));
+
   if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
 
