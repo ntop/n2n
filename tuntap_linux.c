@@ -54,6 +54,8 @@ static int setup_ifname(int fd, const char *ifname, const char *ipaddr,
           const char *netmask, const char *mac, int mtu) {
   struct ifreq ifr;
 
+  memset(&ifr, 0, sizeof(ifr));
+
   strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
   ifr.ifr_name[IFNAMSIZ-1] = '\0';
 
