@@ -1816,6 +1816,7 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port,
       traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", tos, errno, strerror(errno));
   }
 
+#ifndef __APPLE__
   sockopt = (eee->conf.disable_pmtu_discovery) ? IP_PMTUDISC_DONT : IP_PMTUDISC_DO;
 
   if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_MTU_DISCOVER, &sockopt, sizeof(sockopt)) < 0)
@@ -1823,6 +1824,7 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port,
       (eee->conf.disable_pmtu_discovery) ? "disable" : "enable", errno, strerror(errno));
   else
     traceEvent(TRACE_DEBUG, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
+#endif
 
   eee->udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
   if(eee->udp_mgmt_sock < 0) {
