@@ -583,10 +583,11 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-N2N_VERSION_SHORT
-GIT_COMMITS
+RPM_SIGN_CMD
 DATE
 EXTN
+GIT_COMMITS
+N2N_VERSION_SHORT
 MACHINE
 APP
 target_alias
@@ -1668,6 +1669,10 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+# NOTE: this file is not actually used. You need to edit configure as well!
+N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
+GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
+
 MACHINE=`uname -m`
 SHORT_MACHINE=`uname -m | cut -b1-3`
 
@@ -1685,7 +1690,7 @@ else
        if test $SHORT_MACHINE = "mip"; then
          EXTN="mips"
          EXTRA_DEPS=""
-       else	
+       else
          EXTN="i386"
        fi
      fi
@@ -1693,10 +1698,17 @@ else
 fi
 
 APP=n2n
-N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
-GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
 DATE=`date -R`
 
+CENTOS_RELEASE=`cat /etc/centos-release | cut -d ' ' -f 3|cut -d '.' -f 1`
+if test $CENTOS_RELEASE = "release"; then
+  CENTOS_RELEASE=`cat /etc/centos-release | cut -d ' ' -f 4|cut -d '.' -f 1`
+fi
+
+RPM_SIGN_CMD="rpm --addsign"
+if test "$CENTOS_RELEASE" -ne 8; then
+  RPM_SIGN_CMD="./rpm-sign.exp"
+fi
 
 
 
