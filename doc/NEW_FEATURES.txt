@@ -3,19 +3,3 @@ Between 2.0.x and 2.1.x
 
 * Better ming Windows build support.
 * Added -E flag to allow multicast ethernet traffic.
-
-* Added -L flag to allow set TTL for registration packet.
-This is an advanced flag to make sure that the registration packet is dropped immediately when it goes out of local nat
-so that it will not trigger some firewall behavior on target peer. Actually, the registration packet is only expected to
-make local nat UDP hole and is not expected to reach the target peer, see https://tools.ietf.org/html/rfc5389.
-To achieve this, the flag should be set as nat level + 1. For example, if we have 2 layer nat in local, we should set
--L 3.
-Usually we know exactly how much nat layers in local.
-If we are not sure how much nat layers in local, we can use traceroute on Linux to check. Following example shows a local
-single layer nat because on second jump it shows a public ip address. In this case it should set -L 2.
-$ /usr/sbin/traceroute -w1 8.8.8.8
-traceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets
- 1  192.168.3.1 (192.168.3.1)  0.464 ms  0.587 ms  0.719 ms
- 2  112.65.17.217 (112.65.17.217)  5.269 ms  7.031 ms  8.666 ms
-
-But this method is not always work due to various local network device policy.
