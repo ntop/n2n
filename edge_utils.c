@@ -144,6 +144,49 @@ static const char* transop_str(enum n2n_transform tr) {
 
 /* ************************************** */
 
+/** Destination 01:00:5E:00:00:00 - 01:00:5E:7F:FF:FF is multicast ethernet.
+ */
+static int is_ethMulticast(const void * buf, size_t bufsize) {
+  int retval = 0;
+
+  /* Match 01:00:5E:00:00:00 - 01:00:5E:7F:FF:FF */
+  if(bufsize >= sizeof(ether_hdr_t)) {
+      /* copy to aligned memory */
+      ether_hdr_t eh;
+      memcpy(&eh, buf, sizeof(ether_hdr_t));
+
+      if((0x01 == eh.dhost[0]) &&
+	 (0x00 == eh.dhost[1]) &&
+	 (0x5E == eh.dhost[2]) &&
+	 (0 == (0x80 & eh.dhost[3])))
+	  retval = 1; /* This is an ethernet multicast packet [RFC1112]. */
+    }
+
+  return retval;
+}
+
+/* ************************************** */
+
+/** Destination MAC 33:33:0:00:00:00 - 33:33:FF:FF:FF:FF is reserved for IPv6
+ *  neighbour discovery.
+ */
+static int is_ip6_discovery(const void * buf, size_t bufsize) {
+  int retval = 0;
+
+  if(bufsize >= sizeof(ether_hdr_t)) {
+      /* copy to aligned memory */
+      ether_hdr_t eh;
+
+      memcpy(&eh, buf, sizeof(ether_hdr_t));
+
+      if((0x33 == eh.dhost[0]) && (0x33 == eh.dhost[1]))
+	  retval = 1; /* This is an IPv6 multicast packet [RFC2464]. */
+    }
+  return retval;
+}
+
+/* ************************************** */
+
 /** Initialise an edge to defaults.
  *
  *  This also initialises the NULL transform operation opstruct.
@@ -903,14 +946,20 @@ static int handle_PACKET(n2n_edge_t * eee,
     rx_transop_id = (n2n_transform_t)pkt->transform;
 
     if(rx_transop_id == eee->conf.transop_id) {
+        uint8_t is_multicast;
 	eth_payload = decodebuf;
 	eh = (ether_hdr_t*)eth_payload;
 	eth_size = eee->transop.rev(&eee->transop,
 						    eth_payload, N2N_PKT_BUF_SIZE,
 						    payload, psize, pkt->srcMac);
 	++(eee->transop.rx_cnt); /* stats */
+	is_multicast = (is_ip6_discovery(eth_payload, eth_size) || is_ethMulticast(eth_payload, eth_size));
 
-	if(!(eee->conf.allow_routing)) {
+	if(eee->conf.drop_multicast && is_multicast) {
+	  traceEvent(TRACE_INFO, "Dropping RX multicast");
+	  return(-1);
+        } else if((!eee->conf.allow_routing) && (!is_multicast)) {
+	  /* Check if it is a routed packet */
 	  if((ntohs(eh->type) == 0x0800) && (eth_size >= ETH_FRAMESIZE + IP4_MIN_SIZE)) {
 	    uint32_t *dst = (uint32_t*)&eth_payload[ETH_FRAMESIZE + IP4_DSTOFFSET];
 	    u_int8_t *dst_mac = (u_int8_t*)eth_payload;
@@ -1084,49 +1133,6 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 
   /* sendlen = */ sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 			 (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
-}
-
-/* ************************************** */
-
-/** Destination MAC 33:33:0:00:00:00 - 33:33:FF:FF:FF:FF is reserved for IPv6
- *  neighbour discovery.
- */
-static int is_ip6_discovery(const void * buf, size_t bufsize) {
-  int retval = 0;
-
-  if(bufsize >= sizeof(ether_hdr_t)) {
-      /* copy to aligned memory */
-      ether_hdr_t eh;
-
-      memcpy(&eh, buf, sizeof(ether_hdr_t));
-
-      if((0x33 == eh.dhost[0]) && (0x33 == eh.dhost[1]))
-	  retval = 1; /* This is an IPv6 multicast packet [RFC2464]. */
-    }
-  return retval;
-}
-
-/* ************************************** */
-
-/** Destination 01:00:5E:00:00:00 - 01:00:5E:7F:FF:FF is multicast ethernet.
- */
-static int is_ethMulticast(const void * buf, size_t bufsize) {
-  int retval = 0;
-
-  /* Match 01:00:5E:00:00:00 - 01:00:5E:7F:FF:FF */
-  if(bufsize >= sizeof(ether_hdr_t)) {
-      /* copy to aligned memory */
-      ether_hdr_t eh;
-      memcpy(&eh, buf, sizeof(ether_hdr_t));
-
-      if((0x01 == eh.dhost[0]) &&
-	 (0x00 == eh.dhost[1]) &&
-	 (0x5E == eh.dhost[2]) &&
-	 (0 == (0x80 & eh.dhost[3])))
-	  retval = 1; /* This is an ethernet multicast packet [RFC1112]. */
-    }
-
-  return retval;
 }
 
 /* ************************************** */
@@ -1370,7 +1376,7 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
 	  )
 	 )
         {
-	  traceEvent(TRACE_DEBUG, "Dropping multicast");
+	  traceEvent(TRACE_INFO, "Dropping TX multicast");
         }
       else
         {
