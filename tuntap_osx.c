@@ -46,7 +46,7 @@ int tuntap_open(tuntap_dev *device /* ignored */,
   }
   
   if(device->fd < 0) {
-    traceEvent(TRACE_ERROR, "Unable to open tap device %s", tap_device);
+    traceEvent(TRACE_ERROR, "Unable to open any tap devices /dev/tap0 through /dev/tap254");
     traceEvent(TRACE_ERROR, "Please read https://github.com/ntop/n2n/blob/dev/doc/n2n_on_MacOS.txt");
     return(-1);
   } else {
