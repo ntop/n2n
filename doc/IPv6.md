@@ -1,3 +1,5 @@
+# IPv6
+
 n2n supports the carriage of IPv6 packets within the n2n tunnel. N2n does not
 yet use IPv6 for transport between edges and supernodes.
 
@@ -5,7 +7,7 @@ To make IPv6 carriage work you need to manually add IPv6 addresses to the TAP
 interfaces at each end. There is currently no way to specify an IPv6 address on
 the edge command line.
 
-eg. under linux:
+Eg. under linux:
 
 on hostA:
 `[hostA] $ /sbin/ip -6 addr add fc00:abcd:1234::7/48 dev n2n0`
