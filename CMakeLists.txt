@@ -54,6 +54,7 @@ endif()
 # Add SHARED to build DLL
 add_library(n2n n2n.c
                 edge_utils.c
+                sn_utils.c
                 wire.c
                 minilzo.c
                 twofish.c
@@ -81,6 +82,15 @@ target_link_libraries(edge n2n)
 
 add_executable(supernode sn.c)
 target_link_libraries(supernode n2n)
+
+add_executable(example_edge_embed_quick_edge_init example_edge_embed_quick_edge_init.c)
+target_link_libraries(example_edge_embed_quick_edge_init n2n)
+
+add_executable(example_edge_embed example_edge_embed.c)
+target_link_libraries(example_edge_embed n2n)
+
+add_executable(example_sn_embed example_sn_embed.c)
+target_link_libraries(example_sn_embed n2n)
 
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin

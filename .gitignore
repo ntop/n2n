@@ -7,7 +7,9 @@ config.*
 Makefile
 autom4te.cache
 edge
+example_edge_embed_quick_edge_init
 example_edge_embed
+example_sn_embed
 supernode
 tools/n2n-benchmark
 tools/n2n-decode
@@ -20,3 +22,4 @@ packages/etc/systemd/system/edge-ntopng@.service
 packages/etc/systemd/system/edge.service
 packages/etc/systemd/system/edge@.service
 packages/etc/systemd/system/supernode.service
+Info.plist
