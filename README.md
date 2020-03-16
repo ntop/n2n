@@ -75,7 +75,7 @@ $ sudo ip route add default via 192.168.100.1
 
 This process can be greatly simplified by using the [n2n_gateway.sh](doc/n2n_gateway.sh) script.
 
-See [routing.md](doc/routing.md) for other use cases and in depth explanation.
+See [Routing.md](doc/Routing.md) for other use cases and in depth explanation.
 
 ## Manual Compilation
 
@@ -90,7 +90,7 @@ make
 make install
 ```
 
-For Windows, check out [windows.md](doc/windows.md) for compilation and run instuctions.
+For Windows, check out [Windows.md](doc/Windows.md) for compilation and run instuctions.
 For MacOS, check out [macOS.md](doc/macOS.md).
 
 ## Running edge as a service
@@ -144,7 +144,7 @@ Here is a list of third-party projects connected to this repository.
 - N2N for Android: [hin2n](https://github.com/switch-iot/hin2n)
 - N2N v1 and v2 version from meyerd: [meyerd n2n](https://github.com/meyerd/n2n)
 - Docker images: [Docker Hub](https://hub.docker.com/r/supermock/supernode/)
-- Go bindings, management daemons and CLIs for n2n edges and supernodes, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n/)
+- Go bindings, management daemons and CLIs for n2n edges and supernodes, Docker, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n/)
 
 ---
 
