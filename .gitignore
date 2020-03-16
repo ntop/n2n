@@ -22,4 +22,4 @@ packages/etc/systemd/system/edge-ntopng@.service
 packages/etc/systemd/system/edge.service
 packages/etc/systemd/system/edge@.service
 packages/etc/systemd/system/supernode.service
-Info.plist
+*dSYM*
