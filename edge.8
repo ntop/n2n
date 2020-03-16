@@ -4,7 +4,7 @@ edge \- n2n edge node daemon
 .SH SYNOPSIS
 .B edge
 [\-d <tun device>] \-a <tun IP address> \-c <community> {\-k <encrypt key>|\-K <keyfile>} 
-[\-s <netmask>] \-l <supernode host:port> 
+[\-s <netmask>] \-l <supernode host:port> [\-L <reg_ttl>]
 [\-p <local port>] [\-u <UID>] [\-g <GID>] [-f] [\-m <MAC address>] [\-r] [\-v]
 .SH DESCRIPTION
 N2N is a peer-to-peer VPN system. Edge is the edge node daemon for n2n which
@@ -110,6 +110,26 @@ accept packets destined for multicast ethernet MAC addresses. These addresses
 are used in multicast ethernet and IPv6 neighbour discovery. If this option is
 not present these multicast packets are discarded as most users do not need or
 understand them.
+.TP
+\-L
+set the TTL for the hole punching packet. This is an advanced flag to make
+sure that the registration packet is dropped immediately when it goes out of
+local nat so that it will not trigger some firewall behavior on target peer.
+Actually, the registration packet is only expected to make local nat UDP hole
+and is not expected to reach the target peer, see
+https://tools.ietf.org/html/rfc5389. To achieve this, the flag should be set as
+nat level + 1. For example, if we have 2 layer nat in local, we should set -L 3.
+Usually we know exactly how much nat layers in local.
+If we are not sure how much nat layers in local, we can use traceroute on
+Linux to check. The following example shows a local single layer nat because on
+second jump it shows a public ip address. In this case it should set -L 2.
+
+$ /usr/sbin/traceroute -w1 8.8.8.8
+traceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets
+ 1  192.168.3.1 (192.168.3.1)  0.464 ms  0.587 ms  0.719 ms
+ 2  112.65.17.217 (112.65.17.217)  5.269 ms  7.031 ms  8.666 ms
+
+But this method does not always work due to various local network device policy.
 .TP
 \-v
 more verbose logging (may be specified several times for more verbosity).

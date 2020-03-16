@@ -1,5 +1,6 @@
 project(n2n)
 cmake_minimum_required(VERSION 2.6)
+include(CheckFunctionExists)
 
 # N2n information
 set(N2N_VERSION 2.5.1)
@@ -16,6 +17,8 @@ if(NOT DEFINED N2N_OPTION_AES)
 set(N2N_OPTION_AES ON)
 endif(NOT DEFINED N2N_OPTION_AES)
 
+add_definitions(-DCMAKE_BUILD)
+add_definitions(-DGIT_RELEASE="" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${CMAKE_SYSTEM}")
 add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 
 if(N2N_OPTION_AES)
@@ -79,14 +82,32 @@ target_link_libraries(edge n2n)
 add_executable(supernode sn.c)
 target_link_libraries(supernode n2n)
 
-add_executable(benchmark benchmark.c)
-target_link_libraries(benchmark n2n)
-
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
        )
+
+# Tools
+include_directories(.)
+
+add_executable(n2n-benchmark tools/benchmark.c)
+target_link_libraries(n2n-benchmark n2n)
+
+find_library(PCAP_LIB pcap)
+if(PCAP_LIB)
+  add_executable(n2n-decode tools/n2n_decode.c)
+  target_link_libraries(n2n-decode n2n pcap)
+  install(TARGETS n2n-decode RUNTIME DESTINATION bin)
+
+  set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
+  check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
+  IF(HAVE_PCAP_IMMEDIATE_MODE)
+    ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
+  ENDIF()
+endif()
+
+install(TARGETS n2n-benchmark RUNTIME DESTINATION bin)
 
 # Documentation
 if(DEFINED UNIX)

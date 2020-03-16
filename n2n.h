@@ -42,7 +42,9 @@
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_SETUID
 #else
+#ifndef CMAKE_BUILD
 #include "config.h"
+#endif
 #endif
 
 #define PACKAGE_BUILDDATE (__DATE__ " " __TIME__)
@@ -215,6 +217,7 @@ typedef struct n2n_edge_conf {
   uint8_t             tos;                    /** TOS for sent packets */
   char                *encrypt_key;
   int                 register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
+  int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
   int                 local_port;
   int                 mgmt_port;
 } n2n_edge_conf_t;
@@ -261,6 +264,7 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 /* Log */
 void setTraceLevel(int level);
 void setUseSyslog(int use_syslog);
+void setTraceFile(FILE *f);
 int getTraceLevel();
 void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
 

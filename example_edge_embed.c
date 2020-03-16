@@ -35,6 +35,9 @@ int main(int argc, char* argv[]) {
   /* Increase tracelevel to see what's happening */
   setTraceLevel(10);
 
+  /* Random seed */
+  srand(time(NULL));
+
   /* 
      NOTE
 

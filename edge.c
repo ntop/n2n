@@ -140,10 +140,10 @@ static void help() {
 	 "-l <supernode host:port>\n"
 	 "    "
 	 "[-p <local port>] [-M <mtu>] "
-#ifdef __linux__
+#ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-t <mgmt port>] [-A] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -155,6 +155,7 @@ static void help() {
   printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
+  printf("-L <reg_ttl>             | TTL for registration packet when UDP NAT hole punching through supernode (default 0 for not set )\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
 #ifndef WIN32
   printf("-u <UID>                 | User ID (numeric) to use when privileges are dropped.\n");
@@ -166,8 +167,8 @@ static void help() {
   printf("-m <MAC address>         | Fix MAC address for the TAP interface (otherwise it may be random)\n"
          "                         | eg. -m 01:02:03:04:05:06\n");
   printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
-#ifdef __linux__
-  printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but"
+#ifndef __APPLE__
+  printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but\n"
          "                         | causes connections stall when not properly supported.\n");
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
@@ -257,7 +258,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
-#ifdef __linux__
+#ifndef __APPLE__
   case 'D' : /* enable PMTU discovery */
     {
       conf->disable_pmtu_discovery = 0;
@@ -301,6 +302,10 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
   case 'i': /* supernode registration interval */
     conf->register_interval = atoi(optargument);
+    break;
+
+  case 'L': /* supernode registration interval */
+    conf->register_ttl = atoi(optarg);
     break;
 
 #if defined(N2N_CAN_NAME_IFACE)
@@ -393,7 +398,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "K:k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:S"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:"
 #ifdef N2N_HAVE_AES
 			 "A"
 #endif
@@ -672,6 +677,9 @@ int main(int argc, char* argv[]) {
 
   traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
+  /* Random seed */
+  srand(time(NULL));
+
   if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
 
@@ -713,7 +721,7 @@ int main(int argc, char* argv[]) {
 
 #ifndef WIN32
   if((ec.userid != 0) || (ec.groupid != 0)) {
-    traceEvent(TRACE_NORMAL, "Interface up. Dropping privileges to uid=%d, gid=%d",
+    traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
 	       (signed int)ec.userid, (signed int)ec.groupid);
 
     /* Finished with the need for root privileges. Drop to unprivileged user. */

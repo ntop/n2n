@@ -31,12 +31,23 @@ fi
 APP=n2n
 DATE=`date -R`
 
+CENTOS_RELEASE=`cat /etc/centos-release | cut -d ' ' -f 3|cut -d '.' -f 1`
+if test $CENTOS_RELEASE = "release"; then
+  CENTOS_RELEASE=`cat /etc/centos-release | cut -d ' ' -f 4|cut -d '.' -f 1`
+fi
+
+RPM_SIGN_CMD="rpm --addsign"
+if test "$CENTOS_RELEASE" -ne 8; then
+  RPM_SIGN_CMD="./rpm-sign.exp"
+fi
+
 AC_SUBST(APP)
 AC_SUBST(MACHINE)
 AC_SUBST(N2N_VERSION_SHORT)
 AC_SUBST(GIT_COMMITS)
 AC_SUBST(EXTN)
 AC_SUBST(DATE)
+AC_SUBST(RPM_SIGN_CMD)
 
 AC_CONFIG_FILES(n2n.spec)
 AC_CONFIG_FILES(../etc/systemd/system/edge.service)
