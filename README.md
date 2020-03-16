@@ -97,7 +97,7 @@ make install
 
 For Windows, check out [Windows.md](doc/Windows.md) for compilation and run instuctions.
 
-For MacOS, check out [n2n_on_MacOS.txt](https://github.com/ntop/n2n/blob/dev/doc/n2n_on_MacOS.txt).
+For MacOS, check out [macOS.md](https://github.com/ntop/n2n/blob/dev/doc/macOS.md).
 
 Running edge as a service
 -------------------------
