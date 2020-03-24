@@ -598,6 +598,7 @@ static void daemonize() {
 
 static int keep_on_running;
 
+#ifdef __linux__
 #ifdef WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
@@ -619,6 +620,7 @@ static void term_handler(int sig)
   return(TRUE);
 #endif
 }
+#endif
 
 /* *************************************************** */
 
