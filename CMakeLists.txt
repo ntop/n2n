@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 include(CheckFunctionExists)
 
 # N2n information
-set(N2N_VERSION 2.5.1)
+set(N2N_VERSION 2.6.0)
 set(N2N_OSNAME ${CMAKE_SYSTEM})
 
 # N2n specific params
