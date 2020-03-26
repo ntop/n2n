@@ -155,6 +155,9 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 			    evp_ciphertext_len = evp_len;
 		            if (1 == EVP_EncryptFinal_ex(ctx, outbuf + TRANSOP_AES_PREAMBLE_SIZE + evp_len, &evp_len)) {
 	    		        evp_ciphertext_len += evp_len;
+				if ( evp_ciphertext_len != len2)
+				    traceEvent (TRACE_ERROR, "encode_aes openssl encryption: encrypted %u bytes where %u were expected.\n",
+				                             evp_ciphertext_len, len2);
 			    } else
 			        traceEvent(TRACE_ERROR, "encode_aes openssl final encryption: %s\n", openssl_err_as_string());
 			} else
@@ -223,10 +226,13 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 	    		        evp_plaintext_len = evp_len;
 			        if (1 == EVP_DecryptFinal_ex(ctx, assembly + evp_len, &evp_len)) {
 			            evp_plaintext_len += evp_len;
+				    if ( evp_plaintext_len != len)
+				        traceEvent (TRACE_ERROR, "encode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
+				                                 evp_plaintext_len, len);
 			        } else
-			            traceEvent(TRACE_ERROR, "decode_aes openssl final encryption: %s\n", openssl_err_as_string());
+			            traceEvent(TRACE_ERROR, "decode_aes openssl final decryption: %s\n", openssl_err_as_string());
 			    } else
-			        traceEvent(TRACE_ERROR, "decode_aes openssl encrpytion: %s\n", openssl_err_as_string());
+			        traceEvent(TRACE_ERROR, "decode_aes openssl decrpytion: %s\n", openssl_err_as_string());
 		        } else
 		            traceEvent(TRACE_ERROR, "decode_aes openssl padding setup: %s\n", openssl_err_as_string());
 		    } else
