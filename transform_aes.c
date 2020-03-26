@@ -227,7 +227,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 			        if (1 == EVP_DecryptFinal_ex(ctx, assembly + evp_len, &evp_len)) {
 			            evp_plaintext_len += evp_len;
 				    if ( evp_plaintext_len != len)
-				        traceEvent (TRACE_ERROR, "encode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
+				        traceEvent (TRACE_ERROR, "decode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
 				                                 evp_plaintext_len, len);
 			        } else
 			            traceEvent(TRACE_ERROR, "decode_aes openssl final decryption: %s\n", openssl_err_as_string());
