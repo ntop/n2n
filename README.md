@@ -9,7 +9,7 @@ In order to start using N2N, two elements are required:
 
 A virtual network shared between multiple edge nodes in n2n is called a _community_. A single supernode can relay multiple communities and a single PC can be part of multiple communities at the same time. An encryption key can be used by the edge nodes to encrypt the packets within their community.
 
-N2N tries to enstablish a direct P2P connection between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
+N2N tries to establish a direct P2P connection between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
 
 ## Quick Setup
 
@@ -29,7 +29,7 @@ $ sudo edge -c mynetwork -k mysecretpass -a 192.168.100.2 -f -l supernode.ntop.o
 
 Now the two hosts can ping each other.
 
-**IMPORTANT** It is strongly adviced to choose a custom community name (`-c`) and a secret encryption key (`-k`) in order to prevent other users to connect to your PC. For privacy and to reduce the above server load, it is also suggested to set up a custom supernode as explained below.
+**IMPORTANT** It is strongly advised to choose a custom community name (`-c`) and a secret encryption key (`-k`) in order to prevent other users to connect to your PC. For privacy and to reduce the above server load, it is also suggested to set up a custom supernode as explained below.
 
 ## Setting up a custom Supernode
 
@@ -128,12 +128,12 @@ A benchmark of the encryption methods is available when compiled from source wit
 
 ## Contribution
 
-You can contribute to n2n in variuos ways:
+You can contribute to n2n in various ways:
 
 - Update an [open issue](https://github.com/ntop/n2n/issues) or create a new one with detailed information
 - Propose new features
 - Improve the documentation
-- Provide pull requests with enhancenents
+- Provide pull requests with enhancements
 
 For details about the internals of n2n check out [Hacking guide](https://github.com/ntop/n2n/blob/dev/doc/HACKING).
 

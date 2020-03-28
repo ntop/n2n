@@ -7,7 +7,7 @@ GIT_COMMITS=@GIT_COMMITS@
 
 CC?=gcc
 DEBUG?=-g3
-#OPTIMIZATION?=-O2
+OPTIMIZATION?=-O3
 WARN?=-Wall
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options

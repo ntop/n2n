@@ -913,6 +913,7 @@ static int loadFromFile(const char *path, n2n_sn_t *sss) {
 
 /* *************************************************** */
 
+#ifdef __linux__
 static void dump_registrations(int signo) {
   struct sn_community *comm, *ctmp;
   struct peer_info *list, *tmp;
@@ -941,11 +942,13 @@ static void dump_registrations(int signo) {
 
   traceEvent(TRACE_NORMAL, "====================================");
 }
+#endif
 
 /* *************************************************** */
 
 static int keep_running;
 
+#ifdef __linux__
 #ifdef WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
@@ -967,6 +970,7 @@ static void term_handler(int sig)
   return(TRUE);
 #endif
 }
+#endif
 
 /* *************************************************** */
 
