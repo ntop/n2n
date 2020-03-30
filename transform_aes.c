@@ -43,6 +43,8 @@
 typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
 
 typedef struct transop_aes {
+    EVP_CIPHER_CTX	*enc_ctx;	/* openssl's reusable evp_* encryption context */
+    EVP_CIPHER_CTX	*dec_ctx;	/* openssl's reusable evp_* decryption context */
     const EVP_CIPHER	*cipher;	/* cipher to use: e.g. EVP_aes_128_cbc */
     uint8_t  		key[32];	/* the pure key data for payload encryption & decryption */
     AES_KEY             iv_enc_key;     /* key used to encrypt the IV */
@@ -51,6 +53,9 @@ typedef struct transop_aes {
 
 static int transop_deinit_aes(n2n_trans_op_t *arg) {
     transop_aes_t *priv = (transop_aes_t *)arg->priv;
+
+    EVP_CIPHER_CTX_free(priv->enc_ctx);
+    EVP_CIPHER_CTX_free(priv->dec_ctx);
 
     if(priv)
         free(priv);
@@ -67,7 +72,7 @@ char *openssl_err_as_string (void) {
     size_t len = BIO_get_mem_data (bio, &buf);
     char *ret = (char *) calloc (1, 1 + len);
     if (ret)
-      memcpy (ret, buf, len);
+        memcpy (ret, buf, len);
     BIO_free (bio);
     return ret;
 }
@@ -145,30 +150,27 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 
             set_aes_cbc_iv(priv, enc_ivec, iv_seed);
 
-    	    EVP_CIPHER_CTX *ctx;
+    	    EVP_CIPHER_CTX *ctx = priv->enc_ctx;
 	    int evp_len;
 	    int evp_ciphertext_len;
-	    if ((ctx = EVP_CIPHER_CTX_new())) {
-		if (1 == EVP_EncryptInit_ex(ctx, priv->cipher, NULL, priv->key, enc_ivec)) {
-		    if (1 == EVP_CIPHER_CTX_set_padding(ctx, 0)) {
-		        if (1 == EVP_EncryptUpdate(ctx, outbuf + TRANSOP_AES_PREAMBLE_SIZE, &evp_len, assembly, len2)) {
-			    evp_ciphertext_len = evp_len;
-		            if (1 == EVP_EncryptFinal_ex(ctx, outbuf + TRANSOP_AES_PREAMBLE_SIZE + evp_len, &evp_len)) {
-	    		        evp_ciphertext_len += evp_len;
-				if ( evp_ciphertext_len != len2)
-				    traceEvent (TRACE_ERROR, "encode_aes openssl encryption: encrypted %u bytes where %u were expected.\n",
-				                             evp_ciphertext_len, len2);
-			    } else
-			        traceEvent(TRACE_ERROR, "encode_aes openssl final encryption: %s\n", openssl_err_as_string());
+	    if (1 == EVP_EncryptInit_ex(ctx, priv->cipher, NULL, priv->key, enc_ivec)) {
+		if (1 == EVP_CIPHER_CTX_set_padding(ctx, 0)) {
+		    if (1 == EVP_EncryptUpdate(ctx, outbuf + TRANSOP_AES_PREAMBLE_SIZE, &evp_len, assembly, len2)) {
+			evp_ciphertext_len = evp_len;
+		        if (1 == EVP_EncryptFinal_ex(ctx, outbuf + TRANSOP_AES_PREAMBLE_SIZE + evp_len, &evp_len)) {
+	    		    evp_ciphertext_len += evp_len;
+			    if ( evp_ciphertext_len != len2)
+				traceEvent (TRACE_ERROR, "encode_aes openssl encryption: encrypted %u bytes where %u were expected.\n",
+				                         evp_ciphertext_len, len2);
 			} else
-			    traceEvent(TRACE_ERROR, "encode_aes openssl encrpytion: %s\n", openssl_err_as_string());
+			    traceEvent(TRACE_ERROR, "encode_aes openssl final encryption: %s\n", openssl_err_as_string());
 		    } else
-		        traceEvent(TRACE_ERROR, "encode_aes openssl padding setup: %s\n", openssl_err_as_string());
+			traceEvent(TRACE_ERROR, "encode_aes openssl encrpytion: %s\n", openssl_err_as_string());
 		} else
-	            traceEvent(TRACE_ERROR, "encode_aes openssl init: %s\n", openssl_err_as_string());
-            } else
-	        traceEvent(TRACE_ERROR, "encode_aes openssl context creation: %s\n", openssl_err_as_string());
-	    EVP_CIPHER_CTX_free(ctx);
+		    traceEvent(TRACE_ERROR, "encode_aes openssl padding setup: %s\n", openssl_err_as_string());
+	    } else
+	        traceEvent(TRACE_ERROR, "encode_aes openssl init: %s\n", openssl_err_as_string());
+	    EVP_CIPHER_CTX_reset(ctx);
 
             len2 += TRANSOP_AES_PREAMBLE_SIZE; /* size of data carried in UDP. */
         } else
@@ -216,30 +218,27 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 
                 set_aes_cbc_iv(priv, dec_ivec, iv_seed);
 
-	        EVP_CIPHER_CTX *ctx;
+	        EVP_CIPHER_CTX *ctx = priv->dec_ctx;
 	        int evp_len;
 	        int evp_plaintext_len;
-	        if ((ctx = EVP_CIPHER_CTX_new())) {
-	            if (1 == EVP_DecryptInit_ex(ctx, priv->cipher, NULL, priv->key, dec_ivec)) {
-		        if (1 == EVP_CIPHER_CTX_set_padding(ctx, 0)) {
-		            if (1 == EVP_DecryptUpdate(ctx, assembly, &evp_len, inbuf + TRANSOP_AES_PREAMBLE_SIZE, len)) {
-	    		        evp_plaintext_len = evp_len;
-			        if (1 == EVP_DecryptFinal_ex(ctx, assembly + evp_len, &evp_len)) {
-			            evp_plaintext_len += evp_len;
-				    if ( evp_plaintext_len != len)
-				        traceEvent (TRACE_ERROR, "decode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
-				                                 evp_plaintext_len, len);
-			        } else
-			            traceEvent(TRACE_ERROR, "decode_aes openssl final decryption: %s\n", openssl_err_as_string());
+	        if (1 == EVP_DecryptInit_ex(ctx, priv->cipher, NULL, priv->key, dec_ivec)) {
+		    if (1 == EVP_CIPHER_CTX_set_padding(ctx, 0)) {
+		        if (1 == EVP_DecryptUpdate(ctx, assembly, &evp_len, inbuf + TRANSOP_AES_PREAMBLE_SIZE, len)) {
+	    	            evp_plaintext_len = evp_len;
+			    if (1 == EVP_DecryptFinal_ex(ctx, assembly + evp_len, &evp_len)) {
+			        evp_plaintext_len += evp_len;
+			        if ( evp_plaintext_len != len)
+				    traceEvent (TRACE_ERROR, "decode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
+				                             evp_plaintext_len, len);
 			    } else
-			        traceEvent(TRACE_ERROR, "decode_aes openssl decrpytion: %s\n", openssl_err_as_string());
-		        } else
-		            traceEvent(TRACE_ERROR, "decode_aes openssl padding setup: %s\n", openssl_err_as_string());
+			        traceEvent(TRACE_ERROR, "decode_aes openssl final decryption: %s\n", openssl_err_as_string());
+			} else
+			    traceEvent(TRACE_ERROR, "decode_aes openssl decrpytion: %s\n", openssl_err_as_string());
 		    } else
-	                traceEvent(TRACE_ERROR, "decode_aes openssl init: %s\n", openssl_err_as_string());
-	        } else
-	            traceEvent(TRACE_ERROR, "decode_aes openssl context creation: %s\n", openssl_err_as_string());
-	        EVP_CIPHER_CTX_free(ctx);
+		        traceEvent(TRACE_ERROR, "decode_aes openssl padding setup: %s\n", openssl_err_as_string());
+		} else
+	            traceEvent(TRACE_ERROR, "decode_aes openssl init: %s\n", openssl_err_as_string());
+		EVP_CIPHER_CTX_reset(ctx);
 
                 /* last byte is how much was padding: max value should be
                  * AES_BLOCKSIZE-1 */
@@ -369,7 +368,17 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   }
   ttt->priv = priv;
 
-  /* Setup the key */
+  /* Setup openssl's reusable evp_* contexts for encryption and decryption*/
+  if (!(priv->enc_ctx = EVP_CIPHER_CTX_new())) {
+    traceEvent(TRACE_ERROR, "openssl's evp_* encryption context creation: %s\n", openssl_err_as_string());
+    return(-1);
+  }
+  if (!(priv->dec_ctx = EVP_CIPHER_CTX_new())) {
+    traceEvent(TRACE_ERROR, "openssl's evp_* decryption context creation: %s\n", openssl_err_as_string());
+    return(-1);
+  }
+
+  /* Setup the cipher and key */
   return(setup_aes_key(priv, encrypt_key, encrypt_key_len));
 }
 
