@@ -1,5 +1,4 @@
-MTU
----
+# MTU
 
 The MTU of the VPN interface is set to a lower value (rather than the standard
 1500 B value) to avoid excessive fragmentation on the datagram sent on internet.
@@ -27,8 +26,7 @@ MTU of the path between two hosts. Knowing the PMTU is also useful for a sender 
 avoid fragmentation at the IP level. Trying to find the biggest MTU is useful since it allows to
 maximize bandwidth.
 
-PMTU Discovery Failures
------------------------
+## PMTU Discovery Failures
 
 Most operating systems try to periodically discover the PMTU by using a PMTU discovery algorithm.
 This involves setting the DF (don't fragment) flag on the IP packets. When a large IP packet exceeds
@@ -40,18 +38,15 @@ The main problem when this situation occurs is that the actual PMTU is unknown, 
 solution is not applicable. The user must manually specify a lower MTU for the VPN interface
 in order to solve the issue.
 
-n2n and MTU
------------
+## n2n and MTU
 
 n2n should work by default in different environments. For this reason, the following solution
 has been provided:
 
 - PMTU discovery is disabled when possible (via the IP_MTU_DISCOVER socket option). This avoid
   silently dropping a oversize packet due to the DF flag, however it possibly increments fragmentation on the path.
-
 - As examplained above, a lower MTU is set on the VPN interface, thus removing excessive fragmentation on
   the sender.
-
 - 1400 B is used instead of 1500 B as the reference value for the internet interface MTU.
   This essentially avoids fragmentation when the PMTU is >= 1400 B.
 

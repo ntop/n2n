@@ -1,6 +1,6 @@
-# Packaging
+# RPM Packaging
 
-```
+```bash
 ./autogen.sh
 ./configure
 make
