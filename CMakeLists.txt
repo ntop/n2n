@@ -92,7 +92,7 @@ install(TARGETS edge supernode
 include_directories(.)
 
 add_executable(n2n-benchmark tools/benchmark.c)
-target_link_libraries(n2n-benchmark n2n)
+target_link_libraries(n2n-benchmark n2n ${OPENSSL_LIBRARIES})
 
 find_library(PCAP_LIB pcap)
 if(PCAP_LIB)
