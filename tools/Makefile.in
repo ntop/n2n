@@ -17,9 +17,10 @@ endif
 LIBS_EDGE_OPT=@N2N_LIBS@
 LIBS_EDGE+=$(LIBS_EDGE_OPT)
 HEADERS=../n2n_wire.h ../n2n.h ../twofish.h ../n2n_transforms.h
-CFLAGS+=-I..
+CFLAGS+=-I.. @CFLAGS@
 LDFLAGS+=-L..
 CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN)
+LDFLAGS=@LDFLAGS@
 
 N2N_LIB=../libn2n.a
 
@@ -30,10 +31,10 @@ TOOLS+=@ADDITIONAL_TOOLS@
 all: $(TOOLS)
 
 n2n-benchmark: benchmark.c $(N2N_LIB) $(HEADERS)
-	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 n2n-decode: n2n_decode.c $(N2N_LIB) $(HEADERS)
-	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -lpcap -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -lpcap -o $@
 
 .c.o: $(HEADERS) ../Makefile Makefile
 	$(CC) $(CFLAGS) -c $< -o $@

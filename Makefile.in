@@ -16,10 +16,12 @@ PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finlin
 
 N2N_OBJS_OPT=
 LIBS_EDGE_OPT=@N2N_LIBS@
+CFLAGS=@CFLAGS@
+LDFLAGS=@LDFLAGS@
 
 OPENSSL_CFLAGS=$(shell pkg-config openssl; echo $$?)
 ifeq ($(OPENSSL_CFLAGS), 0)
-	CFLAGS+=$(shell pkg-config --cflags-only-I openssl)
+  CFLAGS+=$(shell pkg-config --cflags-only-I openssl)
 endif
 
 CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
@@ -75,19 +77,19 @@ tools: $(N2N_LIB)
 	$(MAKE) -C $@
 
 edge: edge.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
-	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 supernode: sn.c $(N2N_LIB) n2n.h Makefile
-	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_SN) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_SN) -o $@
 
 example_edge_embed_quick_edge_init: example_edge_embed_quick_edge_init.c $(N2N_LIB) n2n.h
-	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 example_sn_embed: example_sn_embed.c $(N2N_LIB) n2n.h
-	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 example_edge_embed: example_edge_embed.c $(N2N_LIB) n2n.h
-	$(CC) $(CFLAGS) $< $(N2N_LIB) $(LIBS_EDGE) -o $@
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 .c.o: n2n.h n2n_transforms.h n2n_wire.h twofish.h Makefile
 	$(CC) $(CFLAGS) -c $< -o $@
