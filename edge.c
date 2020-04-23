@@ -699,7 +699,8 @@ int main(int argc, char* argv[]) {
 
 #ifndef WIN32
   /* If running suid root then we need to setuid before using the force. */
-  setuid(0);
+  if(setuid(0) != 0)
+    traceEvent(TRACE_ERROR, "Unable to become root [%u/%s]", errno, strerror(errno)); 
   /* setgid(0); */
 #endif
 
