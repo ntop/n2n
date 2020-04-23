@@ -346,12 +346,11 @@ int main(int argc, char* argv[]) {
     return(5);
   }
 
-#ifdef __linux__
-  signal(SIGTERM, term_handler);
-  signal(SIGINT,  term_handler);
-#endif
 #ifdef WIN32
   SetConsoleCtrlHandler(term_handler, TRUE);
+#else
+  signal(SIGTERM, term_handler);
+  signal(SIGINT,  term_handler);
 #endif
 
   rv = run_packet_loop();
