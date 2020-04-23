@@ -224,6 +224,37 @@ typedef struct n2n_edge_conf {
 
 typedef struct n2n_edge n2n_edge_t; /* Opaque, see edge_utils.c */
 
+typedef struct sn_stats
+{
+    size_t errors;         /* Number of errors encountered. */
+    size_t reg_super;      /* Number of REGISTER_SUPER requests received. */
+    size_t reg_super_nak;  /* Number of REGISTER_SUPER requests declined. */
+    size_t fwd;            /* Number of messages forwarded. */
+    size_t broadcast;      /* Number of messages broadcast to a community. */
+    time_t last_fwd;       /* Time when last message was forwarded. */
+    time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
+} sn_stats_t;
+
+ typedef struct n2n_sn
+{
+    time_t start_time; /* Used to measure uptime. */
+    sn_stats_t stats;
+    int daemon;           /* If non-zero then daemonise. */
+    uint16_t lport;       /* Local UDP port to bind to. */
+    int sock;             /* Main socket for UDP traffic with edges. */
+    int mgmt_sock;        /* management socket. */
+    int lock_communities; /* If true, only loaded communities can be used. */
+    struct sn_community *communities;
+} n2n_sn_t;
+
+ struct sn_community
+{
+    char community[N2N_COMMUNITY_SIZE];
+    struct peer_info *edges; /* Link list of registered edges. */
+
+     UT_hash_handle hh; /* makes this structure hashable */
+};
+
 /* ************************************** */
 
 #ifdef __ANDROID_NDK__
@@ -315,5 +346,8 @@ int quick_edge_init(char *device_name, char *community_name,
 		    char *local_ip_address,
 		    char *supernode_ip_address_port,
 		    int *keep_on_running);
+int sn_init(n2n_sn_t *sss);
+void sn_term(n2n_sn_t *sss);
+int run_sn_loop(n2n_sn_t *sss, int *keep_running);
 
 #endif /* _N2N_H_ */
