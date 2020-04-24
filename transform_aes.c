@@ -83,8 +83,10 @@ char *openssl_err_as_string (void) {
   char *buf = NULL;
   size_t len = BIO_get_mem_data (bio, &buf);
   char *ret = (char *) calloc (1, 1 + len);
+
   if(ret)
     memcpy (ret, buf, len);
+
   BIO_free (bio);
   return ret;
 }
@@ -119,12 +121,12 @@ static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint64_t iv
  *  [V|II|DDDDDDDDDDDDDDDDDDDDD]
  *       |<---- encrypted ---->|
  */
-static int transop_encode_aes( n2n_trans_op_t * arg,
-			       uint8_t * outbuf,
-			       size_t out_len,
-			       const uint8_t * inbuf,
-			       size_t in_len,
-			       const uint8_t * peer_mac) {
+static int transop_encode_aes(n2n_trans_op_t * arg,
+			      uint8_t * outbuf,
+			      size_t out_len,
+			      const uint8_t * inbuf,
+			      size_t in_len,
+			      const uint8_t * peer_mac) {
   int len2=-1;
   transop_aes_t * priv = (transop_aes_t *)arg->priv;
   uint8_t assembly[N2N_PKT_BUF_SIZE] = {0};
@@ -140,7 +142,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
       traceEvent(TRACE_DEBUG, "encode_aes %lu", in_len);
 
       /* Encode the aes format version. */
-      encode_uint8( outbuf, &idx, N2N_AES_TRANSFORM_VERSION);
+      encode_uint8(outbuf, &idx, N2N_AES_TRANSFORM_VERSION);
 
       /* Generate and encode the IV seed.
        * Using two calls to rand() because RAND_MAX is usually < 64bit
@@ -156,10 +158,10 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 
       /* The assembly buffer is a source for encrypting data.
        * The whole contents of assembly are encrypted. */
-      memcpy( assembly, inbuf, in_len);
+      memcpy(assembly, inbuf, in_len);
 
       /* Need at least one encrypted byte at the end for the padding. */
-      len2 = ( (len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
+      len2 = ((len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
       padding = (len2-len);
       assembly[len2 - 1] = padding;
       traceEvent(TRACE_DEBUG, "padding = %u, seed = %016llx", padding, iv_seed);
@@ -180,7 +182,7 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 
 	      if(evp_ciphertext_len != len2)
 		traceEvent(TRACE_ERROR, "encode_aes openssl encryption: encrypted %u bytes where %u were expected.\n",
-			    evp_ciphertext_len, len2);
+			   evp_ciphertext_len, len2);
 	    } else
 	      traceEvent(TRACE_ERROR, "encode_aes openssl final encryption: %s\n", openssl_err_as_string());
 	  } else
@@ -192,10 +194,10 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 
       EVP_CIPHER_CTX_reset(ctx);
 #else
-      AES_cbc_encrypt( assembly, /* source */
-		       outbuf + TRANSOP_AES_PREAMBLE_SIZE, /* dest */
-		       len2, /* enc size */
-		       &(priv->enc_key), enc_ivec, AES_ENCRYPT);
+      AES_cbc_encrypt(assembly, /* source */
+		      outbuf + TRANSOP_AES_PREAMBLE_SIZE, /* dest */
+		      len2, /* enc size */
+		      &(priv->enc_key), enc_ivec, AES_ENCRYPT);
 #endif
 
       len2 += TRANSOP_AES_PREAMBLE_SIZE; /* size of data carried in UDP. */
@@ -210,19 +212,19 @@ static int transop_encode_aes( n2n_trans_op_t * arg,
 /* ****************************************************** */
 
 /* See transop_encode_aes for packet format */
-static int transop_decode_aes( n2n_trans_op_t * arg,
-			       uint8_t * outbuf,
-			       size_t out_len,
-			       const uint8_t * inbuf,
-			       size_t in_len,
-			       const uint8_t * peer_mac) {
+static int transop_decode_aes(n2n_trans_op_t * arg,
+			      uint8_t * outbuf,
+			      size_t out_len,
+			      const uint8_t * inbuf,
+			      size_t in_len,
+			      const uint8_t * peer_mac) {
   int len=0;
   transop_aes_t * priv = (transop_aes_t *)arg->priv;
   uint8_t assembly[N2N_PKT_BUF_SIZE];
 
-  if(( (in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* Cipher text fits in assembly */
-       && (in_len >= TRANSOP_AES_PREAMBLE_SIZE) /* Has at least version, iv seed */
-       )
+  if(((in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* Cipher text fits in assembly */
+     && (in_len >= TRANSOP_AES_PREAMBLE_SIZE) /* Has at least version, iv seed */
+     )
     {
       size_t rem=in_len;
       size_t idx=0;
@@ -230,7 +232,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
       uint64_t iv_seed=0;
 
       /* Get the encoding version to make sure it is supported */
-      decode_uint8( &aes_enc_ver, inbuf, &rem, &idx );
+      decode_uint8(&aes_enc_ver, inbuf, &rem, &idx );
 
       if(N2N_AES_TRANSFORM_VERSION == aes_enc_ver) {
 	/* Get the IV seed */
@@ -260,7 +262,7 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 		  
 		  if(evp_plaintext_len != len)
 		    traceEvent(TRACE_ERROR, "decode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
-				evp_plaintext_len, len);
+			       evp_plaintext_len, len);
 		} else
 		  traceEvent(TRACE_ERROR, "decode_aes openssl final decryption: %s\n", openssl_err_as_string());
 	      } else
@@ -273,27 +275,27 @@ static int transop_decode_aes( n2n_trans_op_t * arg,
 
 	  EVP_CIPHER_CTX_reset(ctx);
 #else
-	  AES_cbc_encrypt( (inbuf + TRANSOP_AES_PREAMBLE_SIZE),
-			   assembly, /* destination */
-			   len, 
-			   &(priv->dec_key),
-			   dec_ivec, AES_DECRYPT);
+	  AES_cbc_encrypt((inbuf + TRANSOP_AES_PREAMBLE_SIZE),
+			  assembly, /* destination */
+			  len, 
+			  &(priv->dec_key),
+			  dec_ivec, AES_DECRYPT);
 #endif
 	  /* last byte is how much was padding: max value should be
 	   * AES_BLOCKSIZE-1 */
 	  padding = assembly[ len-1 ] & 0xff; 
 
 	  if(len >= padding) {
-	      /* strictly speaking for this to be an ethernet packet
-	       * it is going to need to be even bigger; but this is
-	       * enough to prevent segfaults. */
-	      traceEvent(TRACE_DEBUG, "padding = %u", padding);
-	      len -= padding;
+	    /* strictly speaking for this to be an ethernet packet
+	     * it is going to need to be even bigger; but this is
+	     * enough to prevent segfaults. */
+	    traceEvent(TRACE_DEBUG, "padding = %u", padding);
+	    len -= padding;
 
-	      memcpy( outbuf, 
-		      assembly, 
-		      len);
-	    } else
+	    memcpy(outbuf, 
+		   assembly, 
+		   len);
+	  } else
 	    traceEvent(TRACE_WARNING, "UDP payload decryption failed.");
 	} else {
 	  traceEvent(TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE);
@@ -318,13 +320,13 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
 
   /* Clear out any old possibly longer key matter. */
 #ifdef OPENSSL_1_1
-  memset( &(priv->key), 0, sizeof(priv->key) );
+  memset(&(priv->key), 0, sizeof(priv->key) );
 #else
-  memset( &(priv->enc_key), 0, sizeof(priv->enc_key) );
-  memset( &(priv->dec_key), 0, sizeof(priv->dec_key) );
+  memset(&(priv->enc_key), 0, sizeof(priv->enc_key) );
+  memset(&(priv->dec_key), 0, sizeof(priv->dec_key) );
 #endif
-  memset( &(priv->iv_enc_key), 0, sizeof(priv->iv_enc_key) );
-  memset( &(priv->iv_pad_val), 0, sizeof(priv->iv_pad_val) );
+  memset(&(priv->iv_enc_key), 0, sizeof(priv->iv_enc_key) );
+  memset(&(priv->iv_pad_val), 0, sizeof(priv->iv_pad_val) );
 
   /* Let the user choose the degree of encryption:
    * Long input keys will pick AES192 or AES256 with more robust but expensive encryption.
@@ -343,38 +345,38 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
 
   if(key_size >= 65) {
 #ifdef OPENSSL_1_1
-      priv->cipher = EVP_aes_256_cbc();
+    priv->cipher = EVP_aes_256_cbc();
 #endif
-      aes_key_size_bytes = AES256_KEY_BYTES;
-      SHA512(key, key_size, key_mat_buf);
-      key_mat_buf_length = SHA512_DIGEST_LENGTH;
-    } else if(key_size >= 44) {
+    aes_key_size_bytes = AES256_KEY_BYTES;
+    SHA512(key, key_size, key_mat_buf);
+    key_mat_buf_length = SHA512_DIGEST_LENGTH;
+  } else if(key_size >= 44) {
 #ifdef OPENSSL_1_1
-      priv->cipher = EVP_aes_192_cbc();
+    priv->cipher = EVP_aes_192_cbc();
 #endif
-      aes_key_size_bytes = AES192_KEY_BYTES;
-      SHA384(key, key_size, key_mat_buf);
-      /* append a hash of the first hash to create enough material for IV padding */
-      SHA256(key_mat_buf, SHA384_DIGEST_LENGTH, key_mat_buf + SHA384_DIGEST_LENGTH);
-      key_mat_buf_length = SHA384_DIGEST_LENGTH + SHA256_DIGEST_LENGTH;
-    } else {
+    aes_key_size_bytes = AES192_KEY_BYTES;
+    SHA384(key, key_size, key_mat_buf);
+    /* append a hash of the first hash to create enough material for IV padding */
+    SHA256(key_mat_buf, SHA384_DIGEST_LENGTH, key_mat_buf + SHA384_DIGEST_LENGTH);
+    key_mat_buf_length = SHA384_DIGEST_LENGTH + SHA256_DIGEST_LENGTH;
+  } else {
 #ifdef OPENSSL_1_1
-      priv->cipher = EVP_aes_128_cbc();
+    priv->cipher = EVP_aes_128_cbc();
 #endif
-      aes_key_size_bytes = AES128_KEY_BYTES;
-      SHA256(key, key_size, key_mat_buf);
-      /* append a hash of the first hash to create enough material for IV padding */
-      SHA256(key_mat_buf, SHA256_DIGEST_LENGTH, key_mat_buf + SHA256_DIGEST_LENGTH);
-      key_mat_buf_length = 2 * SHA256_DIGEST_LENGTH;
-    }
+    aes_key_size_bytes = AES128_KEY_BYTES;
+    SHA256(key, key_size, key_mat_buf);
+    /* append a hash of the first hash to create enough material for IV padding */
+    SHA256(key_mat_buf, SHA256_DIGEST_LENGTH, key_mat_buf + SHA256_DIGEST_LENGTH);
+    key_mat_buf_length = 2 * SHA256_DIGEST_LENGTH;
+  }
 
   /* is there enough material available? */
   if(key_mat_buf_length < (aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES + TRANSOP_AES_IV_PADDING_SIZE)) {
-      /* this should never happen */
-      traceEvent( TRACE_ERROR, "AES missing %u bits hashed key material\n",
-		  (aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES + TRANSOP_AES_IV_PADDING_SIZE - key_mat_buf_length) * 8);
-      return(1);
-    }
+    /* this should never happen */
+    traceEvent(TRACE_ERROR, "AES missing %u bits hashed key material\n",
+	       (aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES + TRANSOP_AES_IV_PADDING_SIZE - key_mat_buf_length) * 8);
+    return(1);
+  }
 
   /* setup of key, used for the CBC encryption */
   aes_key_size_bits = 8 * aes_key_size_bytes;

@@ -679,6 +679,10 @@ int main(int argc, char* argv[]) {
 
   traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
+#if defined(N2N_HAVE_AES) || defined(HAVE_OPENSSL_1_1)
+  traceEvent(TRACE_NORMAL, "Using %s", OpenSSL_version(0));
+#endif
+  
   /* Random seed */
   srand(time(NULL));
 
