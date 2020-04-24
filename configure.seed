@@ -23,13 +23,17 @@ else
   N2N_LIBS=-lcrypto
 fi
 
+OLD_CFLAGS="${CFLAGS}"
+OLD_LDFLAGS="${LDFLAGS}"
+
 CFLAGS="${CFLAGS} -I/usr/local/opt/openssl@1.1/include"
 LDFLAGS="${LDFLAGS} -L/usr/local/opt/openssl@1.1/lib/"
 AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset])
 if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_reset" != xyes; then
-   echo ""
-   echo "You do not seem to use OpenSSL 1.1 or better. Please upgrade"
-   echo ""
+   CFLAGS="${OLD_CFLAGS}"
+   LDFLAGS="${OLD_LDFLAGS}"
+else
+   AC_DEFINE([HAVE_OPENSSL_1_1], [], [OpenSSL 1.1 is present])
 fi
 
 AC_CHECK_LIB([pcap], [pcap_open_live], pcap=true)
