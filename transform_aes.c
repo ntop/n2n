@@ -259,7 +259,7 @@ static int transop_decode_aes(n2n_trans_op_t * arg,
 		evp_plaintext_len = evp_len;
 		if(1 == EVP_DecryptFinal_ex(ctx, assembly + evp_len, &evp_len)) {
 		  evp_plaintext_len += evp_len;
-
+		  
 		  if(evp_plaintext_len != len)
 		    traceEvent(TRACE_ERROR, "decode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
 			       evp_plaintext_len, len);
@@ -345,14 +345,14 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
 
   if(key_size >= 65) {
 #ifdef HAVE_OPENSSL_1_1
-    priv->cipher = EVP_chacha20();
+    priv->cipher = EVP_aes_256_cbc();
 #endif
     aes_key_size_bytes = AES256_KEY_BYTES;
     SHA512(key, key_size, key_mat_buf);
     key_mat_buf_length = SHA512_DIGEST_LENGTH;
   } else if(key_size >= 44) {
 #ifdef HAVE_OPENSSL_1_1
-    priv->cipher = EVP_chacha20();
+    priv->cipher = EVP_aes_192_cbc();
 #endif
     aes_key_size_bytes = AES192_KEY_BYTES;
     SHA384(key, key_size, key_mat_buf);
@@ -361,7 +361,7 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
     key_mat_buf_length = SHA384_DIGEST_LENGTH + SHA256_DIGEST_LENGTH;
   } else {
 #ifdef HAVE_OPENSSL_1_1
-    priv->cipher = EVP_chacha20();
+    priv->cipher = EVP_aes_128_cbc();
 #endif
     aes_key_size_bytes = AES128_KEY_BYTES;
     SHA256(key, key_size, key_mat_buf);
