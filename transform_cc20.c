@@ -112,7 +112,7 @@ static int transop_encode_cc20(n2n_trans_op_t * arg,
       size_t idx=0;
       n2n_cc20_ivec_t enc_ivec = {0};
 
-      traceEvent(TRACE_DEBUG, "encode_cc20 %lu", in_len);
+      traceEvent(TRACE_DEBUG, "encode_cc20 %lu bytes", in_len);
 
       /* Encode the ChaCha20 format version. */
       encode_uint8(outbuf, &idx, N2N_CC20_TRANSFORM_VERSION);
@@ -120,6 +120,9 @@ static int transop_encode_cc20(n2n_trans_op_t * arg,
       /* Generate and encode the IV. */
       set_cc20_iv(priv, enc_ivec);
       encode_buf(outbuf, &idx, &enc_ivec, N2N_CC20_IVEC_SIZE);
+      traceEvent(TRACE_DEBUG, "encode_cc20 iv=%016llx:%016llx",
+                               htobe64(*(uint64_t*)&enc_ivec[0]),
+                               htobe64(*(uint64_t*)&enc_ivec[8]) );
 
       /* Encrypt the assembly contents and write the ciphertext after the iv. */
       /* len is set to the length of the cipher plain text to be encrpyted
@@ -190,11 +193,14 @@ static int transop_decode_cc20(n2n_trans_op_t * arg,
     decode_uint8(&cc20_enc_ver, inbuf, &rem, &idx );
 
     if(N2N_CC20_TRANSFORM_VERSION == cc20_enc_ver) {
+      traceEvent(TRACE_DEBUG, "decode_cc20 %lu bytes", in_len);
+      len = (in_len - TRANSOP_CC20_PREAMBLE_SIZE);
+
       /* Get the IV */
       decode_buf((uint8_t *)&dec_ivec, N2N_CC20_IVEC_SIZE, inbuf, &rem, &idx);
-
-      traceEvent(TRACE_DEBUG, "decode_cc20 %lu", in_len);
-      len = (in_len - TRANSOP_CC20_PREAMBLE_SIZE);
+      traceEvent(TRACE_DEBUG, "decode_cc20 iv=%016llx:%016llx",
+                               htobe64(*(uint64_t*)&dec_ivec[0]),
+                               htobe64(*(uint64_t*)&dec_ivec[8]) );
 
       EVP_CIPHER_CTX *ctx = priv->dec_ctx;
       int evp_len;
