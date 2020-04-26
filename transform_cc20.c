@@ -61,7 +61,7 @@ static int transop_deinit_cc20(n2n_trans_op_t *arg) {
 
 /* get any erorr message out of openssl
    taken from https://en.wikibooks.org/wiki/OpenSSL/Error_handling */
-char *openssl_err_as_string (void) {
+static char *openssl_err_as_string (void) {
   BIO *bio = BIO_new (BIO_s_mem ());
   ERR_print_errors (bio);
   char *buf = NULL;
