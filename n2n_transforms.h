@@ -30,6 +30,7 @@ typedef enum n2n_transform {
   N2N_TRANSFORM_ID_NULL = 1,
   N2N_TRANSFORM_ID_TWOFISH = 2,
   N2N_TRANSFORM_ID_AESCBC = 3,
+  N2N_TRANSFORM_ID_CHACHA20 = 4,
 } n2n_transform_t;
 
 struct n2n_trans_op;

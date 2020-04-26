@@ -138,6 +138,7 @@ static const char* transop_str(enum n2n_transform tr) {
   case N2N_TRANSFORM_ID_NULL:    return("null");
   case N2N_TRANSFORM_ID_TWOFISH: return("twofish");
   case N2N_TRANSFORM_ID_AESCBC:  return("AES-CBC");
+  case N2N_TRANSFORM_ID_CHACHA20:return("ChaCha20");
   default:                       return("invalid");
   };
 }
@@ -239,6 +240,11 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
 #ifdef N2N_HAVE_AES
   case N2N_TRANSFORM_ID_AESCBC:
     rc = n2n_transop_aes_cbc_init(&eee->conf, &eee->transop);
+    break;
+#endif
+#ifdef HAVE_OPENSSL_1_1
+  case N2N_TRANSFORM_ID_CHACHA20:
+    rc = n2n_transop_cc20_init(&eee->conf, &eee->transop);
     break;
 #endif
   default:
