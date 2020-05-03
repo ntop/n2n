@@ -175,6 +175,8 @@ static void help() {
 #ifdef N2N_HAVE_AES
   printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
 #endif
+  printf("-z                       | Enable lzo1x compression for outgoing data packets\n");
+  printf("                         | (default=disabled).\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
@@ -291,6 +293,12 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
     }
 #endif
 
+  case 'z':
+    {
+      conf->compression = N2N_COMPRESSION_ID_LZO;
+      break;
+    }
+
   case 'l': /* supernode-list */
     if(optargument) {
       if(edge_conf_add_supernode(conf, optargument) != 0) {
@@ -398,7 +406,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z"
 #ifdef N2N_HAVE_AES
 			 "A"
 #endif

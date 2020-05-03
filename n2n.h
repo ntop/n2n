@@ -162,11 +162,16 @@ typedef struct tuntap_dev {
 #define MSG_TYPE_PEER_INFO              9
 #define MSG_TYPE_QUERY_PEER            10
 
-/* Set N2N_COMPRESSION_ENABLED to 0 to disable lzo1x compression of ethernet
- * frames. Doing this will break compatibility with the standard n2n packet
- * format so do it only for experimentation. All edges must be built with the
- * same value if they are to understand each other. */
-#define N2N_COMPRESSION_ENABLED 1
+/* N2N compression indicators. */
+/* Compression is disabled by default for outgoing packets if no cli
+ * option is given. All edges are built with decompression support so
+ * they are able to understand each other. */
+#define N2N_COMPRESSION_ID_NONE		0	/* default, see edge_init_conf_defaults(...) in edge_utils.c */
+#define N2N_COMPRESSION_ID_LZO		1	/* set if '-z' cli option is present, see setOption(...) in edge.c */
+
+#define N2N_COMPRESSION_ID_BITLEN	3	/* number of bits used for encoding compression id in the uppermost
+				 	           bits of transform_id; will be obsolete as soon as compression gets
+						   its own field in the packet. REVISIT then. */
 
 #define DEFAULT_MTU   1290
 
@@ -210,6 +215,7 @@ typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   n2n_transform_t     transop_id;             /**< The transop to use. */
+  uint16_t	      compression;	      /**< Compress outgoing data packets before encryption */
   uint8_t             dyn_ip_mode;            /**< Interface IP address is dynamically allocated, eg. DHCP. */
   uint8_t             allow_routing;          /**< Accept packet no to interface address. */
   uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
