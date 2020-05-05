@@ -43,7 +43,7 @@
 typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
 
 typedef struct transop_aes {
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
   EVP_CIPHER_CTX      *enc_ctx;	      /* openssl's reusable evp_* encryption context */
   EVP_CIPHER_CTX      *dec_ctx;	      /* openssl's reusable evp_* decryption context */
   const EVP_CIPHER    *cipher;	      /* cipher to use: e.g. EVP_aes_128_cbc */
@@ -61,7 +61,7 @@ typedef struct transop_aes {
 static int transop_deinit_aes(n2n_trans_op_t *arg) {
   transop_aes_t *priv = (transop_aes_t *)arg->priv;
 
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
   EVP_CIPHER_CTX_free(priv->enc_ctx);
   EVP_CIPHER_CTX_free(priv->dec_ctx);
 #endif
@@ -74,7 +74,7 @@ static int transop_deinit_aes(n2n_trans_op_t *arg) {
 
 /* ****************************************************** */
 
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
 /* get any erorr message out of openssl
    taken from https://en.wikibooks.org/wiki/OpenSSL/Error_handling */
 char *openssl_err_as_string (void) {
@@ -168,7 +168,7 @@ static int transop_encode_aes(n2n_trans_op_t * arg,
 
       set_aes_cbc_iv(priv, enc_ivec, iv_seed);
 
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
       EVP_CIPHER_CTX *ctx = priv->enc_ctx;
       int evp_len;
       int evp_ciphertext_len;
@@ -248,7 +248,7 @@ static int transop_decode_aes(n2n_trans_op_t * arg,
 
 	  set_aes_cbc_iv(priv, dec_ivec, iv_seed);
 
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
 	  EVP_CIPHER_CTX *ctx = priv->dec_ctx;
 	  int evp_len;
 	  int evp_plaintext_len;
@@ -319,7 +319,7 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
   size_t key_mat_buf_length;
 
   /* Clear out any old possibly longer key matter. */
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
   memset(&(priv->key), 0, sizeof(priv->key) );
 #else
   memset(&(priv->enc_key), 0, sizeof(priv->enc_key) );
@@ -344,14 +344,14 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
    */
 
   if(key_size >= 65) {
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
     priv->cipher = EVP_aes_256_cbc();
 #endif
     aes_key_size_bytes = AES256_KEY_BYTES;
     SHA512(key, key_size, key_mat_buf);
     key_mat_buf_length = SHA512_DIGEST_LENGTH;
   } else if(key_size >= 44) {
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
     priv->cipher = EVP_aes_192_cbc();
 #endif
     aes_key_size_bytes = AES192_KEY_BYTES;
@@ -360,7 +360,7 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
     SHA256(key_mat_buf, SHA384_DIGEST_LENGTH, key_mat_buf + SHA384_DIGEST_LENGTH);
     key_mat_buf_length = SHA384_DIGEST_LENGTH + SHA256_DIGEST_LENGTH;
   } else {
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
     priv->cipher = EVP_aes_128_cbc();
 #endif
     aes_key_size_bytes = AES128_KEY_BYTES;
@@ -381,7 +381,7 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_si
   /* setup of key, used for the CBC encryption */
   aes_key_size_bits = 8 * aes_key_size_bytes;
 
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
   memcpy (priv->key, key_mat_buf, aes_key_size_bytes);
 #else
   AES_set_encrypt_key(key_mat_buf, aes_key_size_bits, &(priv->enc_key));
@@ -425,7 +425,7 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   }
   ttt->priv = priv;
 
-#ifdef OPENSSL_1_1
+#ifdef HAVE_OPENSSL_1_1
   /* Setup openssl's reusable evp_* contexts for encryption and decryption*/
   if(!(priv->enc_ctx = EVP_CIPHER_CTX_new())) {
     traceEvent(TRACE_ERROR, "openssl's evp_* encryption context creation: %s\n", openssl_err_as_string());
