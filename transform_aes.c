@@ -35,7 +35,9 @@
 
 /* AES plaintext preamble */
 #define TRANSOP_AES_VER_SIZE     1       /* Support minor variants in encoding in one module. */
-#define TRANSOP_AES_IV_SEED_SIZE 8	/* size of transmitted random part of IV in bytes; leave it set to 8 for now */
+#define TRANSOP_AES_IV_SEED_SIZE 8    /* size of transmitted random part of IV in bytes; could range
+				       * from 0=lowest security (constant IV)  to  16=higest security
+				       * (fully random IV); default=8 */
 #define TRANSOP_AES_IV_PADDING_SIZE (N2N_AES_IVEC_SIZE - TRANSOP_AES_IV_SEED_SIZE)
 #define TRANSOP_AES_IV_KEY_BYTES (AES128_KEY_BYTES) /* use AES128 for IV encryption */
 #define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_VER_SIZE + TRANSOP_AES_IV_SEED_SIZE)
@@ -94,12 +96,35 @@ char *openssl_err_as_string (void) {
 
 /* ****************************************************** */
 
-static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint64_t iv_seed) {
+/* convert a given number of bytes from memory to hex string; taken (and modified) from
+   https://stackoverflow.com/questions/6357031/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-in-c */
+const char* to_hex(unsigned char * in, size_t insz, char * out, size_t outsz)
+{
+  unsigned char * pin = in;
+  const char * hex = "0123456789abcdef";
+  char * pout = out;
+  for(; pin < in+insz; pout +=2, pin++){
+    pout[0] = hex[(*pin>>4) & 0xF];
+    pout[1] = hex[ *pin     & 0xF];
+    if (pout + 2 - out > outsz){
+      /* Better to truncate output string than overflow buffer */
+      /* it would be still better to either return a status */
+      /* or ensure the target buffer is large enough and it never happen */
+      break;
+      }
+    }
+    pout[2] = 0;
+    return out;
+}
+
+/* ****************************************************** */
+
+static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint8_t * iv_seed) {
   uint8_t iv_full[N2N_AES_IVEC_SIZE];
 
   /* Extend the seed to full block size with padding value */
   memcpy(iv_full, priv->iv_pad_val, TRANSOP_AES_IV_PADDING_SIZE);
-  memcpy(iv_full + TRANSOP_AES_IV_PADDING_SIZE, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
+  memcpy(iv_full + TRANSOP_AES_IV_PADDING_SIZE, iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
   /* Encrypt the IV with secret key to make it unpredictable.
    * As discussed in https://github.com/ntop/n2n/issues/72, it's important to
@@ -115,7 +140,7 @@ static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint64_t iv
 /** The aes packet format consists of:
  *
  *  - a 8-bit aes encoding version in clear text
- *  - a 64-bit random IV seed
+ *  - a TRANSOP_AES_IV_SEED_SIZE-sized [bytes] random IV seed
  *  - encrypted payload.
  *
  *  [V|II|DDDDDDDDDDDDDDDDDDDDD]
@@ -135,7 +160,7 @@ static int transop_encode_aes(n2n_trans_op_t * arg,
     if((in_len + TRANSOP_AES_PREAMBLE_SIZE) <= out_len) {
       int len=-1;
       size_t idx=0;
-      uint64_t iv_seed = 0;
+      uint8_t iv_seed[TRANSOP_AES_IV_SEED_SIZE];
       uint8_t padding = 0;
       n2n_aes_ivec_t enc_ivec = {0};
 
@@ -144,12 +169,20 @@ static int transop_encode_aes(n2n_trans_op_t * arg,
       /* Encode the aes format version. */
       encode_uint8(outbuf, &idx, N2N_AES_TRANSFORM_VERSION);
 
-      /* Generate and encode the IV seed.
-       * Using two calls to rand() because RAND_MAX is usually < 64bit
-       * (e.g. linux) and sometimes < 32bit (e.g. Windows).
-       */
-      iv_seed = ((((uint64_t)rand() & 0xFFFFFFFF)) << 32) | rand();
-      encode_buf(outbuf, &idx, &iv_seed, TRANSOP_AES_IV_SEED_SIZE);
+      /* Generate and encode the IV seed using as many calls to rand() as neccessary.
+       * Note: ( N2N_AES_IV_SEED_SIZE % sizeof(rand_value) ) not neccessarily equals 0. */
+      uint32_t rand_value;
+      int8_t i;
+      for (i = TRANSOP_AES_IV_SEED_SIZE; i >= sizeof(rand_value); i -= sizeof(rand_value)) {
+        rand_value = rand(); // CONCERN: rand() is not consideren cryptographicly secure, REPLACE later
+        memcpy(iv_seed + TRANSOP_AES_IV_SEED_SIZE - i, &rand_value, sizeof(rand_value));
+      }
+      /* Are there bytes left to fill? */
+      if (i != 0) {
+        rand_value = rand(); // CONCERN: rand() is not consideren cryptographicly secure, REPLACE later
+        memcpy(iv_seed, &rand_value, i);
+      }
+      encode_buf(outbuf, &idx, iv_seed, TRANSOP_AES_IV_SEED_SIZE);
 
       /* Encrypt the assembly contents and write the ciphertext after the iv seed. */
       /* len is set to the length of the cipher plain text to be encrpyted 
@@ -164,7 +197,9 @@ static int transop_encode_aes(n2n_trans_op_t * arg,
       len2 = ((len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
       padding = (len2-len);
       assembly[len2 - 1] = padding;
-      traceEvent(TRACE_DEBUG, "padding = %u, seed = %016llx", padding, iv_seed);
+
+      char iv_seed_hex[2 * N2N_AES_IVEC_SIZE + 1];
+      traceEvent(TRACE_DEBUG, "padding = %u, seed = 0x%s", padding, to_hex (iv_seed, TRANSOP_AES_IV_SEED_SIZE, iv_seed_hex, 2 * N2N_AES_IVEC_SIZE + 1) );
 
       set_aes_cbc_iv(priv, enc_ivec, iv_seed);
 
@@ -229,7 +264,7 @@ static int transop_decode_aes(n2n_trans_op_t * arg,
       size_t rem=in_len;
       size_t idx=0;
       uint8_t aes_enc_ver=0;
-      uint64_t iv_seed=0;
+      uint8_t iv_seed[TRANSOP_AES_IV_SEED_SIZE];
 
       /* Get the encoding version to make sure it is supported */
       decode_uint8(&aes_enc_ver, inbuf, &rem, &idx );
@@ -238,7 +273,8 @@ static int transop_decode_aes(n2n_trans_op_t * arg,
 	/* Get the IV seed */
 	decode_buf((uint8_t *)&iv_seed, TRANSOP_AES_IV_SEED_SIZE, inbuf, &rem, &idx);
 
-	traceEvent(TRACE_DEBUG, "decode_aes %lu with seed %016llx", in_len, iv_seed);
+        char iv_seed_hex[2 * N2N_AES_IVEC_SIZE + 1];
+        traceEvent(TRACE_DEBUG, "decode_aes %lu with seed 0x%s", in_len, to_hex (iv_seed, TRANSOP_AES_IV_SEED_SIZE, iv_seed_hex, 2 * N2N_AES_IVEC_SIZE + 1) );
 
 	len = (in_len - TRANSOP_AES_PREAMBLE_SIZE);
 
