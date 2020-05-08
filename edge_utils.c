@@ -47,6 +47,10 @@
 #define IP4_MIN_SIZE  20
 #define UDP_SIZE      8
 
+/* heap allocation for compression as per lzo example doc */
+#define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
+static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
+
 /* ************************************** */
 
 static const char * supernode_ip(const n2n_edge_t * eee);
@@ -218,12 +222,10 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   eee->pending_peers  = NULL;
   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
-#ifdef NOT_USED
   if(lzo_init() != LZO_E_OK) {
     traceEvent(TRACE_ERROR, "LZO compression error");
     goto edge_init_error;
   }
-#endif
 
   for(i=0; i<conf->sn_num; ++i)
     traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (conf->sn_ip_array[i]));
@@ -944,6 +946,15 @@ static int handle_PACKET(n2n_edge_t * eee,
     n2n_transform_t rx_transop_id;
 
     rx_transop_id = (n2n_transform_t)pkt->transform;
+    /* optional compression is encoded in uppermost bit of transform field.
+     * this is an intermediate solution to maintain compatibility until some
+     * upcoming major release (3.0?) brings up changes in packet structure anyway
+     * in the course of which a dedicated compression field could be spent.
+     * REVISIT then. */
+    uint16_t rx_compression_id;
+
+    rx_compression_id = (uint16_t)rx_transop_id >> (8*sizeof((uint16_t)rx_transop_id)-N2N_COMPRESSION_ID_BITLEN);
+    rx_transop_id &= (1 << (8*sizeof((uint16_t)rx_transop_id)-N2N_COMPRESSION_ID_BITLEN)) -1;
 
     if(rx_transop_id == eee->conf.transop_id) {
         uint8_t is_multicast;
@@ -953,6 +964,28 @@ static int handle_PACKET(n2n_edge_t * eee,
 						    eth_payload, N2N_PKT_BUF_SIZE,
 						    payload, psize, pkt->srcMac);
 	++(eee->transop.rx_cnt); /* stats */
+
+        /* decompress if necessary */
+        uint8_t * deflation_buffer = 0;
+        uint32_t deflated_len;
+        switch (rx_compression_id) {
+          case N2N_COMPRESSION_ID_LZO:
+	    deflation_buffer = malloc (N2N_PKT_BUF_SIZE);
+	    lzo1x_decompress (eth_payload, eth_size, deflation_buffer, (lzo_uint*)&deflated_len, NULL);
+            break;
+
+          default:
+            break;
+        }
+
+        if (rx_compression_id) {
+          traceEvent (TRACE_DEBUG, "payload decompression [id: %u]: deflated %u bytes to %u bytes",
+                                   rx_compression_id, eth_size, (int)deflated_len);
+          memcpy(eth_payload ,deflation_buffer, deflated_len );
+          eth_size = deflated_len;
+          free (deflation_buffer);
+        }
+
 	is_multicast = (is_ip6_discovery(eth_payload, eth_size) || is_ethMulticast(eth_payload, eth_size));
 
 	if(eee->conf.drop_multicast && is_multicast) {
@@ -1309,6 +1342,41 @@ static void send_packet2net(n2n_edge_t * eee,
 
   pkt.sock.family=0; /* do not encode sock */
   pkt.transform = tx_transop_idx;
+
+  // compression needs to be tried before encode_PACKET is called for compression indication gets encoded there
+  pkt.compression = N2N_COMPRESSION_ID_NONE;
+  if (eee->conf.compression) {
+    uint8_t * compression_buffer;
+    uint32_t  compression_len;
+    switch (eee->conf.compression) {
+        case N2N_COMPRESSION_ID_LZO:
+          compression_buffer = malloc (len + len / 16 + 64 + 3);
+          if (lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
+            if (compression_len < len) {
+              pkt.compression = N2N_COMPRESSION_ID_LZO;
+            }
+          }
+          break;
+
+        default:
+          break;
+    }
+
+    if (pkt.compression) {
+      traceEvent (TRACE_DEBUG, "payload compression [id: %u]: compressed %u bytes to %u bytes\n",
+                               pkt.compression, len, compression_len);
+
+      memcpy (tap_pkt, compression_buffer, compression_len);
+      len = compression_len;
+      free (compression_buffer);
+    }
+  }
+  /* optional compression is encoded in uppermost bits of transform field.
+   * this is an intermediate solution to maintain compatibility until some
+   * upcoming major release (3.0?) brings up changes in packet structure anyway
+   * in the course of which a dedicated compression field could be spent.
+   * REVISIT then. */
+  pkt.transform = pkt.transform | (pkt.compression << (8*sizeof(pkt.transform)-N2N_COMPRESSION_ID_BITLEN));
 
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
@@ -1916,6 +1984,7 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->local_port = 0 /* any port */;
   conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   conf->transop_id = N2N_TRANSFORM_ID_NULL;
+  conf->compression = N2N_COMPRESSION_ID_NONE;
   conf->drop_multicast = 1;
   conf->allow_p2p = 1;
   conf->disable_pmtu_discovery = 1;
