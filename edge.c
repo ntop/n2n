@@ -687,8 +687,8 @@ int main(int argc, char* argv[]) {
 
   traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
-#if defined(HAVE_OPENSSL_1_1)
-  traceEvent(TRACE_NORMAL, "Using %s", OpenSSL_version(0));
+#if defined(HAVE_BEARSSL)
+  traceEvent(TRACE_NORMAL, "Using bearSSL.");
 #endif
   
   /* Random seed */

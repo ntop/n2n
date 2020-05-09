@@ -13,27 +13,14 @@ else
 GIT_RELEASE=${N2N_VERSION_SHORT}
 fi
 
-AC_CHECK_LIB([crypto], [AES_cbc_encrypt])
+AC_CHECK_LIB([bearssl], [br_aes_big_cbcenc_init])
 
 N2N_LIBS=
-if test "x$ac_cv_lib_crypto_AES_cbc_encrypt" != xyes; then
+if test "x$ac_cv_lib_bearssl_br_aes_big_cbcenc_init" != xyes; then
   AC_MSG_RESULT(Building n2n without AES support)
 else
   AC_DEFINE([N2N_HAVE_AES], [], [Have AES support])
-  N2N_LIBS=-lcrypto
-fi
-
-OLD_CFLAGS="${CFLAGS}"
-OLD_LDFLAGS="${LDFLAGS}"
-
-CFLAGS="${CFLAGS} -I/usr/local/opt/openssl@1.1/include"
-LDFLAGS="${LDFLAGS} -L/usr/local/opt/openssl@1.1/lib/"
-AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset])
-if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_reset" != xyes; then
-   CFLAGS="${OLD_CFLAGS}"
-   LDFLAGS="${OLD_LDFLAGS}"
-else
-   AC_DEFINE([HAVE_OPENSSL_1_1], [], [OpenSSL 1.1 is present])
+  N2N_LIBS=-lbearssl
 fi
 
 AC_CHECK_LIB([pcap], [pcap_open_live], pcap=true)
