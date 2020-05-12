@@ -354,5 +354,6 @@ int quick_edge_init(char *device_name, char *community_name,
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
+const char* transop_str(enum n2n_transform tr);
 
 #endif /* _N2N_H_ */

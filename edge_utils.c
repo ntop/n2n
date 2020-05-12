@@ -133,7 +133,7 @@ struct n2n_edge {
 
 /* ************************************** */
 
-static const char* transop_str(enum n2n_transform tr) {
+const char* transop_str(enum n2n_transform tr) {
   switch(tr) {
   case N2N_TRANSFORM_ID_NULL:    return("null");
   case N2N_TRANSFORM_ID_TWOFISH: return("twofish");

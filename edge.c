@@ -143,7 +143,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -172,8 +172,13 @@ static void help() {
          "                         | causes connections stall when not properly supported.\n");
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
+  printf("-A1                      | Disable payload encryption. Do not use with -k.\n");
+  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key.\n");
 #ifdef N2N_HAVE_AES
-  printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
+  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key.\n");
+#endif
+#ifdef HAVE_OPENSSL_1_1
+  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
 #endif
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
@@ -271,7 +276,6 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       if(conf->encrypt_key) free(conf->encrypt_key);
       if(conf->transop_id == N2N_TRANSFORM_ID_NULL)
         conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
-
       conf->encrypt_key = strdup(optargument);
       traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
       break;
@@ -283,13 +287,52 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
-#ifdef N2N_HAVE_AES
   case 'A':
     {
-      conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
+      int cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only
+      if (optargument) {
+        cipher = atoi(optargument);
+      } else {
+        traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
+                                 "please use -A3 instead to choose a the AES-CBC cipher for payload encryption.");
+      }
+      /* even though 'cipher' and 'conf->transop_id' share the same encoding scheme,
+       * a switch-statement under conditional compilation is used to sort out the
+       * unsupported ciphers */
+      switch (cipher) {
+      case 1:
+	{
+	  conf->transop_id = N2N_TRANSFORM_ID_NULL;
+	  break;
+	}
+      case 2:
+	{
+	  conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
+	  break;
+	}
+#ifdef N2N_HAVE_AES
+      case 3:
+	{
+	  conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
+	  break;
+	}
+#endif
+#ifdef HAVE_OPENSSL_1_1
+      case 4:
+	{
+	  conf->transop_id = N2N_TRANSFORM_ID_CHACHA20;
+	  break;
+	}
+#endif
+      default:
+	{
+ 	  conf->transop_id = N2N_TRANSFORM_ID_INVAL;
+          traceEvent(TRACE_NORMAL, "the %s cipher given by -A_ option is not supported in this version.", transop_str(cipher));
+	  exit(1);
+	}
+      }
       break;
     }
-#endif
 
   case 'l': /* supernode-list */
     if(optargument) {
@@ -398,10 +441,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:"
-#ifdef N2N_HAVE_AES
-			 "A"
-#endif
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:A::"
 #ifdef __linux__
 			 "T:"
 #endif
@@ -682,7 +722,8 @@ int main(int argc, char* argv[]) {
 #if defined(HAVE_OPENSSL_1_1)
   traceEvent(TRACE_NORMAL, "Using %s", OpenSSL_version(0));
 #endif
-  
+  traceEvent(TRACE_NORMAL, "Using %s cipher.", transop_str(conf.transop_id));
+
   /* Random seed */
   srand(time(NULL));
 
