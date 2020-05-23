@@ -37,6 +37,21 @@
 
 /* ***************************************************** */
 
+#ifdef HAVE_LIBCAP
+
+#include <sys/capability.h>
+#include <sys/prctl.h>
+
+static cap_value_t cap_values[] = {
+				   //CAP_NET_RAW,      /* Use RAW and PACKET sockets */
+				   CAP_NET_ADMIN     /* Needed to performs routes cleanup at exit */
+};
+
+int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
+#endif
+
+/* ***************************************************** */
+
 typedef struct n2n_priv_config {
   char                tuntap_dev_name[N2N_IFNAMSIZ];
   char                ip_mode[N2N_IF_MODE_SIZE];
@@ -681,6 +696,9 @@ int main(int argc, char* argv[]) {
 #ifndef WIN32
   struct passwd *pw = NULL;
 #endif
+#ifdef HAVE_LIBCAP
+  cap_t caps;
+#endif
 
   /* Defaults */
   edge_init_conf_defaults(&conf);
@@ -774,6 +792,22 @@ int main(int argc, char* argv[]) {
 #endif /* #ifndef WIN32 */
 
 #ifndef WIN32
+
+#ifdef HAVE_LIBCAP
+  /* Before dropping the privileges, retain capabilities to regain them in future. */
+  caps = cap_get_proc();
+
+  cap_set_flag(caps, CAP_PERMITTED, num_cap, cap_values, CAP_SET);
+  cap_set_flag(caps, CAP_EFFECTIVE, num_cap, cap_values, CAP_SET);
+
+  if((cap_set_proc(caps) != 0) || (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) != 0))
+    traceEvent(TRACE_WARNING, "Unable to retain permitted capabilities [%s]\n", strerror(errno));
+#else
+#ifndef __APPLE__
+  traceEvent(TRACE_WARNING, "n2n has not been compiled with libcap-dev. Some commands may fail.");
+#endif
+#endif /* HAVE_LIBCAP */
+
   if((ec.userid != 0) || (ec.groupid != 0)) {
     traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
 	       (signed int)ec.userid, (signed int)ec.groupid);
@@ -802,6 +836,17 @@ int main(int argc, char* argv[]) {
   traceEvent(TRACE_NORMAL, "edge started");
   rc = run_edge_loop(eee, &keep_on_running);
   print_edge_stats(eee);
+
+#ifdef HAVE_LIBCAP
+  /* Before completing the cleanup, regain the capabilities as some
+   * cleanup tasks require them (e.g. routes cleanup). */
+  cap_set_flag(caps, CAP_EFFECTIVE, num_cap, cap_values, CAP_SET);
+
+  if(cap_set_proc(caps) != 0)
+    traceEvent(TRACE_WARNING, "Could not regain the capabilities [%s]\n", strerror(errno));
+
+  cap_free(caps);
+#endif
 
   /* Cleanup */
   edge_term(eee);

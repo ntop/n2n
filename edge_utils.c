@@ -2042,10 +2042,10 @@ static char* route_cmd_to_str(int cmd, const n2n_route_t *route, char *buf, size
 
   switch(cmd) {
     case RTM_NEWROUTE:
-      cmd_str = "ADD";
+      cmd_str = "Add";
       break;
     case RTM_DELROUTE:
-      cmd_str = "DELETE";
+      cmd_str = "Delete";
       break;
     default:
       cmd_str = "?";
@@ -2056,7 +2056,7 @@ static char* route_cmd_to_str(int cmd, const n2n_route_t *route, char *buf, size
   addr.s_addr = route->gateway;
   inet_ntop(AF_INET, &addr, gwbuf, sizeof(gwbuf));
 
-  snprintf(buf, bufsize, "[%s] %s/%d via %s", cmd_str, netbuf, route->net_bitlen, gwbuf);
+  snprintf(buf, bufsize, "%s %s/%d via %s", cmd_str, netbuf, route->net_bitlen, gwbuf);
 
   return(buf);
 }
@@ -2088,10 +2088,11 @@ static int rtattr_add(struct nlmsghdr *n, int maxlen, int type, const void *data
     return 0;
 }
 
-static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx, uint8_t ignore_failure) {
+static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx) {
   int rv = -1;
   int rv2;
   char nl_buf[8192]; /* >= 8192 to avoid truncation, see "man 7 netlink" */
+  char route_buf[256];
   struct iovec iov;
   struct msghdr msg;
   struct sockaddr_nl sa;
@@ -2194,7 +2195,6 @@ static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx, uint8_t 
       read_reply = 0;
 
       if(nh->nlmsg_type == NLMSG_ERROR) {
-	char buf[256];
 	struct nlmsgerr *err = NLMSG_DATA(nh);
 	int errcode = err->error;
 
@@ -2202,8 +2202,8 @@ static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx, uint8_t 
 	  errcode = -errcode;
 
 	/* Ignore EEXIST as existing rules are ok */
-	if(!ignore_failure && (errcode != EEXIST)) {
-	  traceEvent(TRACE_ERROR, "[err=%d] route: %s", errcode, route_cmd_to_str(cmd, route, buf, sizeof(buf)));
+	if(errcode != EEXIST) {
+	  traceEvent(TRACE_ERROR, "[err=%d] route: %s", errcode, route_cmd_to_str(cmd, route, route_buf, sizeof(route_buf)));
 	  goto out;
 	}
       }
@@ -2211,11 +2211,14 @@ static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx, uint8_t 
       if(nh->nlmsg_type == NLMSG_DONE)
         break;
 
-      if(nh->nlmsg_type == cmd)
+      if(nh->nlmsg_type == cmd) {
+	traceEvent(TRACE_DEBUG, "Found netlink reply");
 	break;
+      }
     }
   }
 
+  traceEvent(TRACE_DEBUG, route_cmd_to_str(cmd, route, route_buf, sizeof(route_buf)));
   rv = 0;
 
 out:
@@ -2278,7 +2281,7 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
       }
 
       /* ip route add supernode via internet_gateway */
-      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, -1, 0) < 0)
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, -1) < 0)
 	return(-1);
 
       /* Save the route to delete it when n2n is stopped */
@@ -2293,11 +2296,11 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
       custom_route.net_bitlen = 1;
       custom_route.gateway = route->gateway;
 
-      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx, 0) < 0)
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
 	return(-1);
     } else {
       /* ip route add net via n2n_gateway */
-      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, route, eee->device.if_idx, 0) < 0)
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, route, eee->device.if_idx) < 0)
 	return(-1);
     }
   }
@@ -2312,7 +2315,7 @@ static void edge_cleanup_routes(n2n_edge_t *eee) {
 #ifdef __linux__
   if(eee->sn_route_to_clean) {
     /* ip route del supernode via internet_gateway */
-    routectl(RTM_DELROUTE, 0, eee->sn_route_to_clean, -1, 1 /* can fail as we have dropped capabilities */);
+    routectl(RTM_DELROUTE, 0, eee->sn_route_to_clean, -1);
     free(eee->sn_route_to_clean);
   }
 #endif
