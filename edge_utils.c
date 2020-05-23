@@ -2183,6 +2183,8 @@ static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx, uint8_t 
   }
 
   /* Wait for the route notification. Assume that the first reply we get is the correct one. */
+  traceEvent(TRACE_DEBUG, "waiting for netlink response...");
+
   while(read_reply) {
     ssize_t len = recvmsg(nl_sock, &msg, 0);
     struct nlmsghdr *nh;
@@ -2307,11 +2309,13 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
 /* ************************************** */
 
 static void edge_cleanup_routes(n2n_edge_t *eee) {
+#ifdef __linux__
   if(eee->sn_route_to_clean) {
     /* ip route del supernode via internet_gateway */
     routectl(RTM_DELROUTE, 0, eee->sn_route_to_clean, -1, 1 /* can fail as we have dropped capabilities */);
     free(eee->sn_route_to_clean);
   }
+#endif
 }
 
 /* ************************************** */
