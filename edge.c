@@ -135,6 +135,7 @@ static void help() {
 #endif /* #ifndef WIN32 */
 #ifdef __linux__
 	 "[-T <tos>]"
+   "[-n cidr:gateway] "
 #endif
 	 "[-m <MAC address>] "
 	 "-l <supernode host:port>\n"
@@ -181,6 +182,7 @@ static void help() {
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
   printf("-T <tos>                 | TOS for packets (e.g. 0x48 for SSH like priority)\n");
+  printf("-n <cidr:gateway>        | Route an IPv4 network via the gw. Use 0.0.0.0/0 for the default gw. Can be set multiple times.\n");
 #endif
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
@@ -347,6 +349,43 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
       break;
     }
+
+  case 'n':
+    {
+      char cidr_net[64], gateway[64];
+      n2n_route_t route;
+
+      if(sscanf(optargument, "%63[^/]/%d:%63s", cidr_net, &route.net_bitlen, gateway) != 3) {
+        traceEvent(TRACE_WARNING, "Bad cidr/gateway format '%d'. See -h.", optargument);
+        break;
+      }
+
+      route.net_addr = inet_addr(cidr_net);
+      route.gateway = inet_addr(gateway);
+
+      if((route.net_bitlen < 0) || (route.net_bitlen > 32)) {
+        traceEvent(TRACE_WARNING, "Bad prefix '%d' in '%s'", route.net_bitlen, optargument);
+        break;
+      }
+
+      if(route.net_addr == INADDR_NONE) {
+        traceEvent(TRACE_WARNING, "Bad network '%s' in '%s'", cidr_net, optargument);
+        break;
+      }
+
+      if(route.net_addr == INADDR_NONE) {
+        traceEvent(TRACE_WARNING, "Bad gateway '%s' in '%s'", gateway, optargument);
+        break;
+      }
+
+      traceEvent(TRACE_DEBUG, "Adding %s/%d via %s", cidr_net, route.net_bitlen, gateway);
+
+      conf->routes = realloc(conf->routes, sizeof(struct n2n_route) * (conf->num_routes + 1));
+      conf->routes[conf->num_routes] = route;
+      conf->num_routes++;
+
+      break;
+    }
 #endif
 
   case 's': /* Subnet Mask */
@@ -411,7 +450,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
 			 "A"
 #endif
 #ifdef __linux__
-			 "T:"
+			 "T:n:"
 #endif
 			 ,
 			 long_options, NULL)) != '?') {
@@ -766,6 +805,7 @@ int main(int argc, char* argv[]) {
 
   /* Cleanup */
   edge_term(eee);
+  edge_term_conf(&conf);
   tuntap_close(&tuntap);
 
   if(conf.encrypt_key) free(conf.encrypt_key);
