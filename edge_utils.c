@@ -2063,7 +2063,7 @@ static char* route_cmd_to_str(int cmd, const n2n_route_t *route, char *buf, size
 
 /* Adapted from https://olegkutkov.me/2019/08/29/modifying-linux-network-routes-using-netlink/ */
 #define NLMSG_TAIL(nmsg) \
-    ((struct rtattr *) (((void *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
+    ((struct rtattr *) (((char *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
 
 /* Add new data to rtattr */
 static int rtattr_add(struct nlmsghdr *n, int maxlen, int type, const void *data, int alen)
