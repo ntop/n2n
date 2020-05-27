@@ -139,6 +139,7 @@ const char* transop_str(enum n2n_transform tr) {
   case N2N_TRANSFORM_ID_TWOFISH: return("twofish");
   case N2N_TRANSFORM_ID_AESCBC:  return("AES-CBC");
   case N2N_TRANSFORM_ID_CHACHA20:return("ChaCha20");
+  case N2N_TRANSFORM_ID_SPECK   :return("Speck");
   default:                       return("invalid");
   };
 }
@@ -247,6 +248,10 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     rc = n2n_transop_cc20_init(&eee->conf, &eee->transop);
     break;
 #endif
+  case N2N_TRANSFORM_ID_SPECK:
+    rc = n2n_transop_speck_init(&eee->conf, &eee->transop);
+    break;
+
   default:
     rc = n2n_transop_null_init(&eee->conf, &eee->transop);
   }

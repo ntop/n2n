@@ -100,6 +100,7 @@ int main(int argc, char * argv[]) {
 #ifdef HAVE_OPENSSL_1_1
   n2n_trans_op_t transop_cc20;
 #endif
+  n2n_trans_op_t transop_speck;
   n2n_edge_conf_t conf;
 
   parseArgs(argc, argv);
@@ -118,6 +119,7 @@ int main(int argc, char * argv[]) {
 #ifdef HAVE_OPENSSL_1_1
   n2n_transop_cc20_init(&conf, &transop_cc20);
 #endif
+  n2n_transop_speck_init(&conf, &transop_speck);
 
   /* Run the tests */
   run_transop_benchmark("transop_null", &transop_null, &conf, pktbuf);
@@ -128,6 +130,7 @@ int main(int argc, char * argv[]) {
 #ifdef N2N_HAVE_AES
   run_transop_benchmark("transop_cc20", &transop_cc20, &conf, pktbuf);
 #endif
+  run_transop_benchmark("transop_speck", &transop_speck, &conf, pktbuf);
 
   /* Cleanup */
   transop_null.deinit(&transop_null);
@@ -138,6 +141,7 @@ int main(int argc, char * argv[]) {
 #ifdef HAVE_OPENSSL_1_1
   transop_cc20.deinit(&transop_cc20);
 #endif
+  transop_speck.deinit(&transop_speck);
 
   return 0;
 }

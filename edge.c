@@ -179,6 +179,7 @@ static void help() {
 #endif
 #ifdef HAVE_OPENSSL_1_1
   printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
+  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
 #endif
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
@@ -324,6 +325,11 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 	  break;
 	}
 #endif
+      case 5:
+	{
+	  conf->transop_id = N2N_TRANSFORM_ID_SPECK;
+	  break;
+	}
       default:
 	{
  	  conf->transop_id = N2N_TRANSFORM_ID_INVAL;
