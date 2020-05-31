@@ -106,7 +106,7 @@ n2n edge nodes use twofish encryption by default for compatibility reasons with 
 of the edge nodes, their IP address and the community are sent in cleartext.
 
 When encryption is enabled, the supernode will not be able to decrypt the traffic exchanged between
-two edge nodes, but it will now that edge A is talking with edge B.
+two edge nodes, but it will know that edge A is talking with edge B.
 
 Recently AES encryption support has been implemented, which increases both security and performance,
 so it is recommended to enable it on all the edge nodes by specifying the `-A` option.
