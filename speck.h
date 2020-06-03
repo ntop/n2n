@@ -19,4 +19,4 @@ int speck_ctr (unsigned char *out, const unsigned char *in,
                const unsigned char *n,
                speck_context_t ctx);
 
-int speck_expand_key (const unsigned char *k, speck_context_t ctx);
+int speck_expand_key (const unsigned char *k, speck_context_t *ctx);

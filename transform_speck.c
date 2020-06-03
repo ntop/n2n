@@ -173,7 +173,7 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
   // FOR NOW: USE KEY ITSELF
   memcpy (key_mat_buf, key, ((key_size>32)?32:key_size) );
 
-  speck_expand_key (key_mat_buf, priv->ctx);
+  speck_expand_key (key_mat_buf, &(priv->ctx));
   traceEvent(TRACE_DEBUG, "Speck key setup completed\n");
 
   return(0);
