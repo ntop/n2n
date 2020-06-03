@@ -32,7 +32,7 @@
 typedef unsigned char n2n_speck_ivec_t[N2N_SPECK_IVEC_SIZE];
 
 typedef struct transop_speck {
-  uint64_t  	      rk[34];	      /* the round keys for payload encryption & decryption */
+  speck_context_t      ctx;	      /* the round keys for payload encryption & decryption */
 } transop_speck_t;
 
 /* ****************************************************** */
@@ -99,7 +99,7 @@ static int transop_encode_speck(n2n_trans_op_t * arg,
 	 which is (in this case) identical to original packet lentgh */
       len = in_len;
 
-      speck_ctr (outbuf + TRANSOP_SPECK_PREAMBLE_SIZE, inbuf, in_len, enc_ivec, priv->rk);
+      speck_ctr (outbuf + TRANSOP_SPECK_PREAMBLE_SIZE, inbuf, in_len, enc_ivec, priv->ctx);
       traceEvent(TRACE_DEBUG, "encode_speck: encrypted %u bytes.\n", in_len);
 
       len += TRANSOP_SPECK_PREAMBLE_SIZE; /* size of data carried in UDP. */
@@ -145,7 +145,7 @@ static int transop_decode_speck(n2n_trans_op_t * arg,
                                htobe64(*(uint64_t*)&dec_ivec[0]),
                                htobe64(*(uint64_t*)&dec_ivec[8]) );
 
-      speck_ctr (outbuf, inbuf + TRANSOP_SPECK_PREAMBLE_SIZE, len, dec_ivec, priv->rk);
+      speck_ctr (outbuf, inbuf + TRANSOP_SPECK_PREAMBLE_SIZE, len, dec_ivec, priv->ctx);
       traceEvent(TRACE_DEBUG, "decode_speck: decrypted %u bytes.\n", len);
 
     } else
@@ -163,7 +163,7 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
   uint8_t key_mat_buf[32] = { 0x00 };
 
   /* Clear out any old possibly longer key matter. */
-  memset(&(priv->rk), 0, sizeof(priv->rk) );
+  memset(&(priv->ctx), 0, sizeof(priv->ctx) );
 
   /* TODO: The input key always gets hashed to make a more unpredictable and more complete use of the key space */
   // REVISIT: Hash the key to keymat (formerly used: SHA)
@@ -173,7 +173,7 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
   // FOR NOW: USE KEY ITSELF
   memcpy (key_mat_buf, key, ((key_size>32)?32:key_size) );
 
-  speck_expand_key (key_mat_buf, priv->rk);
+  speck_expand_key (key_mat_buf, priv->ctx);
   traceEvent(TRACE_DEBUG, "Speck key setup completed\n");
 
   return(0);
