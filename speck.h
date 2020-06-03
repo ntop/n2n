@@ -9,7 +9,9 @@ typedef struct {
         u64 key[34];
 } speck_context_t;
 #else
- typedef u64 speck_context_t [34];
+typedef struct {
+        u64 key[34];
+} speck_context_t;
 #endif
 
 int speck_ctr (unsigned char *out, const unsigned char *in,

@@ -1,6 +1,6 @@
 CC?=gcc
 DEBUG?=-g3
-#OPTIMIZATION?=-O2
+OPTIMIZATION?=-O2 -march=native
 WARN?=-Wall
 
 INSTALL=install
