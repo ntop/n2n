@@ -99,7 +99,7 @@ static int transop_encode_speck(n2n_trans_op_t * arg,
 	 which is (in this case) identical to original packet lentgh */
       len = in_len;
 
-      speck_ctr (outbuf + TRANSOP_SPECK_PREAMBLE_SIZE, inbuf, in_len, enc_ivec, priv->ctx);
+      speck_ctr (outbuf + TRANSOP_SPECK_PREAMBLE_SIZE, inbuf, in_len, enc_ivec, &(priv->ctx));
       traceEvent(TRACE_DEBUG, "encode_speck: encrypted %u bytes.\n", in_len);
 
       len += TRANSOP_SPECK_PREAMBLE_SIZE; /* size of data carried in UDP. */
@@ -145,7 +145,7 @@ static int transop_decode_speck(n2n_trans_op_t * arg,
                                htobe64(*(uint64_t*)&dec_ivec[0]),
                                htobe64(*(uint64_t*)&dec_ivec[8]) );
 
-      speck_ctr (outbuf, inbuf + TRANSOP_SPECK_PREAMBLE_SIZE, len, dec_ivec, priv->ctx);
+      speck_ctr (outbuf, inbuf + TRANSOP_SPECK_PREAMBLE_SIZE, len, dec_ivec, &(priv->ctx));
       traceEvent(TRACE_DEBUG, "decode_speck: decrypted %u bytes.\n", len);
 
     } else
