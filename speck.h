@@ -1,7 +1,16 @@
 
 #define u64 uint64_t
 
-#if defined (__SSE4_2__)
+#if defined (__AVX2__)
+ #define SPECK_ALIGNED_CTX	32
+ #include <immintrin.h>
+ #define u256 __m256i
+typedef struct {
+        u256 rk[34];
+        u64 key[34];
+} speck_context_t;
+#elif defined (__SSE4_2__)
+ #define SPECK_ALIGNED_CTX	16
  #include <immintrin.h>
  #define u128 __m128i
 typedef struct {

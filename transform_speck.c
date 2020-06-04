@@ -41,8 +41,11 @@ static int transop_deinit_speck(n2n_trans_op_t *arg) {
   transop_speck_t *priv = (transop_speck_t *)arg->priv;
 
   if(priv)
-    free(priv);
-
+#if defined (SPECK_ALIGNED_CTX)
+    _mm_free (priv);
+#else
+    free (priv);
+#endif
   return 0;
 }
 
@@ -163,7 +166,7 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
   uint8_t key_mat_buf[32] = { 0x00 };
 
   /* Clear out any old possibly longer key matter. */
-  memset(&(priv->ctx), 0, sizeof(priv->ctx) );
+  memset(&(priv->ctx), 0, sizeof(speck_context_t) );
 
   /* TODO: The input key always gets hashed to make a more unpredictable and more complete use of the key space */
   // REVISIT: Hash the key to keymat (formerly used: SHA)
@@ -172,8 +175,8 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
   // ADD: Pearson Hashing
   // FOR NOW: USE KEY ITSELF
   memcpy (key_mat_buf, key, ((key_size>32)?32:key_size) );
-
   speck_expand_key (key_mat_buf, &(priv->ctx));
+
   traceEvent(TRACE_DEBUG, "Speck key setup completed\n");
 
   return(0);
@@ -184,7 +187,6 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
 static void transop_tick_speck(n2n_trans_op_t * arg, time_t now) { ; }
 
 /* ****************************************************** */
-
 /* Speck initialization function */
 int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   transop_speck_t *priv;
@@ -198,8 +200,11 @@ int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   ttt->deinit = transop_deinit_speck;
   ttt->fwd = transop_encode_speck;
   ttt->rev = transop_decode_speck;
-
-  priv = (transop_speck_t*) calloc(1, sizeof(transop_speck_t));
+#if defined (SPECK_ALIGNED_CTX)
+  priv = (transop_speck_t*) _mm_malloc (sizeof(transop_speck_t), SPECK_ALIGNED_CTX);
+#else
+  priv = (transop_speck_t*) calloc (1, sizeof(transop_speck_t));
+#endif
   if(!priv) {
     traceEvent(TRACE_ERROR, "cannot allocate transop_speck_t memory");
     return(-1);
