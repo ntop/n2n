@@ -92,6 +92,16 @@ target_link_libraries(example_edge_embed n2n)
 add_executable(example_sn_embed example_sn_embed.c)
 target_link_libraries(example_sn_embed n2n)
 
+if(NOT DEFINED WIN32)
+  # Linux Capabilities
+  find_library(CAP_LIB cap)
+  if(CAP_LIB)
+    target_link_libraries(edge cap)
+    set(CMAKE_REQUIRED_LIBRARIES ${CAP_LIB})
+    ADD_DEFINITIONS("-DHAVE_LIBCAP")
+  endif()
+endif(NOT DEFINED WIN32)
+
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin
         LIBRARY DESTINATION lib

@@ -49,6 +49,12 @@ if test x$pcap_immediate_mode != x; then
   AC_DEFINE([HAVE_PCAP_IMMEDIATE_MODE], [], [Have pcap_immediate_mode])
 fi
 
+AC_CHECK_LIB([cap], [cap_get_proc], cap=true)
+if test x$cap != x; then
+  LDFLAGS="${LDFLAGS} -lcap"
+  AC_DEFINE([HAVE_LIBCAP],[1],[Support for linux capabilities])
+fi
+
 MACHINE=`uname -m`
 SYSTEM=`uname -s`
 

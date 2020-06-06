@@ -41,11 +41,20 @@
 #define ARP_PERIOD_INTERVAL             (10) /* sec */
 #endif
 
+#ifdef __linux__
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#endif
+
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
 #define IP4_DSTOFFSET 16
 #define IP4_MIN_SIZE  20
 #define UDP_SIZE      8
+
+/* heap allocation for compression as per lzo example doc */
+#define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
+static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
 
 /* ************************************** */
 
@@ -56,7 +65,9 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos);
-static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
+static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
+static void edge_cleanup_routes(n2n_edge_t *eee);
+static int supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
 static void check_known_peer_sock_change(n2n_edge_t * eee,
 			 uint8_t from_supernode,
 			 const n2n_mac_t mac,
@@ -105,6 +116,7 @@ struct n2n_edge {
   tuntap_dev          device;                 /**< All about the TUNTAP device */
   n2n_trans_op_t      transop;                /**< The transop to use when encoding */
   n2n_cookie_t        last_cookie;            /**< Cookie sent in last REGISTER_SUPER. */
+  n2n_route_t        *sn_route_to_clean;      /**< Supernode route to clean */
 
   /* Sockets */
   n2n_sock_t          supernode;
@@ -220,12 +232,10 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   eee->pending_peers  = NULL;
   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
-#ifdef NOT_USED
   if(lzo_init() != LZO_E_OK) {
     traceEvent(TRACE_ERROR, "LZO compression error");
     goto edge_init_error;
   }
-#endif
 
   for(i=0; i<conf->sn_num; ++i)
     traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (conf->sn_ip_array[i]));
@@ -265,7 +275,12 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
   if(edge_init_sockets(eee, conf->local_port, conf->mgmt_port, conf->tos) < 0) {
-    traceEvent(TRACE_ERROR, "Error: socket setup failed");
+    traceEvent(TRACE_ERROR, "socket setup failed");
+    goto edge_init_error;
+  }
+
+  if(edge_init_routes(eee, conf->routes, conf->num_routes) < 0) {
+    traceEvent(TRACE_ERROR, "routes setup failed");
     goto edge_init_error;
   }
 
@@ -318,16 +333,16 @@ static int is_valid_peer_sock(const n2n_sock_t *sock) {
  *  REVISIT: This is a really bad idea. The edge will block completely while the
  *           hostname resolution is performed. This could take 15 seconds.
  */
-static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
+static int supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
   n2n_sn_name_t addr;
   const char *supernode_host;
+  int rv = 0;
 
   memcpy(addr, addrIn, N2N_EDGE_SN_HOST_SIZE);
 
   supernode_host = strtok(addr, ":");
 
-  if(supernode_host)
-    {
+  if(supernode_host) {
       in_addr_t sn_addr;
       char *supernode_port = strtok(NULL, ":");
       const struct addrinfo aihints = {0, PF_INET, 0, 0, 0, NULL, NULL, NULL};
@@ -359,6 +374,7 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
             {
 	      /* Should only return IPv4 addresses due to aihints. */
 	      traceEvent(TRACE_WARNING, "Failed to resolve supernode IPv4 address for %s", supernode_host);
+	      rv = -1;
             }
 
 	  freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
@@ -368,10 +384,15 @@ static void supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
 	sn_addr = inet_addr(supernode_host); /* uint32_t */
 	memcpy(sn->addr.v4, &(sn_addr), IPV4_SIZE);
 	sn->family=AF_INET;
+	rv = -2;
       }
 
-    } else
+  } else {
     traceEvent(TRACE_WARNING, "Wrong supernode parameter (-l <host:port>)");
+    rv = -3;
+  }
+
+  return(rv);
 }
 
 /* ************************************** */
@@ -955,6 +976,15 @@ static int handle_PACKET(n2n_edge_t * eee,
     n2n_transform_t rx_transop_id;
 
     rx_transop_id = (n2n_transform_t)pkt->transform;
+    /* optional compression is encoded in uppermost bit of transform field.
+     * this is an intermediate solution to maintain compatibility until some
+     * upcoming major release (3.0?) brings up changes in packet structure anyway
+     * in the course of which a dedicated compression field could be spent.
+     * REVISIT then. */
+    uint16_t rx_compression_id;
+
+    rx_compression_id = (uint16_t)rx_transop_id >> (8*sizeof((uint16_t)rx_transop_id)-N2N_COMPRESSION_ID_BITLEN);
+    rx_transop_id &= (1 << (8*sizeof((uint16_t)rx_transop_id)-N2N_COMPRESSION_ID_BITLEN)) -1;
 
     if(rx_transop_id == eee->conf.transop_id) {
         uint8_t is_multicast;
@@ -964,6 +994,28 @@ static int handle_PACKET(n2n_edge_t * eee,
 						    eth_payload, N2N_PKT_BUF_SIZE,
 						    payload, psize, pkt->srcMac);
 	++(eee->transop.rx_cnt); /* stats */
+
+        /* decompress if necessary */
+        uint8_t * deflation_buffer = 0;
+        uint32_t deflated_len;
+        switch (rx_compression_id) {
+          case N2N_COMPRESSION_ID_LZO:
+	    deflation_buffer = malloc (N2N_PKT_BUF_SIZE);
+	    lzo1x_decompress (eth_payload, eth_size, deflation_buffer, (lzo_uint*)&deflated_len, NULL);
+            break;
+
+          default:
+            break;
+        }
+
+        if (rx_compression_id) {
+          traceEvent (TRACE_DEBUG, "payload decompression [id: %u]: deflated %u bytes to %u bytes",
+                                   rx_compression_id, eth_size, (int)deflated_len);
+          memcpy(eth_payload ,deflation_buffer, deflated_len );
+          eth_size = deflated_len;
+          free (deflation_buffer);
+        }
+
 	is_multicast = (is_ip6_discovery(eth_payload, eth_size) || is_ethMulticast(eth_payload, eth_size));
 
 	if(eee->conf.drop_multicast && is_multicast) {
@@ -1320,6 +1372,41 @@ static void send_packet2net(n2n_edge_t * eee,
 
   pkt.sock.family=0; /* do not encode sock */
   pkt.transform = tx_transop_idx;
+
+  // compression needs to be tried before encode_PACKET is called for compression indication gets encoded there
+  pkt.compression = N2N_COMPRESSION_ID_NONE;
+  if (eee->conf.compression) {
+    uint8_t * compression_buffer;
+    uint32_t  compression_len;
+    switch (eee->conf.compression) {
+        case N2N_COMPRESSION_ID_LZO:
+          compression_buffer = malloc (len + len / 16 + 64 + 3);
+          if (lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
+            if (compression_len < len) {
+              pkt.compression = N2N_COMPRESSION_ID_LZO;
+            }
+          }
+          break;
+
+        default:
+          break;
+    }
+
+    if (pkt.compression) {
+      traceEvent (TRACE_DEBUG, "payload compression [id: %u]: compressed %u bytes to %u bytes\n",
+                               pkt.compression, len, compression_len);
+
+      memcpy (tap_pkt, compression_buffer, compression_len);
+      len = compression_len;
+      free (compression_buffer);
+    }
+  }
+  /* optional compression is encoded in uppermost bits of transform field.
+   * this is an intermediate solution to maintain compatibility until some
+   * upcoming major release (3.0?) brings up changes in packet structure anyway
+   * in the course of which a dedicated compression field could be spent.
+   * REVISIT then. */
+  pkt.transform = pkt.transform | (pkt.compression << (8*sizeof(pkt.transform)-N2N_COMPRESSION_ID_BITLEN));
 
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
@@ -1850,6 +1937,9 @@ void edge_term(n2n_edge_t * eee) {
   clear_peer_list(&eee->known_peers);
 
   eee->transop.deinit(&eee->transop);
+
+  edge_cleanup_routes(eee);
+
   free(eee);
 }
 
@@ -1921,12 +2011,336 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port,
 
 /* ************************************** */
 
+#ifdef __linux__
+
+static uint32_t get_gateway_ip() {
+  FILE *fd;
+  char *token = NULL;
+  char *gateway_ip_str = NULL;
+  char buf[256];
+  uint32_t gateway = 0;
+
+  if(!(fd = fopen("/proc/net/route", "r")))
+    return(0);
+
+  while(fgets(buf, sizeof(buf), fd)) {
+    if(strtok(buf, "\t") && (token = strtok(NULL, "\t")) && (!strcmp(token, "00000000"))) {
+      token = strtok(NULL, "\t");
+
+      if(token) {
+        struct in_addr addr;
+
+        addr.s_addr = strtoul(token, NULL, 16);
+        gateway_ip_str = inet_ntoa(addr);
+
+        if(gateway_ip_str) {
+          gateway = addr.s_addr;
+          break;
+        }
+      }
+    }
+  }
+
+  fclose(fd);
+
+  return(gateway);
+}
+
+static char* route_cmd_to_str(int cmd, const n2n_route_t *route, char *buf, size_t bufsize) {
+  const char *cmd_str;
+  struct in_addr addr;
+  char netbuf[64], gwbuf[64];
+
+  switch(cmd) {
+    case RTM_NEWROUTE:
+      cmd_str = "Add";
+      break;
+    case RTM_DELROUTE:
+      cmd_str = "Delete";
+      break;
+    default:
+      cmd_str = "?";
+  }
+
+  addr.s_addr = route->net_addr;
+  inet_ntop(AF_INET, &addr, netbuf, sizeof(netbuf));
+  addr.s_addr = route->gateway;
+  inet_ntop(AF_INET, &addr, gwbuf, sizeof(gwbuf));
+
+  snprintf(buf, bufsize, "%s %s/%d via %s", cmd_str, netbuf, route->net_bitlen, gwbuf);
+
+  return(buf);
+}
+
+/* Adapted from https://olegkutkov.me/2019/08/29/modifying-linux-network-routes-using-netlink/ */
+#define NLMSG_TAIL(nmsg) \
+    ((struct rtattr *) (((char *) (nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
+
+/* Add new data to rtattr */
+static int rtattr_add(struct nlmsghdr *n, int maxlen, int type, const void *data, int alen)
+{
+    int len = RTA_LENGTH(alen);
+    struct rtattr *rta;
+
+    if(NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen) {
+      traceEvent(TRACE_ERROR, "rtattr_add error: message exceeded bound of %d\n", maxlen);
+      return -1;
+    }
+
+    rta = NLMSG_TAIL(n);
+    rta->rta_type = type;
+    rta->rta_len = len; 
+
+    if(alen)
+      memcpy(RTA_DATA(rta), data, alen);
+
+    n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len);
+
+    return 0;
+}
+
+static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx) {
+  int rv = -1;
+  int rv2;
+  char nl_buf[8192]; /* >= 8192 to avoid truncation, see "man 7 netlink" */
+  char route_buf[256];
+  struct iovec iov;
+  struct msghdr msg;
+  struct sockaddr_nl sa;
+  uint8_t read_reply = 1;
+  int nl_sock;
+
+  struct {
+    struct nlmsghdr n;
+    struct rtmsg r;
+    char buf[4096];
+  } nl_request;
+
+  if((nl_sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) == -1) {
+    traceEvent(TRACE_ERROR, "netlink socket creation failed [%d]: %s", errno, strerror(errno));
+    return(-1);
+  }
+
+  /* Subscribe to route change events */
+  iov.iov_base = nl_buf;
+  iov.iov_len = sizeof(nl_buf);
+
+  memset(&sa, 0, sizeof(sa));
+  sa.nl_family = PF_NETLINK;
+  sa.nl_groups = RTMGRP_IPV4_ROUTE | RTMGRP_NOTIFY;
+  sa.nl_pid = getpid();
+
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_name = &sa;
+  msg.msg_namelen = sizeof(sa);
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+
+  /* Subscribe to route events */
+  if(bind(nl_sock, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
+    traceEvent(TRACE_ERROR, "netlink socket bind failed [%d]: %s", errno, strerror(errno));
+    goto out;
+  }
+
+  /* Initialize request structure */
+  memset(&nl_request, 0, sizeof(nl_request));
+  nl_request.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+  nl_request.n.nlmsg_flags = NLM_F_REQUEST | flags;
+  nl_request.n.nlmsg_type = cmd;
+  nl_request.r.rtm_family = AF_INET;
+  nl_request.r.rtm_table = RT_TABLE_MAIN;
+  nl_request.r.rtm_scope = RT_SCOPE_NOWHERE;
+
+  /* Set additional flags if NOT deleting route */
+  if(cmd != RTM_DELROUTE) {
+    nl_request.r.rtm_protocol = RTPROT_BOOT;
+    nl_request.r.rtm_type = RTN_UNICAST;
+  }
+
+  nl_request.r.rtm_family = AF_INET;
+  nl_request.r.rtm_dst_len = route->net_bitlen;
+
+  /* Select scope, for simplicity we supports here only IPv6 and IPv4 */
+  if(nl_request.r.rtm_family == AF_INET6)
+    nl_request.r.rtm_scope = RT_SCOPE_UNIVERSE;
+  else
+    nl_request.r.rtm_scope = RT_SCOPE_LINK;
+
+  /* Set gateway */
+  if(route->net_bitlen) {
+    if(rtattr_add(&nl_request.n, sizeof(nl_request), RTA_GATEWAY, &route->gateway, 4) < 0)
+      goto out;
+
+    nl_request.r.rtm_scope = 0;
+    nl_request.r.rtm_family = AF_INET;
+  }
+
+  /* Don't set destination and interface in case of default gateways */
+  if(route->net_bitlen) {
+    /* Set destination network */
+    if(rtattr_add(&nl_request.n, sizeof(nl_request), /*RTA_NEWDST*/ RTA_DST, &route->net_addr, 4) < 0)
+      goto out;
+
+    /* Set interface */
+    if(if_idx > 0) {
+      if(rtattr_add(&nl_request.n, sizeof(nl_request), RTA_OIF, &if_idx, sizeof(int)) < 0)
+	goto out;
+    }
+  }
+
+  /* Send message to the netlink */
+  if((rv2 = send(nl_sock, &nl_request, sizeof(nl_request), 0)) != sizeof(nl_request)) {
+    traceEvent(TRACE_ERROR, "netlink send failed [%d]: %s", errno, strerror(errno));
+    goto out;
+  }
+
+  /* Wait for the route notification. Assume that the first reply we get is the correct one. */
+  traceEvent(TRACE_DEBUG, "waiting for netlink response...");
+
+  while(read_reply) {
+    ssize_t len = recvmsg(nl_sock, &msg, 0);
+    struct nlmsghdr *nh;
+
+    for(nh = (struct nlmsghdr *)nl_buf; NLMSG_OK(nh, len); nh = NLMSG_NEXT(nh, len)) {
+      /* Stop after the first reply */
+      read_reply = 0;
+
+      if(nh->nlmsg_type == NLMSG_ERROR) {
+	struct nlmsgerr *err = NLMSG_DATA(nh);
+	int errcode = err->error;
+
+	if(errcode < 0)
+	  errcode = -errcode;
+
+	/* Ignore EEXIST as existing rules are ok */
+	if(errcode != EEXIST) {
+	  traceEvent(TRACE_ERROR, "[err=%d] route: %s", errcode, route_cmd_to_str(cmd, route, route_buf, sizeof(route_buf)));
+	  goto out;
+	}
+      }
+
+      if(nh->nlmsg_type == NLMSG_DONE)
+        break;
+
+      if(nh->nlmsg_type == cmd) {
+	traceEvent(TRACE_DEBUG, "Found netlink reply");
+	break;
+      }
+    }
+  }
+
+  traceEvent(TRACE_DEBUG, route_cmd_to_str(cmd, route, route_buf, sizeof(route_buf)));
+  rv = 0;
+
+out:
+  close(nl_sock);
+
+  return(rv);
+}
+#endif
+
+/* Add the user-provided routes to the linux routing table. Network routes
+ * are bound to the n2n TAP device, so they are automatically removed when
+ * the TAP device is destroyed. */
+static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
+#ifdef __linux__
+  int i;
+
+  for(i=0; i<num_routes; i++) {
+    n2n_route_t *route = &routes[i];
+
+    if((route->net_addr == 0) && (route->net_bitlen == 0)) {
+      /* This is a default gateway rule. We need to:
+       *
+       *  1. Add a route to the supernode via the host internet gateway
+       *  2. Add the new default gateway route
+       *
+       * Instead of modifying the system default gateway, we use the trick
+       * of adding a route to the 0.0.0.0/1 network, which takes precedence
+       * over the default gateway (0.0.0.0/0). This leaves the default
+       * gateway unchanged so that after n2n is stopped the cleanup is
+       * easier.
+       */
+      n2n_sock_t sn;
+      n2n_route_t custom_route;
+
+      if(eee->sn_route_to_clean) {
+	traceEvent(TRACE_ERROR, "Only one default gateway route allowed");
+	return(-1);
+      }
+
+      if(eee->conf.sn_num != 1) {
+	traceEvent(TRACE_ERROR, "Only one supernode supported with routes");
+	return(-1);
+      }
+
+      if(supernode2addr(&sn, eee->conf.sn_ip_array[0]) < 0)
+	return(-1);
+
+      if(sn.family != AF_INET) {
+	traceEvent(TRACE_ERROR, "Only IPv4 routes supported");
+	return(-1);
+      }
+
+      custom_route.net_addr = *((u_int32_t*)sn.addr.v4);
+      custom_route.net_bitlen = 32;
+      custom_route.gateway = get_gateway_ip();
+
+      if(!custom_route.gateway) {
+	traceEvent(TRACE_ERROR, "could not determine the gateway IP address");
+	return(-1);
+      }
+
+      /* ip route add supernode via internet_gateway */
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, -1) < 0)
+	return(-1);
+
+      /* Save the route to delete it when n2n is stopped */
+      eee->sn_route_to_clean = calloc(1, sizeof(n2n_route_t));
+
+      /* Store a copy of the rules into the runtime to delete it during shutdown */
+      if(eee->sn_route_to_clean)
+	*eee->sn_route_to_clean = custom_route;
+
+      /* ip route add 0.0.0.0/1 via n2n_gateway */
+      custom_route.net_addr = 0;
+      custom_route.net_bitlen = 1;
+      custom_route.gateway = route->gateway;
+
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
+	return(-1);
+    } else {
+      /* ip route add net via n2n_gateway */
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, route, eee->device.if_idx) < 0)
+	return(-1);
+    }
+  }
+#endif
+
+  return(0);
+}
+
+/* ************************************** */
+
+static void edge_cleanup_routes(n2n_edge_t *eee) {
+#ifdef __linux__
+  if(eee->sn_route_to_clean) {
+    /* ip route del supernode via internet_gateway */
+    routectl(RTM_DELROUTE, 0, eee->sn_route_to_clean, -1);
+    free(eee->sn_route_to_clean);
+  }
+#endif
+}
+
+/* ************************************** */
+
 void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   memset(conf, 0, sizeof(*conf));
 
   conf->local_port = 0 /* any port */;
   conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   conf->transop_id = N2N_TRANSFORM_ID_NULL;
+  conf->compression = N2N_COMPRESSION_ID_NONE;
   conf->drop_multicast = 1;
   conf->allow_p2p = 1;
   conf->disable_pmtu_discovery = 1;
@@ -1936,6 +2350,12 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
     conf->encrypt_key = strdup(getenv("N2N_KEY"));
     conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
   }
+}
+
+/* ************************************** */
+
+void edge_term_conf(n2n_edge_conf_t *conf) {
+  if(conf->routes) free(conf->routes);
 }
 
 /* ************************************** */
@@ -1992,6 +2412,7 @@ int quick_edge_init(char *device_name, char *community_name,
 
   rv = run_edge_loop(eee, keep_on_running);
   edge_term(eee);
+  edge_term_conf(&conf);
 
 quick_edge_init_end:
   tuntap_close(&tuntap);

@@ -91,9 +91,6 @@ example_sn_embed: example_sn_embed.c $(N2N_LIB) n2n.h
 example_edge_embed: example_edge_embed.c $(N2N_LIB) n2n.h
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
-.c.o: n2n.h n2n_transforms.h n2n_wire.h twofish.h Makefile
-	$(CC) $(CFLAGS) -c $< -o $@
-
 %.gz : %
 	gzip -c $< > $@
 
