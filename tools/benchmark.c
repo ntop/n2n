@@ -128,7 +128,7 @@ int main(int argc, char * argv[]) {
 #ifdef N2N_HAVE_AES
   run_transop_benchmark("transop_aes", &transop_aes_cbc, &conf, pktbuf);
 #endif
-#ifdef N2N_HAVE_AES
+#ifdef HAVE_OPENSSL_1_1
   run_transop_benchmark("transop_cc20", &transop_cc20, &conf, pktbuf);
 #endif
   run_transop_benchmark("transop_speck", &transop_speck, &conf, pktbuf);

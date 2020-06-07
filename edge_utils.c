@@ -18,7 +18,10 @@
 
 #include "n2n.h"
 #include "lzoconf.h"
+
+#ifdef HAVE_LIBZSTD
 #include <zstd.h>
+#endif
 
 #ifdef WIN32
 #include <process.h>
@@ -163,7 +166,10 @@ const char* compression_str(uint8_t cmpr) {
   switch(cmpr) {
   case N2N_COMPRESSION_ID_NONE:  return("none");
   case N2N_COMPRESSION_ID_LZO:   return("lzo1x");
+
+#ifdef HAVE_LIBZSTD
   case N2N_COMPRESSION_ID_ZSTD:  return("zstd");
+#endif
   default:                       return("invalid");
   };
 }
@@ -334,9 +340,21 @@ static uint8_t localhost_v6[IPV6_SIZE] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
  * in the same supernode host.
  */
 static int is_valid_peer_sock(const n2n_sock_t *sock) {
-  if(((sock->family == AF_INET) && (*((uint32_t*)sock->addr.v4) != htonl(localhost_v4)))
-     || ((sock->family == AF_INET6) && memcmp(sock->addr.v6, localhost_v6, IPV6_SIZE)))
-    return(1);
+  switch(sock->family) {
+  case AF_INET:
+    {
+      uint32_t *a = (uint32_t*)sock->addr.v4;
+      
+      if(*a != htonl(localhost_v4))
+	return(1);
+    }
+    break;
+  
+  case AF_INET6:
+    if(memcmp(sock->addr.v6, localhost_v6, IPV6_SIZE))
+      return(1);
+    break;
+  }
 
   return(0);
 }
@@ -2313,7 +2331,8 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
        */
       n2n_sock_t sn;
       n2n_route_t custom_route;
-
+      uint32_t *a;
+      
       if(eee->sn_route_to_clean) {
 	traceEvent(TRACE_ERROR, "Only one default gateway route allowed");
 	return(-1);
@@ -2332,7 +2351,8 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
 	return(-1);
       }
 
-      custom_route.net_addr = *((u_int32_t*)sn.addr.v4);
+      a = (u_int32_t*)sn.addr.v4;
+      custom_route.net_addr = *a;
       custom_route.net_bitlen = 32;
       custom_route.gateway = get_gateway_ip();
 
