@@ -37,6 +37,21 @@
 
 /* ***************************************************** */
 
+#ifdef HAVE_LIBCAP
+
+#include <sys/capability.h>
+#include <sys/prctl.h>
+
+static cap_value_t cap_values[] = {
+				   //CAP_NET_RAW,      /* Use RAW and PACKET sockets */
+				   CAP_NET_ADMIN     /* Needed to performs routes cleanup at exit */
+};
+
+int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
+#endif
+
+/* ***************************************************** */
+
 typedef struct n2n_priv_config {
   char                tuntap_dev_name[N2N_IFNAMSIZ];
   char                ip_mode[N2N_IF_MODE_SIZE];
@@ -135,6 +150,7 @@ static void help() {
 #endif /* #ifndef WIN32 */
 #ifdef __linux__
 	 "[-T <tos>]"
+   "[-n cidr:gateway] "
 #endif
 	 "[-m <MAC address>] "
 	 "-l <supernode host:port>\n"
@@ -143,7 +159,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A] [-z[<compression algo>]] [-h]\n\n");
+   "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-z[<compression algo>]] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -172,8 +188,13 @@ static void help() {
          "                         | causes connections stall when not properly supported.\n");
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
+  printf("-A1                      | Disable payload encryption. Do not use with -k.\n");
+  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key (-k).\n");
 #ifdef N2N_HAVE_AES
-  printf("-A                       | Use AES CBC for encryption (default=use twofish).\n");
+  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key (-k).\n");
+#endif
+#ifdef HAVE_OPENSSL_1_1
+  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key (-k).\n");
 #endif
   printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
 #ifdef N2N_HAVE_ZSTD
@@ -184,6 +205,7 @@ static void help() {
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
   printf("-T <tos>                 | TOS for packets (e.g. 0x48 for SSH like priority)\n");
+  printf("-n <cidr:gateway>        | Route an IPv4 network via the gw. Use 0.0.0.0/0 for the default gw. Can be set multiple times.\n");
 #endif
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
@@ -197,6 +219,46 @@ static void help() {
 #endif
 
   exit(0);
+}
+
+/* *************************************************** */
+
+static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
+  /* even though 'cipher' and 'conf->transop_id' share the same encoding scheme,
+   * a switch-statement under conditional compilation is used to sort out the
+   * unsupported ciphers */
+  switch (cipher) {
+  case 1:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_NULL;
+      break;
+    }
+  case 2:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
+      break;
+    }
+#ifdef N2N_HAVE_AES
+  case 3:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
+      break;
+    }
+#endif
+#ifdef HAVE_OPENSSL_1_1
+  case 4:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_CHACHA20;
+      break;
+    }
+#endif
+  default:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_INVAL;
+      traceEvent(TRACE_NORMAL, "the %s cipher given by -A_ option is not supported in this version.", transop_str(cipher));
+      exit(1);
+    }
+  }
 }
 
 /* *************************************************** */
@@ -276,7 +338,6 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       if(conf->encrypt_key) free(conf->encrypt_key);
       if(conf->transop_id == N2N_TRANSFORM_ID_NULL)
         conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
-
       conf->encrypt_key = strdup(optargument);
       traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
       break;
@@ -288,13 +349,21 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
-#ifdef N2N_HAVE_AES
   case 'A':
     {
-      conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
+      int cipher;
+
+      if (optargument) {
+        cipher = atoi(optargument);
+      } else {
+        traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
+                                 "please use -A3 instead to choose a the AES-CBC cipher for payload encryption.");
+	cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only   
+      }
+
+      setPayloadEncryption(conf, cipher);
       break;
     }
-#endif
 
   case 'z':
     {
@@ -376,6 +445,43 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
       break;
     }
+
+  case 'n':
+    {
+      char cidr_net[64], gateway[64];
+      n2n_route_t route;
+
+      if(sscanf(optargument, "%63[^/]/%d:%63s", cidr_net, &route.net_bitlen, gateway) != 3) {
+        traceEvent(TRACE_WARNING, "Bad cidr/gateway format '%d'. See -h.", optargument);
+        break;
+      }
+
+      route.net_addr = inet_addr(cidr_net);
+      route.gateway = inet_addr(gateway);
+
+      if((route.net_bitlen < 0) || (route.net_bitlen > 32)) {
+        traceEvent(TRACE_WARNING, "Bad prefix '%d' in '%s'", route.net_bitlen, optargument);
+        break;
+      }
+
+      if(route.net_addr == INADDR_NONE) {
+        traceEvent(TRACE_WARNING, "Bad network '%s' in '%s'", cidr_net, optargument);
+        break;
+      }
+
+      if(route.net_addr == INADDR_NONE) {
+        traceEvent(TRACE_WARNING, "Bad gateway '%s' in '%s'", gateway, optargument);
+        break;
+      }
+
+      traceEvent(TRACE_DEBUG, "Adding %s/%d via %s", cidr_net, route.net_bitlen, gateway);
+
+      conf->routes = realloc(conf->routes, sizeof(struct n2n_route) * (conf->num_routes + 1));
+      conf->routes[conf->num_routes] = route;
+      conf->num_routes++;
+
+      break;
+    }
 #endif
 
   case 's': /* Subnet Mask */
@@ -435,12 +541,9 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::"
-#ifdef N2N_HAVE_AES
-			 "A"
-#endif
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:zA:z::"
 #ifdef __linux__
-			 "T:"
+			 "T:n:"
 #endif
 			 ,
 			 long_options, NULL)) != '?') {
@@ -635,7 +738,7 @@ static void daemonize() {
 
 static int keep_on_running;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
@@ -657,7 +760,7 @@ static void term_handler(int sig)
   return(TRUE);
 #endif
 }
-#endif
+#endif /* defined(__linux__) || defined(WIN32) */
 
 /* *************************************************** */
 
@@ -670,6 +773,9 @@ int main(int argc, char* argv[]) {
   n2n_priv_config_t ec; /* config used for standalone program execution */
 #ifndef WIN32
   struct passwd *pw = NULL;
+#endif
+#ifdef HAVE_LIBCAP
+  cap_t caps;
 #endif
 
   /* Defaults */
@@ -721,6 +827,7 @@ int main(int argc, char* argv[]) {
 #endif
 
   traceEvent(TRACE_NORMAL, "Using compression: %s.", compression_str(conf.compression));
+  traceEvent(TRACE_NORMAL, "Using %s cipher.", transop_str(conf.transop_id));
 
   /* Random seed */
   srand(time(NULL));
@@ -766,6 +873,22 @@ int main(int argc, char* argv[]) {
 #endif /* #ifndef WIN32 */
 
 #ifndef WIN32
+
+#ifdef HAVE_LIBCAP
+  /* Before dropping the privileges, retain capabilities to regain them in future. */
+  caps = cap_get_proc();
+
+  cap_set_flag(caps, CAP_PERMITTED, num_cap, cap_values, CAP_SET);
+  cap_set_flag(caps, CAP_EFFECTIVE, num_cap, cap_values, CAP_SET);
+
+  if((cap_set_proc(caps) != 0) || (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) != 0))
+    traceEvent(TRACE_WARNING, "Unable to retain permitted capabilities [%s]\n", strerror(errno));
+#else
+#ifndef __APPLE__
+  traceEvent(TRACE_WARNING, "n2n has not been compiled with libcap-dev. Some commands may fail.");
+#endif
+#endif /* HAVE_LIBCAP */
+
   if((ec.userid != 0) || (ec.groupid != 0)) {
     traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
 	       (signed int)ec.userid, (signed int)ec.groupid);
@@ -795,8 +918,20 @@ int main(int argc, char* argv[]) {
   rc = run_edge_loop(eee, &keep_on_running);
   print_edge_stats(eee);
 
+#ifdef HAVE_LIBCAP
+  /* Before completing the cleanup, regain the capabilities as some
+   * cleanup tasks require them (e.g. routes cleanup). */
+  cap_set_flag(caps, CAP_EFFECTIVE, num_cap, cap_values, CAP_SET);
+
+  if(cap_set_proc(caps) != 0)
+    traceEvent(TRACE_WARNING, "Could not regain the capabilities [%s]\n", strerror(errno));
+
+  cap_free(caps);
+#endif
+
   /* Cleanup */
   edge_term(eee);
+  edge_term_conf(&conf);
   tuntap_close(&tuntap);
 
   if(conf.encrypt_key) free(conf.encrypt_key);

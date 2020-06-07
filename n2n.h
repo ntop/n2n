@@ -73,8 +73,6 @@
 #include <pthread.h>
 
 #ifdef __linux__
-#include <linux/if.h>
-#include <linux/if_tun.h>
 #define N2N_CAN_NAME_IFACE 1
 #endif /* #ifdef __linux__ */
 
@@ -139,6 +137,7 @@ typedef struct ether_hdr ether_hdr_t;
 #ifndef WIN32
 typedef struct tuntap_dev {
   int           fd;
+  int 		if_idx;
   uint8_t       mac_addr[6];
   uint32_t      ip_addr, device_mask;
   uint16_t      mtu;
@@ -216,11 +215,19 @@ struct peer_info {
 
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 
+typedef struct n2n_route {
+  in_addr_t net_addr;
+  int net_bitlen;
+  in_addr_t gateway;
+} n2n_route_t;
+
 typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
+  n2n_route_t	      *routes;		      /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   n2n_transform_t     transop_id;             /**< The transop to use. */
   uint16_t	      compression;	      /**< Compress outgoing data packets before encryption */
+  uint16_t	      num_routes;	      /**< Number of routes in routes */
   uint8_t             dyn_ip_mode;            /**< Interface IP address is dynamically allocated, eg. DHCP. */
   uint8_t             allow_routing;          /**< Accept packet no to interface address. */
   uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
@@ -304,6 +311,9 @@ int n2n_transop_twofish_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #ifdef N2N_HAVE_AES
 int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #endif
+#ifdef HAVE_OPENSSL_1_1
+int n2n_transop_cc20_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+#endif
 
 /* Log */
 void setTraceLevel(int level);
@@ -349,6 +359,7 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf);
 int edge_verify_conf(const n2n_edge_conf_t *conf);
 int edge_conf_add_supernode(n2n_edge_conf_t *conf, const char *ip_and_port);
 const n2n_edge_conf_t* edge_get_conf(const n2n_edge_t *eee);
+void edge_term_conf(n2n_edge_conf_t *conf);
 
 /* Public functions */
 n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *rv);
@@ -363,4 +374,6 @@ int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
 const char* compression_str(uint8_t cmpr);
+const char* transop_str(enum n2n_transform tr);
+
 #endif /* _N2N_H_ */

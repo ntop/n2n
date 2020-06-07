@@ -47,35 +47,22 @@ Now the supernode service should be up and running on port 1234. On your edge no
 
 ## Routing the traffic
 
-On linux, n2n provides a standard TAP interface, so routing works gracefully via the standard system utilities as follows.
+Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. In this context, the `server` is the edge node which provides access to the remote network/internet, whereas the `client` is the connecting edge node.
 
-In this example host1 is the edge router (with n2n IP 192.168.100.1), whereas host2 is the client.
-
-Here is how to configure host1:
+In order to enable routing, the `server` must be configured as follows:
 
 1. Add the `-r` option to the edge options to enable routing
 2. Enable packet forwarding with `sudo sysctl -w net.ipv4.ip_forward=1`
-3. Possibly configure iptables to `ACCEPT` the packets on the `FORWARD` chain.
+3. Enable IP masquerading: `sudo iptables -t nat -A POSTROUTING -j MASQUERADE`
 
-On host2, run the `edge` program as normal to join the host1 community.
+On the client side, the easiest way to configure routing is via the `-n` option. For example:
 
-In order to forward all the internet traffic via host2:
+- In order to connect to the remote network `192.168.100.0/24`, use `-n 192.168.100.0/24:10.0.0.1`
+- In order to tunnel all the internet traffic, use `-n 0.0.0.0/0:10.0.0.1`
 
-```sh
-# Determine the current gateway (e.g. 192.168.1.1)
-$ ip route show default
+10.0.0.1 is the IP address of the gateway to use to route the specified network. It should correspond to the IP address of the `server` within n2n. Multiple `-n` options can be specified.
 
-# Add a route to reach the supernode via such gateway
-$ sudo ip route add supernode.ntop.org via 192.168.1.1
-
-# Forward all the internet traffic via host1
-$ sudo ip route del default
-$ sudo ip route add default via 192.168.100.1
-```
-
-This process can be greatly simplified by using the [n2n_gateway.sh](doc/n2n_gateway.sh) script.
-
-See [Routing.md](doc/Routing.md) for other use cases and in depth explanation.
+As an alternative to the `-n` option, the `ip route` linux command can be manually used. See the [n2n_gateway.sh](doc/n2n_gateway.sh) script for an example. See also [Routing.md](doc/Routing.md) for other use cases and in depth explanation.
 
 ## Manual Compilation
 
@@ -119,10 +106,11 @@ n2n edge nodes use twofish encryption by default for compatibility reasons with 
 of the edge nodes, their IP address and the community are sent in cleartext.
 
 When encryption is enabled, the supernode will not be able to decrypt the traffic exchanged between
-two edge nodes, but it will now that edge A is talking with edge B.
+two edge nodes, but it will know that edge A is talking with edge B.
 
 Recently AES encryption support has been implemented, which increases both security and performance,
-so it is recommended to enable it on all the edge nodes by specifying the `-A` option.
+so it is recommended to enable it on all the edge nodes that must have the -Ax value. When possible
+(i.e. when n2n is compiled with OpenSSL 1.1) we recommend to use -A4
 
 A benchmark of the encryption methods is available when compiled from source with `tools/n2n-benchmark`.
 

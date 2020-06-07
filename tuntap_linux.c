@@ -21,6 +21,8 @@
 #ifdef __linux__
 
 #include <net/if_arp.h>
+#include <net/if.h>
+#include <linux/if_tun.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
@@ -170,6 +172,7 @@ int tuntap_open(tuntap_dev *device,
   sa.nl_groups = RTMGRP_LINK;
   sa.nl_pid = getpid();
 
+  memset(&msg, 0, sizeof(msg));
   msg.msg_name = &sa;
   msg.msg_namelen = sizeof(sa);
   msg.msg_iov = &iov;
@@ -229,6 +232,8 @@ int tuntap_open(tuntap_dev *device,
 
   device->ip_addr = inet_addr(device_ip);
   device->device_mask = inet_addr(device_mask);
+  device->if_idx = if_nametoindex(dev);
+
   return(device->fd);
 }
 

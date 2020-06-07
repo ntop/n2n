@@ -930,7 +930,7 @@ static void dump_registrations(int signo) {
 
 static int keep_running;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
@@ -952,7 +952,7 @@ static void term_handler(int sig)
   return(TRUE);
 #endif
 }
-#endif
+#endif /* defined(__linux__) || defined(WIN32) */
 
 /* *************************************************** */
 
