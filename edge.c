@@ -188,18 +188,16 @@ static void help() {
          "                         | causes connections stall when not properly supported.\n");
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
-  printf("-A1                      | Disable payload encryption. Do not use with -k.\n");
-  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key (-k).\n");
+  printf("-A1                      | Disable payload encryption. Do not use with key -- defaulting to Twofish otherwise.\n");
+  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key.\n");
 #ifdef N2N_HAVE_AES
-  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key (-k).\n");
+  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key.\n");
 #endif
 #ifdef HAVE_OPENSSL_1_1
   printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
-  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
 #endif
-#ifdef HAVE_OPENSSL_1_1
-  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key (-k).\n");
-#endif
+//  COMING SOON, not yet implemented in setPayloadEncryption(...)
+//  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
   printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
 #ifdef N2N_HAVE_ZSTD
   printf("-z2                      | Enable zstd compression for outgoing data packets\n");
@@ -554,7 +552,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z:A:"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::"
 #ifdef __linux__
 			 "T:n:"
 #endif
@@ -638,21 +636,24 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_priv_config
 
       if(equal) {
 	equal[0] = '\0';
-	
-	/* Adding an exception for -A_ -z_ */
 
-	if(key[0] == 'z') {
-	  value = &key[1];
+	value = &equal[1];
+
+      } else {
+
+	value = NULL;
+
+	/* Adding an exception for -A_ -z_ which can come
+           without '=' and even without any further data */
+
+	if (key[0] == 'z') {
+	  if (key[1]) value = &key[1];
 	  key = "z";
-	} else if(key[0] == 'A') {
-	  value = &key[1];
+	} else if (key[0] == 'A') {
+	  if (key[1]) value = &key[1];
 	  key = "A";
-	} else {
-	  value = &equal[1];
-	}
-      } else
-	value = "";
-      
+        }
+      }
       // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
       setOption(key[0], value, ec, conf);
     } else {
@@ -848,12 +849,12 @@ int main(int argc, char* argv[]) {
 
   if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
     if(conf.encrypt_key) {
-      traceEvent(TRACE_WARNING, "Ignoring -k as -A1 was set");
-      free(conf.encrypt_key);
-      conf.encrypt_key = NULL;
+      /* make sure that Twofish is default cipher if key only (and no cipher) is specified */
+      traceEvent(TRACE_WARNING, "Switching to Twofish as key was provided.");
+      conf.transop_id = N2N_TRANSFORM_ID_TWOFISH;
     }
   }
-    
+
   if(rc < 0)
     help();
 
