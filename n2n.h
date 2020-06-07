@@ -306,6 +306,9 @@ int n2n_transop_twofish_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #ifdef N2N_HAVE_AES
 int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #endif
+#ifdef HAVE_OPENSSL_1_1
+int n2n_transop_cc20_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+#endif
 
 /* Log */
 void setTraceLevel(int level);
@@ -365,5 +368,6 @@ int quick_edge_init(char *device_name, char *community_name,
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
+const char* transop_str(enum n2n_transform tr);
 
 #endif /* _N2N_H_ */
