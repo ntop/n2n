@@ -188,7 +188,7 @@ static void help() {
          "                         | causes connections stall when not properly supported.\n");
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
-  printf("-A1                      | Disable payload encryption. Do not use with key -- defaulting to Twofish otherwise.\n");
+  printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
   printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key.\n");
 #ifdef N2N_HAVE_AES
   printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key.\n");
