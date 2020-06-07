@@ -227,6 +227,34 @@ static void help() {
 
 /* *************************************************** */
 
+static void setPayloadCompression(n2n_edge_conf_t *conf, int compression) {
+  /* even though 'compression' and 'conf->compression' share the same encoding scheme,
+   * a switch-statement under conditional compilation is used to sort out the
+   * unsupported optarguments */
+  switch (compression) {
+  case 1:
+    {
+      conf->compression = N2N_COMPRESSION_ID_LZO;
+      break;
+    }
+#ifdef N2N_HAVE_ZSTD
+  case 2:
+    {
+      conf->compression = N2N_COMPRESSION_ID_ZSTD;
+      break;
+    }
+#endif
+  default:
+    {
+      conf->compression = N2N_COMPRESSION_ID_NONE;
+      traceEvent(TRACE_NORMAL, "the %s compression given by -z_ option is not supported in this version.", compression_str(compression));
+      exit(1); // to make the user aware
+    }
+  }
+}
+
+/* *************************************************** */
+
 static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
   /* even though 'cipher' and 'conf->transop_id' share the same encoding scheme,
    * a switch-statement under conditional compilation is used to sort out the
@@ -370,33 +398,14 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
   case 'z':
     {
-      int compression = N2N_COMPRESSION_ID_LZO; // default, if '-z' only
+      int compression;
+      
       if (optargument) {
         compression = atoi(optargument);
-      }
-      /* even though 'compression' and 'conf->compression' share the same encoding scheme,
-       * a switch-statement under conditional compilation is used to sort out the
-       * unsupported optarguments */
-      switch (compression) {
-      case 1:
-	{
-	  conf->compression = N2N_COMPRESSION_ID_LZO;
-	  break;
-	}
-#ifdef N2N_HAVE_ZSTD
-      case 2:
-	{
-	  conf->compression = N2N_COMPRESSION_ID_ZSTD;
-	  break;
-	}
-#endif
-      default:
-	{
- 	  conf->compression = N2N_COMPRESSION_ID_NONE;
-          traceEvent(TRACE_NORMAL, "the %s compression given by -z_ option is not supported in this version.", compression_str(compression));
-	  exit(1); // to make the user aware
-	}
-      }
+      } else
+	compression = N2N_COMPRESSION_ID_LZO; // default, if '-z' only
+
+      setPayloadCompression(conf, compression);
       break;
     }
 
@@ -526,15 +535,16 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
 /* *********************************************** */
 
-static const struct option long_options[] = {
-					     { "community",       required_argument, NULL, 'c' },
-					     { "supernode-list",  required_argument, NULL, 'l' },
-					     { "tun-device",      required_argument, NULL, 'd' },
-					     { "euid",            required_argument, NULL, 'u' },
-					     { "egid",            required_argument, NULL, 'g' },
-					     { "help"   ,         no_argument,       NULL, 'h' },
-					     { "verbose",         no_argument,       NULL, 'v' },
-					     { NULL,              0,                 NULL,  0  }
+static const struct option long_options[] =
+  {
+   { "community",       required_argument, NULL, 'c' },
+   { "supernode-list",  required_argument, NULL, 'l' },
+   { "tun-device",      required_argument, NULL, 'd' },
+   { "euid",            required_argument, NULL, 'u' },
+   { "egid",            required_argument, NULL, 'g' },
+   { "help"   ,         no_argument,       NULL, 'h' },
+   { "verbose",         no_argument,       NULL, 'v' },
+   { NULL,              0,                 NULL,  0  }
 };
 
 /* *************************************************** */
@@ -544,7 +554,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:zA:z::"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z:A:"
 #ifdef __linux__
 			 "T:n:"
 #endif
@@ -629,9 +639,9 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_priv_config
       if(equal) {
 	equal[0] = '\0';
 	
-	/* Adding an exception for -A_ */
+	/* Adding an exception for -A_ -z_ */
 
-	if(key[0] == 'A') {
+	if((key[0] == 'A') || (key[0] == 'z')) {
 	  value = &key[1];
 	  key = "A";
 	} else {
