@@ -622,10 +622,26 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_priv_config
 	opt++;
       }
     } else if(line[0] == '-') { /* short opt */
+      char *equal;
+      
       key = &line[1], line_len--;
-      if(line_len > 1) key[1] = '\0';
-      if(line_len > 2) value = trim(&key[2]);
 
+      equal = strchr(line, '=');
+
+      if(equal) {
+	equal[0] = '\0';
+	
+	/* Adding an exception for -A_ */
+
+	if(key[0] == 'A') {
+	  value = &key[1];
+	  key = "A";
+	} else {
+	  value = &equal[1];
+	}
+      } else
+	value = "";
+      
       // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
       setOption(key[0], value, ec, conf);
     } else {
