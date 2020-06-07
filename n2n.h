@@ -314,6 +314,7 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #ifdef HAVE_OPENSSL_1_1
 int n2n_transop_cc20_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #endif
+int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 
 /* Log */
 void setTraceLevel(int level);

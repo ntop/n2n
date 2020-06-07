@@ -194,6 +194,10 @@ static void help() {
   printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key (-k).\n");
 #endif
 #ifdef HAVE_OPENSSL_1_1
+  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
+  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
+#endif
+#ifdef HAVE_OPENSSL_1_1
   printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key (-k).\n");
 #endif
   printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
@@ -358,7 +362,8 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       } else {
         traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
                                  "please use -A3 instead to choose a the AES-CBC cipher for payload encryption.");
-	cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only   
+
+      	cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only   
       }
 
       setPayloadEncryption(conf, cipher);
@@ -825,7 +830,7 @@ int main(int argc, char* argv[]) {
 #if defined(HAVE_OPENSSL_1_1)
   traceEvent(TRACE_NORMAL, "Using %s", OpenSSL_version(0));
 #endif
-
+  
   traceEvent(TRACE_NORMAL, "Using compression: %s.", compression_str(conf.compression));
   traceEvent(TRACE_NORMAL, "Using %s cipher.", transop_str(conf.transop_id));
 
