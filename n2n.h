@@ -164,9 +164,15 @@ typedef struct tuntap_dev {
 /* N2N compression indicators. */
 /* Compression is disabled by default for outgoing packets if no cli
  * option is given. All edges are built with decompression support so
- * they are able to understand each other. */
+ * they are able to understand each other (this applies to lzo only). */
 #define N2N_COMPRESSION_ID_NONE		0	/* default, see edge_init_conf_defaults(...) in edge_utils.c */
-#define N2N_COMPRESSION_ID_LZO		1	/* set if '-z' cli option is present, see setOption(...) in edge.c */
+#define N2N_COMPRESSION_ID_LZO		1	/* set if '-z1' or '-z' cli option is present, see setOption(...) in edge.c */
+#ifdef N2N_HAVE_ZSTD
+#define N2N_COMPRESSION_ID_ZSTD		2	/* set if '-z2' cli option is present, available only if compiled with zstd lib */
+#define ZSTD_COMPRESSION_LEVEL		7	/* 1 (faster) ... 22 (more compression) */
+#endif
+// with the next major packet structure update, make '0' = invalid, and '1' = no compression
+// '2' = LZO, '3' = ZSTD, ... REVISIT then (also: change all occurences in source).
 
 #define N2N_COMPRESSION_ID_BITLEN	3	/* number of bits used for encoding compression id in the uppermost
 				 	           bits of transform_id; will be obsolete as soon as compression gets
@@ -200,7 +206,6 @@ struct peer_info {
     HASH_ADD(hh,head,mac_addr,sizeof(n2n_mac_t),add)
 #define HASH_FIND_PEER(head,mac,out)                                           \
     HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
-
 #define N2N_EDGE_SN_HOST_SIZE   48
 #define N2N_EDGE_NUM_SUPERNODES 2
 #define N2N_EDGE_SUP_ATTEMPTS   3       /* Number of failed attmpts before moving on to next supernode. */
@@ -368,6 +373,7 @@ int quick_edge_init(char *device_name, char *community_name,
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
+const char* compression_str(uint8_t cmpr);
 const char* transop_str(enum n2n_transform tr);
 
 #endif /* _N2N_H_ */

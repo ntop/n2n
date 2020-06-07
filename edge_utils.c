@@ -18,6 +18,7 @@
 
 #include "n2n.h"
 #include "lzoconf.h"
+#include <zstd.h>
 
 #ifdef WIN32
 #include <process.h>
@@ -157,6 +158,17 @@ const char* transop_str(enum n2n_transform tr) {
 
 /* ************************************** */
 
+const char* compression_str(uint8_t cmpr) {
+  switch(cmpr) {
+  case N2N_COMPRESSION_ID_NONE:  return("none");
+  case N2N_COMPRESSION_ID_LZO:   return("lzo1x");
+  case N2N_COMPRESSION_ID_ZSTD:  return("zstd");
+  default:                       return("invalid");
+  };
+}
+
+/* ************************************** */
+
 /** Destination 01:00:5E:00:00:00 - 01:00:5E:7F:FF:FF is multicast ethernet.
  */
 static int is_ethMulticast(const void * buf, size_t bufsize) {
@@ -235,6 +247,10 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     traceEvent(TRACE_ERROR, "LZO compression error");
     goto edge_init_error;
   }
+
+#ifdef N2N_HAVE_ZSTD
+  // zstd does not require initialization. if it were required, this would be a good place
+#endif
 
   for(i=0; i<conf->sn_num; ++i)
     traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (conf->sn_ip_array[i]));
@@ -992,20 +1008,37 @@ static int handle_PACKET(n2n_edge_t * eee,
 
         /* decompress if necessary */
         uint8_t * deflation_buffer = 0;
-        uint32_t deflated_len;
+        int32_t deflated_len;
         switch (rx_compression_id) {
+          case N2N_COMPRESSION_ID_NONE:
+	    break; // continue afterwards
+
           case N2N_COMPRESSION_ID_LZO:
-	    deflation_buffer = malloc (N2N_PKT_BUF_SIZE);
+    	    deflation_buffer = malloc (N2N_PKT_BUF_SIZE);
 	    lzo1x_decompress (eth_payload, eth_size, deflation_buffer, (lzo_uint*)&deflated_len, NULL);
             break;
-
-          default:
+#ifdef N2N_HAVE_ZSTD
+	  case N2N_COMPRESSION_ID_ZSTD:
+	    deflated_len = N2N_PKT_BUF_SIZE;
+	    deflation_buffer = malloc (deflated_len);
+	    deflated_len = (int32_t)ZSTD_decompress (deflation_buffer, deflated_len, eth_payload, eth_size);
+	    if (ZSTD_isError(deflated_len)) {
+              traceEvent (TRACE_ERROR, "payload decompression failed with zstd error '%s'.",
+				       ZSTD_getErrorName(deflated_len));
+	      free (deflation_buffer);
+	      return (-1); // cannot help it
+	    }
             break;
+#endif
+          default:
+            traceEvent (TRACE_ERROR, "payload decompression failed: received packet indicating unsupported %s compression.",
+				     compression_str(rx_compression_id));
+	    return (-1); // cannot handle it
         }
 
         if (rx_compression_id) {
-          traceEvent (TRACE_DEBUG, "payload decompression [id: %u]: deflated %u bytes to %u bytes",
-                                   rx_compression_id, eth_size, (int)deflated_len);
+          traceEvent (TRACE_DEBUG, "payload decompression [%s]: deflated %u bytes to %u bytes",
+                                   compression_str(rx_compression_id), eth_size, (int)deflated_len);
           memcpy(eth_payload ,deflation_buffer, deflated_len );
           eth_size = deflated_len;
           free (deflation_buffer);
@@ -1370,9 +1403,11 @@ static void send_packet2net(n2n_edge_t * eee,
 
   // compression needs to be tried before encode_PACKET is called for compression indication gets encoded there
   pkt.compression = N2N_COMPRESSION_ID_NONE;
+
   if (eee->conf.compression) {
     uint8_t * compression_buffer;
-    uint32_t  compression_len;
+    int32_t  compression_len;
+
     switch (eee->conf.compression) {
         case N2N_COMPRESSION_ID_LZO:
           compression_buffer = malloc (len + len / 16 + 64 + 3);
@@ -1382,14 +1417,30 @@ static void send_packet2net(n2n_edge_t * eee,
             }
           }
           break;
-
+#ifdef N2N_HAVE_ZSTD
+        case N2N_COMPRESSION_ID_ZSTD:
+	  compression_len = N2N_PKT_BUF_SIZE + 128;
+          compression_buffer = malloc (compression_len); // leaves enough room, for exact size call compression_len = ZSTD_compressBound (len); (slower)
+	  compression_len = (int32_t)ZSTD_compress(compression_buffer, compression_len, tap_pkt, len, ZSTD_COMPRESSION_LEVEL) ;
+          if (!ZSTD_isError(compression_len)) {
+            if (compression_len < len) {
+              pkt.compression = N2N_COMPRESSION_ID_ZSTD;
+            }
+          } else {
+            traceEvent (TRACE_ERROR, "payload compression failed with zstd error '%s'.",
+				      ZSTD_getErrorName(compression_len));
+	    free (compression_buffer);
+	    // continue with unset without pkt.compression --> will send uncompressed
+	  }
+          break;
+#endif
         default:
           break;
     }
 
     if (pkt.compression) {
-      traceEvent (TRACE_DEBUG, "payload compression [id: %u]: compressed %u bytes to %u bytes\n",
-                               pkt.compression, len, compression_len);
+      traceEvent (TRACE_DEBUG, "payload compression [%s]: compressed %u bytes to %u bytes\n",
+                               compression_str(pkt.compression), len, compression_len);
 
       memcpy (tap_pkt, compression_buffer, compression_len);
       len = compression_len;

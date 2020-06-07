@@ -159,7 +159,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-h]\n\n");
+   "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-z[<compression algo>]] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -196,8 +196,11 @@ static void help() {
 #ifdef HAVE_OPENSSL_1_1
   printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key (-k).\n");
 #endif
-  printf("-z                       | Enable lzo1x compression for outgoing data packets\n");
-  printf("                         | (default=disabled).\n");
+  printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
+#ifdef N2N_HAVE_ZSTD
+  printf("-z2                      | Enable zstd compression for outgoing data packets\n");
+#endif
+  printf("                         | (default=compression disabled)\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
@@ -364,7 +367,33 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
   case 'z':
     {
-      conf->compression = N2N_COMPRESSION_ID_LZO;
+      int compression = N2N_COMPRESSION_ID_LZO; // default, if '-z' only
+      if (optargument) {
+        compression = atoi(optargument);
+      }
+      /* even though 'compression' and 'conf->compression' share the same encoding scheme,
+       * a switch-statement under conditional compilation is used to sort out the
+       * unsupported optarguments */
+      switch (compression) {
+      case 1:
+	{
+	  conf->compression = N2N_COMPRESSION_ID_LZO;
+	  break;
+	}
+#ifdef N2N_HAVE_ZSTD
+      case 2:
+	{
+	  conf->compression = N2N_COMPRESSION_ID_ZSTD;
+	  break;
+	}
+#endif
+      default:
+	{
+ 	  conf->compression = N2N_COMPRESSION_ID_NONE;
+          traceEvent(TRACE_NORMAL, "the %s compression given by -z_ option is not supported in this version.", compression_str(compression));
+	  exit(1); // to make the user aware
+	}
+      }
       break;
     }
 
@@ -512,7 +541,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:zA::"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:zA:z::"
 #ifdef __linux__
 			 "T:n:"
 #endif
@@ -796,6 +825,8 @@ int main(int argc, char* argv[]) {
 #if defined(HAVE_OPENSSL_1_1)
   traceEvent(TRACE_NORMAL, "Using %s", OpenSSL_version(0));
 #endif
+
+  traceEvent(TRACE_NORMAL, "Using compression: %s.", compression_str(conf.compression));
   traceEvent(TRACE_NORMAL, "Using %s cipher.", transop_str(conf.transop_id));
 
   /* Random seed */
