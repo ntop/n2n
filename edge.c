@@ -189,12 +189,12 @@ static void help() {
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
   printf("-A1                      | Disable payload encryption. Do not use with -k.\n");
-  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key.\n");
+  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key (-k).\n");
 #ifdef N2N_HAVE_AES
-  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key.\n");
+  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key (-k).\n");
 #endif
 #ifdef HAVE_OPENSSL_1_1
-  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
+  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key (-k).\n");
 #endif
   printf("-z                       | Enable lzo1x compression for outgoing data packets\n");
   printf("                         | (default=disabled).\n");
@@ -216,6 +216,46 @@ static void help() {
 #endif
 
   exit(0);
+}
+
+/* *************************************************** */
+
+static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
+  /* even though 'cipher' and 'conf->transop_id' share the same encoding scheme,
+   * a switch-statement under conditional compilation is used to sort out the
+   * unsupported ciphers */
+  switch (cipher) {
+  case 1:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_NULL;
+      break;
+    }
+  case 2:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
+      break;
+    }
+#ifdef N2N_HAVE_AES
+  case 3:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
+      break;
+    }
+#endif
+#ifdef HAVE_OPENSSL_1_1
+  case 4:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_CHACHA20;
+      break;
+    }
+#endif
+  default:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_INVAL;
+      traceEvent(TRACE_NORMAL, "the %s cipher given by -A_ option is not supported in this version.", transop_str(cipher));
+      exit(1);
+    }
+  }
 }
 
 /* *************************************************** */
@@ -308,48 +348,17 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
   case 'A':
     {
-      int cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only
+      int cipher;
+
       if (optargument) {
         cipher = atoi(optargument);
       } else {
         traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
                                  "please use -A3 instead to choose a the AES-CBC cipher for payload encryption.");
+	cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only   
       }
-      /* even though 'cipher' and 'conf->transop_id' share the same encoding scheme,
-       * a switch-statement under conditional compilation is used to sort out the
-       * unsupported ciphers */
-      switch (cipher) {
-      case 1:
-	{
-	  conf->transop_id = N2N_TRANSFORM_ID_NULL;
-	  break;
-	}
-      case 2:
-	{
-	  conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
-	  break;
-	}
-#ifdef N2N_HAVE_AES
-      case 3:
-	{
-	  conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
-	  break;
-	}
-#endif
-#ifdef HAVE_OPENSSL_1_1
-      case 4:
-	{
-	  conf->transop_id = N2N_TRANSFORM_ID_CHACHA20;
-	  break;
-	}
-#endif
-      default:
-	{
- 	  conf->transop_id = N2N_TRANSFORM_ID_INVAL;
-          traceEvent(TRACE_NORMAL, "the %s cipher given by -A_ option is not supported in this version.", transop_str(cipher));
-	  exit(1);
-	}
-      }
+
+      setPayloadEncryption(conf, cipher);
       break;
     }
 

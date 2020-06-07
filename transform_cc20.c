@@ -120,9 +120,6 @@ static int transop_encode_cc20(n2n_trans_op_t * arg,
       /* Generate and encode the IV. */
       set_cc20_iv(priv, enc_ivec);
       encode_buf(outbuf, &idx, &enc_ivec, N2N_CC20_IVEC_SIZE);
-      traceEvent(TRACE_DEBUG, "encode_cc20 iv=%016llx:%016llx",
-                               htobe64(*(uint64_t*)&enc_ivec[0]),
-                               htobe64(*(uint64_t*)&enc_ivec[8]) );
 
       /* Encrypt the assembly contents and write the ciphertext after the iv. */
       /* len is set to the length of the cipher plain text to be encrpyted
@@ -198,9 +195,6 @@ static int transop_decode_cc20(n2n_trans_op_t * arg,
 
       /* Get the IV */
       decode_buf((uint8_t *)&dec_ivec, N2N_CC20_IVEC_SIZE, inbuf, &rem, &idx);
-      traceEvent(TRACE_DEBUG, "decode_cc20 iv=%016llx:%016llx",
-                               htobe64(*(uint64_t*)&dec_ivec[0]),
-                               htobe64(*(uint64_t*)&dec_ivec[8]) );
 
       EVP_CIPHER_CTX *ctx = priv->dec_ctx;
       int evp_len;
