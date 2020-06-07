@@ -150,7 +150,7 @@ static void help() {
 #endif /* #ifndef WIN32 */
 #ifdef __linux__
 	 "[-T <tos>]"
-   "[-n cidr:gateway] "
+	 "[-n cidr:gateway] "
 #endif
 	 "[-m <MAC address>] "
 	 "-l <supernode host:port>\n"
@@ -159,7 +159,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-   "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-z[<compression algo>]] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-z[<compression algo>]] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -340,8 +340,6 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
   case 'k': /* encrypt key */
     {
       if(conf->encrypt_key) free(conf->encrypt_key);
-      if(conf->transop_id == N2N_TRANSFORM_ID_NULL)
-        conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
       conf->encrypt_key = strdup(optargument);
       traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
       break;
@@ -361,7 +359,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
         cipher = atoi(optargument);
       } else {
         traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
-                                 "please use -A3 instead to choose a the AES-CBC cipher for payload encryption.");
+		   "please use -A3 instead to choose a the AES-CBC cipher for payload encryption.");
 
       	cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only   
       }
@@ -529,14 +527,14 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 /* *********************************************** */
 
 static const struct option long_options[] = {
-  { "community",       required_argument, NULL, 'c' },
-  { "supernode-list",  required_argument, NULL, 'l' },
-  { "tun-device",      required_argument, NULL, 'd' },
-  { "euid",            required_argument, NULL, 'u' },
-  { "egid",            required_argument, NULL, 'g' },
-  { "help"   ,         no_argument,       NULL, 'h' },
-  { "verbose",         no_argument,       NULL, 'v' },
-  { NULL,              0,                 NULL,  0  }
+					     { "community",       required_argument, NULL, 'c' },
+					     { "supernode-list",  required_argument, NULL, 'l' },
+					     { "tun-device",      required_argument, NULL, 'd' },
+					     { "euid",            required_argument, NULL, 'u' },
+					     { "egid",            required_argument, NULL, 'g' },
+					     { "help"   ,         no_argument,       NULL, 'h' },
+					     { "verbose",         no_argument,       NULL, 'v' },
+					     { NULL,              0,                 NULL,  0  }
 };
 
 /* *************************************************** */
@@ -660,18 +658,18 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_priv_config
 #if defined(DUMMY_ID_00001) /* Disabled waiting for config option to enable it */
 
 static char gratuitous_arp[] = {
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* Dest mac */
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-  0x08, 0x06, /* ARP */
-  0x00, 0x01, /* Ethernet */
-  0x08, 0x00, /* IP */
-  0x06, /* Hw Size */
-  0x04, /* Protocol Size */
-  0x00, 0x01, /* ARP Request */
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-  0x00, 0x00, 0x00, 0x00, /* Src IP */
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Target mac */
-  0x00, 0x00, 0x00, 0x00 /* Target IP */
+				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* Dest mac */
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
+				0x08, 0x06, /* ARP */
+				0x00, 0x01, /* Ethernet */
+				0x08, 0x00, /* IP */
+				0x06, /* Hw Size */
+				0x04, /* Protocol Size */
+				0x00, 0x01, /* ARP Request */
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
+				0x00, 0x00, 0x00, 0x00, /* Src IP */
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Target mac */
+				0x00, 0x00, 0x00, 0x00 /* Target IP */
 };
 
 /* ************************************** */
@@ -763,7 +761,7 @@ static int keep_on_running;
 #ifdef WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
-static void term_handler(int sig)
+  static void term_handler(int sig)
 #endif
 {
   static int called = 0;
@@ -832,9 +830,17 @@ int main(int argc, char* argv[]) {
     /* Load from current directory */
     rc = loadFromFile("edge.conf", &conf, &ec);
 #else
-    rc = -1;
+  rc = -1;
 #endif
 
+  if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
+    if(conf.encrypt_key) {
+      traceEvent(TRACE_WARNING, "Ignoring -k as -A1 was set");
+      free(conf.encrypt_key);
+      conf.encrypt_key = NULL;
+    }
+  }
+    
   if(rc < 0)
     help();
 
