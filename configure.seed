@@ -13,14 +13,24 @@ else
 GIT_RELEASE=${N2N_VERSION_SHORT}
 fi
 
+N2N_LIBS=
+
+AC_CHECK_LIB([zstd], [ZSTD_compress])
+
+if test "x$ac_cv_lib_zstd_ZSTD_compress" != xyes; then
+  AC_MSG_RESULT(Building n2n without ZSTD support)
+else
+  AC_DEFINE([N2N_HAVE_ZSTD], [], [Have ZSTD support])
+  N2N_LIBS="-lzstd ${N2N_LIBS}"
+fi
+
 AC_CHECK_LIB([crypto], [AES_cbc_encrypt])
 
-N2N_LIBS=
 if test "x$ac_cv_lib_crypto_AES_cbc_encrypt" != xyes; then
   AC_MSG_RESULT(Building n2n without AES support)
 else
   AC_DEFINE([N2N_HAVE_AES], [], [Have AES support])
-  N2N_LIBS=-lcrypto
+  N2N_LIBS="-lcrypto ${N2N_LIBS}"
 fi
 
 OLD_CFLAGS="${CFLAGS}"

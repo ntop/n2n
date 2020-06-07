@@ -100,6 +100,7 @@ int main(int argc, char * argv[]) {
 #ifdef HAVE_OPENSSL_1_1
   n2n_trans_op_t transop_cc20;
 #endif
+
   n2n_trans_op_t transop_speck;
   n2n_edge_conf_t conf;
 
@@ -120,7 +121,7 @@ int main(int argc, char * argv[]) {
   n2n_transop_cc20_init(&conf, &transop_cc20);
 #endif
   n2n_transop_speck_init(&conf, &transop_speck);
-
+  
   /* Run the tests */
   run_transop_benchmark("transop_null", &transop_null, &conf, pktbuf);
   run_transop_benchmark("transop_twofish", &transop_twofish, &conf, pktbuf);
