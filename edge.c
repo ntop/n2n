@@ -641,7 +641,10 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_priv_config
 	
 	/* Adding an exception for -A_ -z_ */
 
-	if((key[0] == 'A') || (key[0] == 'z')) {
+	if(key[0] == 'z') {
+	  value = &key[1];
+	  key = "z";
+	} else if(key[0] == 'A') {
 	  value = &key[1];
 	  key = "A";
 	} else {
