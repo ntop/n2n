@@ -7,6 +7,7 @@
 #define htole64(x) OSSwapHostToLittleInt64(x)
 #endif
 
+#define u32 uint32_t
 #define u64 uint64_t
 
 #if defined (__AVX2__)

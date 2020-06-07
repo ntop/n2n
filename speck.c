@@ -8,14 +8,9 @@
 
 #include "speck.h"
 
+
 #if defined (__AVX2__)	// AVX support ----------------------------------------------------
 
-
-#include <immintrin.h>
-
-#define u32 uint32_t
-#define u64 uint64_t
-#define u256 __m256i
 
 #define LCS(x,r) (((x)<<r)|((x)>>(64-r)))
 #define RCS(x,r) (((x)>>r)|((x)<<(64-r)))
@@ -218,14 +213,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #elif defined (__SSE4_2__) // SSE support -------------------------------------------------
 
 
-#include <immintrin.h>
-
-#define SPECK_CTX_BYVAL		1
-
-#define u32 unsigned
-#define u64 unsigned long long
-#define u128 __m128i
-
 #define LCS(x,r) (((x)<<r)|((x)>>(64-r)))
 #define RCS(x,r) (((x)>>r)|((x)<<(64-r)))
 
@@ -294,11 +281,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
                            RK(D,A,k,key,14), RK(B,A,k,key,15), RK(C,A,k,key,16), RK(D,A,k,key,17), RK(B,A,k,key,18), RK(C,A,k,key,19), RK(D,A,k,key,20), \
                            RK(B,A,k,key,21), RK(C,A,k,key,22), RK(D,A,k,key,23), RK(B,A,k,key,24), RK(C,A,k,key,25), RK(D,A,k,key,26), RK(B,A,k,key,27), \
                            RK(C,A,k,key,28), RK(D,A,k,key,29), RK(B,A,k,key,30), RK(C,A,k,key,31), RK(D,A,k,key,32), RK(B,A,k,key,33))
-
-typedef struct {
-  u128 rk[34];
-  u64 key[34];
-} speck_context_t;
 
 
 static int speck_encrypt_xor (unsigned char *out, const unsigned char *in, u64 nonce[], const speck_context_t ctx, int numbytes) {
@@ -413,12 +395,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #elif defined (__ARM_NEON)	// NEON support -------------------------------------------
 
 
-#include <arm_neon.h>
-
-#define u32 uint32_t
-#define u64 uint64_t
-#define u128 uint64x2_t
-
 #define LCS(x,r) (((x)<<r)|((x)>>(64-r)))
 #define RCS(x,r) (((x)>>r)|((x)<<(64-r)))
 
@@ -478,11 +454,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 			   RK(D,A,k,key,14), RK(B,A,k,key,15), RK(C,A,k,key,16), RK(D,A,k,key,17), RK(B,A,k,key,18), RK(C,A,k,key,19), RK(D,A,k,key,20), \
 			   RK(B,A,k,key,21), RK(C,A,k,key,22), RK(D,A,k,key,23), RK(B,A,k,key,24), RK(C,A,k,key,25), RK(D,A,k,key,26), RK(B,A,k,key,27), \
 			   RK(C,A,k,key,28), RK(D,A,k,key,29), RK(B,A,k,key,30), RK(C,A,k,key,31), RK(D,A,k,key,32), RK(B,A,k,key,33))
-
-typedef struct {
-  u128 rk[34];
-  u64 key[34];
-} speck_context_t;
 
 
 static int speck_encrypt_xor (unsigned char *out, const unsigned char *in, u64 nonce[], speck_context_t *ctx, int numbytes) {
@@ -594,8 +565,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 
 #else 		// plain C ----------------------------------------------------------------
 
-
-#define u64 uint64_t
 
 #define ROR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
 #define ROL64(x,r) (((x)<<(r))|((x)>>(64-(r))))
