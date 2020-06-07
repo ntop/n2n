@@ -12,8 +12,6 @@
 #if defined (__AVX2__)	// AVX support ----------------------------------------------------
 
 
-#include <immintrin.h>
-
 #define LCS(x,r) (((x)<<r)|((x)>>(64-r)))
 #define RCS(x,r) (((x)>>r)|((x)<<(64-r)))
 
@@ -215,8 +213,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #elif defined (__SSE4_2__) // SSE support -------------------------------------------------
 
 
-#include <immintrin.h>
-
 #define LCS(x,r) (((x)<<r)|((x)>>(64-r)))
 #define RCS(x,r) (((x)>>r)|((x)<<(64-r)))
 
@@ -399,8 +395,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #elif defined (__ARM_NEON)	// NEON support -------------------------------------------
 
 
-#include <arm_neon.h>
-
 #define LCS(x,r) (((x)<<r)|((x)>>(64-r)))
 #define RCS(x,r) (((x)>>r)|((x)<<(64-r)))
 
@@ -571,8 +565,6 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 
 #else 		// plain C ----------------------------------------------------------------
 
-
-#define u64 uint64_t
 
 #define ROR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
 #define ROL64(x,r) (((x)<<(r))|((x)>>(64-(r))))
