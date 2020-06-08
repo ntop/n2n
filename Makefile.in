@@ -7,7 +7,7 @@ GIT_COMMITS=@GIT_COMMITS@
 
 CC?=gcc
 DEBUG?=-g3
-OPTIMIZATION?=-O3 -march=native
+OPTIMIZATION?=-O3 #-march=native
 WARN?=-Wall
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
