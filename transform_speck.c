@@ -19,6 +19,7 @@
 #include "n2n.h"
 #include "n2n_transforms.h"
 #include "speck.h"
+#include "random_numbers.h"
 
 #define N2N_SPECK_TRANSFORM_VERSION       1  /* version of the transform encoding */
 #define N2N_SPECK_IVEC_SIZE               16
@@ -53,11 +54,11 @@ static int transop_deinit_speck(n2n_trans_op_t *arg) {
 
 static void set_speck_iv(transop_speck_t *priv, n2n_speck_ivec_t ivec) {
   // keep in mind the following condition: N2N_SPECK_IVEC_SIZE % sizeof(rand_value) == 0 !
-  uint32_t rand_value;
+  uint64_t rand_value;
   uint8_t i;
 
   for (i = 0; i < N2N_SPECK_IVEC_SIZE; i += sizeof(rand_value)) {
-    rand_value = rand(); // CONCERN: rand() is not considered cryptographicly secure, REPLACE later
+    rand_value = n2n_rand();
     memcpy(ivec + i, &rand_value, sizeof(rand_value));
   }
 }

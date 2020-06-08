@@ -61,6 +61,7 @@ add_library(n2n n2n.c
                 transform_null.c
                 transform_tf.c
                 transform_aes.c
+		random_numbers.c
                 tuntap_freebsd.c
                 tuntap_netbsd.c
                 tuntap_linux.c

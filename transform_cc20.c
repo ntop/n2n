@@ -18,6 +18,7 @@
 
 #include "n2n.h"
 #include "n2n_transforms.h"
+#include "random_numbers.h"
 
 #ifdef HAVE_OPENSSL_1_1
 
@@ -79,9 +80,9 @@ static char *openssl_err_as_string (void) {
 
 static void set_cc20_iv(transop_cc20_t *priv, n2n_cc20_ivec_t ivec) {
   // keep in mind the following condition: N2N_CC20_IVEC_SIZE % sizeof(rand_value) == 0 !
-  uint32_t rand_value;
+  uint64_t rand_value;
   for (uint8_t i = 0; i < N2N_CC20_IVEC_SIZE; i += sizeof(rand_value)) {
-    rand_value = rand(); // CONCERN: rand() is not consideren cryptographicly secure, REPLACE later
+    rand_value = n2n_rand();
     memcpy(ivec + i, &rand_value, sizeof(rand_value));
   }
 }

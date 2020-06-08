@@ -17,6 +17,7 @@
  */
 
 #include "n2n.h"
+#include "random_numbers.h"
 #ifdef WIN32
 #include <sys/stat.h>
 #else
@@ -871,7 +872,7 @@ int main(int argc, char* argv[]) {
   traceEvent(TRACE_NORMAL, "Using %s cipher.", transop_str(conf.transop_id));
 
   /* Random seed */
-  srand(time(NULL));
+  n2n_srand (n2n_seed());
 
   if(0 == strcmp("dhcp", ec.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
