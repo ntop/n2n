@@ -25,6 +25,7 @@
 #include <linux/if_tun.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include "random_numbers.h"
 
 /* ********************************** */
 
@@ -152,7 +153,7 @@ int tuntap_open(tuntap_dev *device,
     int i;
 
     for(i = 0; i < 6; i++)
-      device->mac_addr[i] = rand();
+      device->mac_addr[i] = n2n_rand();
 
     device->mac_addr[0] &= ~0x01; /* Clear multicast bit */
     device->mac_addr[0] |= 0x02;  /* Set locally-assigned bit */

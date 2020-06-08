@@ -18,6 +18,7 @@
 
 #include "n2n.h"
 #include "n2n_transforms.h"
+#include "random_numbers.h"
 
 #ifdef N2N_HAVE_AES
 
@@ -169,17 +170,17 @@ static int transop_encode_aes(n2n_trans_op_t * arg,
       /* Encode the aes format version. */
       encode_uint8(outbuf, &idx, N2N_AES_TRANSFORM_VERSION);
 
-      /* Generate and encode the IV seed using as many calls to rand() as neccessary.
+      /* Generate and encode the IV seed using as many calls to n2n_rand() as neccessary.
        * Note: ( N2N_AES_IV_SEED_SIZE % sizeof(rand_value) ) not neccessarily equals 0. */
-      uint32_t rand_value;
+      uint64_t rand_value;
       int8_t i;
       for (i = TRANSOP_AES_IV_SEED_SIZE; i >= sizeof(rand_value); i -= sizeof(rand_value)) {
-        rand_value = rand(); // CONCERN: rand() is not consideren cryptographicly secure, REPLACE later
+        rand_value = n2n_rand();
         memcpy(iv_seed + TRANSOP_AES_IV_SEED_SIZE - i, &rand_value, sizeof(rand_value));
       }
       /* Are there bytes left to fill? */
       if (i != 0) {
-        rand_value = rand(); // CONCERN: rand() is not consideren cryptographicly secure, REPLACE later
+        rand_value = n2n_rand();
         memcpy(iv_seed, &rand_value, i);
       }
       encode_buf(outbuf, &idx, iv_seed, TRANSOP_AES_IV_SEED_SIZE);

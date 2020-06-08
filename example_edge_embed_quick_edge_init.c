@@ -17,6 +17,7 @@
  */
 
 #include "n2n.h"
+#include "random_numbers.h"
 
 /*
   This tool demonstrates how to easily embed
@@ -36,7 +37,7 @@ int main(int argc, char* argv[]) {
   setTraceLevel(10);
 
   /* Random seed */
-  srand(time(NULL));
+  n2n_srand (n2n_seed());
 
   /* 
      NOTE
