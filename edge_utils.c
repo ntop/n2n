@@ -2325,10 +2325,12 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
        *  2. Add the new default gateway route
        *
        * Instead of modifying the system default gateway, we use the trick
-       * of adding a route to the 0.0.0.0/1 network, which takes precedence
-       * over the default gateway (0.0.0.0/0). This leaves the default
-       * gateway unchanged so that after n2n is stopped the cleanup is
-       * easier.
+       * of adding a route to the networks 0.0.0.0/1 and 128.0.0.0/1, thus
+       * covering the whole IPv4 range. Such routes in linux take precedence
+       * over the default gateway (0.0.0.0/0) since are more specific.
+       * This leaves the default gateway unchanged so that after n2n is
+       * stopped the cleanup is easier.
+       * See https://github.com/zerotier/ZeroTierOne/issues/178#issuecomment-204599227
        */
       n2n_sock_t sn;
       n2n_route_t custom_route;
@@ -2375,6 +2377,14 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
 
       /* ip route add 0.0.0.0/1 via n2n_gateway */
       custom_route.net_addr = 0;
+      custom_route.net_bitlen = 1;
+      custom_route.gateway = route->gateway;
+
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
+	return(-1);
+
+      /* ip route add 128.0.0.0/1 via n2n_gateway */
+      custom_route.net_addr = 128;
       custom_route.net_bitlen = 1;
       custom_route.gateway = route->gateway;
 
