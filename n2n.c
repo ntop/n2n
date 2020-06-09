@@ -22,12 +22,57 @@
 
 #include <assert.h>
 
+#ifdef __ANDROID_NDK__
+#include <edge_jni/edge_jni.h>
+#endif
+
 #define PURGE_REGISTRATION_FREQUENCY   30
 #define REGISTRATION_TIMEOUT           60
 
 static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
 static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
+
+/* ************************************** */
+
+#ifdef __ANDROID_NDK__
+
+static int protect_socket(int sock) {
+  JNIEnv *env = NULL;
+
+  if(!g_status)
+    return(-1);
+
+  if ((*g_status->jvm)->GetEnv(g_status->jvm, &env, JNI_VERSION_1_1) != JNI_OK || !env) {
+    traceEvent(TRACE_ERROR, "GetEnv failed");
+    return(-1);
+  }
+
+  jclass vpn_service_cls = (*env)->GetObjectClass(env, g_status->jobj_service);
+
+  if(!vpn_service_cls) {
+    traceEvent(TRACE_ERROR, "GetObjectClass(VpnService) failed");
+    return(-1);
+  }
+
+  /* Call VpnService protect */
+  jmethodID midProtect = (*env)->GetMethodID(env, vpn_service_cls, "protect", "(I)Z");
+  if(!midProtect) {
+    traceEvent(TRACE_ERROR, "Could not resolve VpnService::protect");
+    return(-1);
+  }
+
+  jboolean isProtected = (*env)->CallBooleanMethod(env, g_status->jobj_service, midProtect, sock);
+
+  if(!isProtected) {
+    traceEvent(TRACE_ERROR, "VpnService::protect failed");
+    return(-1);
+  }
+
+  return(0);
+}
+
+#endif
 
 /* ************************************** */
 
@@ -58,6 +103,11 @@ SOCKET open_socket(int local_port, int bind_any) {
     traceEvent(TRACE_ERROR, "Bind error on local port %u [%s]\n", local_port, strerror(errno));
     return(-1);
   }
+
+#ifdef __ANDROID_NDK__
+  /* Protect the socket so that the supernode traffic won't go inside the n2n VPN */
+  protect_socket(sock_fd);
+#endif
 
   return(sock_fd);
 }

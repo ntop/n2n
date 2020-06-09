@@ -57,7 +57,7 @@ int tuntap_open(tuntap_dev *device,
     device->ip_addr = inet_addr(device_ip);
     device->device_mask = inet_addr(device_mask);
     device->mtu = mtu;
-    strncpy(device->dev_name, dev, MIN(IFNAMSIZ, N2N_IFNAMSIZ));
+    strncpy(device->dev_name, dev, N2N_IFNAMSIZ);
     return device->fd;
 }
 

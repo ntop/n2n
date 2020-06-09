@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#ifndef __ANDROID_NDK__
+
 #include "speck.h"
 
 
@@ -687,3 +689,5 @@ int speck_test () {
   fprintf (stdout, "SPECK SELF TEST RESULT: %u\n", speck_test (0,NULL));
   }
 */
+
+#endif

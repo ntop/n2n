@@ -31,8 +31,8 @@
 #endif
 
 #ifdef __ANDROID_NDK__
-#include "android/edge_android.h"
 #include <tun2tap/tun2tap.h>
+#include <edge_jni/edge_jni.h>
 #endif /* __ANDROID_NDK__ */
 
 
@@ -132,6 +132,11 @@ struct n2n_edge {
   n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
   int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
   int                 multicast_joined;       /**< 1 if the group has been joined.*/
+#endif
+
+#ifdef __ANDROID_NDK__
+  uint32_t            gateway_ip;             /**< The IP address of the gateway */
+  n2n_mac_t           gateway_mac;            /**< The MAC address of the gateway */
 #endif
 
   /* Peers */
@@ -281,9 +286,11 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     rc = n2n_transop_cc20_init(&eee->conf, &eee->transop);
     break;
 #endif
+#ifndef __ANDROID_NDK__
   case N2N_TRANSFORM_ID_SPECK:
     rc = n2n_transop_speck_init(&eee->conf, &eee->transop);
     break;
+#endif
   default:
     rc = n2n_transop_null_init(&eee->conf, &eee->transop);
   }
@@ -642,6 +649,7 @@ int is_empty_ip_address(const n2n_sock_t * sock) {
 /* ************************************** */
 
 static n2n_mac_t broadcast_mac = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+static n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /** Check if a known peer socket has changed and possibly register again.
  */
@@ -916,6 +924,17 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
     traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
 
+#ifdef __ANDROID_NDK__
+    int change = 0;
+    pthread_mutex_lock(&g_status->mutex);
+    change = g_status->running_status == EDGE_STAT_SUPERNODE_DISCONNECT ? 0 : 1;
+    g_status->running_status = EDGE_STAT_SUPERNODE_DISCONNECT;
+    pthread_mutex_unlock(&g_status->mutex);
+    if (change) {
+      g_status->report_edge_status();
+    }
+#endif /* #ifdef __ANDROID_NDK__ */
+
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
   }
   else
@@ -1093,6 +1112,19 @@ static int handle_PACKET(n2n_edge_t * eee,
 	    }
 	  }
 	}
+
+#ifdef __ANDROID_NDK__
+      if((psize >= 36) &&
+         (ntohs(*((uint16_t*)&eth_payload[12])) == 0x0806) && /* ARP */
+         (ntohs(*((uint16_t*)&eth_payload[20])) == 0x0002) && /* REPLY */
+         (!memcmp(&eth_payload[28], &eee->gateway_ip, 4))) { /* From gateway */
+        memcpy(eee->gateway_mac, &eth_payload[22], 6);
+
+        traceEvent(TRACE_INFO, "Gateway MAC: %02X:%02X:%02X:%02X:%02X:%02X",
+                   eee->gateway_mac[0], eee->gateway_mac[1], eee->gateway_mac[2],
+                   eee->gateway_mac[3], eee->gateway_mac[4], eee->gateway_mac[5]);
+      }
+#endif
 
 	/* Write ethernet packet to tap device. */
 	traceEvent(TRACE_DEBUG, "sending to TAP %u", (unsigned int)eth_size);
@@ -1383,6 +1415,13 @@ static void send_packet2net(n2n_edge_t * eee,
 
   ether_hdr_t eh;
 
+#ifdef __ANDROID_NDK__
+  if(!memcmp(tap_pkt, null_mac, 6)) {
+    traceEvent(TRACE_DEBUG, "Detected packet for the gateway");
+    memcpy(tap_pkt, eee->gateway_mac, 6);
+  }
+#endif
+
   /* tap_pkt is not aligned so we have to copy to aligned memory */
   memcpy(&eh, tap_pkt, sizeof(ether_hdr_t));
 
@@ -1551,6 +1590,57 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
         }
     }
 }
+
+/* ************************************** */
+
+#ifdef __ANDROID_NDK__
+
+static char arp_packet[] = {
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* Dest mac */
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
+        0x08, 0x06, /* ARP */
+        0x00, 0x01, /* Ethernet */
+        0x08, 0x00, /* IP */
+        0x06, /* Hw Size */
+        0x04, /* Protocol Size */
+        0x00, 0x01, /* ARP Request */
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
+        0x00, 0x00, 0x00, 0x00, /* Src IP */
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Target mac */
+        0x00, 0x00, 0x00, 0x00 /* Target IP */
+};
+
+/* ************************************** */
+
+static int build_unicast_arp(char *buffer, size_t buffer_len, uint32_t target, tuntap_dev *device) {
+  if(buffer_len < sizeof(arp_packet)) return(-1);
+
+  memcpy(buffer, arp_packet, sizeof(arp_packet));
+  memcpy(&buffer[6], device->mac_addr, 6);
+  memcpy(&buffer[22], device->mac_addr, 6);
+  memcpy(&buffer[28], &device->ip_addr, 4);
+  memcpy(&buffer[32], broadcast_mac, 6);
+  memcpy(&buffer[38], &target, 4);
+  return(sizeof(arp_packet));
+}
+
+/* ************************************** */
+
+/** Called periodically to update the gateway MAC address. The ARP reply packet
+    is handled in handle_PACKET . */
+
+static void update_gateway_mac(n2n_edge_t *eee) {
+  if(eee->gateway_ip != 0) {
+    size_t len;
+    char buffer[48];
+
+    len = build_unicast_arp(buffer, sizeof(buffer), eee->gateway_ip, &eee->device);
+    traceEvent(TRACE_DEBUG, "Updating gateway mac");
+    send_packet2net(eee, (uint8_t*)buffer, len);
+  }
+}
+
+#endif
 
 /* ************************************** */
 
@@ -1779,6 +1869,19 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		  eee->last_sup = now;
 		  eee->sn_wait=0;
 		  eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
+
+#ifdef __ANDROID_NDK__
+          int change = 0;
+          pthread_mutex_lock(&g_status->mutex);
+          change = g_status->running_status == EDGE_STAT_CONNECTED ? 0 : 1;
+          g_status->running_status = EDGE_STAT_CONNECTED;
+          pthread_mutex_unlock(&g_status->mutex);
+          if (change) {
+              g_status->report_edge_status();
+          }
+
+          update_gateway_mac(eee);
+#endif /* #ifdef __ANDROID_NDK__ */
 
 		  /* NOTE: the register_interval should be chosen by the edge node
 		   * based on its NAT configuration. */
@@ -2489,3 +2592,9 @@ quick_edge_init_end:
   tuntap_close(&tuntap);
   return(rv);
 }
+
+/* ************************************** */
+
+#ifdef __ANDROID_NDK__
+#include "android/edge_android.c"
+#endif
