@@ -1,9 +1,9 @@
 // taken from
-// https://gist.githubusercontent.com/PkmX/63dd23f28ba885be53a5/raw/c89538c921f08f8dbb5bc5957c871060c720605a/portable_endian.h
+// https://raw.githubusercontent.com/pyca/bcrypt/master/src/_csrc/portable_endian.h
 // as of June 11, 2020
 
 // "License": Public Domain
-// I, Mathias Panzenb�ck, place this file hereby into the public domain. Use it at your own risk for whatever you like.
+// I, Mathias Panzenböck, place this file hereby into the public domain. Use it at your own risk for whatever you like.
 // In case there are jurisdictions that don't support putting things in the public domain you can also consider it to
 // be "dual licensed" under the BSD, MIT and Apache licenses, if you want to. This code is trivial anyway. Consider it
 // an example on how to get the endian conversion functions on different platforms.
@@ -13,112 +13,213 @@
 
 #if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64)) && !defined(__WINDOWS__)
 
-#	define __WINDOWS__
+#   define __WINDOWS__
 
 #endif
 
 #if defined(__linux__) || defined(__CYGWIN__)
+/* Define necessary macros for the header to expose all fields. */
+#   if !defined(_BSD_SOURCE)
+#       define _BSD_SOURCE
+#   endif
+#   if !defined(__USE_BSD)
+#       define __USE_BSD
+#   endif
+#   if !defined(_DEFAULT_SOURCE)
+#       define _DEFAULT_SOURCE
+#   endif
+#   include <endian.h>
+#   include <features.h>
+/* See http://linux.die.net/man/3/endian */
+#   if defined(htobe16) && defined(htole16) && defined(be16toh) && defined(le16toh) && defined(htobe32) && defined(htole32) && defined(be32toh) && defined(htole32) && defined(htobe64) && defined(htole64) && defined(be64) && defined(le64)
+/* Do nothing. The macros we need already exist. */
+#   elif !defined(__GLIBC__) || !defined(__GLIBC_MINOR__) || ((__GLIBC__ < 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ < 9)))
+#       include <arpa/inet.h>
+#       if defined(__BYTE_ORDER) && (__BYTE_ORDER == __LITTLE_ENDIAN)
+#           define htobe16(x) htons(x)
+#           define htole16(x) (x)
+#           define be16toh(x) ntohs(x)
+#           define le16toh(x) (x)
 
-#	include <endian.h>
+#           define htobe32(x) htonl(x)
+#           define htole32(x) (x)
+#           define be32toh(x) ntohl(x)
+#           define le32toh(x) (x)
+
+#           define htobe64(x) (((uint64_t)htonl(((uint32_t)(((uint64_t)(x)) >> 32)))) | (((uint64_t)htonl(((uint32_t)(x)))) << 32))
+#           define htole64(x) (x)
+#           define be64toh(x) (((uint64_t)ntohl(((uint32_t)(((uint64_t)(x)) >> 32)))) | (((uint64_t)ntohl(((uint32_t)(x)))) << 32))
+#           define le64toh(x) (x)
+#       elif defined(__BYTE_ORDER) && (__BYTE_ORDER == __BIG_ENDIAN)
+#           define htobe16(x) (x)
+#           define htole16(x) (((((uint16_t)(x)) >> 8))|((((uint16_t)(x)) << 8)))
+#           define be16toh(x) (x)
+#           define le16toh(x) (((((uint16_t)(x)) >> 8))|((((uint16_t)(x)) << 8)))
+
+#           define htobe32(x) (x)
+#           define htole32(x) (((uint32_t)htole16(((uint16_t)(((uint32_t)(x)) >> 16)))) | (((uint32_t)htole16(((uint16_t)(x)))) << 16))
+#           define be32toh(x) (x)
+#           define le32toh(x) (((uint32_t)le16toh(((uint16_t)(((uint32_t)(x)) >> 16)))) | (((uint32_t)le16toh(((uint16_t)(x)))) << 16))
+
+#           define htobe64(x) (x)
+#           define htole64(x) (((uint64_t)htole32(((uint32_t)(((uint64_t)(x)) >> 32)))) | (((uint64_t)htole32(((uint32_t)(x)))) << 32))
+#           define be64toh(x) (x)
+#           define le64toh(x) (((uint64_t)le32toh(((uint32_t)(((uint64_t)(x)) >> 32)))) | (((uint64_t)le32toh(((uint32_t)(x)))) << 32))
+#       else
+#           error Byte Order not supported or not defined.
+#       endif
+#   endif
 
 #elif defined(__APPLE__)
 
-#	include <libkern/OSByteOrder.h>
+#   include <libkern/OSByteOrder.h>
 
-#	define htobe16(x) OSSwapHostToBigInt16(x)
-#	define htole16(x) OSSwapHostToLittleInt16(x)
-#	define be16toh(x) OSSwapBigToHostInt16(x)
-#	define le16toh(x) OSSwapLittleToHostInt16(x)
+#   define htobe16(x) OSSwapHostToBigInt16(x)
+#   define htole16(x) OSSwapHostToLittleInt16(x)
+#   define be16toh(x) OSSwapBigToHostInt16(x)
+#   define le16toh(x) OSSwapLittleToHostInt16(x)
 
-#	define htobe32(x) OSSwapHostToBigInt32(x)
-#	define htole32(x) OSSwapHostToLittleInt32(x)
-#	define be32toh(x) OSSwapBigToHostInt32(x)
-#	define le32toh(x) OSSwapLittleToHostInt32(x)
+#   define htobe32(x) OSSwapHostToBigInt32(x)
+#   define htole32(x) OSSwapHostToLittleInt32(x)
+#   define be32toh(x) OSSwapBigToHostInt32(x)
+#   define le32toh(x) OSSwapLittleToHostInt32(x)
 
-#	define htobe64(x) OSSwapHostToBigInt64(x)
-#	define htole64(x) OSSwapHostToLittleInt64(x)
-#	define be64toh(x) OSSwapBigToHostInt64(x)
-#	define le64toh(x) OSSwapLittleToHostInt64(x)
+#   define htobe64(x) OSSwapHostToBigInt64(x)
+#   define htole64(x) OSSwapHostToLittleInt64(x)
+#   define be64toh(x) OSSwapBigToHostInt64(x)
+#   define le64toh(x) OSSwapLittleToHostInt64(x)
 
-#	define __BYTE_ORDER    BYTE_ORDER
-#	define __BIG_ENDIAN    BIG_ENDIAN
-#	define __LITTLE_ENDIAN LITTLE_ENDIAN
-#	define __PDP_ENDIAN    PDP_ENDIAN
+#   define __BYTE_ORDER    BYTE_ORDER
+#   define __BIG_ENDIAN    BIG_ENDIAN
+#   define __LITTLE_ENDIAN LITTLE_ENDIAN
+#   define __PDP_ENDIAN    PDP_ENDIAN
 
 #elif defined(__OpenBSD__)
 
-#	include <sys/endian.h>
+#   include <sys/endian.h>
+
+#elif defined(__HAIKU__)
+
+#   include <endian.h>
 
 #elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__)
 
-#	include <sys/endian.h>
+#   include <sys/endian.h>
 
-#	define be16toh(x) betoh16(x)
-#	define le16toh(x) letoh16(x)
+#   if !defined(be16toh)
+    #   define be16toh(x) betoh16(x)
+    #   define le16toh(x) letoh16(x)
+#   endif
 
-#	define be32toh(x) betoh32(x)
-#	define le32toh(x) letoh32(x)
+#   if !defined(be32toh)
+    #   define be32toh(x) betoh32(x)
+    #   define le32toh(x) letoh32(x)
+#   endif
 
-#	define be64toh(x) betoh64(x)
-#	define le64toh(x) letoh64(x)
+#   if !defined(be64toh)
+    #   define be64toh(x) betoh64(x)
+    #   define le64toh(x) letoh64(x)
+#   endif
 
 #elif defined(__WINDOWS__)
 
-#	include <windows.h>
+#   if BYTE_ORDER == LITTLE_ENDIAN
 
-#	if BYTE_ORDER == LITTLE_ENDIAN
+#       define htobe16(x) _byteswap_ushort(x)
+#       define htole16(x) (x)
+#       define be16toh(x) _byteswap_ushort(x)
+#       define le16toh(x) (x)
 
-#               if defined(_MSC_VER)
-#                       include <stdlib.h>
-#			define htobe16(x) _byteswap_ushort(x)
-#			define htole16(x) (x)
-#			define be16toh(x) _byteswap_ushort(x)
-#			define le16toh(x) (x)
+#       define htobe32(x) _byteswap_ulong(x)
+#       define htole32(x) (x)
+#       define be32toh(x) _byteswap_ulong(x)
+#       define le32toh(x) (x)
 
-#			define htobe32(x) _byteswap_ulong(x)
-#			define htole32(x) (x)
-#			define be32toh(x) _byteswap_ulong(x)
-#			define le32toh(x) (x)
+#       define htobe64(x) _byteswap_uint64(x)
+#       define be64toh(x) _byteswap_uint64(x)
+#       define htole64(x) (x)
+#       define le64toh(x) (x)
 
-#			define htobe64(x) _byteswap_uint64(x)
-#			define htole64(x) (x)
-#			define be64toh(x) _byteswap_uint64(x)
-#			define le64toh(x) (x)
+#   elif BYTE_ORDER == BIG_ENDIAN
 
-#               elif defined(__GNUC__) || defined(__clang__)
+        /* that would be xbox 360 */
+#       define htobe16(x) (x)
+#       define htole16(x) __builtin_bswap16(x)
+#       define be16toh(x) (x)
+#       define le16toh(x) __builtin_bswap16(x)
 
-#			define htobe16(x) __builtin_bswap16(x)
-#			define htole16(x) (x)
-#			define be16toh(x) __builtin_bswap16(x)
-#			define le16toh(x) (x)
+#       define htobe32(x) (x)
+#       define htole32(x) __builtin_bswap32(x)
+#       define be32toh(x) (x)
+#       define le32toh(x) __builtin_bswap32(x)
 
-#			define htobe32(x) __builtin_bswap32(x)
-#			define htole32(x) (x)
-#			define be32toh(x) __builtin_bswap32(x)
-#			define le32toh(x) (x)
+#       define htobe64(x) (x)
+#       define htole64(x) __builtin_bswap64(x)
+#       define be64toh(x) (x)
+#       define le64toh(x) __builtin_bswap64(x)
 
-#			define htobe64(x) __builtin_bswap64(x)
-#			define htole64(x) (x)
-#			define be64toh(x) __builtin_bswap64(x)
-#			define le64toh(x) (x)
-#               else
-#                       error platform not supported
-#               endif
+#   else
 
-#	else
+#       error byte order not supported
 
-#		error byte order not supported
+#   endif
 
-#	endif
+#   define __BYTE_ORDER    BYTE_ORDER
+#   define __BIG_ENDIAN    BIG_ENDIAN
+#   define __LITTLE_ENDIAN LITTLE_ENDIAN
+#   define __PDP_ENDIAN    PDP_ENDIAN
 
-#	define __BYTE_ORDER    BYTE_ORDER
-#	define __BIG_ENDIAN    BIG_ENDIAN
-#	define __LITTLE_ENDIAN LITTLE_ENDIAN
-#	define __PDP_ENDIAN    PDP_ENDIAN
+#elif defined(__sun)
+
+#   include <sys/byteorder.h>
+
+#   define htobe16(x) BE_16(x)
+#   define htole16(x) LE_16(x)
+#   define be16toh(x) BE_16(x)
+#   define le16toh(x) LE_16(x)
+
+#   define htobe32(x) BE_32(x)
+#   define htole32(x) LE_32(x)
+#   define be32toh(x) BE_32(x)
+#   define le32toh(x) LE_32(x)
+
+#   define htobe64(x) BE_64(x)
+#   define htole64(x) LE_64(x)
+#   define be64toh(x) BE_64(x)
+#   define le64toh(x) LE_64(x)
+
+#elif defined _AIX      /* AIX is always big endian */
+#       define be64toh(x) (x)
+#       define be32toh(x) (x)
+#       define be16toh(x) (x)
+#       define le32toh(x)                              \
+         ((((x) & 0xff) << 24) |                 \
+           (((x) & 0xff00) << 8) |                \
+           (((x) & 0xff0000) >> 8) |              \
+           (((x) & 0xff000000) >> 24))
+#       define   le64toh(x)                               \
+         ((((x) & 0x00000000000000ffL) << 56) |   \
+          (((x) & 0x000000000000ff00L) << 40) |   \
+          (((x) & 0x0000000000ff0000L) << 24) |   \
+          (((x) & 0x00000000ff000000L) << 8)  |   \
+          (((x) & 0x000000ff00000000L) >> 8)  |   \
+          (((x) & 0x0000ff0000000000L) >> 24) |   \
+          (((x) & 0x00ff000000000000L) >> 40) |   \
+          (((x) & 0xff00000000000000L) >> 56))
+#       ifndef htobe64
+#               define htobe64(x) be64toh(x)
+#       endif
+#       ifndef htobe32
+#               define htobe32(x) be32toh(x)
+#       endif
+#       ifndef htobe16
+#               define htobe16(x) be16toh(x)
+#       endif
+
 
 #else
 
-#	error platform not supported
+#   error platform not supported
 
 #endif
 
