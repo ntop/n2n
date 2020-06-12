@@ -2,12 +2,11 @@
 // taken from (and modified: removed pure crypto-stream generation and seperated key expansion)
 // https://github.com/nsacyber/simon-speck-supercop/blob/master/crypto_stream/speck128256ctr/
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "portable_endian.h"
 
 #include "speck.h"
-
 
 #if defined (__AVX2__)	// AVX support ----------------------------------------------------
 
@@ -682,6 +681,8 @@ int speck_test () {
 }
 
 /*
+#include <stdio.h> // for testing
+
   int main (int argc, char* argv[]) {
 
   fprintf (stdout, "SPECK SELF TEST RESULT: %u\n", speck_test (0,NULL));
