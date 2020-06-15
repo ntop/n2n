@@ -54,3 +54,10 @@ speck_context_t *ctx);
 
 
 int speck_expand_key (const unsigned char *k, speck_context_t *ctx);
+
+
+int speck_he (unsigned char *out, const unsigned char *in, unsigned long long inlen,
+              const unsigned char *n, speck_context_t *ctx);
+
+
+int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx);
