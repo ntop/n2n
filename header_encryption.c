@@ -44,8 +44,8 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
 }
 
 
-int32_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
-					   struct sn_community *communities) {
+int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
+					  struct sn_community *communities) {
 
 	struct sn_community *c, *tmp;
 

@@ -393,6 +393,8 @@ static int process_udp(n2n_sn_t *sss,
                ntohs(sender_sock->sin_port));
 
     he = packet_header_decrypt_if_required (udp_buf, udp_size, sss->communities);
+    if (he < 0)
+	return -1; /* something wrong with packet decryption */
 
     /* Use decode_common() to determine the kind of packet then process it:
      *
