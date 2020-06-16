@@ -1,14 +1,13 @@
-
-
-#ifndef _HEADER_ENCRYPTION_H_
-#define _HEADER_ENCRYPTION_H_
+//#ifndef _HEADER_ENCRYPTION_H_
+//#define _HEADER_ENCRYPTION_H_
 
 
 #include <stdint.h>
-#include "speck.h"
 
 
 #include "n2n.h"
+#include "speck.h"
+
 //define he_context_t	speck_context_t
 typedef struct speck_context_t he_context_t;
 
@@ -30,4 +29,7 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx);
 
 
-#endif
+void packet_header_setup_key (char * community_name, he_context_t * ctx);
+
+
+// #endif

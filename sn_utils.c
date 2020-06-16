@@ -226,6 +226,8 @@ void sn_term(n2n_sn_t *sss)
     HASH_ITER(hh, sss->communities, community, tmp)
     {
         clear_peer_list(&community->edges);
+        if (NULL != community->header_encryption_ctx)
+          free (community->header_encryption_ctx);
         HASH_DEL(sss->communities, community);
         free(community);
     }
@@ -579,6 +581,7 @@ static int process_udp(n2n_sn_t *sss,
                 comm->community[N2N_COMMUNITY_SIZE - 1] = '\0';
 		/* new communities introduced by REGISTERs could not have had encrypted header */
 		comm->header_encryption = HEADER_ENCRYPTION_NONE;
+		comm->header_encryption_ctx = NULL;
 
                 HASH_ADD_STR(sss->communities, community, comm);
 
@@ -780,7 +783,10 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
             if ((comm->edges == NULL) && (!sss->lock_communities))
             {
                 traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
-                HASH_DEL(sss->communities, comm);
+                if (NULL != comm->header_encryption_ctx)
+		    /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
+                    free (comm->header_encryption_ctx);
+		HASH_DEL(sss->communities, comm);
                 free(comm);
             }
         }
