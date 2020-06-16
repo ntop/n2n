@@ -111,6 +111,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #include "minilzo.h"
+#include "header_encryption.h"
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
@@ -160,6 +161,7 @@ typedef struct tuntap_dev {
 #define MSG_TYPE_FEDERATION             8
 #define MSG_TYPE_PEER_INFO              9
 #define MSG_TYPE_QUERY_PEER            10
+#define MSG_TYPE_MAX_TYPE	       10
 
 /* N2N compression indicators. */
 /* Compression is disabled by default for outgoing packets if no cli
@@ -225,6 +227,8 @@ typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_route_t	      *routes;		      /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
+  uint8_t	      header_encryption;      /**< Header encryption indicator. */
+  he_context_t	      header_encryption_ctx;  /**< Header encryption cipher context. */
   n2n_transform_t     transop_id;             /**< The transop to use. */
   uint16_t	      compression;	      /**< Compress outgoing data packets before encryption */
   uint16_t	      num_routes;	      /**< Number of routes in routes */
@@ -270,7 +274,9 @@ typedef struct sn_stats
  struct sn_community
 {
     char community[N2N_COMMUNITY_SIZE];
-    struct peer_info *edges; /* Link list of registered edges. */
+    uint8_t	      header_encryption;      /* Header encryption indicator. */
+    he_context_t      header_encryption_ctx;  /* Header encryption cipher context. */
+    struct peer_info *edges; 		      /* Link list of registered edges. */
 
      UT_hash_handle hh; /* makes this structure hashable */
 };
