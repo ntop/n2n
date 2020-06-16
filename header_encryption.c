@@ -75,6 +75,7 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 				return (-2);
 		// set 'no encryption'  in case it is not set yet
 		c->header_encryption = HEADER_ENCRYPTION_NONE;
+		c->header_encryption_ctx = NULL;
 		return (HEADER_ENCRYPTION_NONE);
 	} else {
 
@@ -125,5 +126,6 @@ void packet_header_setup_key (char * community_name, he_context_t * ctx) {
 	uint8_t key[16];
 	pearson_hash_128 (key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
+        ctx = calloc(1, sizeof(speck_context_t));
 	speck_expand_key_he (key, (speck_context_t*)ctx);
 }
