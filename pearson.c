@@ -1,5 +1,7 @@
 // taken from https://github.com/Logan007/pearson
 
+// This is free and unencumbered software released into the public domain.
+
 #include <stddef.h>
 #include <stdint.h>
 
