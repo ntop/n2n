@@ -3,7 +3,6 @@
 // https://github.com/nsacyber/simon-speck-supercop/blob/master/crypto_stream/speck128256ctr/
 
 #include <stdlib.h>
-#include <stdint.h>
 #include "portable_endian.h"
 
 #include "speck.h"

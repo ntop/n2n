@@ -2,13 +2,15 @@
 
 #include <string.h>
 
-#include "n2n.h"
 #include "random_numbers.h"
 #include "pearson.h"
 #include "portable_endian.h"
 
 
-#include <stdio.h>
+#include <stdio.h> // !!!
+
+
+#define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
 
 uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
@@ -45,6 +47,9 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
 int32_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 					   struct sn_community *communities) {
 
+	struct sn_community *c, *tmp;
+
+
 	if (packet_len < 20)
 		return (-1);
 
@@ -62,25 +67,28 @@ int32_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len
 
 		// most probably unencrypted
 
-		// TODO:
-		// !!! make sure, no downgrading happens here !!!
-		// NOT FOR DEFINETLY ENCRYPTED COMMUNITIES / NO DOWNGRADE, NO INJECTION
-
+		// make sure, no downgrading happens here and no unencrypted packets can be
+		// injected in a community which definitely deals with encrypted headers
+		HASH_FIND_COMMUNITY(communities, (char *)&packet[04], c);
+		if (!c)
+			if (c->header_encryption == HEADER_ENCRYPTION_ENABLED)
+				return (-2);
+		// set 'no encryption'  in case it is not set yet
+		c->header_encryption = HEADER_ENCRYPTION_NONE;
 		return (HEADER_ENCRYPTION_NONE);
 	} else {
 
 		// most probably encrypted
 		// cycle through the known communities (as keys) to eventually decrypt
 		int32_t ret;
-		struct sn_community *c, *tmp;
 		HASH_ITER (hh, communities, c, tmp) {
 			// skip the definitely unencrypted communities
 			if (c->header_encryption == HEADER_ENCRYPTION_NONE)
 				continue;
-			if ( (ret = packet_header_decrypt (packet, packet_len, c->community, &(c->header_encryption_ctx))) ) {
-				// set to 'encrypted'
+			if ( (ret = packet_header_decrypt (packet, packet_len, c->community, c->header_encryption_ctx)) ) {
+				// set 'encrypted' in case it is not set yet
 				 c->header_encryption = HEADER_ENCRYPTION_ENABLED;
-				// no need to test any further
+				// no need to test further communities
 				return (HEADER_ENCRYPTION_ENABLED);
 			}
 		}
@@ -117,5 +125,5 @@ void packet_header_setup_key (char * community_name, he_context_t * ctx) {
 	uint8_t key[16];
 	pearson_hash_128 (key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
-	speck_expand_key_he (key, ctx);
+	speck_expand_key_he (key, (speck_context_t*)ctx);
 }
