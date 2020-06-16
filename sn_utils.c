@@ -1,4 +1,5 @@
 #include "n2n.h"
+#include "header_encryption.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 #define N2N_SN_LPORT_DEFAULT 7654
@@ -37,7 +38,7 @@ static int process_mgmt(n2n_sn_t *sss,
 
 static int process_udp(n2n_sn_t *sss,
                        const struct sockaddr_in *sender_sock,
-                       const uint8_t *udp_buf,
+                       uint8_t *udp_buf,
                        size_t udp_size,
                        time_t now);
 
@@ -372,13 +373,14 @@ static int process_mgmt(n2n_sn_t *sss,
  */
 static int process_udp(n2n_sn_t *sss,
                        const struct sockaddr_in *sender_sock,
-                       const uint8_t *udp_buf,
+                       uint8_t *udp_buf,
                        size_t udp_size,
                        time_t now)
 {
     n2n_common_t cmn; /* common fields in the packet header */
     size_t rem;
     size_t idx;
+    int8_t he = HEADER_ENCRYPTION_UNKNOWN;
     size_t msg_type;
     uint8_t from_supernode;
     macstr_t mac_buf;
@@ -389,6 +391,8 @@ static int process_udp(n2n_sn_t *sss,
     traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
                udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
                ntohs(sender_sock->sin_port));
+
+    he = packet_header_decrypt_if_required (udp_buf, udp_size, sss->communities);
 
     /* Use decode_common() to determine the kind of packet then process it:
      *

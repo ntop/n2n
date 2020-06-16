@@ -111,7 +111,6 @@ typedef struct ether_hdr ether_hdr_t;
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #include "minilzo.h"
-#include "header_encryption.h"
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
@@ -180,6 +179,9 @@ typedef struct tuntap_dev {
 				 	           bits of transform_id; will be obsolete as soon as compression gets
 						   its own field in the packet. REVISIT then. */
 
+/* forward delcaration of header encryption context, see 'header_encryption.h' */
+typedef struct speck_context_t he_context_t;
+
 #define DEFAULT_MTU   1290
 
 /** Uncomment this to enable the MTU check, then try to ssh to generate a fragmented packet. */
@@ -228,7 +230,7 @@ typedef struct n2n_edge_conf {
   n2n_route_t	      *routes;		      /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   uint8_t	      header_encryption;      /**< Header encryption indicator. */
-  he_context_t	      header_encryption_ctx;  /**< Header encryption cipher context. */
+  he_context_t	      *header_encryption_ctx; /**< Header encryption cipher context. */
   n2n_transform_t     transop_id;             /**< The transop to use. */
   uint16_t	      compression;	      /**< Compress outgoing data packets before encryption */
   uint16_t	      num_routes;	      /**< Number of routes in routes */
@@ -259,6 +261,16 @@ typedef struct sn_stats
     time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
 } sn_stats_t;
 
+ struct sn_community
+{
+    char community[N2N_COMMUNITY_SIZE];
+    uint8_t	      header_encryption;      /* Header encryption indicator. */
+    he_context_t      *header_encryption_ctx; /* Header encryption cipher context. */
+    struct peer_info *edges; 		      /* Link list of registered edges. */
+
+     UT_hash_handle hh; /* makes this structure hashable */
+};
+
  typedef struct n2n_sn
 {
     time_t start_time; /* Used to measure uptime. */
@@ -270,16 +282,6 @@ typedef struct sn_stats
     int lock_communities; /* If true, only loaded communities can be used. */
     struct sn_community *communities;
 } n2n_sn_t;
-
- struct sn_community
-{
-    char community[N2N_COMMUNITY_SIZE];
-    uint8_t	      header_encryption;      /* Header encryption indicator. */
-    he_context_t      header_encryption_ctx;  /* Header encryption cipher context. */
-    struct peer_info *edges; 		      /* Link list of registered edges. */
-
-     UT_hash_handle hh; /* makes this structure hashable */
-};
 
 /* ************************************** */
 

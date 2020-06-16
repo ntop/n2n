@@ -6,6 +6,7 @@
 #ifndef SPECK_H
 #define SPECK_H
 
+#include <stdint.h>
 #define u32 uint32_t
 #define u64 uint64_t
 
