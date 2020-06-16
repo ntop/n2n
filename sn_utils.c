@@ -394,7 +394,7 @@ static int process_udp(n2n_sn_t *sss,
 
     he = packet_header_decrypt_if_required (udp_buf, udp_size, sss->communities);
     if (he < 0)
-	return -1; /* something wrong with packet decryption */
+	return -1; /* something wrong during packet decryption */
 
     /* Use decode_common() to determine the kind of packet then process it:
      *
@@ -577,6 +577,9 @@ static int process_udp(n2n_sn_t *sss,
             {
                 strncpy(comm->community, (char *)cmn.community, N2N_COMMUNITY_SIZE - 1);
                 comm->community[N2N_COMMUNITY_SIZE - 1] = '\0';
+		/* new communities introduced by REGISTERs could not have had encrypted header */
+		comm->header_encryption = HEADER_ENCRYPTION_NONE;
+
                 HASH_ADD_STR(sss->communities, community, comm);
 
                 traceEvent(TRACE_INFO, "New community: %s", comm->community);
