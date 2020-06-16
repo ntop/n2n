@@ -2,6 +2,10 @@
 // taken from (and modified: removed pure crypto-stream generation and seperated key expansion)
 // https://github.com/nsacyber/simon-speck-supercop/blob/master/crypto_stream/speck128256ctr/
 
+
+#ifndef SPECK_H
+#define SPECK_H
+
 #define u32 uint32_t
 #define u64 uint64_t
 
@@ -61,3 +65,6 @@ int speck_he (unsigned char *out, const unsigned char *in, unsigned long long in
 
 
 int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx);
+
+
+#endif

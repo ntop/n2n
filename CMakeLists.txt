@@ -61,7 +61,12 @@ add_library(n2n n2n.c
                 transform_null.c
                 transform_tf.c
                 transform_aes.c
+		transform_cc20.c
+		transform_speck.c
+		speck.c
+		pearson.c
 		random_numbers.c
+		header_encryption.c
                 tuntap_freebsd.c
                 tuntap_netbsd.c
                 tuntap_linux.c

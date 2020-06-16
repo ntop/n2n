@@ -51,6 +51,7 @@ N2N_LIB=libn2n.a
 N2N_OBJS=n2n.o wire.o minilzo.o twofish.o speck.o \
 	 edge_utils.o sn_utils.o \
          transform_null.o transform_tf.o transform_aes.o transform_cc20.o transform_speck.o \
+	 header_encryption.o pearson.o \
          tuntap_freebsd.o tuntap_netbsd.o tuntap_linux.o random_numbers.o \
 	 tuntap_osx.o
 LIBS_EDGE+=$(LIBS_EDGE_OPT)

@@ -1,35 +1,38 @@
-#include <stdio.h>
-#include <stdint.h>
+#include "header_encryption.h"
 
-// #include "n2n_wire.h"	// n2n_community_t
+#include <string.h>
+
 #include "n2n.h"
-#include "speck.h"
+#include "random_numbers.h"
+#include "pearson.h"
 #include "portable_endian.h"
 
 
-uint32_t decryt_packet_header (uint8_t packet[], uint8_t packet_len,
-			       char * community_name, speck_ctx * ctx) {
+#include <stdio.h>
+
+
+uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
+			        char * community_name, he_context_t * ctx) {
 
 	// assemble IV
 	// the last four are ASCII "n2n!" and do not get overwritten
 	uint8_t iv[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			   0x00, 0x00, 0x00, 0x00, 0x6E, 0x32, 0x6E, 0x21 };
-	// the first 96 bits of the packet are used padded with ASCII "n2n!"
+	// the first 96 bits of the packet get padded with ASCII "n2n!"
 	// to full 128 bit IV
-	memcopy (iv, packet, 12);
-
-	// alternatively, consider: pearson_hash_128 (iv, packet, 12)
+	memcpy (iv, packet, 12);
+	// alternatively, consider: pearson_hash_128 (iv, packet, 12);
 
 	// try community name as possible key and check for magic bytes
 	uint32_t magic = 0x6E326E00; // ="n2n_"
 	uint32_t test_magic;
 	// check for magic bytes and resonable value in header len field
-	speck_he ((uint8_t*)&test_magic, &packet[12], 4, iv, ctx);
+	speck_he ((uint8_t*)&test_magic, &packet[12], 4, iv, (speck_context_t*)ctx);
 	test_magic = be32toh (test_magic);
 	if ( ((test_magic <<  8) == magic)
 	  && ((test_magic >> 24) <= packet_len) // (test_masgic >> 24) is header_len
 	   ) {
-		speck_he (&packet[12], &packet[12], (test_magic >> 24) - 12, iv, ctx);
+		speck_he (&packet[12], &packet[12], (test_magic >> 24) - 12, iv, (speck_context_t*)ctx);
 		// restore original packet order
 		memcpy (&packet[0], &packet[16], 4);
 		memcpy (&packet[4], community_name, N2N_COMMUNITY_SIZE);
@@ -39,7 +42,7 @@ uint32_t decryt_packet_header (uint8_t packet[], uint8_t packet_len,
 }
 
 
-int32_t decryt_packet_header_if_required (uint8_t packet[], uint16_t packet_len,
+int32_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 					   struct sn_community *communities) {
 
 	if (packet_len < 20)
@@ -58,8 +61,12 @@ int32_t decryt_packet_header_if_required (uint8_t packet[], uint16_t packet_len,
 	   ) {
 
 		// most probably unencrypted
-		return (1);
 
+		// TODO:
+		// !!! make sure, no downgrading happens here !!!
+		// NOT FOR DEFINETLY ENCRYPTED COMMUNITIES / NO DOWNGRADE, NO INJECTION
+
+		return (HEADER_ENCRYPTION_NONE);
 	} else {
 
 		// most probably encrypted
@@ -67,24 +74,23 @@ int32_t decryt_packet_header_if_required (uint8_t packet[], uint16_t packet_len,
 		int32_t ret;
 		struct sn_community *c, *tmp;
 		HASH_ITER (hh, communities, c, tmp) {
-			// check if this is an encrypted community
-			if ( ret = decrypt_packet_header (packet, packet_len, c->community, c-> ctx) ) {
-				// no upgrade from unencrypted to encrypted
-				if (c->header_encryption == 1)
-					return (-2);
+			// skip the definitely unencrypted communities
+			if (c->header_encryption == HEADER_ENCRYPTION_NONE)
+				continue;
+			if ( (ret = packet_header_decrypt (packet, packet_len, c->community, &(c->header_encryption_ctx))) ) {
 				// set to 'encrypted'
-				 c->header_encryption = 2;
+				 c->header_encryption = HEADER_ENCRYPTION_ENABLED;
 				// no need to test any further
-				return (2);
+				return (HEADER_ENCRYPTION_ENABLED);
 			}
 		}
-		// no match
+		// no matching key/community
 		return (-3);
 	}
 }
 
 
-int32_t encryt_packet_header (uint8_t packet[], uint8_t header_len, speck_ctx * ctx) {
+int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx) {
 
 	if (header_len < 20)
 		return (-1);
@@ -100,5 +106,16 @@ int32_t encryt_packet_header (uint8_t packet[], uint8_t header_len, speck_ctx * 
 
 	iv[12] = header_len;
 
-	speck_he (&packet[12], &packet[12], header_len - 12, iv, ctx);
+	speck_he (&packet[12], &packet[12], header_len - 12, iv, (speck_context_t*)ctx);
+
+	return (0);
+}
+
+
+void packet_header_setup_key (char * community_name, he_context_t * ctx) {
+
+	uint8_t key[16];
+	pearson_hash_128 (key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
+
+	speck_expand_key_he (key, ctx);
 }
