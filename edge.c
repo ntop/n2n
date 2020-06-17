@@ -197,8 +197,7 @@ static void help() {
 #ifdef HAVE_OPENSSL_1_1
   printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
 #endif
-//  COMING SOON, not yet implemented in setPayloadEncryption(...)
-//  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
+  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
   printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
 #ifdef N2N_HAVE_ZSTD
   printf("-z2                      | Enable zstd compression for outgoing data packets\n");
@@ -283,6 +282,11 @@ static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
       break;
     }
 #endif
+  case 5:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_SPECK;
+      break;
+    }
   default:
     {
       conf->transop_id = N2N_TRANSFORM_ID_INVAL;
