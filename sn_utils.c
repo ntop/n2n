@@ -1,4 +1,5 @@
 #include "n2n.h"
+#include "header_encryption.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 #define N2N_SN_LPORT_DEFAULT 7654
@@ -37,7 +38,7 @@ static int process_mgmt(n2n_sn_t *sss,
 
 static int process_udp(n2n_sn_t *sss,
                        const struct sockaddr_in *sender_sock,
-                       const uint8_t *udp_buf,
+                       uint8_t *udp_buf,
                        size_t udp_size,
                        time_t now);
 
@@ -225,6 +226,8 @@ void sn_term(n2n_sn_t *sss)
     HASH_ITER(hh, sss->communities, community, tmp)
     {
         clear_peer_list(&community->edges);
+        if (NULL != community->header_encryption_ctx)
+          free (community->header_encryption_ctx);
         HASH_DEL(sss->communities, community);
         free(community);
     }
@@ -372,13 +375,14 @@ static int process_mgmt(n2n_sn_t *sss,
  */
 static int process_udp(n2n_sn_t *sss,
                        const struct sockaddr_in *sender_sock,
-                       const uint8_t *udp_buf,
+                       uint8_t *udp_buf,
                        size_t udp_size,
                        time_t now)
 {
     n2n_common_t cmn; /* common fields in the packet header */
     size_t rem;
     size_t idx;
+    int8_t he = HEADER_ENCRYPTION_UNKNOWN;
     size_t msg_type;
     uint8_t from_supernode;
     macstr_t mac_buf;
@@ -389,6 +393,10 @@ static int process_udp(n2n_sn_t *sss,
     traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
                udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
                ntohs(sender_sock->sin_port));
+
+    he = packet_header_decrypt_if_required (udp_buf, udp_size, sss->communities);
+    if (he < 0)
+	return -1; /* something wrong during packet decryption */
 
     /* Use decode_common() to determine the kind of packet then process it:
      *
@@ -571,6 +579,10 @@ static int process_udp(n2n_sn_t *sss,
             {
                 strncpy(comm->community, (char *)cmn.community, N2N_COMMUNITY_SIZE - 1);
                 comm->community[N2N_COMMUNITY_SIZE - 1] = '\0';
+		/* new communities introduced by REGISTERs could not have had encrypted header */
+		comm->header_encryption = HEADER_ENCRYPTION_NONE;
+		comm->header_encryption_ctx = NULL;
+
                 HASH_ADD_STR(sss->communities, community, comm);
 
                 traceEvent(TRACE_INFO, "New community: %s", comm->community);
@@ -771,7 +783,10 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
             if ((comm->edges == NULL) && (!sss->lock_communities))
             {
                 traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
-                HASH_DEL(sss->communities, comm);
+                if (NULL != comm->header_encryption_ctx)
+		    /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
+                    free (comm->header_encryption_ctx);
+		HASH_DEL(sss->communities, comm);
                 free(comm);
             }
         }

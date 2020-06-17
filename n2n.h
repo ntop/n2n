@@ -160,6 +160,7 @@ typedef struct tuntap_dev {
 #define MSG_TYPE_FEDERATION             8
 #define MSG_TYPE_PEER_INFO              9
 #define MSG_TYPE_QUERY_PEER            10
+#define MSG_TYPE_MAX_TYPE	       10
 
 /* N2N compression indicators. */
 /* Compression is disabled by default for outgoing packets if no cli
@@ -177,6 +178,9 @@ typedef struct tuntap_dev {
 #define N2N_COMPRESSION_ID_BITLEN	3	/* number of bits used for encoding compression id in the uppermost
 				 	           bits of transform_id; will be obsolete as soon as compression gets
 						   its own field in the packet. REVISIT then. */
+
+/* forward delcaration of header encryption context, see 'header_encryption.h' */
+typedef struct speck_context_t he_context_t;
 
 #define DEFAULT_MTU   1290
 
@@ -225,6 +229,8 @@ typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_route_t	      *routes;		      /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
+  uint8_t	      header_encryption;      /**< Header encryption indicator. */
+  he_context_t	      *header_encryption_ctx; /**< Header encryption cipher context. */
   n2n_transform_t     transop_id;             /**< The transop to use. */
   uint16_t	      compression;	      /**< Compress outgoing data packets before encryption */
   uint16_t	      num_routes;	      /**< Number of routes in routes */
@@ -255,6 +261,16 @@ typedef struct sn_stats
     time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
 } sn_stats_t;
 
+ struct sn_community
+{
+    char community[N2N_COMMUNITY_SIZE];
+    uint8_t	      header_encryption;      /* Header encryption indicator. */
+    he_context_t      *header_encryption_ctx; /* Header encryption cipher context. */
+    struct peer_info *edges; 		      /* Link list of registered edges. */
+
+     UT_hash_handle hh; /* makes this structure hashable */
+};
+
  typedef struct n2n_sn
 {
     time_t start_time; /* Used to measure uptime. */
@@ -266,14 +282,6 @@ typedef struct sn_stats
     int lock_communities; /* If true, only loaded communities can be used. */
     struct sn_community *communities;
 } n2n_sn_t;
-
- struct sn_community
-{
-    char community[N2N_COMMUNITY_SIZE];
-    struct peer_info *edges; /* Link list of registered edges. */
-
-     UT_hash_handle hh; /* makes this structure hashable */
-};
 
 /* ************************************** */
 

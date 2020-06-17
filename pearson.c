@@ -157,3 +157,59 @@ void pearson_hash_256 (uint8_t *out, const uint8_t *in, size_t len) {
 	o = (uint64_t*)&out[24];
 	*o = lower_hash;
 }
+
+
+void pearson_hash_128 (uint8_t *out, const uint8_t *in, size_t len) {
+
+	/* initial values -  astonishingly, assembling using SHIFTs and ORs (in register)
+         * works faster on well pipelined CPUs than loading the 64-bit value from memory.
+         * however, there is one advantage to loading from memory: as we also store back to
+         * memory at the end, we do not need to care about endianess! */
+	uint8_t upper[8] = { 0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08 };
+	uint8_t lower[8] = { 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 };
+
+	uint64_t upper_hash_mask = *(uint64_t*)&upper;
+	uint64_t lower_hash_mask = *(uint64_t*)&lower;
+
+	uint64_t upper_hash = 0;
+	uint64_t lower_hash = 0;
+
+	for (size_t i = 0; i < len; i++) {
+		// broadcast the character, xor into hash, make them different permutations
+		uint64_t c = (uint8_t)in[i];
+		c |= c <<  8;
+		c |= c << 16;
+		c |= c << 32;
+		upper_hash ^= c ^ upper_hash_mask;
+		lower_hash ^= c ^ lower_hash_mask;
+		// table lookup
+		uint8_t x;
+		uint64_t h = 0;
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = upper_hash; x = t[x]; upper_hash >>= 8; h |= x; h=ROR64(h,8);
+ 		upper_hash = h;
+
+		h = 0;
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		x = lower_hash; x = t[x]; lower_hash >>= 8; h |= x; h=ROR64(h,8);
+		lower_hash = h;
+	}
+	// store output
+	uint64_t *o;
+	o = (uint64_t*)&out[0];
+	*o = upper_hash;
+	o = (uint64_t*)&out[8];
+	*o = lower_hash;
+}
