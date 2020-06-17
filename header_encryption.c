@@ -7,9 +7,6 @@
 #include "portable_endian.h"
 
 
-#include <stdio.h> // !!!
-
-
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
 
