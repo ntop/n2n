@@ -18,6 +18,7 @@
 
 #include "n2n.h"
 #include "lzoconf.h"
+#include "header_encryption.h"
 #include "random_numbers.h"
 
 #ifdef HAVE_LIBZSTD
@@ -292,6 +293,10 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     traceEvent(TRACE_ERROR, "Transop init failed");
     goto edge_init_error;
   }
+
+  /* Set the key schedule (context) for header encryption if enabled */
+  if (conf->header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_setup_key ((char *)(conf->community_name), &(eee->conf.header_encryption_ctx));
 
   if(eee->transop.no_encryption)
     traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
@@ -774,6 +779,9 @@ static void send_register_super(n2n_edge_t * eee,
   traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
 	     sock_to_cstr(sockbuf, supernode));
 
+  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
 }
 
@@ -801,6 +809,9 @@ static void send_query_peer( n2n_edge_t * eee,
     encode_QUERY_PEER( pktbuf, &idx, &cmn, &query );
 
     traceEvent( TRACE_DEBUG, "send QUERY_PEER to supernode" );
+
+    if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+      packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
     sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
 }
@@ -845,6 +856,9 @@ static void send_register(n2n_edge_t * eee,
   traceEvent(TRACE_INFO, "Send REGISTER to %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
+  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
 
@@ -884,6 +898,8 @@ static void send_register_ack(n2n_edge_t * eee,
   traceEvent(TRACE_INFO, "send REGISTER_ACK %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
+  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -1480,6 +1496,9 @@ static void send_packet2net(n2n_edge_t * eee,
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
 
+  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+
   idx += eee->transop.fwd(&eee->transop,
 					  pktbuf+idx, N2N_PKT_BUF_SIZE-idx,
 					  tap_pkt, len, pkt.dstMac);
@@ -1640,6 +1659,9 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
   traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
 	     (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
+
+  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx);
 
   /* hexdump(udp_buf, recvlen); */
 
@@ -2411,6 +2433,7 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->local_port = 0 /* any port */;
   conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   conf->transop_id = N2N_TRANSFORM_ID_NULL;
+  conf->header_encryption = HEADER_ENCRYPTION_NONE;
   conf->compression = N2N_COMPRESSION_ID_NONE;
   conf->drop_multicast = 1;
   conf->allow_p2p = 1;

@@ -28,7 +28,7 @@
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
 
-uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
+uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
 			        char * community_name, he_context_t * ctx) {
 
 	// assemble IV
@@ -47,7 +47,7 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
 	speck_he ((uint8_t*)&test_magic, &packet[12], 4, iv, (speck_context_t*)ctx);
 	test_magic = be32toh (test_magic);
 	if ( ((test_magic <<  8) == magic)
-	  && ((test_magic >> 24) <= packet_len) // (test_masgic >> 24) is header_len
+	  && ((test_magic >> 24) <= packet_len) // (test_magic >> 24) is header_len
 	   ) {
 		speck_he (&packet[12], &packet[12], (test_magic >> 24) - 12, iv, (speck_context_t*)ctx);
 		// restore original packet order
@@ -75,7 +75,6 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 	// changes to wire.c:encode/decode_common need to go together with this code
 	if ( (packet[19] == (uint8_t)0x00)	// null terminated community name
 	  && (packet[00] == N2N_PKT_VERSION)	// correct packet version
-//	  && (packet[01] <= N2N_DEFAULT_TTL) 	// reasonable TTL -- might interfere with hole-punching-related or cli passed higher values ?!
 	  && ((be16toh (*(uint16_t*)&(packet[02])) & N2N_FLAGS_TYPE_MASK ) <= MSG_TYPE_MAX_TYPE  ) // message type
 	  && ( be16toh (*(uint16_t*)&(packet[02])) < N2N_FLAGS_OPTIONS)	// flags
 	   ) {
@@ -89,8 +88,8 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 			if (c->header_encryption == HEADER_ENCRYPTION_ENABLED)
 				return (-2);
 		// set 'no encryption'  in case it is not set yet
-		c->header_encryption = HEADER_ENCRYPTION_NONE;
-		c->header_encryption_ctx = NULL;
+// !!!		c->header_encryption = HEADER_ENCRYPTION_NONE;
+// !!!		c->header_encryption_ctx = NULL;
 		return (HEADER_ENCRYPTION_NONE);
 	} else {
 
@@ -103,7 +102,7 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 				continue;
 			if ( (ret = packet_header_decrypt (packet, packet_len, c->community, c->header_encryption_ctx)) ) {
 				// set 'encrypted' in case it is not set yet
-				 c->header_encryption = HEADER_ENCRYPTION_ENABLED;
+// !!!				 c->header_encryption = HEADER_ENCRYPTION_ENABLED;
 				// no need to test further communities
 				return (HEADER_ENCRYPTION_ENABLED);
 			}
@@ -124,11 +123,15 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
 	uint8_t iv[16];
 	((uint64_t*)iv)[0] = n2n_rand ();
 	((uint64_t*)iv)[1] = n2n_rand ();
+	memcpy (packet, iv, 12);
+	// alternatively, consider: pearson_hash_128 (iv, packet, 12);
 
-	const uint32_t magic = 0x006E326E;
+	uint32_t magic = 0x6E326E21;
 	((uint32_t*)iv)[3] = htobe32 (magic);
 
-	iv[12] = header_len;
+	magic >>= 8; // 0x006E326E
+	((uint32_t*)packet)[3] = htobe32 (magic);
+	packet[12] = header_len;
 
 	speck_he (&packet[12], &packet[12], header_len - 12, iv, (speck_context_t*)ctx);
 
@@ -136,11 +139,11 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
 }
 
 
-void packet_header_setup_key (char * community_name, he_context_t * ctx) {
+void packet_header_setup_key (const char * community_name, he_context_t ** ctx) {
 
 	uint8_t key[16];
 	pearson_hash_128 (key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
-        ctx = calloc(1, sizeof(speck_context_t));
-	speck_expand_key_he (key, (speck_context_t*)ctx);
+        *ctx = (he_context_t*)calloc(1, sizeof(speck_context_t));
+	speck_expand_key_he (key, (speck_context_t*)*ctx);
 }

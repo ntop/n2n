@@ -182,6 +182,13 @@ typedef struct tuntap_dev {
 /* forward delcaration of header encryption context, see 'header_encryption.h' */
 typedef struct speck_context_t he_context_t;
 
+/* Header encryption indicators */
+#define HEADER_ENCRYPTION_UNKNOWN       0
+#define HEADER_ENCRYPTION_NONE          1
+#define HEADER_ENCRYPTION_ENABLED       2
+
+
+
 #define DEFAULT_MTU   1290
 
 /** Uncomment this to enable the MTU check, then try to ssh to generate a fragmented packet. */
