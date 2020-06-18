@@ -108,8 +108,10 @@ typedef struct ether_hdr ether_hdr_t;
 #include <unistd.h>
 #include <assert.h>
 #include <sys/stat.h>
+#ifdef N2N_HAVE_AES
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
+#endif
 #include "minilzo.h"
 
 #define closesocket(a) close(a)
