@@ -23,15 +23,6 @@
 #include "speck.h"
 
 
-typedef struct speck_context_t he_context_t;
-
-
-/* Header encryption indicators
-#define HEADER_ENCRYPTION_UNKNOWN       0
-#define HEADER_ENCRYPTION_NONE          1
-#define HEADER_ENCRYPTION_ENABLED       2
-*/
-
 uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
                                 char * community_name, he_context_t * ctx);
 
