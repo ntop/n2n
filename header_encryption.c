@@ -82,12 +82,12 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
     // make sure, no downgrading happens here and no unencrypted packets can be
     // injected in a community which definitely deals with encrypted headers
     HASH_FIND_COMMUNITY(communities, (char *)&packet[04], c);
-    if (!c)
+    if (c)
       if (c->header_encryption == HEADER_ENCRYPTION_ENABLED)
 	return (-2);
     // set 'no encryption' in case it is not set yet
-// !!!	c->header_encryption = HEADER_ENCRYPTION_NONE;
-// !!!	c->header_encryption_ctx = NULL;
+    c->header_encryption = HEADER_ENCRYPTION_NONE;
+    c->header_encryption_ctx = NULL;
     return (HEADER_ENCRYPTION_NONE);
   } else {
 
@@ -100,7 +100,7 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 	continue;
       if ( (ret = packet_header_decrypt (packet, packet_len, c->community, c->header_encryption_ctx)) ) {
 	// set 'encrypted' in case it is not set yet
-// !!! c->header_encryption = HEADER_ENCRYPTION_ENABLED;
+        c->header_encryption = HEADER_ENCRYPTION_ENABLED;
 	// no need to test further communities
 	return (HEADER_ENCRYPTION_ENABLED);
       }

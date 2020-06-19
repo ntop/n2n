@@ -1661,7 +1661,10 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	     (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
 
   if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx);
+    if ( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx) < 0) {
+      // !!! log error -- could be unencrypted packet !!! //
+      return;
+    }
 
   /* hexdump(udp_buf, recvlen); */
 

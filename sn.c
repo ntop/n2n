@@ -494,6 +494,9 @@ static int process_udp(n2n_sn_t * sss,
 
   --(cmn.ttl); /* The value copied into all forwarded packets. */
 
+  struct sn_community *comm; /* find the corresponding data structure */
+  HASH_FIND_COMMUNITY(sss->communities, (char *)cmn.community, comm);
+
   switch(msg_type) {
   case MSG_TYPE_PACKET:
   {
@@ -506,7 +509,7 @@ static int process_udp(n2n_sn_t * sss,
     uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
     int                             unicast; /* non-zero if unicast */
-    const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
+    uint8_t *                       rec_buf; /* either udp_buf or encbuf */
 
 
     sss->stats.last_fwd=now;
@@ -547,6 +550,9 @@ static int process_udp(n2n_sn_t * sss,
       encx = udp_size;
     }
 
+    if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+      packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
+
     /* Common section to forward the final product. */
     if(unicast)
       try_forward(sss, &cmn, pkt.dstMac, rec_buf, encx);
@@ -563,7 +569,7 @@ static int process_udp(n2n_sn_t * sss,
     uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
     int                             unicast; /* non-zero if unicast */
-    const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
+    uint8_t *                       rec_buf; /* either udp_buf or encbuf */
 
     sss->stats.last_fwd=now;
     decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
@@ -601,6 +607,9 @@ static int process_udp(n2n_sn_t * sss,
 	encx = udp_size;
       }
 
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
+
       try_forward(sss, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
       traceEvent(TRACE_ERROR, "Rx REGISTER with multicast destination");
@@ -616,14 +625,11 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                    cmn2;
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
-    struct sn_community          *comm;
 
     /* Edge requesting registration with us.  */
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
     decode_REGISTER_SUPER(&reg, &cmn, udp_buf, &rem, &idx);
-
-    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, comm);
 
     /*
       Before we move any further, we need to check if the requested
@@ -672,6 +678,9 @@ static int process_udp(n2n_sn_t * sss,
 
       encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
 
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx);
+
       sendto(sss->sock, ackbuf, encx, 0,
 	     (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
 
@@ -688,7 +697,6 @@ static int process_udp(n2n_sn_t * sss,
     size_t encx=0;
     n2n_common_t cmn2;
     n2n_PEER_INFO_t pi;
-    struct sn_community *community;
 
     decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
@@ -696,11 +704,9 @@ static int process_udp(n2n_sn_t * sss,
                 macaddr_str( mac_buf,  query.srcMac ),
                 macaddr_str( mac_buf2, query.targetMac ) );
 
-    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, community);
-
-    if(community) {
+    if(comm) {
       struct peer_info *scan;
-      HASH_FIND_PEER(community->edges, query.targetMac, scan);
+      HASH_FIND_PEER(comm->edges, query.targetMac, scan);
 
       if (scan) {
 	  cmn2.ttl = N2N_DEFAULT_TTL;
@@ -713,6 +719,9 @@ static int process_udp(n2n_sn_t * sss,
 	  pi.sock = scan->sock;
 
 	  encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+
+          if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+            packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx);
 
 	  sendto( sss->sock, encbuf, encx, 0,
 		  (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
