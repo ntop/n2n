@@ -405,6 +405,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 	/* we cannot be sure if this gets parsed before the community name is set.
 	 * so, only an indicator is set, action is taken later*/
 	conf->header_encryption = HEADER_ENCRYPTION_ENABLED;
+	break;
     }
 
   case 'z':
