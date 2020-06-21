@@ -15,7 +15,7 @@ fi
 
 N2N_LIBS=
 
-AC_PROG_CC([clang])
+AC_PROG_CC
 AC_CHECK_LIB([zstd], [ZSTD_compress])
 
 if test "x$ac_cv_lib_zstd_ZSTD_compress" != xyes; then
