@@ -129,6 +129,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include <signal.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>

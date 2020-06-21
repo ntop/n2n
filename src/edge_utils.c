@@ -18,6 +18,10 @@
 
 #include "n2n.h"
 
+/* heap allocation for compression as per lzo example doc */
+#define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
+static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
+
 /* ************************************** */
 
 static const char * supernode_ip(const n2n_edge_t * eee);

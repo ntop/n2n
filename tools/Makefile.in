@@ -40,7 +40,7 @@ n2n-decode: n2n_decode.c $(N2N_LIB) $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(TOOLS) $(N2N_LIB) *.o *.dSYM *~
+	rm -rf $(TOOLS) *.o *.dSYM *~
 
 install: $(TOOLS)
 	$(INSTALL_PROG) $(TOOLS) $(SBINDIR)/
