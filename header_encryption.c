@@ -42,6 +42,7 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
   // try community name as possible key and check for magic bytes
   uint32_t magic = 0x6E326E00; // ="n2n_"
   uint32_t test_magic;
+
   // check for magic bytes and reasonable value in header len field
   // so, as a first step, decrypt 4 bytes only starting at byte 12
   speck_he ((uint8_t*)&test_magic, &packet[12], 4, iv, (speck_context_t*)ctx);
@@ -51,6 +52,7 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
        ) {
     // decrypt the complete header
     speck_he (&packet[12], &packet[12], (uint8_t)(test_magic) - 12, iv, (speck_context_t*)ctx);
+
     // restore original packet order
     memcpy (&packet[0], &packet[16], 4);
     memcpy (&packet[4], community_name, N2N_COMMUNITY_SIZE);
@@ -61,6 +63,9 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
 
 
 int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx) {
+  uint8_t iv[16];
+  uint64_t *iv64 = (uint64_t*)&iv;
+  const uint32_t magic = 0x006E326E;
 
   uint8_t iv[16];
   uint32_t *iv32 = (uint32_t*)&iv;
