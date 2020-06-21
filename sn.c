@@ -455,8 +455,10 @@ static int process_udp(n2n_sn_t * sss,
   /* check if header is unenrypted. the following check is around 99.99962 percent reliable.
    * it heavily relies on the structure of packet's common part
    * changes to wire.c:encode/decode_common need to go together with this code */
-  if (udp_size < 20)
+  if (udp_size < 20) {
+    traceEvent(TRACE_DEBUG, "process_udp dropped a packet too short to be valid.");
     return -1;
+  }
   if ( (udp_buf[19] == (uint8_t)0x00) // null terminated community name
        && (udp_buf[00] == N2N_PKT_VERSION) // correct packet version
        && ((be16toh (*(uint16_t*)&(udp_buf[02])) & N2N_FLAGS_TYPE_MASK ) <= MSG_TYPE_MAX_TYPE  ) // message type
@@ -467,11 +469,19 @@ static int process_udp(n2n_sn_t * sss,
      * injected in a community which definitely deals with encrypted headers */
     HASH_FIND_COMMUNITY(sss->communities, (char *)&udp_buf[04], comm);
     if (comm) {
-      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped a packet with unencrypted header "
+                                "addressed to community '%s' which uses encrypted headers.",
+                                 comm->community);
         return -1;
-      /* set 'no encryption' in case it is not set yet */
-      comm->header_encryption = HEADER_ENCRYPTION_NONE;
-      comm->header_encryption_ctx = NULL;
+      }
+      if (comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
+	traceEvent (TRACE_INFO, "process_udp locked community '%s' to using "
+                                "unencrypted headers.", comm->community);
+        /* set 'no encryption' in case it is not set yet */
+        comm->header_encryption = HEADER_ENCRYPTION_NONE;
+        comm->header_encryption_ctx = NULL;
+      }
     }
   } else {
     /* most probably encrypted */
@@ -482,14 +492,22 @@ static int process_udp(n2n_sn_t * sss,
       if (comm->header_encryption == HEADER_ENCRYPTION_NONE)
         continue;
       if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx)) ) {
-        /* set 'encrypted' in case it is not set yet */
-        comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
-        // no need to test further communities
+        if (comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
+	  traceEvent (TRACE_INFO, "process_udp locked community '%s' to using "
+                                  "encrypted headers.", comm->community);
+          /* set 'encrypted' in case it is not set yet */
+          comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
+        }
+	// no need to test further communities
         break;
       }
     }
-    if (!ret) // no matching key/community
+    if (!ret) {
+      // no matching key/community
+      traceEvent(TRACE_DEBUG, "process_udp dropped a packet with seemingly encrypted header "
+			      "for which no matching community which uses encrypted headers was found.");
       return -1;
+    }
   }
 
   /* Use decode_common() to determine the kind of packet then process it:
