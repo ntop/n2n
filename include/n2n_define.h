@@ -43,12 +43,6 @@
 #define IP4_MIN_SIZE  20
 #define UDP_SIZE      8
 
-#if 0
-/* heap allocation for compression as per lzo example doc */
-#define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
-static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
-#endif
-
 /* N2N compression indicators. */
 /* Compression is disabled by default for outgoing packets if no cli
  * option is given. All edges are built with decompression support so
