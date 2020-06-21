@@ -33,12 +33,14 @@
 #define HASH_FIND_COMMUNITY(head,name,out) HASH_FIND_STR(head,name,out)
 
 static int try_forward(n2n_sn_t * sss,
+		       const struct sn_community *comm,
 		       const n2n_common_t * cmn,
 		       const n2n_mac_t dstMac,
 		       const uint8_t * pktbuf,
 		       size_t pktsize);
 
 static int try_broadcast(n2n_sn_t * sss,
+		         const struct sn_community *comm,
 			 const n2n_common_t * cmn,
 			 const n2n_mac_t srcMac,
 			 const uint8_t * pktbuf,
@@ -188,24 +190,17 @@ static ssize_t sendto_sock(n2n_sn_t * sss,
 }
 
 static int try_forward(n2n_sn_t * sss,
+		       const struct sn_community *comm,
 		       const n2n_common_t * cmn,
 		       const n2n_mac_t dstMac,
 		       const uint8_t * pktbuf,
 		       size_t pktsize)
 {
   struct peer_info *  scan;
-  struct sn_community *community;
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
-  HASH_FIND_COMMUNITY(sss->communities, (char*)cmn->community, community);
-
-  if(!community) {
-    traceEvent(TRACE_DEBUG, "try_forward unknown community %s", cmn->community);
-    return(-1);
-  }
-
-  HASH_FIND_PEER(community->edges, dstMac, scan);
+  HASH_FIND_PEER(comm->edges, dstMac, scan);
 
   if(NULL != scan)
     {
@@ -248,51 +243,44 @@ static int try_forward(n2n_sn_t * sss,
  *  the supernode.
  */
 static int try_broadcast(n2n_sn_t * sss,
+                         const struct sn_community *comm,
 			 const n2n_common_t * cmn,
 			 const n2n_mac_t srcMac,
 			 const uint8_t * pktbuf,
 			 size_t pktsize)
 {
   struct peer_info *scan, *tmp;
-  struct sn_community *community;
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
   traceEvent(TRACE_DEBUG, "try_broadcast");
 
-  HASH_FIND_COMMUNITY(sss->communities, (char*)cmn->community, community);
+  HASH_ITER(hh, comm->edges, scan, tmp) {
+    if(memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t)) != 0) {
+      /* REVISIT: exclude if the destination socket is where the packet came from. */
+      int data_sent_len;
 
-  if(community) {
-    HASH_ITER(hh, community->edges, scan, tmp) {
-      if(memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t)) != 0) {
-	  /* REVISIT: exclude if the destination socket is where the packet came from. */
-	  int data_sent_len;
+      data_sent_len = sendto_sock(sss, &(scan->sock), pktbuf, pktsize);
 
-	  data_sent_len = sendto_sock(sss, &(scan->sock), pktbuf, pktsize);
-
-	  if(data_sent_len != pktsize)
-            {
-	      ++(sss->stats.errors);
-	      traceEvent(TRACE_WARNING, "multicast %lu to [%s] %s failed %s",
-			 pktsize,
-			 sock_to_cstr(sockbuf, &(scan->sock)),
-			 macaddr_str(mac_buf, scan->mac_addr),
-			 strerror(errno));
-            }
-	  else
-            {
-	      ++(sss->stats.broadcast);
-	      traceEvent(TRACE_DEBUG, "multicast %lu to [%s] %s",
-			 pktsize,
-			 sock_to_cstr(sockbuf, &(scan->sock)),
-			 macaddr_str(mac_buf, scan->mac_addr));
-            }
+      if(data_sent_len != pktsize)
+      {
+        ++(sss->stats.errors);
+        traceEvent(TRACE_WARNING, "multicast %lu to [%s] %s failed %s",
+  		   pktsize,
+		   sock_to_cstr(sockbuf, &(scan->sock)),
+		   macaddr_str(mac_buf, scan->mac_addr),
+		   strerror(errno));
+      }
+      else
+      {
+        ++(sss->stats.broadcast);
+        traceEvent(TRACE_DEBUG, "multicast %lu to [%s] %s",
+	           pktsize,
+		   sock_to_cstr(sockbuf, &(scan->sock)),
+		   macaddr_str(mac_buf, scan->mac_addr));
       }
     }
-  } else
-    traceEvent(TRACE_INFO, "ignoring broadcast on unknown community %s\n",
-      cmn->community);
-
+  }
   return 0;
 }
 
@@ -452,21 +440,57 @@ static int process_udp(n2n_sn_t * sss,
   n2n_common_t        cmn; /* common fields in the packet header */
   size_t              rem;
   size_t              idx;
-  int8_t	      he = HEADER_ENCRYPTION_UNKNOWN;
   size_t              msg_type;
   uint8_t             from_supernode;
   macstr_t            mac_buf;
   macstr_t            mac_buf2;
   n2n_sock_str_t      sockbuf;
   char                buf[32];
+  struct sn_community *comm, *tmp;
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
 	     ntohs(sender_sock->sin_port));
 
-  he = packet_header_decrypt_if_required (udp_buf, udp_size, sss->communities);
-  if (he < 0)
-    return -1; /* something wrong during packet decryption */
+  /* check if header is unenrypted. the following check is around 99.99962 percent reliable.
+   * it heavily relies on the structure of packet's common part
+   * changes to wire.c:encode/decode_common need to go together with this code */
+  if (udp_size < 20)
+    return -1;
+  if ( (udp_buf[19] == (uint8_t)0x00) // null terminated community name
+       && (udp_buf[00] == N2N_PKT_VERSION) // correct packet version
+       && ((be16toh (*(uint16_t*)&(udp_buf[02])) & N2N_FLAGS_TYPE_MASK ) <= MSG_TYPE_MAX_TYPE  ) // message type
+       && ( be16toh (*(uint16_t*)&(udp_buf[02])) < N2N_FLAGS_OPTIONS) // flags
+       ) {
+    /* most probably unencrypted */
+    /* make sure, no downgrading happens here and no unencrypted packets can be
+     * injected in a community which definitely deals with encrypted headers */
+    HASH_FIND_COMMUNITY(sss->communities, (char *)&udp_buf[04], comm);
+    if (comm) {
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        return -1;
+      /* set 'no encryption' in case it is not set yet */
+      comm->header_encryption = HEADER_ENCRYPTION_NONE;
+      comm->header_encryption_ctx = NULL;
+    }
+  } else {
+    /* most probably encrypted */
+    /* cycle through the known communities (as keys) to eventually decrypt */
+    uint32_t ret = 0;
+    HASH_ITER (hh, sss->communities, comm, tmp) {
+      /* skip the definitely unencrypted communities */
+      if (comm->header_encryption == HEADER_ENCRYPTION_NONE)
+        continue;
+      if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx)) ) {
+        /* set 'encrypted' in case it is not set yet */
+        comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
+        // no need to test further communities
+        break;
+      }
+    }
+    if (!ret) // no matching key/community
+      return -1;
+  }
 
   /* Use decode_common() to determine the kind of packet then process it:
    *
@@ -494,9 +518,6 @@ static int process_udp(n2n_sn_t * sss,
 
   --(cmn.ttl); /* The value copied into all forwarded packets. */
 
-  struct sn_community *comm; /* find the corresponding data structure */
-  HASH_FIND_COMMUNITY(sss->communities, (char *)cmn.community, comm);
-
   switch(msg_type) {
   case MSG_TYPE_PACKET:
   {
@@ -511,6 +532,10 @@ static int process_udp(n2n_sn_t * sss,
     int                             unicast; /* non-zero if unicast */
     uint8_t *                       rec_buf; /* either udp_buf or encbuf */
 
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp PACKET with unknown community %s", cmn.community);
+      return -1;
+    }
 
     sss->stats.last_fwd=now;
     decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
@@ -538,6 +563,9 @@ static int process_udp(n2n_sn_t * sss,
       /* Re-encode the header. */
       encode_PACKET(encbuf, &encx, &cmn2, &pkt);
 
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx);
+
       /* Copy the original payload unchanged */
       encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
     } else {
@@ -548,16 +576,16 @@ static int process_udp(n2n_sn_t * sss,
 
       rec_buf = udp_buf;
       encx = udp_size;
-    }
 
-    if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-      packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
+    }
 
     /* Common section to forward the final product. */
     if(unicast)
-      try_forward(sss, &cmn, pkt.dstMac, rec_buf, encx);
+      try_forward(sss, comm, &cmn, pkt.dstMac, rec_buf, encx);
     else
-      try_broadcast(sss, &cmn, pkt.srcMac, rec_buf, encx);
+      try_broadcast(sss, comm, &cmn, pkt.srcMac, rec_buf, encx);
     break;
   }
   case MSG_TYPE_REGISTER:
@@ -570,6 +598,11 @@ static int process_udp(n2n_sn_t * sss,
     size_t                          encx=0;
     int                             unicast; /* non-zero if unicast */
     uint8_t *                       rec_buf; /* either udp_buf or encbuf */
+
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp REGISTER from unknown community %s", cmn.community);
+      return -1;
+    }
 
     sss->stats.last_fwd=now;
     decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
@@ -610,7 +643,7 @@ static int process_udp(n2n_sn_t * sss,
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
 
-      try_forward(sss, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
+      try_forward(sss, comm, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
       traceEvent(TRACE_ERROR, "Rx REGISTER with multicast destination");
     break;
@@ -691,12 +724,18 @@ static int process_udp(n2n_sn_t * sss,
       traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
 		 (char*)cmn.community);
     break;
-  } case MSG_TYPE_QUERY_PEER: {
+  }
+  case MSG_TYPE_QUERY_PEER: {
     n2n_QUERY_PEER_t query;
     uint8_t encbuf[N2N_SN_PKTBUF_SIZE];
     size_t encx=0;
     n2n_common_t cmn2;
     n2n_PEER_INFO_t pi;
+
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER from unknown community %s", cmn.community);
+      return -1;
+    }
 
     decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
@@ -704,37 +743,35 @@ static int process_udp(n2n_sn_t * sss,
                 macaddr_str( mac_buf,  query.srcMac ),
                 macaddr_str( mac_buf2, query.targetMac ) );
 
-    if(comm) {
-      struct peer_info *scan;
-      HASH_FIND_PEER(comm->edges, query.targetMac, scan);
+    struct peer_info *scan;
+    HASH_FIND_PEER(comm->edges, query.targetMac, scan);
 
-      if (scan) {
-	  cmn2.ttl = N2N_DEFAULT_TTL;
-	  cmn2.pc = n2n_peer_info;
-	  cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
-	  memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
+    if (scan) {
+      cmn2.ttl = N2N_DEFAULT_TTL;
+      cmn2.pc = n2n_peer_info;
+      cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
+      memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
 
-	  pi.aflags = 0;
-	  memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
-	  pi.sock = scan->sock;
+      pi.aflags = 0;
+      memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
+      pi.sock = scan->sock;
 
-	  encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+      encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
 
-          if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-            packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx);
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx);
 
-	  sendto( sss->sock, encbuf, encx, 0,
-		  (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
+      sendto( sss->sock, encbuf, encx, 0,
+	      (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
 
-	  traceEvent( TRACE_DEBUG, "Tx PEER_INFO to %s",
-		      macaddr_str( mac_buf, query.srcMac ) );
-      } else {
-	  traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
-		      macaddr_str( mac_buf, query.targetMac ) );
-      }
+      traceEvent( TRACE_DEBUG, "Tx PEER_INFO to %s",
+		                macaddr_str( mac_buf, query.srcMac ) );
+    } else {
+      traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
+	                        macaddr_str( mac_buf, query.targetMac ) );
     }
 
-    break;
+  break;
   }
   default:
     /* Not a known message type */
