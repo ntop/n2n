@@ -46,7 +46,7 @@ MAN8DIR=$(MANDIR)/man8
 
 N2N_LIB=libn2n.a
 N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
-N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile 
+N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile $(N2N_LIB)
 
 LIBS_EDGE+=$(LIBS_EDGE_OPT)
 LIBS_SN=
