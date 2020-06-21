@@ -295,8 +295,10 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   }
 
   /* Set the key schedule (context) for header encryption if enabled */
-  if (conf->header_encryption == HEADER_ENCRYPTION_ENABLED)
+  if (conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+    traceEvent(TRACE_NORMAL, "Header encryption is enabled.");
     packet_header_setup_key ((char *)(conf->community_name), &(eee->conf.header_encryption_ctx));
+  }
 
   if(eee->transop.no_encryption)
     traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
