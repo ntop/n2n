@@ -5,10 +5,7 @@ GIT_COMMITS=@GIT_COMMITS@
 
 ########
 
-CC?=gcc
-DEBUG?=-g3
-OPTIMIZATION?=-O3 #-march=native
-WARN?=-Wall
+CC=@CC@
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)
@@ -16,7 +13,7 @@ PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finlin
 
 N2N_OBJS_OPT=
 LIBS_EDGE_OPT=@N2N_LIBS@
-CFLAGS=@CFLAGS@
+CFLAGS=@CFLAGS@ -I ./include
 LDFLAGS=@LDFLAGS@
 
 OPENSSL_CFLAGS=$(shell pkg-config openssl; echo $$?)
@@ -48,12 +45,9 @@ MAN7DIR=$(MANDIR)/man7
 MAN8DIR=$(MANDIR)/man8
 
 N2N_LIB=libn2n.a
-N2N_OBJS=n2n.o wire.o minilzo.o twofish.o speck.o \
-	 edge_utils.o sn_utils.o \
-         transform_null.o transform_tf.o transform_aes.o transform_cc20.o transform_speck.o \
-	 header_encryption.o pearson.o \
-         tuntap_freebsd.o tuntap_netbsd.o tuntap_linux.o random_numbers.o \
-	 tuntap_osx.o
+N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
+N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile 
+
 LIBS_EDGE+=$(LIBS_EDGE_OPT)
 LIBS_SN=
 
@@ -77,19 +71,19 @@ all: $(APPS) $(DOCS) tools
 tools: $(N2N_LIB)
 	$(MAKE) -C $@
 
-edge: edge.c $(N2N_LIB) n2n_wire.h n2n.h Makefile
+edge: src/edge.c $(N2N_LIB) $(N2N_DEPS)
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
-supernode: sn.c $(N2N_LIB) n2n.h Makefile
+supernode: src/sn.c $(N2N_LIB) $(N2N_DEPS)
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_SN) -o $@
 
-example_edge_embed_quick_edge_init: example_edge_embed_quick_edge_init.c $(N2N_LIB) n2n.h
+example_edge_embed_quick_edge_init: src/example_edge_embed_quick_edge_init.c $(N2N_DEPS)
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
-example_sn_embed: example_sn_embed.c $(N2N_LIB) n2n.h
+example_sn_embed: src/example_sn_embed.c $(N2N_DEPS)
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
-example_edge_embed: example_edge_embed.c $(N2N_LIB) n2n.h
+example_edge_embed: src/example_edge_embed.c $(N2N_DEPS)
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 %.gz : %

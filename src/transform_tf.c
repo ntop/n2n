@@ -17,13 +17,6 @@
  */
 
 #include "n2n.h"
-#include "n2n_transforms.h"
-#include "twofish.h"
-#include "random_numbers.h"
-#ifndef _MSC_VER
-/* Not included in Visual Studio 2008 */
-#include <strings.h> /* index() */
-#endif
 
 #define N2N_TWOFISH_NUM_SA              32 /* space for SAa */
 

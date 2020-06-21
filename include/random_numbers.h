@@ -16,28 +16,23 @@
  *
  */
 
-#include <stdint.h>
+/* The WIN32 code is still untested and thus commented
+   #if defined (WIN32)
+   #include <Wincrypt.h>
+   #endif 
+*/
+
+struct rn_generator_state_t {
+  uint64_t a, b;
+};
+
+struct splitmix64_state_t {
+    uint64_t s;
+};
 
 
-#include "n2n.h"
-#include "speck.h"
+int n2n_srand (uint64_t seed);
 
+uint64_t n2n_rand ();
 
-/* Header encryption indicators */
-#define HEADER_ENCRYPTION_UNKNOWN       0
-#define HEADER_ENCRYPTION_NONE          1
-#define HEADER_ENCRYPTION_ENABLED       2
-
-
-uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
-                                char * community_name, he_context_t * ctx);
-
-
-int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
-                                          struct sn_community * communities);
-
-
-int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx);
-
-
-void packet_header_setup_key (char * community_name, he_context_t * ctx);
+uint64_t n2n_seed ();

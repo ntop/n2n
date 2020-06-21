@@ -35,13 +35,7 @@
 #ifndef __TWOFISH_LIBRARY_SOURCE__
 #define __TWOFISH_LIBRARY_SOURCE__
 
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-#include <ctype.h>
-#include <sys/types.h>
-#include "twofish.h"
-#include "random_numbers.h"
+#include "n2n.h"
 
 /* Fixed 8x8 permutation S-boxes */
 static const uint8_t TwoFish_P[2][256] =

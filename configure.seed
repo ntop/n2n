@@ -15,6 +15,7 @@ fi
 
 N2N_LIBS=
 
+AC_PROG_CC([clang])
 AC_CHECK_LIB([zstd], [ZSTD_compress])
 
 if test "x$ac_cv_lib_zstd_ZSTD_compress" != xyes; then
@@ -92,6 +93,7 @@ fi
 
 DATE=`date +"%Y-%m-%d"`
 
+AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(N2N_MAJOR)
@@ -104,7 +106,7 @@ AC_SUBST(GIT_RELEASE)
 AC_SUBST(N2N_DEFINES)
 AC_SUBST(N2N_LIBS)
 AC_SUBST(ADDITIONAL_TOOLS)
-AC_CONFIG_HEADERS(config.h)
+AC_CONFIG_HEADERS(include/config.h)
 AC_CONFIG_FILES(Makefile)
 AC_CONFIG_FILES(tools/Makefile)
 

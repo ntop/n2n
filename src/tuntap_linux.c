@@ -16,16 +16,9 @@
  *
  */
 
-#include "n2n.h"
-
 #ifdef __linux__
 
-#include <net/if_arp.h>
-#include <net/if.h>
-#include <linux/if_tun.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include "random_numbers.h"
+#include "n2n.h"
 
 /* ********************************** */
 

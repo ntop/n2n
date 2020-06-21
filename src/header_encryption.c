@@ -16,17 +16,12 @@
  *
  */
 
-#include "header_encryption.h"
 
-#include <string.h>
-
-#include "random_numbers.h"
-#include "pearson.h"
-#include "portable_endian.h"
-
+#include "n2n.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
+/* ********************************************************************** */
 
 uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
 			        char * community_name, he_context_t * ctx) {
@@ -58,6 +53,7 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint8_t packet_len,
     return (0); // unsuccessful
 }
 
+/* ********************************************************************** */
 
 int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
 					  struct sn_community *communities) {
@@ -113,6 +109,7 @@ int8_t packet_header_decrypt_if_required (uint8_t packet[], uint16_t packet_len,
   }
 }
 
+/* ********************************************************************** */
 
 int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx) {
   uint8_t iv[16];
@@ -134,6 +131,7 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
   return (0);
 }
 
+/* ********************************************************************** */
 
 void packet_header_setup_key (char * community_name, he_context_t * ctx) {
 

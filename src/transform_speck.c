@@ -17,10 +17,6 @@
  */
 
 #include "n2n.h"
-#include "n2n_transforms.h"
-#include "speck.h"
-#include "random_numbers.h"
-#include "pearson.h"
 
 #define N2N_SPECK_TRANSFORM_VERSION       1  /* version of the transform encoding */
 #define N2N_SPECK_IVEC_SIZE               16
