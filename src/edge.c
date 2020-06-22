@@ -154,7 +154,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-z[<compression algo>]] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -192,6 +192,7 @@ static void help() {
   printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
 #endif
   printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
+  printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
   printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
 #ifdef N2N_HAVE_ZSTD
   printf("-z2                      | Enable zstd compression for outgoing data packets\n");
@@ -393,6 +394,14 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
       break;
     }
 
+  case 'H': /* indicate header encryption */
+    {
+	/* we cannot be sure if this gets parsed before the community name is set.
+	 * so, only an indicator is set, action is taken later*/
+	conf->header_encryption = HEADER_ENCRYPTION_ENABLED;
+	break;
+    }
+
   case 'z':
     {
       int compression;
@@ -551,7 +560,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::H"
 #ifdef __linux__
 			 "T:n:"
 #endif
