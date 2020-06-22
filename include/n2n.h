@@ -135,8 +135,10 @@ typedef struct ether_hdr ether_hdr_t;
 #include <assert.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#ifdef N2N_HAVE_AES
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
+#endif
 
 #include "minilzo.h"
 #include "n2n_define.h"
