@@ -11,7 +11,6 @@ A virtual network shared between multiple edge nodes in n2n is called a _communi
 
 N2N tries to establish a direct P2P connection between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
 
-
 ## Quick Setup
 
 Some Linux distributions already provide n2n as a package so a simple `sudo apt install n2n` will do the work. Alternatively, up to date packages for most distributions are available on [ntop repositories](http://packages.ntop.org/).
