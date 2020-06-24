@@ -73,11 +73,13 @@ On linux, compilation from source is straight forward:
 ./configure
 make
 
-Parts of the code – especially Speck cipher and the header encryption – speedwise benefit from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, use `./configure CFLAGS="-O3 -march=native"` instead.
-
 # optionally install
 make install
 ```
+
+Parts of the code – especially Speck cipher and the header encryption – speedwise benefit
+from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, 
+use `./configure CFLAGS="-O3 -march=native"` for configuration instead.
 
 For Windows, check out [Windows.md](doc/Windows.md) for compilation and run instuctions.
 For MacOS, check out [macOS.md](doc/macOS.md).
