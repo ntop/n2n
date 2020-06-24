@@ -41,7 +41,7 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
   // so, as a first step, decrypt 4 bytes only starting at byte 12
   speck_he ((uint8_t*)&test_magic, &packet[12], 4, iv, (speck_context_t*)ctx);
   test_magic = be32toh (test_magic);
-  if ( (((test_magic >> 8) <<  8) == magic)	// check the thre uppermost bytes
+  if( (((test_magic >> 8) <<  8) == magic)	// check the thre uppermost bytes
        && (((uint8_t)test_magic) <= packet_len) // lowest 8 bit of test_magic are header_len
        ) {
     // decrypt the complete header
@@ -63,7 +63,7 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
   uint64_t *iv64 = (uint64_t*)&iv;
   const uint32_t magic = 0x6E326E21; // = ASCII "n2n!"
 
-  if (header_len < 20) {
+  if(header_len < 20) {
     traceEvent(TRACE_DEBUG, "packet_header_encrypt dropped a packet too short to be valid.");
     return (-1);
   }

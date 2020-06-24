@@ -256,7 +256,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   }
 
   /* Set the key schedule (context) for header encryption if enabled */
-  if (conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+  if(conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
     traceEvent(TRACE_NORMAL, "Header encryption is enabled.");
     packet_header_setup_key ((char *)(conf->community_name), &(eee->conf.header_encryption_ctx));
   }
@@ -468,7 +468,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
        * So we can alternatively set TTL so that the packet sent to peer never really reaches
        * The register_ttl is basically nat level + 1. Set it to 1 means host like DMZ.
        */
-      if (eee->conf.register_ttl == 1) {
+      if(eee->conf.register_ttl == 1) {
         /* We are DMZ host or port is directly accessible. Just let peer to send back the ack */
 #ifndef WIN32
       } else if(eee->conf.register_ttl > 1) {
@@ -742,7 +742,7 @@ static void send_register_super(n2n_edge_t * eee,
   traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
 	     sock_to_cstr(sockbuf, supernode));
 
-  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
@@ -773,7 +773,7 @@ static void send_query_peer( n2n_edge_t * eee,
 
   traceEvent( TRACE_DEBUG, "send QUERY_PEER to supernode" );
 
-  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
@@ -819,7 +819,7 @@ static void send_register(n2n_edge_t * eee,
   traceEvent(TRACE_INFO, "Send REGISTER to %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
-  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
@@ -861,7 +861,7 @@ static void send_register_ack(n2n_edge_t * eee,
   traceEvent(TRACE_INFO, "send REGISTER_ACK %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
-  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
@@ -888,7 +888,7 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
     /* Give up on that supernode and try the next one. */
     ++(eee->sn_idx);
 
-    if (eee->sn_idx >= eee->conf.sn_num) {
+    if(eee->sn_idx >= eee->conf.sn_num) {
       /* Got to end of list, go back to the start. Also works for list of one entry. */
       eee->sn_idx=0;
     }
@@ -1024,7 +1024,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	deflated_len = N2N_PKT_BUF_SIZE;
 	deflation_buffer = malloc (deflated_len);
 	deflated_len = (int32_t)ZSTD_decompress (deflation_buffer, deflated_len, eth_payload, eth_size);
-	if (ZSTD_isError(deflated_len)) {
+	if(ZSTD_isError(deflated_len)) {
 	  traceEvent (TRACE_ERROR, "payload decompression failed with zstd error '%s'.",
 		      ZSTD_getErrorName(deflated_len));
 	  free (deflation_buffer);
@@ -1038,7 +1038,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	return (-1); // cannot handle it
       }
 
-      if (rx_compression_id) {
+      if(rx_compression_id) {
 	traceEvent (TRACE_DEBUG, "payload decompression [%s]: deflated %u bytes to %u bytes",
 		    compression_str(rx_compression_id), eth_size, (int)deflated_len);
 	memcpy(eth_payload ,deflation_buffer, deflated_len );
@@ -1077,7 +1077,7 @@ static int handle_PACKET(n2n_edge_t * eee,
       traceEvent(TRACE_DEBUG, "sending to TAP %u", (unsigned int)eth_size);
       data_sent_len = tuntap_write(&(eee->device), eth_payload, eth_size);
 
-      if (data_sent_len == eth_size)
+      if(data_sent_len == eth_size)
 	{
 	  retval = 0;
 	}
@@ -1406,15 +1406,15 @@ static void send_packet2net(n2n_edge_t * eee,
   // compression needs to be tried before encode_PACKET is called for compression indication gets encoded there
   pkt.compression = N2N_COMPRESSION_ID_NONE;
 
-  if (eee->conf.compression) {
+  if(eee->conf.compression) {
     uint8_t * compression_buffer;
     int32_t  compression_len;
 
     switch (eee->conf.compression) {
     case N2N_COMPRESSION_ID_LZO:
       compression_buffer = malloc (len + len / 16 + 64 + 3);
-      if (lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
-	if (compression_len < len) {
+      if(lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
+	if(compression_len < len) {
 	  pkt.compression = N2N_COMPRESSION_ID_LZO;
 	}
       }
@@ -1424,8 +1424,8 @@ static void send_packet2net(n2n_edge_t * eee,
       compression_len = N2N_PKT_BUF_SIZE + 128;
       compression_buffer = malloc (compression_len); // leaves enough room, for exact size call compression_len = ZSTD_compressBound (len); (slower)
       compression_len = (int32_t)ZSTD_compress(compression_buffer, compression_len, tap_pkt, len, ZSTD_COMPRESSION_LEVEL) ;
-      if (!ZSTD_isError(compression_len)) {
-	if (compression_len < len) {
+      if(!ZSTD_isError(compression_len)) {
+	if(compression_len < len) {
 	  pkt.compression = N2N_COMPRESSION_ID_ZSTD;
 	}
       } else {
@@ -1440,7 +1440,7 @@ static void send_packet2net(n2n_edge_t * eee,
       break;
     }
 
-    if (pkt.compression) {
+    if(pkt.compression) {
       traceEvent (TRACE_DEBUG, "payload compression [%s]: compressed %u bytes to %u bytes\n",
 		  compression_str(pkt.compression), len, compression_len);
 
@@ -1459,7 +1459,7 @@ static void send_packet2net(n2n_edge_t * eee,
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
 
-  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   idx += eee->transop.fwd(&eee->transop,
@@ -1495,7 +1495,7 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
   ssize_t             len;
 
 #ifdef __ANDROID_NDK__
-  if (uip_arp_len != 0) {
+  if(uip_arp_len != 0) {
     len = uip_arp_len;
     memcpy(eth_pkt, uip_arp_buf, MIN(uip_arp_len, N2N_PKT_BUF_SIZE));
     traceEvent(TRACE_DEBUG, "ARP reply packet to send");
@@ -1587,8 +1587,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
 	     (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
 
-  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    if ( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx) < 0) {
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    if( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx) == 0) {
       traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
       return;
     }
@@ -1759,7 +1759,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  }
 
 	  HASH_FIND_PEER(eee->pending_peers, pi.mac, scan);
-	  if (scan) {
+	  if(scan) {
             scan->sock = pi.sock;
             traceEvent(TRACE_INFO, "Rx PEER_INFO for %s: is at %s",
                        macaddr_str(mac_buf1, pi.mac),
@@ -1777,7 +1777,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
       return;
     } /* switch(msg_type) */
-  } else if(from_supernode) /* if (community match) */
+  } else if(from_supernode) /* if(community match) */
     traceEvent(TRACE_WARNING, "Received packet with unknown community");
   else
     traceEvent(TRACE_INFO, "Ignoring packet with unknown community");
@@ -1879,7 +1879,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif
 
 #ifdef __ANDROID_NDK__
-      if (uip_arp_len != 0) {
+      if(uip_arp_len != 0) {
 	readFromTAPSocket(eee);
 	uip_arp_len = 0;
       }
@@ -1921,7 +1921,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     }
 
 #ifdef __ANDROID_NDK__
-    if ((nowTime - lastArpPeriod) > ARP_PERIOD_INTERVAL) {
+    if((nowTime - lastArpPeriod) > ARP_PERIOD_INTERVAL) {
       uip_arp_timer();
       lastArpPeriod = nowTime;
     }
