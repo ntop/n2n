@@ -11,6 +11,7 @@ A virtual network shared between multiple edge nodes in n2n is called a _communi
 
 N2N tries to establish a direct P2P connection between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
 
+
 ## Quick Setup
 
 Some Linux distributions already provide n2n as a package so a simple `sudo apt install n2n` will do the work. Alternatively, up to date packages for most distributions are available on [ntop repositories](http://packages.ntop.org/).
@@ -73,6 +74,8 @@ On linux, compilation from source is straight forward:
 ./configure
 make
 
+Parts of the code – especially Speck cipher and the header encryption – speedwise benefit from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, use `./configure CFLAGS="-O3 -march=native"` instead.
+
 # optionally install
 make install
 ```
@@ -102,17 +105,24 @@ Check out [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more i
 
 n2n edge nodes use twofish encryption by default for compatibility reasons with existing versions.
 
-**IMPORTANT** Encryption is only applied to the packet payload. Some metadata like the virtual MAC address
-of the edge nodes, their IP address and the community are sent in cleartext.
+Different encryption schemes are applied to the packet payload and to the header which
+contains some metadata like the virtual MAC address of the edge nodes, their IP address and the community
+name.
 
 When encryption is enabled, the supernode will not be able to decrypt the traffic exchanged between
 two edge nodes, but it will know that edge A is talking with edge B.
 
 Recently AES encryption support has been implemented, which increases both security and performance,
 so it is recommended to enable it on all the edge nodes that must have the -Ax value. When possible
-(i.e. when n2n is compiled with OpenSSL 1.1) we recommend to use -A4
+(i.e. when n2n is compiled with OpenSSL 1.1) we recommend to use `-A3`.
 
 A benchmark of the encryption methods is available when compiled from source with `tools/n2n-benchmark`.
+
+Use `-H` on the edges to enable header encryption. Note, that header encryption is a per-community 
+decision, i.e. all edges of one community need to have it either enabled or disabled.  The supernode
+can handle encrypted and unencrypted headers. As the key fro header encryption is derived from the
+community names, it requires the supernode to be used with fixed communities `-c <path to communities file>` 
+parameter.  
 
 ## Contribution
 
@@ -136,4 +146,4 @@ Here is a list of third-party projects connected to this repository.
 
 ---
 
-(C) 2007-2019 - ntop.org and contributors
+(C) 2007-2020 - ntop.org and contributors
