@@ -60,6 +60,11 @@
 				 	           bits of transform_id; will be obsolete as soon as compression gets
 						   its own field in the packet. REVISIT then. */
 
+/* Header encryption indicators */
+#define HEADER_ENCRYPTION_UNKNOWN       0
+#define HEADER_ENCRYPTION_NONE          1
+#define HEADER_ENCRYPTION_ENABLED       2
+
 #define DEFAULT_MTU   1290
 
 #define HASH_ADD_PEER(head,add)				\
