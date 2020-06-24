@@ -120,7 +120,7 @@ so it is recommended to enable it on all the edge nodes that must have the -Ax v
 A benchmark of the encryption methods is available when compiled from source with `tools/n2n-benchmark`.
 
 Use `-H` on the edges to enable header encryption. Note, that header encryption is a per-community 
-decision, i.e. all edges of one community need to have it either enabled or disabled.  The supernode
+decision, i.e. _all_ edges of one community need to have it either enabled or disabled.  The supernode
 can handle encrypted and unencrypted headers. As the key for header encryption is derived from the
 community names, it requires the supernode to be used with fixed communities `-c <path>` 
 parameter. Also, reuse of once-publically-used community names for header encryption is not recomended.
