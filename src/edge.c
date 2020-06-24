@@ -184,20 +184,21 @@ static void help() {
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
   printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
-  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key.\n");
+  printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
+  printf("                         | "
 #ifdef N2N_HAVE_AES
-  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key.\n");
+  "-A3 or -A (deprecated) = AES-CBC, "
 #endif
 #ifdef HAVE_OPENSSL_1_1
-  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
+  "-A4 = ChaCha20, "
 #endif
-  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
+  "-A5 = Speck-CTR.\n");
   printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
-  printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
+  printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
 #ifdef N2N_HAVE_ZSTD
-  printf("-z2                      | Enable zstd compression for outgoing data packets\n");
+  ", -z2 = zstd"
 #endif
-  printf("                         | (default=compression disabled)\n");
+  " (default=disabled).\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
