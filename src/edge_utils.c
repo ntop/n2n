@@ -43,6 +43,12 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
 
 /* ************************************** */
 
+#ifdef __ANDROID_NDK__
+#include "../android/edge_android.c"
+#endif
+
+/* ************************************** */
+
 int edge_verify_conf(const n2n_edge_conf_t *conf) {
   if(conf->community_name[0] == 0)
     return(-1);
@@ -320,12 +326,12 @@ static int is_valid_peer_sock(const n2n_sock_t *sock) {
   case AF_INET:
     {
       uint32_t *a = (uint32_t*)sock->addr.v4;
-      
+
       if(*a != htonl(localhost_v4))
 	return(1);
     }
     break;
-  
+
   case AF_INET6:
     if(memcmp(sock->addr.v6, localhost_v6, IPV6_SIZE))
       return(1);
@@ -1573,54 +1579,6 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
 
 /* ************************************** */
 
-#ifdef __ANDROID_NDK__
-
-static char arp_packet[] = {
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* Dest mac */
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-        0x08, 0x06, /* ARP */
-        0x00, 0x01, /* Ethernet */
-        0x08, 0x00, /* IP */
-        0x06, /* Hw Size */
-        0x04, /* Protocol Size */
-        0x00, 0x01, /* ARP Request */
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-        0x00, 0x00, 0x00, 0x00, /* Src IP */
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Target mac */
-        0x00, 0x00, 0x00, 0x00 /* Target IP */
-};
-
-/* ************************************** */
-
-static int build_unicast_arp(char *buffer, size_t buffer_len, uint32_t target, tuntap_dev *device) {
-  if(buffer_len < sizeof(arp_packet)) return(-1);
-
-  memcpy(buffer, arp_packet, sizeof(arp_packet));
-  memcpy(&buffer[6], device->mac_addr, 6);
-  memcpy(&buffer[22], device->mac_addr, 6);
-  memcpy(&buffer[28], &device->ip_addr, 4);
-  memcpy(&buffer[32], broadcast_mac, 6);
-  memcpy(&buffer[38], &target, 4);
-  return(sizeof(arp_packet));
-}
-
-/* ************************************** */
-
-/** Called periodically to update the gateway MAC address. The ARP reply packet
-    is handled in handle_PACKET . */
-
-static void update_gateway_mac(n2n_edge_t *eee) {
-  if(eee->gateway_ip != 0) {
-    size_t len;
-    char buffer[48];
-
-    len = build_unicast_arp(buffer, sizeof(buffer), eee->gateway_ip, &eee->device);
-    traceEvent(TRACE_DEBUG, "Updating gateway mac");
-    send_packet2net(eee, (uint8_t*)buffer, len);
-  }
-}
-
-#endif
 
 /* ************************************** */
 
@@ -1824,10 +1782,12 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 #ifdef __ANDROID_NDK__
           int change = 0;
-          pthread_mutex_lock(&g_status->mutex);
+
+	  pthread_mutex_lock(&g_status->mutex);
           change = g_status->running_status == EDGE_STAT_CONNECTED ? 0 : 1;
           g_status->running_status = EDGE_STAT_CONNECTED;
           pthread_mutex_unlock(&g_status->mutex);
+
           if (change) {
               g_status->report_edge_status();
           }
@@ -2213,7 +2173,7 @@ static int rtattr_add(struct nlmsghdr *n, int maxlen, int type, const void *data
 
     rta = NLMSG_TAIL(n);
     rta->rta_type = type;
-    rta->rta_len = len; 
+    rta->rta_len = len;
 
     if(alen)
       memcpy(RTA_DATA(rta), data, alen);
@@ -2390,7 +2350,7 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
       n2n_sock_t sn;
       n2n_route_t custom_route;
       uint32_t *a;
-      
+
       if(eee->sn_route_to_clean) {
 	traceEvent(TRACE_ERROR, "Only one default gateway route allowed");
 	return(-1);
@@ -2557,7 +2517,3 @@ int quick_edge_init(char *device_name, char *community_name,
 }
 
 /* ************************************** */
-
-#ifdef __ANDROID_NDK__
-#include "../android/edge_android.c"
-#endif
