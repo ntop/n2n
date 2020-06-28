@@ -16,7 +16,7 @@
  *
  */
 
-#include "../n2n.h"
+#include "n2n.h"
 
 #ifdef __ANDROID_NDK__
 #include <edge_jni/edge_jni.h>

@@ -2559,5 +2559,5 @@ int quick_edge_init(char *device_name, char *community_name,
 /* ************************************** */
 
 #ifdef __ANDROID_NDK__
-#include "android/edge_android.c"
+#include "../android/edge_android.c"
 #endif

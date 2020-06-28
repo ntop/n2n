@@ -15,7 +15,7 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>
 */
 
-#include "../n2n.h"
+#include "n2n.h"
 
 #ifdef __ANDROID_NDK__
 #include <tun2tap/tun2tap.h>

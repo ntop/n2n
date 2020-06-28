@@ -31,7 +31,7 @@
 #   include <endian.h>
 #   include <features.h>
 /* See http://linux.die.net/man/3/endian */
-#   if defined(htobe16) && defined(htole16) && defined(be16toh) && defined(le16toh) && defined(htobe32) && defined(htole32) && defined(be32toh) && defined(htole32) && defined(htobe64) && defined(htole64) && defined(be64) && defined(le64)
+#   if defined(htobe16) && defined(htole16) && defined(be16toh) && defined(le16toh) && defined(htobe32) && defined(htole32) && defined(be32toh) && defined(htole32) && defined(htobe64) && defined(htole64) && defined(htobe64) && defined(be64toh) && defined(htole64) && defined(le64toh)
 /* Do nothing. The macros we need already exist. */
 #   elif !defined(__GLIBC__) || !defined(__GLIBC_MINOR__) || ((__GLIBC__ < 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ < 9)))
 #       include <arpa/inet.h>
