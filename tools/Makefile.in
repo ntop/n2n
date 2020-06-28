@@ -16,8 +16,8 @@ endif
 
 LIBS_EDGE_OPT=@N2N_LIBS@
 LIBS_EDGE+=$(LIBS_EDGE_OPT)
-HEADERS=../n2n_wire.h ../n2n.h ../twofish.h ../n2n_transforms.h
-CFLAGS+=-I.. @CFLAGS@
+HEADERS=$(wildcard include/*.h)
+CFLAGS+=-I../include @CFLAGS@
 LDFLAGS+=-L..
 CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN)
 LDFLAGS=@LDFLAGS@
@@ -40,7 +40,7 @@ n2n-decode: n2n_decode.c $(N2N_LIB) $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(TOOLS) $(N2N_LIB) *.o *.dSYM *~
+	rm -rf $(TOOLS) *.o *.dSYM *~
 
 install: $(TOOLS)
 	$(INSTALL_PROG) $(TOOLS) $(SBINDIR)/

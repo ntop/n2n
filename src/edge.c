@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,6 @@
  */
 
 #include "n2n.h"
-#include "random_numbers.h"
-#ifdef WIN32
-#include <sys/stat.h>
-#else
-#include <pwd.h>
-#endif
 
 #define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ           18 /* AA:BB:CC:DD:EE:FF + NULL*/
@@ -160,7 +154,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-z[<compression algo>]] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tun device>          | tun device name\n");
@@ -190,20 +184,21 @@ static void help() {
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
   printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
-  printf("-A2                      | Use Twofish  for payload encryption (default). Requires a key.\n");
+  printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
+  printf("                         | "
 #ifdef N2N_HAVE_AES
-  printf("-A3 or -A (deprecated)   | Use AES-CBC  for payload encryption. Requires a key.\n");
+  "-A3 or -A (deprecated) = AES-CBC, "
 #endif
 #ifdef HAVE_OPENSSL_1_1
-  printf("-A4                      | Use ChaCha20 for payload encryption. Requires a key.\n");
+  "-A4 = ChaCha20, "
 #endif
-//  COMING SOON, not yet implemented in setPayloadEncryption(...)
-//  printf("-A5                      | Use Speck    for payload encryption. Requires a key.\n");
-  printf("-z1 or -z                | Enable lzo1x compression for outgoing data packets\n");
+  "-A5 = Speck-CTR.\n");
+  printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
+  printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
 #ifdef N2N_HAVE_ZSTD
-  printf("-z2                      | Enable zstd compression for outgoing data packets\n");
+  ", -z2 = zstd"
 #endif
-  printf("                         | (default=compression disabled)\n");
+  " (default=disabled).\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
@@ -283,6 +278,11 @@ static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
       break;
     }
 #endif
+  case 5:
+    {
+      conf->transop_id = N2N_TRANSFORM_ID_SPECK;
+      break;
+    }
   default:
     {
       conf->transop_id = N2N_TRANSFORM_ID_INVAL;
@@ -393,6 +393,14 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
 
       setPayloadEncryption(conf, cipher);
       break;
+    }
+
+  case 'H': /* indicate header encryption */
+    {
+	/* we cannot be sure if this gets parsed before the community name is set.
+	 * so, only an indicator is set, action is taken later*/
+	conf->header_encryption = HEADER_ENCRYPTION_ENABLED;
+	break;
     }
 
   case 'z':
@@ -553,7 +561,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_c
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::H"
 #ifdef __linux__
 			 "T:n:"
 #endif

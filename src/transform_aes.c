@@ -17,8 +17,6 @@
  */
 
 #include "n2n.h"
-#include "n2n_transforms.h"
-#include "random_numbers.h"
 
 #ifdef N2N_HAVE_AES
 

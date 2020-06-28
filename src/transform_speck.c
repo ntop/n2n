@@ -17,9 +17,6 @@
  */
 
 #include "n2n.h"
-#include "n2n_transforms.h"
-#include "speck.h"
-#include "random_numbers.h"
 
 #define N2N_SPECK_TRANSFORM_VERSION       1  /* version of the transform encoding */
 #define N2N_SPECK_IVEC_SIZE               16
@@ -175,13 +172,10 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
   /* Clear out any old possibly longer key matter. */
   memset(&(priv->ctx), 0, sizeof(speck_context_t) );
 
-  /* TODO: The input key always gets hashed to make a more unpredictable and more complete use of the key space */
-  // REVISIT: Hash the key to keymat (formerly used: SHA)
-  //   SHA256(key, key_size, key_mat_buf)
-  //   memcpy (priv->key, key_mat_buf, SHA256_DIGEST_LENGTH);
-  // ADD: Pearson Hashing
-  // FOR NOW: USE KEY ITSELF
-  memcpy (key_mat_buf, key, ((key_size>32)?32:key_size) );
+  /* the input key always gets hashed to make a more unpredictable and more complete use of the key space */
+  pearson_hash_256 (key_mat_buf, key, key_size);
+
+  /* expand the key material to the context (= round keys) */
   speck_expand_key (key_mat_buf, &(priv->ctx));
 
   traceEvent(TRACE_DEBUG, "Speck key setup completed\n");

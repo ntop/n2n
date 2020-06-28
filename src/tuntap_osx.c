@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,13 +18,13 @@
 
 #include "n2n.h"
 
-#ifdef __FreeBSD__
+#ifdef __APPLE__
 
-void tuntap_close(tuntap_dev *device);
+void tun_close(tuntap_dev *device);
 
 /* ********************************** */
 
-#define N2N_FREEBSD_TAPDEVICE_SIZE 32
+#define N2N_OSX_TAPDEVICE_SIZE 32
 int tuntap_open(tuntap_dev *device /* ignored */, 
                 char *dev, 
                 const char *address_mode, /* static or dhcp */
@@ -33,7 +33,7 @@ int tuntap_open(tuntap_dev *device /* ignored */,
                 const char * device_mac,
 		int mtu) {
   int i;
-  char tap_device[N2N_FREEBSD_TAPDEVICE_SIZE];
+  char tap_device[N2N_OSX_TAPDEVICE_SIZE];
 
   for (i = 0; i < 255; i++) {
     snprintf(tap_device, sizeof(tap_device), "/dev/tap%d", i);
@@ -46,7 +46,8 @@ int tuntap_open(tuntap_dev *device /* ignored */,
   }
   
   if(device->fd < 0) {
-    traceEvent(TRACE_ERROR, "Unable to open tap device");
+    traceEvent(TRACE_ERROR, "Unable to open any tap devices /dev/tap0 through /dev/tap254. Is this user properly authorized to access those descriptors?");
+    traceEvent(TRACE_ERROR, "Please read https://github.com/ntop/n2n/blob/dev/doc/macOS.md");
     return(-1);
   } else {
     char buf[256];
@@ -92,7 +93,7 @@ int tuntap_open(tuntap_dev *device /* ignored */,
 	exit(0);
       }
 
-      traceEvent(TRACE_NORMAL, "Interface tap%d mac %s", i, buf);
+      traceEvent(TRACE_NORMAL, "Interface tap%d [MTU %d] mac %s", i, mtu, buf);
       if(sscanf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", &a, &b, &c, &d, &e, &f) == 6) {
 	device->mac_addr[0] = a, device->mac_addr[1] = b;
 	device->mac_addr[2] = c, device->mac_addr[3] = d;
@@ -130,4 +131,4 @@ void tuntap_get_address(struct tuntap_dev *tuntap)
 {
 }
 
-#endif /* #ifdef __FreeBSD__ */
+#endif /* __APPLE__ */

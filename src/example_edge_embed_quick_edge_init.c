@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  */
 
 #include "n2n.h"
-#include "random_numbers.h"
 
 /*
   This tool demonstrates how to easily embed

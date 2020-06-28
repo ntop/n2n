@@ -1,10 +1,27 @@
+/**
+ * (C) 2007-20 - ntop.org and contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
+ *
+ */
+
+#include "n2n.h"
+
 /* The following code offers an alterate pseudo random number generator
    namely XORSHIFT128+ to use instead of C's rand(). Its performance is
    on par with C's rand().
 */
-
-
-#include "random_numbers.h"
 
 
 /* The state must be seeded in a way that it is not all zero, choose some

@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 /* Supernode for n2n-2.x */
 
 #include "n2n.h"
+#include "header_encryption.h"
 
 #ifdef WIN32
 #include <signal.h>
@@ -32,12 +33,14 @@
 #define HASH_FIND_COMMUNITY(head,name,out) HASH_FIND_STR(head,name,out)
 
 static int try_forward(n2n_sn_t * sss,
+		       const struct sn_community *comm,
 		       const n2n_common_t * cmn,
 		       const n2n_mac_t dstMac,
 		       const uint8_t * pktbuf,
 		       size_t pktsize);
 
 static int try_broadcast(n2n_sn_t * sss,
+		         const struct sn_community *comm,
 			 const n2n_common_t * cmn,
 			 const n2n_mac_t srcMac,
 			 const uint8_t * pktbuf,
@@ -80,6 +83,8 @@ static void deinit_sn(n2n_sn_t * sss)
 
   HASH_ITER(hh, sss->communities, community, tmp) {
     clear_peer_list(&community->edges);
+    if (NULL != community->header_encryption_ctx)
+      free (community->header_encryption_ctx);
     HASH_DEL(sss->communities, community);
     free(community);
   }
@@ -185,24 +190,17 @@ static ssize_t sendto_sock(n2n_sn_t * sss,
 }
 
 static int try_forward(n2n_sn_t * sss,
+		       const struct sn_community *comm,
 		       const n2n_common_t * cmn,
 		       const n2n_mac_t dstMac,
 		       const uint8_t * pktbuf,
 		       size_t pktsize)
 {
   struct peer_info *  scan;
-  struct sn_community *community;
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
-  HASH_FIND_COMMUNITY(sss->communities, (char*)cmn->community, community);
-
-  if(!community) {
-    traceEvent(TRACE_DEBUG, "try_forward unknown community %s", cmn->community);
-    return(-1);
-  }
-
-  HASH_FIND_PEER(community->edges, dstMac, scan);
+  HASH_FIND_PEER(comm->edges, dstMac, scan);
 
   if(NULL != scan)
     {
@@ -245,51 +243,44 @@ static int try_forward(n2n_sn_t * sss,
  *  the supernode.
  */
 static int try_broadcast(n2n_sn_t * sss,
+                         const struct sn_community *comm,
 			 const n2n_common_t * cmn,
 			 const n2n_mac_t srcMac,
 			 const uint8_t * pktbuf,
 			 size_t pktsize)
 {
   struct peer_info *scan, *tmp;
-  struct sn_community *community;
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
   traceEvent(TRACE_DEBUG, "try_broadcast");
 
-  HASH_FIND_COMMUNITY(sss->communities, (char*)cmn->community, community);
+  HASH_ITER(hh, comm->edges, scan, tmp) {
+    if(memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t)) != 0) {
+      /* REVISIT: exclude if the destination socket is where the packet came from. */
+      int data_sent_len;
 
-  if(community) {
-    HASH_ITER(hh, community->edges, scan, tmp) {
-      if(memcmp(srcMac, scan->mac_addr, sizeof(n2n_mac_t)) != 0) {
-	  /* REVISIT: exclude if the destination socket is where the packet came from. */
-	  int data_sent_len;
+      data_sent_len = sendto_sock(sss, &(scan->sock), pktbuf, pktsize);
 
-	  data_sent_len = sendto_sock(sss, &(scan->sock), pktbuf, pktsize);
-
-	  if(data_sent_len != pktsize)
-            {
-	      ++(sss->stats.errors);
-	      traceEvent(TRACE_WARNING, "multicast %lu to [%s] %s failed %s",
-			 pktsize,
-			 sock_to_cstr(sockbuf, &(scan->sock)),
-			 macaddr_str(mac_buf, scan->mac_addr),
-			 strerror(errno));
-            }
-	  else
-            {
-	      ++(sss->stats.broadcast);
-	      traceEvent(TRACE_DEBUG, "multicast %lu to [%s] %s",
-			 pktsize,
-			 sock_to_cstr(sockbuf, &(scan->sock)),
-			 macaddr_str(mac_buf, scan->mac_addr));
-            }
+      if(data_sent_len != pktsize)
+      {
+        ++(sss->stats.errors);
+        traceEvent(TRACE_WARNING, "multicast %lu to [%s] %s failed %s",
+  		   pktsize,
+		   sock_to_cstr(sockbuf, &(scan->sock)),
+		   macaddr_str(mac_buf, scan->mac_addr),
+		   strerror(errno));
+      }
+      else
+      {
+        ++(sss->stats.broadcast);
+        traceEvent(TRACE_DEBUG, "multicast %lu to [%s] %s",
+	           pktsize,
+		   sock_to_cstr(sockbuf, &(scan->sock)),
+		   macaddr_str(mac_buf, scan->mac_addr));
       }
     }
-  } else
-    traceEvent(TRACE_INFO, "ignoring broadcast on unknown community %s\n",
-      cmn->community);
-
+  }
   return 0;
 }
 
@@ -389,6 +380,8 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
   HASH_ITER(hh, sss->communities, s, tmp) {
     HASH_DEL(sss->communities, s);
+    if (NULL != s->header_encryption_ctx)
+      free (s->header_encryption_ctx);
     free(s);
   }
 
@@ -412,7 +405,12 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
     if(s != NULL) {
       strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE-1);
       s->community[N2N_COMMUNITY_SIZE-1] = '\0';
+      /* we do not know if header encryption is used in this community,
+       * first packet will show. just in case, setup the key.           */
+      s->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
+      packet_header_setup_key (s->community, &(s->header_encryption_ctx));
       HASH_ADD_STR(sss->communities, community, s);
+
       num_communities++;
       traceEvent(TRACE_INFO, "Added allowed community '%s' [total: %u]",
 		 (char*)s->community, num_communities);
@@ -435,7 +433,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
  */
 static int process_udp(n2n_sn_t * sss,
 		       const struct sockaddr_in * sender_sock,
-		       const uint8_t * udp_buf,
+		       uint8_t * udp_buf,
 		       size_t udp_size,
 		       time_t now)
 {
@@ -448,10 +446,69 @@ static int process_udp(n2n_sn_t * sss,
   macstr_t            mac_buf2;
   n2n_sock_str_t      sockbuf;
   char                buf[32];
+  struct sn_community *comm, *tmp;
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
 	     ntohs(sender_sock->sin_port));
+
+  /* check if header is unenrypted. the following check is around 99.99962 percent reliable.
+   * it heavily relies on the structure of packet's common part
+   * changes to wire.c:encode/decode_common need to go together with this code */
+  if (udp_size < 20) {
+    traceEvent(TRACE_DEBUG, "process_udp dropped a packet too short to be valid.");
+    return -1;
+  }
+  if ( (udp_buf[19] == (uint8_t)0x00) // null terminated community name
+       && (udp_buf[00] == N2N_PKT_VERSION) // correct packet version
+       && ((be16toh (*(uint16_t*)&(udp_buf[02])) & N2N_FLAGS_TYPE_MASK ) <= MSG_TYPE_MAX_TYPE  ) // message type
+       && ( be16toh (*(uint16_t*)&(udp_buf[02])) < N2N_FLAGS_OPTIONS) // flags
+       ) {
+    /* most probably unencrypted */
+    /* make sure, no downgrading happens here and no unencrypted packets can be
+     * injected in a community which definitely deals with encrypted headers */
+    HASH_FIND_COMMUNITY(sss->communities, (char *)&udp_buf[04], comm);
+    if (comm) {
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped a packet with unencrypted header "
+                                "addressed to community '%s' which uses encrypted headers.",
+                                 comm->community);
+        return -1;
+      }
+      if (comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
+	traceEvent (TRACE_INFO, "process_udp locked community '%s' to using "
+                                "unencrypted headers.", comm->community);
+        /* set 'no encryption' in case it is not set yet */
+        comm->header_encryption = HEADER_ENCRYPTION_NONE;
+        comm->header_encryption_ctx = NULL;
+      }
+    }
+  } else {
+    /* most probably encrypted */
+    /* cycle through the known communities (as keys) to eventually decrypt */
+    uint32_t ret = 0;
+    HASH_ITER (hh, sss->communities, comm, tmp) {
+      /* skip the definitely unencrypted communities */
+      if (comm->header_encryption == HEADER_ENCRYPTION_NONE)
+        continue;
+      if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx)) ) {
+        if (comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
+	  traceEvent (TRACE_INFO, "process_udp locked community '%s' to using "
+                                  "encrypted headers.", comm->community);
+          /* set 'encrypted' in case it is not set yet */
+          comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
+        }
+	// no need to test further communities
+        break;
+      }
+    }
+    if (!ret) {
+      // no matching key/community
+      traceEvent(TRACE_DEBUG, "process_udp dropped a packet with seemingly encrypted header "
+			      "for which no matching community which uses encrypted headers was found.");
+      return -1;
+    }
+  }
 
   /* Use decode_common() to determine the kind of packet then process it:
    *
@@ -491,8 +548,12 @@ static int process_udp(n2n_sn_t * sss,
     uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
     int                             unicast; /* non-zero if unicast */
-    const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
+    uint8_t *                       rec_buf; /* either udp_buf or encbuf */
 
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp PACKET with unknown community %s", cmn.community);
+      return -1;
+    }
 
     sss->stats.last_fwd=now;
     decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
@@ -520,6 +581,9 @@ static int process_udp(n2n_sn_t * sss,
       /* Re-encode the header. */
       encode_PACKET(encbuf, &encx, &cmn2, &pkt);
 
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx);
+
       /* Copy the original payload unchanged */
       encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
     } else {
@@ -530,13 +594,16 @@ static int process_udp(n2n_sn_t * sss,
 
       rec_buf = udp_buf;
       encx = udp_size;
+
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
     }
 
     /* Common section to forward the final product. */
     if(unicast)
-      try_forward(sss, &cmn, pkt.dstMac, rec_buf, encx);
+      try_forward(sss, comm, &cmn, pkt.dstMac, rec_buf, encx);
     else
-      try_broadcast(sss, &cmn, pkt.srcMac, rec_buf, encx);
+      try_broadcast(sss, comm, &cmn, pkt.srcMac, rec_buf, encx);
     break;
   }
   case MSG_TYPE_REGISTER:
@@ -548,7 +615,12 @@ static int process_udp(n2n_sn_t * sss,
     uint8_t                         encbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
     int                             unicast; /* non-zero if unicast */
-    const uint8_t *                 rec_buf; /* either udp_buf or encbuf */
+    uint8_t *                       rec_buf; /* either udp_buf or encbuf */
+
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp REGISTER from unknown community %s", cmn.community);
+      return -1;
+    }
 
     sss->stats.last_fwd=now;
     decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
@@ -586,7 +658,10 @@ static int process_udp(n2n_sn_t * sss,
 	encx = udp_size;
       }
 
-      try_forward(sss, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
+
+      try_forward(sss, comm, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
       traceEvent(TRACE_ERROR, "Rx REGISTER with multicast destination");
     break;
@@ -601,14 +676,11 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                    cmn2;
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
-    struct sn_community          *comm;
 
     /* Edge requesting registration with us.  */
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
     decode_REGISTER_SUPER(&reg, &cmn, udp_buf, &rem, &idx);
-
-    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, comm);
 
     /*
       Before we move any further, we need to check if the requested
@@ -622,6 +694,10 @@ static int process_udp(n2n_sn_t * sss,
       if(comm) {
 	strncpy(comm->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
 	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
+        /* new communities introduced by REGISTERs could not have had encrypted header */
+        comm->header_encryption = HEADER_ENCRYPTION_NONE;
+	comm->header_encryption_ctx = NULL;
+
 	HASH_ADD_STR(sss->communities, community, comm);
 
 	traceEvent(TRACE_INFO, "New community: %s", comm->community);
@@ -653,6 +729,9 @@ static int process_udp(n2n_sn_t * sss,
 
       encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
 
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx);
+
       sendto(sss->sock, ackbuf, encx, 0,
 	     (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
 
@@ -663,13 +742,18 @@ static int process_udp(n2n_sn_t * sss,
       traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
 		 (char*)cmn.community);
     break;
-  } case MSG_TYPE_QUERY_PEER: {
+  }
+  case MSG_TYPE_QUERY_PEER: {
     n2n_QUERY_PEER_t query;
     uint8_t encbuf[N2N_SN_PKTBUF_SIZE];
     size_t encx=0;
     n2n_common_t cmn2;
     n2n_PEER_INFO_t pi;
-    struct sn_community *community;
+
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER from unknown community %s", cmn.community);
+      return -1;
+    }
 
     decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
@@ -677,36 +761,35 @@ static int process_udp(n2n_sn_t * sss,
                 macaddr_str( mac_buf,  query.srcMac ),
                 macaddr_str( mac_buf2, query.targetMac ) );
 
-    HASH_FIND_COMMUNITY(sss->communities, (char*)cmn.community, community);
+    struct peer_info *scan;
+    HASH_FIND_PEER(comm->edges, query.targetMac, scan);
 
-    if(community) {
-      struct peer_info *scan;
-      HASH_FIND_PEER(community->edges, query.targetMac, scan);
+    if (scan) {
+      cmn2.ttl = N2N_DEFAULT_TTL;
+      cmn2.pc = n2n_peer_info;
+      cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
+      memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
 
-      if (scan) {
-	  cmn2.ttl = N2N_DEFAULT_TTL;
-	  cmn2.pc = n2n_peer_info;
-	  cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
-	  memcpy( cmn2.community, cmn.community, sizeof(n2n_community_t) );
+      pi.aflags = 0;
+      memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
+      pi.sock = scan->sock;
 
-	  pi.aflags = 0;
-	  memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
-	  pi.sock = scan->sock;
+      encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
 
-	  encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx);
 
-	  sendto( sss->sock, encbuf, encx, 0,
-		  (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
+      sendto( sss->sock, encbuf, encx, 0,
+	      (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
 
-	  traceEvent( TRACE_DEBUG, "Tx PEER_INFO to %s",
-		      macaddr_str( mac_buf, query.srcMac ) );
-      } else {
-	  traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
-		      macaddr_str( mac_buf, query.targetMac ) );
-      }
+      traceEvent( TRACE_DEBUG, "Tx PEER_INFO to %s",
+		                macaddr_str( mac_buf, query.srcMac ) );
+    } else {
+      traceEvent( TRACE_DEBUG, "Ignoring QUERY_PEER for unknown edge %s",
+	                        macaddr_str( mac_buf, query.targetMac ) );
     }
 
-    break;
+  break;
   }
   default:
     /* Not a known message type */
@@ -1113,6 +1196,9 @@ static int run_loop(n2n_sn_t * sss) {
 
       if((comm->edges == NULL) && (!sss->lock_communities)) {
 	traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
+	if (NULL != comm->header_encryption_ctx)
+          /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
+	  free (comm->header_encryption_ctx);
 	HASH_DEL(sss->communities, comm);
 	free(comm);
       }

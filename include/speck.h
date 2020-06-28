@@ -2,11 +2,11 @@
 // taken from (and modified: removed pure crypto-stream generation and seperated key expansion)
 // https://github.com/nsacyber/simon-speck-supercop/blob/master/crypto_stream/speck128256ctr/
 
-#ifdef __APPLE__
-#include <libkern/OSByteOrder.h>
-#define htole64(x) OSSwapHostToLittleInt64(x)
-#endif
 
+#ifndef SPECK_H
+#define SPECK_H
+
+#include <stdint.h>
 #define u32 uint32_t
 #define u64 uint64_t
 
@@ -59,3 +59,13 @@ speck_context_t *ctx);
 
 
 int speck_expand_key (const unsigned char *k, speck_context_t *ctx);
+
+
+int speck_he (unsigned char *out, const unsigned char *in, unsigned long long inlen,
+              const unsigned char *n, speck_context_t *ctx);
+
+
+int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx);
+
+
+#endif

@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,16 +16,9 @@
  *
  */
 
-#include "n2n.h"
-
 #ifdef __linux__
 
-#include <net/if_arp.h>
-#include <net/if.h>
-#include <linux/if_tun.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include "random_numbers.h"
+#include "n2n.h"
 
 /* ********************************** */
 

@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,45 +17,7 @@
  */
 
 #include "n2n.h"
-#include "lzoconf.h"
-#include "random_numbers.h"
-
-#ifdef HAVE_LIBZSTD
-#include <zstd.h>
-#endif
-
-#ifdef WIN32
-#include <process.h>
-/* Multicast peers discovery disabled due to https://github.com/ntop/n2n/issues/65 */
-#define SKIP_MULTICAST_PEERS_DISCOVERY
-#endif
-
-#ifdef __ANDROID_NDK__
-#include <tun2tap/tun2tap.h>
-#include <edge_jni/edge_jni.h>
-#endif /* __ANDROID_NDK__ */
-
-
-#define SOCKET_TIMEOUT_INTERVAL_SECS    10
-#define REGISTER_SUPER_INTERVAL_DFL     20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
-
-#define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
-#define TRANSOP_TICK_INTERVAL           (10) /* sec */
-
-#ifdef __ANDROID_NDK__
-#define ARP_PERIOD_INTERVAL             (10) /* sec */
-#endif
-
-#ifdef __linux__
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#endif
-
-#define ETH_FRAMESIZE 14
-#define IP4_SRCOFFSET 12
-#define IP4_DSTOFFSET 16
-#define IP4_MIN_SIZE  20
-#define UDP_SIZE      8
+#include "header_encryption.h"
 
 /* heap allocation for compression as per lzo example doc */
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
@@ -300,6 +262,12 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     goto edge_init_error;
   }
 
+  /* Set the key schedule (context) for header encryption if enabled */
+  if(conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+    traceEvent(TRACE_NORMAL, "Header encryption is enabled.");
+    packet_header_setup_key ((char *)(conf->community_name), &(eee->conf.header_encryption_ctx));
+  }
+
   if(eee->transop.no_encryption)
     traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
@@ -313,11 +281,11 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     goto edge_init_error;
   }
 
-//edge_init_success:
+  //edge_init_success:
   *rv = 0;
   return(eee);
 
-edge_init_error:
+ edge_init_error:
   if(eee)
     free(eee);
   *rv = rc;
@@ -507,7 +475,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
        * So we can alternatively set TTL so that the packet sent to peer never really reaches
        * The register_ttl is basically nat level + 1. Set it to 1 means host like DMZ.
        */
-      if (eee->conf.register_ttl == 1) {
+      if(eee->conf.register_ttl == 1) {
         /* We are DMZ host or port is directly accessible. Just let peer to send back the ack */
 #ifndef WIN32
       } else if(eee->conf.register_ttl > 1) {
@@ -782,6 +750,9 @@ static void send_register_super(n2n_edge_t * eee,
   traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
 	     sock_to_cstr(sockbuf, supernode));
 
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
 }
 
@@ -809,6 +780,9 @@ static void send_query_peer( n2n_edge_t * eee,
     encode_QUERY_PEER( pktbuf, &idx, &cmn, &query );
 
     traceEvent( TRACE_DEBUG, "send QUERY_PEER to supernode" );
+
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
     sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
 }
@@ -853,6 +827,9 @@ static void send_register(n2n_edge_t * eee,
   traceEvent(TRACE_INFO, "Send REGISTER to %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
 
@@ -892,6 +869,8 @@ static void send_register_ack(n2n_edge_t * eee,
   traceEvent(TRACE_INFO, "send REGISTER_ACK %s",
 	     sock_to_cstr(sockbuf, remote_peer));
 
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -917,7 +896,7 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
     /* Give up on that supernode and try the next one. */
     ++(eee->sn_idx);
 
-    if (eee->sn_idx >= eee->conf.sn_num) {
+    if(eee->sn_idx >= eee->conf.sn_num) {
       /* Got to end of list, go back to the start. Also works for list of one entry. */
       eee->sn_idx=0;
     }
@@ -1064,7 +1043,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	    deflated_len = N2N_PKT_BUF_SIZE;
 	    deflation_buffer = malloc (deflated_len);
 	    deflated_len = (int32_t)ZSTD_decompress (deflation_buffer, deflated_len, eth_payload, eth_size);
-	    if (ZSTD_isError(deflated_len)) {
+	if(ZSTD_isError(deflated_len)) {
               traceEvent (TRACE_ERROR, "payload decompression failed with zstd error '%s'.",
 				       ZSTD_getErrorName(deflated_len));
 	      free (deflation_buffer);
@@ -1078,7 +1057,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	    return (-1); // cannot handle it
         }
 
-        if (rx_compression_id) {
+      if(rx_compression_id) {
           traceEvent (TRACE_DEBUG, "payload decompression [%s]: deflated %u bytes to %u bytes",
                                    compression_str(rx_compression_id), eth_size, (int)deflated_len);
           memcpy(eth_payload ,deflation_buffer, deflated_len );
@@ -1130,7 +1109,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	traceEvent(TRACE_DEBUG, "sending to TAP %u", (unsigned int)eth_size);
 	data_sent_len = tuntap_write(&(eee->device), eth_payload, eth_size);
 
-	if (data_sent_len == eth_size)
+      if(data_sent_len == eth_size)
 	  {
 	    retval = 0;
 	  }
@@ -1466,15 +1445,15 @@ static void send_packet2net(n2n_edge_t * eee,
   // compression needs to be tried before encode_PACKET is called for compression indication gets encoded there
   pkt.compression = N2N_COMPRESSION_ID_NONE;
 
-  if (eee->conf.compression) {
+  if(eee->conf.compression) {
     uint8_t * compression_buffer;
     int32_t  compression_len;
 
     switch (eee->conf.compression) {
         case N2N_COMPRESSION_ID_LZO:
           compression_buffer = malloc (len + len / 16 + 64 + 3);
-          if (lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
-            if (compression_len < len) {
+      if(lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
+	if(compression_len < len) {
               pkt.compression = N2N_COMPRESSION_ID_LZO;
             }
           }
@@ -1484,8 +1463,8 @@ static void send_packet2net(n2n_edge_t * eee,
 	  compression_len = N2N_PKT_BUF_SIZE + 128;
           compression_buffer = malloc (compression_len); // leaves enough room, for exact size call compression_len = ZSTD_compressBound (len); (slower)
 	  compression_len = (int32_t)ZSTD_compress(compression_buffer, compression_len, tap_pkt, len, ZSTD_COMPRESSION_LEVEL) ;
-          if (!ZSTD_isError(compression_len)) {
-            if (compression_len < len) {
+      if(!ZSTD_isError(compression_len)) {
+	if(compression_len < len) {
               pkt.compression = N2N_COMPRESSION_ID_ZSTD;
             }
           } else {
@@ -1500,7 +1479,7 @@ static void send_packet2net(n2n_edge_t * eee,
           break;
     }
 
-    if (pkt.compression) {
+    if(pkt.compression) {
       traceEvent (TRACE_DEBUG, "payload compression [%s]: compressed %u bytes to %u bytes\n",
                                compression_str(pkt.compression), len, compression_len);
 
@@ -1518,6 +1497,9 @@ static void send_packet2net(n2n_edge_t * eee,
 
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
+
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
 
   idx += eee->transop.fwd(&eee->transop,
 					  pktbuf+idx, N2N_PKT_BUF_SIZE-idx,
@@ -1552,13 +1534,11 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
   ssize_t             len;
 
 #ifdef __ANDROID_NDK__
-  if (uip_arp_len != 0) {
+  if(uip_arp_len != 0) {
     len = uip_arp_len;
     memcpy(eth_pkt, uip_arp_buf, MIN(uip_arp_len, N2N_PKT_BUF_SIZE));
     traceEvent(TRACE_DEBUG, "ARP reply packet to send");
-  }
-  else
-    {
+  } else {
 #endif /* #ifdef __ANDROID_NDK__ */
       len = tuntap_read( &(eee->device), eth_pkt, N2N_PKT_BUF_SIZE );
 #ifdef __ANDROID_NDK__
@@ -1644,40 +1624,6 @@ static void update_gateway_mac(n2n_edge_t *eee) {
 
 /* ************************************** */
 
-#ifdef WIN32
-
-struct tunread_arg {
-   n2n_edge_t *eee;
-   int *keep_running;
-};
-
-static DWORD* tunReadThread(LPVOID lpArg) {
-  struct tunread_arg *arg = (struct tunread_arg*)lpArg;
-
-  while(*arg->keep_running)
-    readFromTAPSocket(arg->eee);
-
-  return((DWORD*)NULL);
-}
-
-/* ************************************** */
-
-/** Start a second thread in Windows because TUNTAP interfaces do not expose
- *  file descriptors. */
-static HANDLE startTunReadThread(struct tunread_arg *arg) {
-  DWORD dwThreadId;
-
-  return(CreateThread(NULL,         /* security attributes */
-			 0,            /* use default stack size */
-			 (LPTHREAD_START_ROUTINE)tunReadThread, /* thread function */
-			 (void*)arg,   /* argument to thread function */
-			 0,            /* thread creation flags */
-			 &dwThreadId)); /* thread id out */
-}
-#endif
-
-/* ************************************** */
-
 /** Read a datagram from the main UDP socket to the internet. */
 static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   n2n_common_t        cmn; /* common fields in the packet header */
@@ -1730,6 +1676,12 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
   traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
 	     (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
+
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    if( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx) == 0) {
+      traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
+      return;
+    }
 
   /* hexdump(udp_buf, recvlen); */
 
@@ -1910,7 +1862,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
         }
 
 	HASH_FIND_PEER(eee->pending_peers, pi.mac, scan);
-        if (scan) {
+	  if(scan) {
             scan->sock = pi.sock;
             traceEvent(TRACE_INFO, "Rx PEER_INFO for %s: is at %s",
                        macaddr_str(mac_buf1, pi.mac),
@@ -1928,7 +1880,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
         traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
         return;
       } /* switch(msg_type) */
-  } else if(from_supernode) /* if (community match) */
+  } else if(from_supernode) /* if(community match) */
     traceEvent(TRACE_WARNING, "Received packet with unknown community");
   else
     traceEvent(TRACE_INFO, "Ignoring packet with unknown community");
@@ -2030,7 +1982,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif
 
 #ifdef __ANDROID_NDK__
-      if (uip_arp_len != 0) {
+      if(uip_arp_len != 0) {
 	readFromTAPSocket(eee);
 	uip_arp_len = 0;
       }
@@ -2072,7 +2024,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     }
 
 #ifdef __ANDROID_NDK__
-    if ((nowTime - lastArpPeriod) > ARP_PERIOD_INTERVAL) {
+    if((nowTime - lastArpPeriod) > ARP_PERIOD_INTERVAL) {
       uip_arp_timer();
       lastArpPeriod = nowTime;
     }
@@ -2404,7 +2356,7 @@ static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx) {
   traceEvent(TRACE_DEBUG, route_cmd_to_str(cmd, route, route_buf, sizeof(route_buf)));
   rv = 0;
 
-out:
+ out:
   close(nl_sock);
 
   return(rv);
@@ -2428,10 +2380,12 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
        *  2. Add the new default gateway route
        *
        * Instead of modifying the system default gateway, we use the trick
-       * of adding a route to the 0.0.0.0/1 network, which takes precedence
-       * over the default gateway (0.0.0.0/0). This leaves the default
-       * gateway unchanged so that after n2n is stopped the cleanup is
-       * easier.
+       * of adding a route to the networks 0.0.0.0/1 and 128.0.0.0/1, thus
+       * covering the whole IPv4 range. Such routes in linux take precedence
+       * over the default gateway (0.0.0.0/0) since are more specific.
+       * This leaves the default gateway unchanged so that after n2n is
+       * stopped the cleanup is easier.
+       * See https://github.com/zerotier/ZeroTierOne/issues/178#issuecomment-204599227
        */
       n2n_sock_t sn;
       n2n_route_t custom_route;
@@ -2483,6 +2437,14 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
 
       if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
 	return(-1);
+
+      /* ip route add 128.0.0.0/1 via n2n_gateway */
+      custom_route.net_addr = 128;
+      custom_route.net_bitlen = 1;
+      custom_route.gateway = route->gateway;
+
+      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
+	return(-1);
     } else {
       /* ip route add net via n2n_gateway */
       if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, route, eee->device.if_idx) < 0)
@@ -2514,6 +2476,7 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->local_port = 0 /* any port */;
   conf->mgmt_port = N2N_EDGE_MGMT_PORT; /* 5644 by default */
   conf->transop_id = N2N_TRANSFORM_ID_NULL;
+  conf->header_encryption = HEADER_ENCRYPTION_NONE;
   conf->compression = N2N_COMPRESSION_ID_NONE;
   conf->drop_multicast = 1;
   conf->allow_p2p = 1;
@@ -2588,7 +2551,7 @@ int quick_edge_init(char *device_name, char *community_name,
   edge_term(eee);
   edge_term_conf(&conf);
 
-quick_edge_init_end:
+ quick_edge_init_end:
   tuntap_close(&tuntap);
   return(rv);
 }

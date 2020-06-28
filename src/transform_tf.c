@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,6 @@
  */
 
 #include "n2n.h"
-#include "n2n_transforms.h"
-#include "twofish.h"
-#include "random_numbers.h"
-#ifndef _MSC_VER
-/* Not included in Visual Studio 2008 */
-#include <strings.h> /* index() */
-#endif
 
 #define N2N_TWOFISH_NUM_SA              32 /* space for SAa */
 

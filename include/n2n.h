@@ -1,5 +1,5 @@
 /**
- * (C) 2007-18 - ntop.org and contributors
+ * (C) 2007-20 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
+#include <time.h>
 
 #ifndef WIN32
 #include <unistd.h>
@@ -74,6 +76,16 @@
 
 #ifdef __linux__
 #define N2N_CAN_NAME_IFACE 1
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#include <net/if_arp.h>
+#include <net/if.h>
+#include <linux/if_tun.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#define GRND_NONBLOCK       1
 #endif /* #ifdef __linux__ */
 
 #ifdef __FreeBSD__
@@ -83,7 +95,12 @@
 #include <syslog.h>
 #include <sys/wait.h>
 
+#if defined (__RDRND__) || defined (__RDSEED__)
+#include <immintrin.h>
+#endif
+
 #define ETH_ADDR_LEN 6
+
 struct ether_hdr
 {
   uint8_t  dhost[ETH_ADDR_LEN];
@@ -93,10 +110,17 @@ struct ether_hdr
 
 typedef struct ether_hdr ether_hdr_t;
 
+#ifdef HAVE_LIBZSTD
+#include <zstd.h>
+#endif
+
 #ifdef __ANDROID_NDK__
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_SETUID
 #undef N2N_CAN_NAME_IFACE
+#include <tun2tap/tun2tap.h>
+#include <edge_jni/edge_jni.h>
+#define ARP_PERIOD_INTERVAL             (10) /* sec */
 #endif /* #ifdef __ANDROID_NDK__ */
 
 #include <netinet/in.h>
@@ -105,32 +129,41 @@ typedef struct ether_hdr ether_hdr_t;
 #include <signal.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
+#include <string.h>
 #include <assert.h>
 #include <sys/stat.h>
-
+#include <stdint.h>
 #ifdef N2N_HAVE_AES
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif
 
 #include "minilzo.h"
+#include "n2n_define.h"
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
 
 #include <string.h>
-
 #include <stdarg.h>
-
 #include "uthash.h"
+#include "lzoconf.h"
 
 #ifdef WIN32
 #include "win32/wintap.h"
+#include <sys/stat.h>
+#else
+#include <pwd.h>
 #endif /* #ifdef WIN32 */
 
 #include "n2n_wire.h"
 #include "n2n_transforms.h"
+#include "random_numbers.h"
+#include "pearson.h"
+#include "portable_endian.h"
+#include "speck.h"
 
 #ifdef WIN32
 #define N2N_IFNAMSIZ            64
@@ -150,39 +183,6 @@ typedef struct tuntap_dev {
 
 #define SOCKET int
 #endif /* #ifndef WIN32 */
-
-#define QUICKLZ               1
-
-/* N2N packet header indicators. */
-#define MSG_TYPE_REGISTER               1
-#define MSG_TYPE_DEREGISTER             2
-#define MSG_TYPE_PACKET                 3
-#define MSG_TYPE_REGISTER_ACK           4
-#define MSG_TYPE_REGISTER_SUPER         5
-#define MSG_TYPE_REGISTER_SUPER_ACK     6
-#define MSG_TYPE_REGISTER_SUPER_NAK     7
-#define MSG_TYPE_FEDERATION             8
-#define MSG_TYPE_PEER_INFO              9
-#define MSG_TYPE_QUERY_PEER            10
-
-/* N2N compression indicators. */
-/* Compression is disabled by default for outgoing packets if no cli
- * option is given. All edges are built with decompression support so
- * they are able to understand each other (this applies to lzo only). */
-#define N2N_COMPRESSION_ID_NONE		0	/* default, see edge_init_conf_defaults(...) in edge_utils.c */
-#define N2N_COMPRESSION_ID_LZO		1	/* set if '-z1' or '-z' cli option is present, see setOption(...) in edge.c */
-#ifdef N2N_HAVE_ZSTD
-#define N2N_COMPRESSION_ID_ZSTD		2	/* set if '-z2' cli option is present, available only if compiled with zstd lib */
-#define ZSTD_COMPRESSION_LEVEL		7	/* 1 (faster) ... 22 (more compression) */
-#endif
-// with the next major packet structure update, make '0' = invalid, and '1' = no compression
-// '2' = LZO, '3' = ZSTD, ... REVISIT then (also: change all occurences in source).
-
-#define N2N_COMPRESSION_ID_BITLEN	3	/* number of bits used for encoding compression id in the uppermost
-				 	           bits of transform_id; will be obsolete as soon as compression gets
-						   its own field in the packet. REVISIT then. */
-
-#define DEFAULT_MTU   1290
 
 /** Uncomment this to enable the MTU check, then try to ssh to generate a fragmented packet. */
 /** NOTE: see doc/MTU.md for an explanation on the 1400 value */
@@ -206,17 +206,7 @@ struct peer_info {
   UT_hash_handle hh; /* makes this structure hashable */
 };
 
-#define HASH_ADD_PEER(head,add)                                                \
-    HASH_ADD(hh,head,mac_addr,sizeof(n2n_mac_t),add)
-#define HASH_FIND_PEER(head,mac,out)                                           \
-    HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
-#define N2N_EDGE_SN_HOST_SIZE   48
-#define N2N_EDGE_NUM_SUPERNODES 2
-#define N2N_EDGE_SUP_ATTEMPTS   3       /* Number of failed attmpts before moving on to next supernode. */
-#define N2N_PATHNAME_MAXLEN     256
-#define N2N_EDGE_MGMT_PORT      5644
-
-
+typedef struct speck_context_t he_context_t;
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 
 typedef struct n2n_route {
@@ -229,6 +219,8 @@ typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_route_t	      *routes;		      /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
+  uint8_t	      header_encryption;      /**< Header encryption indicator. */
+  he_context_t	      *header_encryption_ctx; /**< Header encryption cipher context. */
   n2n_transform_t     transop_id;             /**< The transop to use. */
   uint16_t	      compression;	      /**< Compress outgoing data packets before encryption */
   uint16_t	      num_routes;	      /**< Number of routes in routes */
@@ -259,7 +251,17 @@ typedef struct sn_stats
     time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
 } sn_stats_t;
 
- typedef struct n2n_sn
+struct sn_community
+{
+  char community[N2N_COMMUNITY_SIZE];
+  uint8_t	      header_encryption;      /* Header encryption indicator. */
+  he_context_t      *header_encryption_ctx; /* Header encryption cipher context. */
+  struct peer_info *edges; 		      /* Link list of registered edges. */
+
+  UT_hash_handle hh; /* makes this structure hashable */
+};
+
+typedef struct n2n_sn
 {
     time_t start_time; /* Used to measure uptime. */
     sn_stats_t stats;
@@ -271,15 +273,10 @@ typedef struct sn_stats
     struct sn_community *communities;
 } n2n_sn_t;
 
- struct sn_community
-{
-    char community[N2N_COMMUNITY_SIZE];
-    struct peer_info *edges; /* Link list of registered edges. */
-
-     UT_hash_handle hh; /* makes this structure hashable */
-};
-
 /* ************************************** */
+
+#include "header_encryption.h"
+#include "twofish.h"
 
 #ifdef __ANDROID_NDK__
 #include <android/log.h>
@@ -290,21 +287,6 @@ typedef struct sn_stats
 #define TRACE_NORMAL    2, __FILE__, __LINE__
 #define TRACE_INFO      3, __FILE__, __LINE__
 #define TRACE_DEBUG     4, __FILE__, __LINE__
-#endif
-
-/* ************************************** */
-
-#define SUPERNODE_IP    "127.0.0.1"
-#define SUPERNODE_PORT  1234
-
-/* ************************************** */
-
-#ifndef max
-#define max(a, b) ((a < b) ? b : a)
-#endif
-
-#ifndef min
-#define min(a, b) ((a > b) ? b : a)
 #endif
 
 /* ************************************** */
