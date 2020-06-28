@@ -118,8 +118,8 @@ typedef struct ether_hdr ether_hdr_t;
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_SETUID
 #undef N2N_CAN_NAME_IFACE
-#include "android/edge_android.h"
 #include <tun2tap/tun2tap.h>
+#include <edge_jni/edge_jni.h>
 #define ARP_PERIOD_INTERVAL             (10) /* sec */
 #endif /* #ifdef __ANDROID_NDK__ */
 
@@ -242,13 +242,13 @@ typedef struct n2n_edge n2n_edge_t; /* Opaque, see edge_utils.c */
 
 typedef struct sn_stats
 {
-  size_t errors;         /* Number of errors encountered. */
-  size_t reg_super;      /* Number of REGISTER_SUPER requests received. */
-  size_t reg_super_nak;  /* Number of REGISTER_SUPER requests declined. */
-  size_t fwd;            /* Number of messages forwarded. */
-  size_t broadcast;      /* Number of messages broadcast to a community. */
-  time_t last_fwd;       /* Time when last message was forwarded. */
-  time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
+    size_t errors;         /* Number of errors encountered. */
+    size_t reg_super;      /* Number of REGISTER_SUPER requests received. */
+    size_t reg_super_nak;  /* Number of REGISTER_SUPER requests declined. */
+    size_t fwd;            /* Number of messages forwarded. */
+    size_t broadcast;      /* Number of messages broadcast to a community. */
+    time_t last_fwd;       /* Time when last message was forwarded. */
+    time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
 } sn_stats_t;
 
 struct sn_community
@@ -263,14 +263,14 @@ struct sn_community
 
 typedef struct n2n_sn
 {
-  time_t start_time; /* Used to measure uptime. */
-  sn_stats_t stats;
-  int daemon;           /* If non-zero then daemonise. */
-  uint16_t lport;       /* Local UDP port to bind to. */
-  int sock;             /* Main socket for UDP traffic with edges. */
-  int mgmt_sock;        /* management socket. */
-  int lock_communities; /* If true, only loaded communities can be used. */
-  struct sn_community *communities;
+    time_t start_time; /* Used to measure uptime. */
+    sn_stats_t stats;
+    int daemon;           /* If non-zero then daemonise. */
+    uint16_t lport;       /* Local UDP port to bind to. */
+    int sock;             /* Main socket for UDP traffic with edges. */
+    int mgmt_sock;        /* management socket. */
+    int lock_communities; /* If true, only loaded communities can be used. */
+    struct sn_community *communities;
 } n2n_sn_t;
 
 /* ************************************** */
@@ -311,7 +311,7 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
 
 /* Tuntap API */
 int tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
-		char *device_mask, const char * device_mac, int mtu);
+			char *device_mask, const char * device_mac, int mtu);
 int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
 int tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
 void tuntap_close(struct tuntap_dev *tuntap);
@@ -330,10 +330,10 @@ void print_edge_stats(const n2n_edge_t *eee);
 
 /* Sockets */
 char* sock_to_cstr( n2n_sock_str_t out,
-		    const n2n_sock_t * sock );
+                            const n2n_sock_t * sock );
 SOCKET open_socket(int local_port, int bind_any);
 int sock_equal( const n2n_sock_t * a,
-		const n2n_sock_t * b );
+                       const n2n_sock_t * b );
 
 /* Operations on peer_info lists. */
 size_t purge_peer_list( struct peer_info ** peer_list,

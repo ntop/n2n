@@ -15,7 +15,7 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>
 */
 
-#include "../n2n.h"
+#include "n2n.h"
 
 #ifdef __ANDROID_NDK__
 #include <tun2tap/tun2tap.h>
@@ -57,7 +57,7 @@ int tuntap_open(tuntap_dev *device,
     device->ip_addr = inet_addr(device_ip);
     device->device_mask = inet_addr(device_mask);
     device->mtu = mtu;
-    strncpy(device->dev_name, dev, MIN(IFNAMSIZ, N2N_IFNAMSIZ));
+    strncpy(device->dev_name, dev, N2N_IFNAMSIZ);
     return device->fd;
 }
 
