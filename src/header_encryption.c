@@ -24,7 +24,8 @@
 /* ********************************************************************** */
 
 uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
-			        char * community_name, he_context_t * ctx) {
+			        char * community_name, he_context_t * ctx,
+				he_context_t * ctx_iv, uint16_t * checksum) {
 
   // assemble IV
   // the last four are ASCII "n2n!" and do not get overwritten
@@ -33,6 +34,10 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
   // the first 96 bits of the packet get padded with ASCII "n2n!"
   // to full 128 bit IV
   memcpy (iv, packet, 12);
+
+  // extract checksum (last 16 bit) blended in IV
+  speck_he_iv_decrypt (packet, (speck_context_t*)ctx_iv);
+  *checksum = be16toh (((uint16_t*)packet)[5]);
 
   // try community name as possible key and check for magic bytes
   uint32_t magic = 0x6E326E00; // ="n2n_"

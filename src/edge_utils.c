@@ -1594,11 +1594,18 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
 	     (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
 
-  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    if( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx) == 0) {
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+    uint16_t checksum = 0;
+    if( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx,
+                               eee->conf.header_iv_ctx, &checksum) == 0) {
       traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
       return;
     }
+    if (checksum != pearson_hash_16 (udp_buf, recvlen)) {
+      traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to checksum error.");
+      return;
+    }
+  }
 
   /* hexdump(udp_buf, recvlen); */
 

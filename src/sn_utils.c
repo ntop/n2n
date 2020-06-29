@@ -417,7 +417,13 @@ static int process_udp(n2n_sn_t * sss,
       /* skip the definitely unencrypted communities */
       if (comm->header_encryption == HEADER_ENCRYPTION_NONE)
         continue;
-      if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx)) ) {
+      uint16_t checksum = 0;
+      if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx,
+                                         comm->header_iv_ctx, &checksum)) ) {
+       if (checksum != pearson_hash_16 (udp_buf, udp_size)) {
+          traceEvent(TRACE_DEBUG, "process_udp dropped packet due to checksum error.");
+          return -1;
+        }
         if (comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
 	  traceEvent (TRACE_INFO, "process_udp locked community '%s' to using "
                                   "encrypted headers.", comm->community);
@@ -577,7 +583,7 @@ static int process_udp(n2n_sn_t * sss,
 
 	/* Re-encode the header. */
 	encode_REGISTER(encbuf, &encx, &cmn2, &reg);
-// !!! does this ever happen? does REGISTER ever come with a payload ??? !!!
+
 	/* Copy the original payload unchanged */
 	encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
       } else {
