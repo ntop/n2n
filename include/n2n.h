@@ -221,6 +221,7 @@ typedef struct n2n_edge_conf {
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   uint8_t	      header_encryption;      /**< Header encryption indicator. */
   he_context_t	      *header_encryption_ctx; /**< Header encryption cipher context. */
+  he_context_t        *header_iv_ctx;	      /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
   n2n_transform_t     transop_id;             /**< The transop to use. */
   uint16_t	      compression;	      /**< Compress outgoing data packets before encryption */
   uint16_t	      num_routes;	      /**< Number of routes in routes */
@@ -255,7 +256,8 @@ struct sn_community
 {
   char community[N2N_COMMUNITY_SIZE];
   uint8_t	      header_encryption;      /* Header encryption indicator. */
-  he_context_t      *header_encryption_ctx; /* Header encryption cipher context. */
+  he_context_t        *header_encryption_ctx; /* Header encryption cipher context. */
+  he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
   struct peer_info *edges; 		      /* Link list of registered edges. */
 
   UT_hash_handle hh; /* makes this structure hashable */
