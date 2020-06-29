@@ -57,7 +57,7 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
 /* ********************************************************************** */
 
 int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx,
-                               uint16_t checksum) {
+                               he_context_t * ctx_iv, uint16_t checksum) {
 
   uint8_t iv[16];
   uint16_t *iv16 = (uint16_t*)&iv;
@@ -76,6 +76,8 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
   iv16[4] = n2n_rand ();
   iv16[5] = htobe16 (checksum);
   iv32[3] = htobe32 (magic);
+  // blend checksum into 96-bit IV
+  speck_he_iv_encrypt (iv, (speck_context_t*)ctx_iv);
 
   memcpy (packet, iv, 16);
   packet[15] = header_len;

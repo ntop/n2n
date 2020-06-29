@@ -744,7 +744,7 @@ static void send_register_super(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
 }
@@ -776,7 +776,7 @@ static void send_query_peer( n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
   sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
 }
@@ -823,7 +823,7 @@ static void send_register(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -866,7 +866,7 @@ static void send_register_ack(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -1474,7 +1474,7 @@ static void send_packet2net(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, headerIdx, eee->conf.header_encryption_ctx,
-                                              pearson_hash_16 (pktbuf, idx));
+                                              eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
 #ifdef MTU_ASSERT_VALUE
   {

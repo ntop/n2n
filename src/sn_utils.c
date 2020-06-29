@@ -513,7 +513,7 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, oldEncx, comm->header_encryption_ctx,
-                                                 pearson_hash_16 (rec_buf, encx));
+                                                 comm->header_iv_ctx, pearson_hash_16 (rec_buf, encx));
 
     } else {
       /* Already from a supernode. Nothing to modify, just pass to
@@ -526,7 +526,7 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx,
-                                             pearson_hash_16 (rec_buf, udp_size));
+                                             comm->header_iv_ctx, pearson_hash_16 (rec_buf, udp_size));
     }
 
     /* Common section to forward the final product. */
@@ -590,7 +590,7 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx,
-                                             pearson_hash_16 (rec_buf, encx));
+                                             comm->header_iv_ctx, pearson_hash_16 (rec_buf, encx));
 
       try_forward(sss, comm, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
@@ -662,7 +662,7 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
-                                             pearson_hash_16 (ackbuf, encx));
+                                             comm->header_iv_ctx, pearson_hash_16 (ackbuf, encx));
 
       sendto(sss->sock, ackbuf, encx, 0,
 	     (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
@@ -710,7 +710,7 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx,
-                                             pearson_hash_16 (encbuf, encx));
+                                             comm->header_iv_ctx, pearson_hash_16 (encbuf, encx));
 
       sendto( sss->sock, encbuf, encx, 0,
 	      (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
