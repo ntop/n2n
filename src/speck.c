@@ -707,7 +707,7 @@ int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx) {
   A = htole64 ( ((u64 *)k)[0] );
   B = htole64 ( ((u64 *)k)[1] );
 
-  for (i = 0; i < 32; i ++) {
+  for (i = 0; i < 32; i++) {
     ctx->key[i] = A;
     R64 ( B, A, i);
   }
@@ -715,8 +715,84 @@ int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx) {
 }
 
 
-// code for testing -- to be removed when finished
+// ----------------------------------------------------------------------------------------
+
+
+// cipher SPECK -- 96 bit block size -- 96 bit key size -- ECB mode
+// follows endianess rules as used in official implementation guide and NOT as in original 2013 cipher presentation
+// used for IV in header encryption, thus the prefix 'he_iv_'
+// for now: just plain C -- probably no need for AVX, SSE, NEON
+
+// prerequisite: lower 16 bit reset
+#define ROTL48(x,r) (((((x)<<(r)) | (x>>(48-(r)))) >> 16) << 16)
+#define ROTR48(x,r) (((((x)>>(r)) | ((x)<<(48-(r)))) >> 16) << 16)
+#define ER96(x,y,k) (x=ROTR48(x,8), x+=y, x^=k, y=ROTL48(y,3), y^=x)
+#define DR96(x,y,k) (y^=x, y=ROTR48(y,3), x^=k, x-=y, x=ROTL48(x,8))
+
+
+int speck_he_iv_encrypt (unsigned char *inout, speck_context_t *ctx) {
+
+  u64 x, y;
+  int i;
+
+  x = htole64 ( *(u64*)&inout[0] ); x <<= 16;
+  y = htole64 ( *(u64*)&inout[4] ); y >>= 16; y <<= 16;
+
+  for (i = 0; i < 28; i++)
+    ER96 (y, x, ctx->key[i]);
+
+  x >>= 16; x |= y << 32;
+  y >>= 32;
+
+  ((u64*)inout)[0] = le64toh (x);
+  ((u32*)inout)[2] = le32toh (y);
+
+  return 0;
+}
+
+
+int speck_he_iv_decrypt (unsigned char *inout, speck_context_t *ctx) {
+
+  u64 x, y;
+  int i;
+
+  x = htole64 ( *(u64*)&inout[0] ); x <<= 16;
+  y = htole64 ( *(u64*)&inout[4] ); y >>= 16; y <<= 16;
+
+  for (i = 27; i >= 0; i--)
+    DR96 (y, x, ctx->key[i]);
+
+  x >>= 16; x |= y << 32;
+  y >>= 32;
+
+  ((u64*)inout)[0] = le64toh (x);
+  ((u32*)inout)[2] = le32toh (y);
+
+  return 0;
+}
+
+
+int speck_expand_key_he_iv (const unsigned char *k, speck_context_t *ctx) {
+
+  u64 A, B;
+  int i;
+
+  A = htole64 ( *(u64 *)&k[0] ); A <<= 16;
+  B = htole64 ( *(u64 *)&k[4] ); B >>= 16; B <<= 16;
+
+  for (i = 0; i < 28; i++) {
+    ctx->key[i] = A;
+    ER96 ( B, A, i << 16);
+  }
+
+  return 1;
+}
+
+
+// ----------------------------------------------------------------------------------------
+
 /*
+// code for testing -- to be removed when finished
 #include <stdio.h> // for testing
 #include <string.h>
 
@@ -727,23 +803,30 @@ int speck_test () {
 		      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
 		      0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F };
 
+  uint8_t k96[12] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+		      0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D };
+
   uint8_t iv[16]  = { 0x70, 0x6f, 0x6f, 0x6e, 0x65, 0x72, 0x2e, 0x20,
 		      0x49, 0x6e, 0x20, 0x74, 0x68, 0x6f, 0x73, 0x65 };
 
   uint8_t xv[16]  = { 0x20, 0x6d, 0x61, 0x64, 0x65, 0x20, 0x69, 0x74,
 		      0x20, 0x65, 0x71, 0x75, 0x69, 0x76, 0x61, 0x6c };
 
+  uint8_t p96[12] = { 0x20, 0x75, 0x73, 0x61, 0x67, 0x65,
+		      0x2C, 0x20, 0x68, 0x6F, 0x77, 0x65 };
 
   uint8_t pt[16]  = { 0x00 };
 
-  // expected outcome (according to pp. 35 & 36 of Implementation Guide)
+  // expected outcome (according to pp. 35 & 36 of Implementation Guide 1.1 as of 2019) and
+  // original cipher presentation as of 2013 in which notably a different endianess is used
   uint8_t ct[16]  = { 0x43, 0x8f, 0x18, 0x9c, 0x8d, 0xb4, 0xee, 0x4e,
 		      0x3e, 0xf5, 0xc0, 0x05, 0x04, 0x01, 0x09, 0x41 };
 
   uint8_t xt[16]  = { 0x18, 0x0d, 0x57, 0x5c, 0xdf, 0xfe, 0x60, 0x78,
 		      0x65, 0x32, 0x78, 0x79, 0x51, 0x98, 0x5d, 0xa6 };
 
-
+  uint8_t x96[12] = { 0xAA, 0x79, 0x8F, 0xDE, 0xBD, 0x62,
+		      0x78, 0x71, 0xAB, 0x09, 0x4D, 0x9E };
   speck_context_t ctx;
 
   speck_expand_key (key, &ctx);
@@ -775,6 +858,19 @@ int speck_test () {
   for (i=0; i < 16; i++)
     if (pt[i] != xt[i]) ret = 0;
 
+  speck_expand_key_he_iv (k96, &ctx);
+  speck_he_iv_encrypt (p96, &ctx);
+//  speck_he_iv_decrypt (p96, &ctx);
+//  speck_he_iv_encrypt (p96, &ctx);
+
+   fprintf (stderr, "rk00: %016llx\n",  ctx.key[0]);
+   fprintf (stderr, "rk27: %016llx\n",  ctx.key[27]);
+   fprintf (stderr, "out : %016lx\n", *(uint64_t*)p96);
+   fprintf (stderr, "mem : " ); for (i=0; i < 12; i++) fprintf (stderr, "%02x ", p96[i]); fprintf (stderr, "\n");
+
+  for (i=0; i < 12; i++)
+    if (p96[i] != x96[i]) ret = 0;
+
   return (ret);
 }
 
@@ -783,4 +879,5 @@ int main (int argc, char* argv[]) {
 
   fprintf (stdout, "SPECK SELF TEST RESULT: %u\n", speck_test (0,NULL));
 }
+
 */

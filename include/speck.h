@@ -68,4 +68,13 @@ int speck_he (unsigned char *out, const unsigned char *in, unsigned long long in
 int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx);
 
 
+int speck_he_iv_encrypt (unsigned char *inout, speck_context_t *ctx);
+
+
+int speck_he_iv_decrypt (unsigned char *inout, speck_context_t *ctx);
+
+
+int speck_expand_key_he_iv (const unsigned char *k, speck_context_t *ctx);
+
+
 #endif
