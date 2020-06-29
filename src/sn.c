@@ -408,7 +408,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
       /* we do not know if header encryption is used in this community,
        * first packet will show. just in case, setup the key.           */
       s->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
-      packet_header_setup_key (s->community, &(s->header_encryption_ctx));
+      packet_header_setup_key (s->community, &(s->header_encryption_ctx), &(s->header_iv_ctx));
       HASH_ADD_STR(sss->communities, community, s);
 
       num_communities++;
@@ -580,12 +580,14 @@ static int process_udp(n2n_sn_t * sss,
 
       /* Re-encode the header. */
       encode_PACKET(encbuf, &encx, &cmn2, &pkt);
-
-      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-        packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx);
+      uint16_t oldEncx = encx;
 
       /* Copy the original payload unchanged */
       encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
+
+      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+        packet_header_encrypt (rec_buf, oldEncx, comm->header_encryption_ctx,
+                                                 pearson_hash_16 (rec_buf, encx));
     } else {
       /* Already from a supernode. Nothing to modify, just pass to
        * destination. */
@@ -596,7 +598,8 @@ static int process_udp(n2n_sn_t * sss,
       encx = udp_size;
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-        packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
+        packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx,
+                                             pearson_hash_16 (rec_buf, udp_size));
     }
 
     /* Common section to forward the final product. */
@@ -647,7 +650,7 @@ static int process_udp(n2n_sn_t * sss,
 
 	/* Re-encode the header. */
 	encode_REGISTER(encbuf, &encx, &cmn2, &reg);
-
+// !!! does this ever happen? does REGISTER ever come with a payload ??? !!!
 	/* Copy the original payload unchanged */
 	encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
       } else {
@@ -659,7 +662,9 @@ static int process_udp(n2n_sn_t * sss,
       }
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-        packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx);
+        packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx,
+                                              pearson_hash_16 (rec_buf, encx));
+
 
       try_forward(sss, comm, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
@@ -730,7 +735,8 @@ static int process_udp(n2n_sn_t * sss,
       encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx);
+        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
+                                             pearson_hash_16 (ackbuf, encx));
 
       sendto(sss->sock, ackbuf, encx, 0,
 	     (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
@@ -777,7 +783,8 @@ static int process_udp(n2n_sn_t * sss,
       encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-        packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx);
+        packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx,
+                                             pearson_hash_16 (encbuf, encx));
 
       sendto( sss->sock, encbuf, encx, 0,
 	      (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
