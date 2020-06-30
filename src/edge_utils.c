@@ -43,12 +43,6 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
 
 /* ************************************** */
 
-#ifdef __ANDROID_NDK__
-#include "../android/edge_android.c"
-#endif
-
-/* ************************************** */
-
 int edge_verify_conf(const n2n_edge_conf_t *conf) {
   if(conf->community_name[0] == 0)
     return(-1);
@@ -89,7 +83,9 @@ struct n2n_edge {
   tuntap_dev          device;                 /**< All about the TUNTAP device */
   n2n_trans_op_t      transop;                /**< The transop to use when encoding */
   n2n_cookie_t        last_cookie;            /**< Cookie sent in last REGISTER_SUPER. */
-  n2n_route_t        *sn_route_to_clean;      /**< Supernode route to clean */
+  n2n_route_t         *sn_route_to_clean;     /**< Supernode route to clean */
+  n2n_edge_callbacks_t cb;		      /**< API callbacks */
+  void 	              *user_data;             /**< Can hold user data */
 
   /* Sockets */
   n2n_sock_t          supernode;
@@ -100,11 +96,6 @@ struct n2n_edge {
   n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
   int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
   int                 multicast_joined;       /**< 1 if the group has been joined.*/
-#endif
-
-#ifdef __ANDROID_NDK__
-  uint32_t            gateway_ip;             /**< The IP address of the gateway */
-  n2n_mac_t           gateway_mac;            /**< The MAC address of the gateway */
 #endif
 
   /* Peers */
@@ -120,6 +111,24 @@ struct n2n_edge {
   /* Statistics */
   struct n2n_edge_stats stats;
 };
+
+/* ************************************** */
+
+void edge_set_callbacks(n2n_edge_t *eee, const n2n_edge_callbacks_t *callbacks) {
+  memcpy(&eee->cb, callbacks, sizeof(n2n_edge_callbacks_t));
+}
+
+/* ************************************** */
+
+void edge_set_userdata(n2n_edge_t *eee, void *user_data) {
+  eee->user_data = user_data;
+}
+
+/* ************************************** */
+
+void* edge_get_userdata(n2n_edge_t *eee) {
+  return(eee->user_data);
+}
 
 /* ************************************** */
 
@@ -254,11 +263,9 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
     rc = n2n_transop_cc20_init(&eee->conf, &eee->transop);
     break;
 #endif
-#ifndef __ANDROID_NDK__
   case N2N_TRANSFORM_ID_SPECK:
     rc = n2n_transop_speck_init(&eee->conf, &eee->transop);
     break;
-#endif
   default:
     rc = n2n_transop_null_init(&eee->conf, &eee->transop);
   }
@@ -913,17 +920,6 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
     traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
 
-#ifdef __ANDROID_NDK__
-    int change = 0;
-    pthread_mutex_lock(&g_status->mutex);
-    change = g_status->running_status == EDGE_STAT_SUPERNODE_DISCONNECT ? 0 : 1;
-    g_status->running_status = EDGE_STAT_SUPERNODE_DISCONNECT;
-    pthread_mutex_unlock(&g_status->mutex);
-    if (change) {
-      g_status->report_edge_status();
-    }
-#endif /* #ifdef __ANDROID_NDK__ */
-
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
   }
   else
@@ -1102,18 +1098,13 @@ static int handle_PACKET(n2n_edge_t * eee,
 	  }
 	}
 
-#ifdef __ANDROID_NDK__
-      if((psize >= 36) &&
-         (ntohs(*((uint16_t*)&eth_payload[12])) == 0x0806) && /* ARP */
-         (ntohs(*((uint16_t*)&eth_payload[20])) == 0x0002) && /* REPLY */
-         (!memcmp(&eth_payload[28], &eee->gateway_ip, 4))) { /* From gateway */
-        memcpy(eee->gateway_mac, &eth_payload[22], 6);
+	if(eee->cb.packet_from_peer) {
+	  if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, eth_size) == N2N_DROP) {
+	    traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)eth_size);
 
-        traceEvent(TRACE_INFO, "Gateway MAC: %02X:%02X:%02X:%02X:%02X:%02X",
-                   eee->gateway_mac[0], eee->gateway_mac[1], eee->gateway_mac[2],
-                   eee->gateway_mac[3], eee->gateway_mac[4], eee->gateway_mac[5]);
-      }
-#endif
+	    return(0);
+	  }
+	}
 
 	/* Write ethernet packet to tap device. */
 	traceEvent(TRACE_DEBUG, "sending to TAP %u", (unsigned int)eth_size);
@@ -1390,7 +1381,7 @@ static int send_packet(n2n_edge_t * eee,
 /* ************************************** */
 
 /** A layer-2 packet was received at the tunnel and needs to be sent via UDP. */
-static void send_packet2net(n2n_edge_t * eee,
+void edge_send_packet2net(n2n_edge_t * eee,
 		     uint8_t *tap_pkt, size_t len) {
   ipstr_t ip_buf;
   n2n_mac_t destMac;
@@ -1403,13 +1394,6 @@ static void send_packet2net(n2n_edge_t * eee,
   n2n_transform_t tx_transop_idx = eee->transop.transform_id;
 
   ether_hdr_t eh;
-
-#ifdef __ANDROID_NDK__
-  if(!memcmp(tap_pkt, null_mac, 6)) {
-    traceEvent(TRACE_DEBUG, "Detected packet for the gateway");
-    memcpy(tap_pkt, eee->gateway_mac, 6);
-  }
-#endif
 
   /* tap_pkt is not aligned so we have to copy to aligned memory */
   memcpy(&eh, tap_pkt, sizeof(ether_hdr_t));
@@ -1540,7 +1524,7 @@ static void send_packet2net(n2n_edge_t * eee,
 /** Read a single packet from the TAP interface, process it and write out the
  *  corresponding packet to the cooked socket.
  */
-static void readFromTAPSocket(n2n_edge_t * eee) {
+void edge_read_from_tap(n2n_edge_t * eee) {
   /* tun -> remote */
   uint8_t             eth_pkt[N2N_PKT_BUF_SIZE];
   macstr_t            mac_buf;
@@ -1579,7 +1563,15 @@ static void readFromTAPSocket(n2n_edge_t * eee) {
         }
       else
         {
-	  send_packet2net(eee, eth_pkt, len);
+	  if(eee->cb.packet_from_tap) {
+	    if(eee->cb.packet_from_tap(eee, eth_pkt, len) == N2N_DROP) {
+	      traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)len);
+
+	      return;
+	    }
+	  }
+
+	  edge_send_packet2net(eee, eth_pkt, len);
         }
     }
 }
@@ -1704,7 +1696,6 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       {
 	  /* Another edge is registering with us */
 	  n2n_REGISTER_t reg;
-	  n2n_mac_t null_mac = { '\0' };
 	  int via_multicast;
 
 	  decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
@@ -1794,20 +1785,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		  eee->sn_wait=0;
 		  eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
-#ifdef __ANDROID_NDK__
-          int change = 0;
-
-	  pthread_mutex_lock(&g_status->mutex);
-          change = g_status->running_status == EDGE_STAT_CONNECTED ? 0 : 1;
-          g_status->running_status = EDGE_STAT_CONNECTED;
-          pthread_mutex_unlock(&g_status->mutex);
-
-          if (change) {
-              g_status->report_edge_status();
-          }
-
-          update_gateway_mac(eee);
-#endif /* #ifdef __ANDROID_NDK__ */
+		  if(eee->cb.sn_registration_updated)
+		    eee->cb.sn_registration_updated(eee, now, &sender);
 
 		  /* NOTE: the register_interval should be chosen by the edge node
 		   * based on its NAT configuration. */
@@ -1900,7 +1879,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
    *
    * select() is used to wait for input on either the TAP fd or the UDP/TCP
    * socket. When input is present the data is read and processed by either
-   * readFromIPSocket() or readFromTAPSocket()
+   * readFromIPSocket() or edge_read_from_tap()
    */
 
   while(*keep_running) {
@@ -1957,7 +1936,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 
 #ifdef __ANDROID_NDK__
       if(uip_arp_len != 0) {
-	readFromTAPSocket(eee);
+	edge_read_from_tap(eee);
 	uip_arp_len = 0;
       }
 #endif /* #ifdef __ANDROID_NDK__ */
@@ -1972,7 +1951,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
       if(FD_ISSET(eee->device.fd, &socket_mask)) {
 	/* Read an ethernet frame from the TAP socket. Write on the IP
 	 * socket. */
-	readFromTAPSocket(eee);
+	edge_read_from_tap(eee);
       }
 #endif
     }
@@ -1992,9 +1971,14 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 
     if(eee->conf.dyn_ip_mode &&
        ((nowTime - lastIfaceCheck) > IFACE_UPDATE_INTERVAL)) {
+      uint32_t old_ip = eee->device.ip_addr;
+
       traceEvent(TRACE_NORMAL, "Re-checking dynamic IP address.");
       tuntap_get_address(&(eee->device));
       lastIfaceCheck = nowTime;
+
+      if((old_ip != eee->device.ip_addr) && eee->cb.ip_address_changed)
+	eee->cb.ip_address_changed(eee, old_ip, eee->device.ip_addr);
     }
 
 #ifdef __ANDROID_NDK__

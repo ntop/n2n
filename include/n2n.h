@@ -215,6 +215,36 @@ typedef struct n2n_route {
   in_addr_t gateway;
 } n2n_route_t;
 
+typedef struct n2n_edge n2n_edge_t; /* Opaque, see edge_utils.c */
+
+/* *************************************************** */
+
+typedef enum {
+  N2N_ACCEPT = 0,
+  N2N_DROP = 1
+} n2n_verdict;
+
+/* *************************************************** */
+
+/* Callbacks allow external programs to attach functions in response to
+ * N2N events. */
+typedef struct n2n_edge_callbacks {
+  /* The supernode registration has been updated */
+  void (*sn_registration_updated)(n2n_edge_t *eee, time_t now, const n2n_sock_t *sn);
+
+  /* A packet has been received from a peer. N2N_DROP can be returned to
+   * drop the packet. The packet payload can be modified. */
+  n2n_verdict (*packet_from_peer)(n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
+
+  /* A packet has been received from the TAP interface. N2N_DROP can be
+   * returned to drop the packet. The packet payload can be modified. */
+  n2n_verdict (*packet_from_tap)(n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
+
+  void (*ip_address_changed)(n2n_edge_t *eee, uint32_t old_ip, uint32_t new_ip);
+} n2n_edge_callbacks_t;
+
+/* *************************************************** */
+
 typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_route_t	      *routes;		      /**< Networks to route through n2n */
@@ -238,8 +268,6 @@ typedef struct n2n_edge_conf {
   int                 local_port;
   int                 mgmt_port;
 } n2n_edge_conf_t;
-
-typedef struct n2n_edge n2n_edge_t; /* Opaque, see edge_utils.c */
 
 typedef struct sn_stats
 {
@@ -353,6 +381,11 @@ void edge_term_conf(n2n_edge_conf_t *conf);
 /* Public functions */
 n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *rv);
 void edge_term(n2n_edge_t *eee);
+void edge_set_callbacks(n2n_edge_t *eee, const n2n_edge_callbacks_t *callbacks);
+void edge_set_userdata(n2n_edge_t *eee, void *user_data);
+void* edge_get_userdata(n2n_edge_t *eee);
+void edge_send_packet2net(n2n_edge_t *eee, uint8_t *tap_pkt, size_t len);
+void edge_read_from_tap(n2n_edge_t *eee);
 int run_edge_loop(n2n_edge_t *eee, int *keep_running);
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,
