@@ -271,7 +271,7 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   /* Set the key schedule (context) for header encryption if enabled */
   if(conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
     traceEvent(TRACE_NORMAL, "Header encryption is enabled.");
-    packet_header_setup_key ((char *)(conf->community_name), &(eee->conf.header_encryption_ctx));
+    packet_header_setup_key ((char *)(conf->community_name), &(eee->conf.header_encryption_ctx),&(eee->conf.header_iv_ctx));
   }
 
   if(eee->transop.no_encryption)
@@ -757,7 +757,8 @@ static void send_register_super(n2n_edge_t * eee,
 	     sock_to_cstr(sockbuf, supernode));
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
 }
@@ -788,7 +789,8 @@ static void send_query_peer( n2n_edge_t * eee,
     traceEvent( TRACE_DEBUG, "send QUERY_PEER to supernode" );
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
     sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
 }
@@ -834,7 +836,8 @@ static void send_register(n2n_edge_t * eee,
 	     sock_to_cstr(sockbuf, remote_peer));
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -876,7 +879,8 @@ static void send_register_ack(n2n_edge_t * eee,
 	     sock_to_cstr(sockbuf, remote_peer));
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
+                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -1504,8 +1508,7 @@ static void send_packet2net(n2n_edge_t * eee,
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
 
-  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx);
+  uint16_t headerIdx = idx;
 
   idx += eee->transop.fwd(&eee->transop,
 					  pktbuf+idx, N2N_PKT_BUF_SIZE-idx,
@@ -1513,6 +1516,10 @@ static void send_packet2net(n2n_edge_t * eee,
 
   traceEvent(TRACE_DEBUG, "Encode %u B PACKET [%u B data, %u B overhead] transform %u",
      (u_int)idx, (u_int)len, (u_int)(idx-len), tx_transop_idx);
+
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt (pktbuf, headerIdx, eee->conf.header_encryption_ctx,
+                                              eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
 
 #ifdef MTU_ASSERT_VALUE
   {
@@ -1635,11 +1642,18 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
 	     (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
 
-  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
-    if( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx) == 0) {
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+    uint16_t checksum = 0;
+    if( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx,
+                               eee->conf.header_iv_ctx, &checksum) == 0) {
       traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
       return;
     }
+    if (checksum != pearson_hash_16 (udp_buf, recvlen)) {
+      traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to checksum error.");
+      return;
+    }
+  }
 
   /* hexdump(udp_buf, recvlen); */
 

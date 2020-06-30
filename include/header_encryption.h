@@ -18,10 +18,13 @@
 
 
 uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
-                                char * community_name, he_context_t * ctx);
+                                char * community_name, he_context_t * ctx,
+                                he_context_t * ctx_iv, uint16_t * checksum);
+
+int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx,
+                               he_context_t * ctx_iv, uint16_t checksum);
 
 
-int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx);
+void packet_header_setup_key (const char * community_name, he_context_t ** ctx,
+                                                           he_context_t ** ctx_iv);
 
-
-void packet_header_setup_key (const char * community_name, he_context_t ** ctx);

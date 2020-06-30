@@ -24,7 +24,8 @@
 /* ********************************************************************** */
 
 uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
-			        char * community_name, he_context_t * ctx) {
+			        char * community_name, he_context_t * ctx,
+				he_context_t * ctx_iv, uint16_t * checksum) {
 
   // assemble IV
   // the last four are ASCII "n2n!" and do not get overwritten
@@ -33,6 +34,10 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
   // the first 96 bits of the packet get padded with ASCII "n2n!"
   // to full 128 bit IV
   memcpy (iv, packet, 12);
+
+  // extract checksum (last 16 bit) blended in IV
+  speck_he_iv_decrypt (packet, (speck_context_t*)ctx_iv);
+  *checksum = be16toh (((uint16_t*)packet)[5]);
 
   // try community name as possible key and check for magic bytes
   uint32_t magic = 0x6E326E00; // ="n2n_"
@@ -56,9 +61,11 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
 
 /* ********************************************************************** */
 
-int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx) {
+int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx,
+                               he_context_t * ctx_iv, uint16_t checksum) {
 
   uint8_t iv[16];
+  uint16_t *iv16 = (uint16_t*)&iv;
   uint32_t *iv32 = (uint32_t*)&iv;
   uint64_t *iv64 = (uint64_t*)&iv;
   const uint32_t magic = 0x6E326E21; // = ASCII "n2n!"
@@ -71,8 +78,11 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
   memcpy (&packet[16], &packet[00], 4);
 
   iv64[0] = n2n_rand ();
-  iv32[2] = n2n_rand ();
+  iv16[4] = n2n_rand ();
+  iv16[5] = htobe16 (checksum);
   iv32[3] = htobe32 (magic);
+  // blend checksum into 96-bit IV
+  speck_he_iv_encrypt (iv, (speck_context_t*)ctx_iv);
 
   memcpy (packet, iv, 16);
   packet[15] = header_len;
@@ -83,11 +93,18 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
 
 /* ********************************************************************** */
 
-void packet_header_setup_key (const char * community_name, he_context_t ** ctx) {
+void packet_header_setup_key (const char * community_name, he_context_t ** ctx,
+                                                           he_context_t ** ctx_iv) {
 
   uint8_t key[16];
   pearson_hash_128 (key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
   *ctx = (he_context_t*)calloc(1, sizeof (speck_context_t));
   speck_expand_key_he (key, (speck_context_t*)*ctx);
+
+  // hash again and use last 96 bit (skipping 4 bytes) as key for IV encryption
+  // REMOVE as soon as checksum and replay protection get their own fields
+  pearson_hash_128 (key, key, sizeof (key));
+  *ctx_iv = (he_context_t*)calloc(1, sizeof (speck_context_t));
+  speck_expand_key_he_iv (&key[4], (speck_context_t*)*ctx_iv);
 }
