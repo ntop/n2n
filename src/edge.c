@@ -488,7 +488,7 @@ static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_e
         break;
       }
 
-      if(route.net_addr == INADDR_NONE) {
+      if(route.gateway == INADDR_NONE) {
         traceEvent(TRACE_WARNING, "Bad gateway '%s' in '%s'", gateway, optargument);
         break;
       }
