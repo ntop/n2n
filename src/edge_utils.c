@@ -233,10 +233,11 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
   eee->pending_peers  = NULL;
   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
-  if(lzo_init() != LZO_E_OK) {
-    traceEvent(TRACE_ERROR, "LZO compression error");
-    goto edge_init_error;
-  }
+  if(eee->conf.compression == N2N_COMPRESSION_ID_LZO)
+    if(lzo_init() != LZO_E_OK) {
+      traceEvent(TRACE_ERROR, "LZO compression error");
+      goto edge_init_error;
+    }
 
 #ifdef N2N_HAVE_ZSTD
   // zstd does not require initialization. if it were required, this would be a good place
