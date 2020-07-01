@@ -126,7 +126,6 @@ typedef struct ether_hdr ether_hdr_t;
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
-#include <signal.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -140,12 +139,13 @@ typedef struct ether_hdr ether_hdr_t;
 #include <openssl/crypto.h>
 #endif
 
-#include "minilzo.h"
-#include "n2n_define.h"
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
 
+#include "minilzo.h"
+#include "n2n_define.h"
+#include <signal.h>
 #include <string.h>
 #include <stdarg.h>
 #include "uthash.h"
