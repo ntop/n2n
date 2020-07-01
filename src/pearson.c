@@ -224,18 +224,18 @@ void pearson_hash_128 (uint8_t *out, const uint8_t *in, size_t len) {
 // 16-bit hash: the return value has to be interpreted as uint16_t and
 // follows machine-specific endianess in memory
 uint16_t pearson_hash_16 (const uint8_t *in, size_t len) {
+  size_t i;
+  uint16_t hash = 0;
+  uint16_t hash_mask = 0x0100;
 
-	uint16_t hash = 0;
-        uint16_t hash_mask = 0x0100;
-
-        for (size_t i = 0; i < len; i++) {
-                // broadcast the character, xor into hash, make them different permutations
-                uint16_t c = (uint8_t)in[i];
-                c |= c <<  8;
-                hash ^= c ^ hash_mask;
-                // table lookup
-		hash = t[(uint8_t)hash] + (t[hash >> 8] << 8);
-        }
-        // output
-        return hash;
+  for (i = 0; i < len; i++) {
+    // broadcast the character, xor into hash, make them different permutations
+    uint16_t c = (uint8_t)in[i];
+    c |= c <<  8;
+    hash ^= c ^ hash_mask;
+    // table lookup
+    hash = t[(uint8_t)hash] + (t[hash >> 8] << 8);
+  }
+  // output
+  return hash;
 }
