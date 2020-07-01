@@ -403,10 +403,7 @@ static int supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
 	  freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
 	  ainfo = NULL;
         } else {
-	traceEvent(TRACE_WARNING, "Failed to resolve supernode host %s, assuming numeric", supernode_host);
-	sn_addr = inet_addr(supernode_host); /* uint32_t */
-	memcpy(sn->addr.v4, &(sn_addr), IPV4_SIZE);
-	sn->family=AF_INET;
+	traceEvent(TRACE_WARNING, "Failed to resolve supernode host %s", supernode_host);
 	rv = -2;
       }
 
@@ -685,6 +682,10 @@ static ssize_t sendto_sock(int fd, const void * buf,
   struct sockaddr_in peer_addr;
   ssize_t sent;
 
+  if(!dest->family)
+    // Invalid socket
+    return 0;
+
   fill_sockaddr((struct sockaddr *) &peer_addr,
 		sizeof(peer_addr),
 		dest);
@@ -927,13 +928,13 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
     --(eee->sup_attempts);
 
   for(sn_idx=0; sn_idx<eee->conf.sn_num; sn_idx++) {
-    supernode2addr(&(eee->supernode), eee->conf.sn_ip_array[sn_idx]);
+    if(supernode2addr(&(eee->supernode), eee->conf.sn_ip_array[sn_idx]) == 0) {
+      traceEvent(TRACE_INFO, "Registering with supernode [id: %u/%u][%s][attempts left %u]",
+		 sn_idx+1, eee->conf.sn_num,
+		 supernode_ip(eee), (unsigned int)eee->sup_attempts);
 
-    traceEvent(TRACE_INFO, "Registering with supernode [id: %u/%u][%s][attempts left %u]",
-	       sn_idx+1, eee->conf.sn_num,
-	       supernode_ip(eee), (unsigned int)eee->sup_attempts);
-
-    send_register_super(eee, &(eee->supernode));
+      send_register_super(eee, &(eee->supernode));
+    }
   }
 
   register_with_local_peers(eee);
