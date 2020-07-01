@@ -240,6 +240,7 @@ typedef struct n2n_edge_callbacks {
    * returned to drop the packet. The packet payload can be modified. */
   n2n_verdict (*packet_from_tap)(n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
 
+  /* Called whenever the IP address of the TAP interface changes. */
   void (*ip_address_changed)(n2n_edge_t *eee, uint32_t old_ip, uint32_t new_ip);
 } n2n_edge_callbacks_t;
 
@@ -386,6 +387,8 @@ void edge_set_userdata(n2n_edge_t *eee, void *user_data);
 void* edge_get_userdata(n2n_edge_t *eee);
 void edge_send_packet2net(n2n_edge_t *eee, uint8_t *tap_pkt, size_t len);
 void edge_read_from_tap(n2n_edge_t *eee);
+int edge_get_n2n_socket(n2n_edge_t *eee);
+int edge_get_management_socket(n2n_edge_t *eee);
 int run_edge_loop(n2n_edge_t *eee, int *keep_running);
 int quick_edge_init(char *device_name, char *community_name,
 		    char *encrypt_key, char *device_mac,

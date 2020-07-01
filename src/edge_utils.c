@@ -132,6 +132,18 @@ void* edge_get_userdata(n2n_edge_t *eee) {
 
 /* ************************************** */
 
+int edge_get_n2n_socket(n2n_edge_t *eee) {
+  return(eee->udp_sock);
+}
+
+/* ************************************** */
+
+int edge_get_management_socket(n2n_edge_t *eee) {
+  return(eee->udp_mgmt_sock);
+}
+
+/* ************************************** */
+
 const char* transop_str(enum n2n_transform tr) {
   switch(tr) {
   case N2N_TRANSFORM_ID_NULL:    return("null");
