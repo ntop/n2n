@@ -1947,6 +1947,9 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 	/* Read a cooked socket from the internet socket. Writes on the TAP
 	 * socket. */
 	readFromMgmtSocket(eee, keep_running);
+
+	if(!(*keep_running))
+	  break;
       }
 
 #ifndef WIN32
