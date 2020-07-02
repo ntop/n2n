@@ -3,7 +3,15 @@ cmake_minimum_required(VERSION 2.6)
 include(CheckFunctionExists)
 SET(CMAKE_VERBOSE_MAKEFILE ON)
 
-# N2n information
+# N2n release information
+set(N2N_VERSION "2.7.0")
+set(N2N_OSNAME ${CMAKE_SYSTEM})
+execute_process(
+        COMMAND git --version
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_EXIST
+)
+if (GIT_EXIST)
 execute_process(
         COMMAND git rev-list --count HEAD
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -16,32 +24,36 @@ execute_process(
 )
 string(REGEX REPLACE "\n$" "" GIT_REV "${GIT_REV}")
 string(REGEX REPLACE "\n$" "" GIT_ID "${GIT_ID}")
-set(N2N_VERSION "2.7.0.r${GIT_REV}.${GIT_ID}")
-set(N2N_OSNAME ${CMAKE_SYSTEM})
+set(N2N_VERSION "${N2N_VERSION}.r${GIT_REV}.${GIT_ID}")
 MESSAGE(STATUS "Build from git rev: ${N2N_VERSION}")
+endif (GIT_EXIST)
 
-# N2n specific params
-OPTION(N2N_OPTION_AES "USE AES" ON)
+add_definitions(-DCMAKE_BUILD)
+add_definitions(-DGIT_RELEASE="" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${N2N_OSNAME}")
+add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
+
 
 # Build information
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
 
+# N2n specific params
+OPTION(N2N_OPTION_AES "USE AES" ON)
 
 if(NOT DEFINED N2N_OPTION_AES)
 set(N2N_OPTION_AES ON)
 endif(NOT DEFINED N2N_OPTION_AES)
 
-add_definitions(-DCMAKE_BUILD)
-add_definitions(-DGIT_RELEASE="" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${CMAKE_SYSTEM}")
-add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
-
 if(N2N_OPTION_AES)
-  if(NOT DEFINED WIN32)
-    find_package(OpenSSL REQUIRED)
+  find_package(OpenSSL QUIET)
+  if(NOT OPENSSL_FOUND)
+    MESSAGE(WARNING "OpenSSL not found, AES disabled.")
+    set(N2N_OPTION_AES OFF)
+  else()
     include_directories(${OPENSSL_INCLUDE_DIR})
-  endif(NOT DEFINED WIN32)
-  add_definitions(-DN2N_HAVE_AES)
+    add_definitions(-DN2N_HAVE_AES)
+  endif(NOT OPENSSL_FOUND)
 endif(N2N_OPTION_AES)
+
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
@@ -61,28 +73,21 @@ set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 endif(DEFINED UNIX)
 
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static")
+#SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static")
 
-
-## DEBUG FOR CMAKE
-#message(${N2N_VERSION}) 
-#message(${N2N_OSNAME})
-##message(${CMAKE_BUILD_TYPE})
-#message(${N2N_OPTION_AES})
-## DEBUG FOR CMAKE
 
 INCLUDE_DIRECTORIES(.)
 INCLUDE_DIRECTORIES(include)
 if(DEFINED WIN32)
   INCLUDE_DIRECTORIES(win32)
-  INCLUDE_DIRECTORIES("D:/Program Files/MinGW/opt/include/" "D:/Program Files/MinGW/x86_64-w64-mingw32/include/")
-  LINK_DIRECTORIES("D:/Program Files/MinGW/opt/lib/" "D:/Program Files/MinGW/x86_64-w64-mingw32/lib/")
+#  INCLUDE_DIRECTORIES("D:/Program Files/MinGW/opt/include/" "D:/Program Files/MinGW/x86_64-w64-mingw32/include/")
+#  LINK_DIRECTORIES("D:/Program Files/MinGW/opt/lib/" "D:/Program Files/MinGW/x86_64-w64-mingw32/lib/")
 endif(DEFINED WIN32)
 
-# Add SHARED to build DLL
+
 #aux_source_directory(./src N2N_DIR_SRCS)
 #add_library(n2n STATIC ${N2N_DIR_SRCS})
-add_library(n2n
+add_library(n2n STATIC
         src/n2n.c
         src/edge_utils.c
         src/sn_utils.c
@@ -104,7 +109,6 @@ add_library(n2n
         src/tuntap_osx.c
         )
 
-
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
   add_subdirectory(win32)
@@ -112,12 +116,10 @@ if(DEFINED WIN32)
 endif(DEFINED WIN32)
 
 if(N2N_OPTION_AES)
-  if(DEFINED WIN32)
-    target_link_libraries(n2n crypto)
-  else()
-    target_link_libraries(n2n ${OPENSSL_LIBRARIES})
-  endif(DEFINED WIN32)
+#  target_link_libraries(n2n crypto)
+  target_link_libraries(n2n ${OPENSSL_LIBRARIES})
 endif(N2N_OPTION_AES)
+
 
 add_executable(edge src/edge.c)
 target_link_libraries(edge n2n)
@@ -149,6 +151,7 @@ install(TARGETS edge supernode
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
        )
+
 
 # Tools
 add_executable(n2n-benchmark tools/benchmark.c)
