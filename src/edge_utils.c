@@ -797,10 +797,10 @@ static void send_query_peer( n2n_edge_t * eee,
 
     traceEvent( TRACE_DEBUG, "send QUERY_PEER to supernode" );
 
-  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+  if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED){
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
                                         eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
-
+	}
     sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
 }
 
@@ -1082,7 +1082,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	  /* Check if it is a routed packet */
 	  if((ntohs(eh->type) == 0x0800) && (eth_size >= ETH_FRAMESIZE + IP4_MIN_SIZE)) {
 	    uint32_t *dst = (uint32_t*)&eth_payload[ETH_FRAMESIZE + IP4_DSTOFFSET];
-	    u_int8_t *dst_mac = (u_int8_t*)eth_payload;
+	    uint8_t *dst_mac = (uint8_t*)eth_payload;
 
 	    /* Note: all elements of the_ip are in network order */
 	    if(!memcmp(dst_mac, broadcast_mac, 6))
@@ -1868,6 +1868,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif
 
 #ifdef WIN32
+  #include "edge_utils_win32.h"
   struct tunread_arg arg;
   arg.eee = eee;
   arg.keep_running = keep_running;
@@ -2048,7 +2049,7 @@ static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port,
     /* https://www.tucny.com/Home/dscp-tos */
     sockopt = tos;
 
-    if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_TOS, &sockopt, sizeof(sockopt)) == 0)
+    if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_TOS, (char *)&sockopt, sizeof(sockopt)) == 0)
       traceEvent(TRACE_NORMAL, "TOS set to 0x%x", tos);
     else
       traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", tos, errno, strerror(errno));

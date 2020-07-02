@@ -92,7 +92,7 @@ SOCKET open_socket(int local_port, int bind_any) {
 #endif
 
   sockopt = 1;
-  setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &sockopt, sizeof(sockopt));
+  setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&sockopt, sizeof(sockopt));
 
   memset(&local_address, 0, sizeof(local_address));
   local_address.sin_family = AF_INET;
@@ -145,9 +145,7 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
     char theDate[N2N_TRACE_DATESIZE];
     char *extra_msg = "";
     time_t theTime = time(NULL);
-#ifdef WIN32
     int i;
-#endif
 
     /* We have two paths - one if we're logging, one if we aren't
      *   Note that the no-log case is those systems which don't support it(WIN32),
@@ -179,7 +177,8 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...) {
       snprintf(out_buf, sizeof(out_buf), "%s%s", extra_msg, buf);
       syslog(LOG_INFO, "%s", out_buf);
     } else {
-      snprintf(out_buf, sizeof(out_buf), "%s [%s:%d] %s%s", theDate, file, line, extra_msg, buf);
+		for(i=strlen(file)-1; i>0; i--) if(file[i] == '/') { i++; break; };
+		snprintf(out_buf, sizeof(out_buf), "%s [%s:%d] %s%s", theDate, &file[i], line, extra_msg, buf);
 #ifdef __ANDROID_NDK__
         switch (eventTraceLevel) {
             case 0:         // ERROR
@@ -316,7 +315,7 @@ void hexdump(const uint8_t * buf, size_t len)
 void print_n2n_version() {
   printf("Welcome to n2n v.%s for %s\n"
          "Built on %s\n"
-	 "Copyright 2007-19 - ntop.org and contributors\n\n",
+	 "Copyright 2007-2020 - ntop.org and contributors\n\n",
          GIT_RELEASE, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
 }
 

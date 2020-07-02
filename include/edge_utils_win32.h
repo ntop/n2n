@@ -19,6 +19,7 @@
 #ifdef WIN32
 
 #include <process.h>
+#include <n2n.h>
 
 /* Multicast peers discovery disabled due to https://github.com/ntop/n2n/issues/65 */
 #define SKIP_MULTICAST_PEERS_DISCOVERY
