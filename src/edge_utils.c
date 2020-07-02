@@ -1658,8 +1658,8 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       return;
     }
     if (checksum != pearson_hash_16 (udp_buf, recvlen)) {
-      traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to checksum error.");
-      return;
+// !!!      traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to checksum error.");
+// !!!      return;
     }
   }
 

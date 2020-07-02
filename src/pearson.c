@@ -75,6 +75,7 @@ static uint16_t t16[65536]; // 16-bit look-up table
 #endif
 
 #define ROR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
+#define ROR32(x,r) (((x)>>(r))|((x)<<(32-(r))))
 
 
 void pearson_hash_256 (uint8_t *out, const uint8_t *in, size_t len) {

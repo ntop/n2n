@@ -36,8 +36,10 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
   memcpy (iv, packet, 12);
 
   // extract checksum (last 16 bit) blended in IV
-  speck_he_iv_decrypt (packet, (speck_context_t*)ctx_iv);
-  *checksum = be16toh (((uint16_t*)packet)[5]);
+  speck_he_iv_decrypt (iv, (speck_context_t*)ctx_iv);
+  *checksum = be16toh (((uint16_t*)iv)[5]);
+
+  memcpy (iv, packet, 12);
 
   // try community name as possible key and check for magic bytes
   uint32_t magic = 0x6E326E00; // ="n2n_"
