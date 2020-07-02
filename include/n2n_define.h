@@ -16,8 +16,6 @@
  *
  */
 
-#define QUICKLZ               1
-
 /* N2N packet header indicators. */
 #define MSG_TYPE_REGISTER               1
 #define MSG_TYPE_DEREGISTER             2
