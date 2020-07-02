@@ -50,6 +50,9 @@ static int init_sn(n2n_sn_t * sss) {
 #ifdef WIN32
   initWin32();
 #endif
+
+  pearson_hash_init();
+
   memset(sss, 0, sizeof(n2n_sn_t));
 
   sss->daemon = 1; /* By defult run as a daemon. */
