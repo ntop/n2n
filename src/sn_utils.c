@@ -583,9 +583,6 @@ static int process_udp(n2n_sn_t * sss,
 
 	/* Re-encode the header. */
 	encode_REGISTER(encbuf, &encx, &cmn2, &reg);
-
-	/* Copy the original payload unchanged */
-	encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
       } else {
 	/* Already from a supernode. Nothing to modify, just pass to
 	 * destination. */
