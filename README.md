@@ -141,7 +141,6 @@ For details about the internals of n2n check out [Hacking guide](https://github.
 Here is a list of third-party projects connected to this repository.
 
 - N2N for Android: [hin2n](https://github.com/switch-iot/hin2n)
-- N2N v1 and v2 version from meyerd: [meyerd n2n](https://github.com/meyerd/n2n)
 - Docker images: [Docker Hub](https://hub.docker.com/r/supermock/supernode/)
 - Go bindings, management daemons and CLIs for n2n edges and supernodes, Docker, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n/)
 
