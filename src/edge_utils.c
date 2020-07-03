@@ -1115,11 +1115,13 @@ static int handle_PACKET(n2n_edge_t * eee,
 	}
 
 	if(eee->cb.packet_from_peer) {
-	  if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, eth_size) == N2N_DROP) {
+	  uint16_t tmp_eth_size = eth_size;
+	  if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, &tmp_eth_size) == N2N_DROP) {
 	    traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)eth_size);
 
 	    return(0);
 	  }
+	  eth_size = tmp_eth_size;
 	}
 
 	/* Write ethernet packet to tap device. */
@@ -1580,11 +1582,13 @@ void edge_read_from_tap(n2n_edge_t * eee) {
       else
         {
 	  if(eee->cb.packet_from_tap) {
-	    if(eee->cb.packet_from_tap(eee, eth_pkt, len) == N2N_DROP) {
+	    uint16_t tmp_len = len;
+	    if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
 	      traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)len);
 
 	      return;
 	    }
+	    len = tmp_len;
 	  }
 
 	  edge_send_packet2net(eee, eth_pkt, len);

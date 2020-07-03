@@ -234,11 +234,11 @@ typedef struct n2n_edge_callbacks {
 
   /* A packet has been received from a peer. N2N_DROP can be returned to
    * drop the packet. The packet payload can be modified. */
-  n2n_verdict (*packet_from_peer)(n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
+  n2n_verdict (*packet_from_peer)(n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t *payload_size);
 
   /* A packet has been received from the TAP interface. N2N_DROP can be
    * returned to drop the packet. The packet payload can be modified. */
-  n2n_verdict (*packet_from_tap)(n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
+  n2n_verdict (*packet_from_tap)(n2n_edge_t *eee, uint8_t *payload, uint16_t *payload_size);
 
   /* Called whenever the IP address of the TAP interface changes. */
   void (*ip_address_changed)(n2n_edge_t *eee, uint32_t old_ip, uint32_t new_ip);
