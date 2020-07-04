@@ -296,6 +296,8 @@ static int process_mgmt(n2n_sn_t * sss,
   uint32_t num_edges=0;
   ssize_t r;
   struct sn_community *community, *tmp;
+  struct peer_info * peer, *tmpPeer;
+  macstr_t mac_buf;
 
   traceEvent(TRACE_DEBUG, "process_mgmt");
 
@@ -347,10 +349,14 @@ static int process_mgmt(n2n_sn_t * sss,
     ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                         " [%s]",
                         community->community);
+    HASH_ITER(hh, community->edges, peer, tmpPeer) {
+      ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+                          " {%s}",
+                          macaddr_str(mac_buf, peer->mac_addr));
+    }
   }
   ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                       "\n");
-
 
   r = sendto(sss->mgmt_sock, resbuf, ressize, 0/*flags*/,
 	     (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
@@ -495,8 +501,8 @@ static int process_udp(n2n_sn_t * sss,
       if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx,
                                          comm->header_iv_ctx, &checksum)) ) {
         if (checksum != pearson_hash_16 (udp_buf, udp_size)) {
-// !!!          traceEvent(TRACE_DEBUG, "process_udp dropped packet due to checksum error.");
-// !!!          return -1;
+          traceEvent(TRACE_DEBUG, "process_udp dropped packet due to checksum error.");
+          return -1;
         }
         if (comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
 	  traceEvent (TRACE_INFO, "process_udp locked community '%s' to using "
