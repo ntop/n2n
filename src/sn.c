@@ -117,7 +117,7 @@ static int update_edge(n2n_sn_t * sss,
 	     macaddr_str(mac_buf, edgeMac),
 	     sock_to_cstr(sockbuf, sender_sock));
 
-  HASH_FIND_PEER(comm->edges, edgeMac, scan);
+  HASH_FIND_MAC(comm->edges, edgeMac, scan);
 
   if(NULL == scan) {
       /* Not known */
@@ -127,7 +127,7 @@ static int update_edge(n2n_sn_t * sss,
       memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
       memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
-      HASH_ADD_PEER(comm->edges, scan);
+      HASH_ADD_MAC(comm->edges, scan);
 
       traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
 		 macaddr_str(mac_buf, edgeMac),
@@ -200,7 +200,7 @@ static int try_forward(n2n_sn_t * sss,
   macstr_t            mac_buf;
   n2n_sock_str_t      sockbuf;
 
-  HASH_FIND_PEER(comm->edges, dstMac, scan);
+  HASH_FIND_MAC(comm->edges, dstMac, scan);
 
   if(NULL != scan)
     {
@@ -227,7 +227,8 @@ static int try_forward(n2n_sn_t * sss,
     }
   else
     {
-      traceEvent(TRACE_DEBUG, "try_forward unknown MAC");
+      traceEvent(TRACE_NORMAL, "try_forward unknown MAC: %s",
+		     macaddr_str(mac_buf, dstMac));
 
       /* Not a known MAC so drop. */
       return(-2);
@@ -771,7 +772,7 @@ static int process_udp(n2n_sn_t * sss,
                 macaddr_str( mac_buf2, query.targetMac ) );
 
     struct peer_info *scan;
-    HASH_FIND_PEER(comm->edges, query.targetMac, scan);
+    HASH_FIND_MAC(comm->edges, query.targetMac, scan);
 
     if (scan) {
       cmn2.ttl = N2N_DEFAULT_TTL;

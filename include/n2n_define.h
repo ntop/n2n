@@ -65,9 +65,9 @@
 
 #define DEFAULT_MTU   1290
 
-#define HASH_ADD_PEER(head,add)				\
+#define HASH_ADD_MAC(head,add)				\
   HASH_ADD(hh,head,mac_addr,sizeof(n2n_mac_t),add)
-#define HASH_FIND_PEER(head,mac,out)		\
+#define HASH_FIND_MAC(head,mac,out)		\
   HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
 #define N2N_EDGE_SN_HOST_SIZE   48
 #define N2N_EDGE_NUM_SUPERNODES 2

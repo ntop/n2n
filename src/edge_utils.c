@@ -23,11 +23,14 @@
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
 static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
 
+#define PURGE_SW_MACS_FREQUENCY        40
+#define SW_MAC_TIMEOUT	               80
+
 /* ************************************** */
 
 static const char * supernode_ip(const n2n_edge_t * eee);
 static void send_register(n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac);
-static void check_peer_registration_needed(n2n_edge_t * eee,
+static struct peer_info* check_peer_registration_needed(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer);
@@ -73,6 +76,16 @@ struct n2n_edge_stats {
 
 /* ************************************** */
 
+/* A MAC which is located behind a remote edge node */
+typedef struct switched_mac {
+  n2n_mac_t           mac_addr;
+  n2n_mac_t           via_mac;                /**< Any packet directed to this MAC should be sent via this peer MAC. */
+  time_t              last_seen;              /**< Last time a packet sent by this MAC has been received. */
+  UT_hash_handle hh;                          /**< makes this structure hashable */
+} switched_mac_t;
+
+/* ************************************** */
+
 struct n2n_edge {
   n2n_edge_conf_t     conf;
 
@@ -101,6 +114,7 @@ struct n2n_edge {
   /* Peers */
   struct peer_info *  known_peers;            /**< Edges we are connected to. */
   struct peer_info *  pending_peers;          /**< Edges we have tried to register with. */
+  struct switched_mac * sw_macs;              /**< Switched MAC addresses. */
 
   /* Timers */
   time_t              last_register_req;      /**< Check if time to re-register with super*/
@@ -322,10 +336,42 @@ n2n_edge_t* edge_init(const tuntap_dev *dev, const n2n_edge_conf_t *conf, int *r
 
 /* ************************************** */
 
-static int find_and_remove_peer(struct peer_info **head, const n2n_mac_t mac) {
+static size_t purge_old_sw_macs(switched_mac_t **macs, time_t purge_before) {
+  switched_mac_t *scan, *tmp;
+  size_t retval;
+
+  traceEvent(TRACE_DEBUG, "Purging old switched MACs");
+
+  HASH_ITER(hh, *macs, scan, tmp) {
+    if(scan->last_seen < purge_before) {
+      HASH_DEL(*macs, scan);
+      retval++;
+      free(scan);
+    }
+  }
+
+  return retval;
+}
+
+/* ************************************** */
+
+static void clear_sw_macs(switched_mac_t **macs) {
+  switched_mac_t *scan, *tmp;
+
+  HASH_ITER(hh, *macs, scan, tmp) {
+    HASH_DEL(*macs, scan);
+    free(scan);
+  }
+}
+
+/* ************************************** */
+
+static int find_and_remove_peer(n2n_edge_t * eee, struct peer_info **head,
+	  const n2n_mac_t mac) {
   struct peer_info *peer;
 
-  HASH_FIND_PEER(*head, mac, peer);
+  HASH_FIND_MAC(*head, mac, peer);
+
   if(peer) {
     HASH_DEL(*head, peer);
     free(peer);
@@ -463,7 +509,7 @@ static void register_with_local_peers(n2n_edge_t * eee) {
  *
  *  Called from the main loop when Rx a packet for our device mac.
  */
-static void register_with_new_peer(n2n_edge_t * eee,
+static struct peer_info* register_with_new_peer(n2n_edge_t * eee,
 			      uint8_t from_supernode,
 			      const n2n_mac_t mac,
 			      const n2n_sock_t * peer) {
@@ -472,7 +518,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
-  HASH_FIND_PEER(eee->pending_peers, mac, scan);
+  HASH_FIND_MAC(eee->pending_peers, mac, scan);
 
   /* NOTE: pending_peers are purged periodically with purge_expired_registrations */
   if(scan == NULL) {
@@ -483,7 +529,7 @@ static void register_with_new_peer(n2n_edge_t * eee,
     scan->timeout = REGISTER_SUPER_INTERVAL_DFL; /* TODO: should correspond to the peer supernode registration timeout */
     scan->last_seen = time(NULL); /* Don't change this it marks the pending peer for removal. */
 
-    HASH_ADD_PEER(eee->pending_peers, scan);
+    HASH_ADD_MAC(eee->pending_peers, scan);
 
     traceEvent(TRACE_DEBUG, "=== new pending %s -> %s",
 	       macaddr_str(mac_buf, scan->mac_addr),
@@ -535,22 +581,24 @@ static void register_with_new_peer(n2n_edge_t * eee,
     register_with_local_peers(eee);
   } else
     scan->sock = *peer;
+
+  return(scan);
 }
 
 /* ************************************** */
 
 /** Update the last_seen time for this peer, or get registered. */
-static void check_peer_registration_needed(n2n_edge_t * eee,
+static struct peer_info* check_peer_registration_needed(n2n_edge_t * eee,
 		uint8_t from_supernode,
 		const n2n_mac_t mac,
 		const n2n_sock_t * peer) {
   struct peer_info *scan;
 
-  HASH_FIND_PEER(eee->known_peers, mac, scan);
+  HASH_FIND_MAC(eee->known_peers, mac, scan);
 
   if(scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
-    register_with_new_peer(eee, from_supernode, mac, peer);
+    scan = register_with_new_peer(eee, from_supernode, mac, peer);
   } else {
     /* Already in known_peers. */
     time_t now = time(NULL);
@@ -563,6 +611,8 @@ static void check_peer_registration_needed(n2n_edge_t * eee,
       check_known_peer_sock_change(eee, from_supernode, mac, peer, now);
     }
   }
+
+  return(scan);
 }
 /* ************************************** */
 
@@ -579,13 +629,13 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
-  HASH_FIND_PEER(eee->pending_peers, mac, scan);
+  HASH_FIND_MAC(eee->pending_peers, mac, scan);
 
   if(scan) {
     HASH_DEL(eee->pending_peers, scan);
 
     /* Add scan to known_peers. */
-    HASH_ADD_PEER(eee->known_peers, scan);
+    HASH_ADD_MAC(eee->known_peers, scan);
 
     scan->sock = *peer;
     scan->last_p2p = now;
@@ -663,7 +713,7 @@ static void check_known_peer_sock_change(n2n_edge_t * eee,
     return;
 
   /* Search the peer in known_peers */
-  HASH_FIND_PEER(eee->known_peers, mac, scan);
+  HASH_FIND_MAC(eee->known_peers, mac, scan);
 
   if(!scan)
     /* Not in known_peers */
@@ -1027,6 +1077,7 @@ static int handle_PACKET(n2n_edge_t * eee,
   {
     uint8_t decodebuf[N2N_PKT_BUF_SIZE];
     size_t eth_size;
+    uint8_t *eth_srcmac;
     n2n_transform_t rx_transop_id;
 
     rx_transop_id = (n2n_transform_t)pkt->transform;
@@ -1122,6 +1173,36 @@ static int handle_PACKET(n2n_edge_t * eee,
 	    return(0);
 	  }
 	  eth_size = tmp_eth_size;
+	}
+
+	eth_srcmac = eth_payload + 6;
+
+	if(memcmp(eth_srcmac, pkt->srcMac, 6) != 0) {
+	  /* The packet has been sent by a device behind the remote edge
+	   * node. Remember how to reach such device. */
+	  switched_mac_t *sw_mac;
+
+	  HASH_FIND_MAC(eee->sw_macs, eth_srcmac, sw_mac);
+
+	  if(sw_mac == NULL) {
+	    /* New MAC */
+	    macstr_t mac_buf, mac_buf2;
+
+	    sw_mac = (switched_mac_t*) calloc(1, sizeof(switched_mac_t));
+	    memcpy(sw_mac->mac_addr, eth_srcmac, 6);
+	    memcpy(sw_mac->via_mac, pkt->srcMac, 6);
+	    sw_mac->last_seen = now;
+
+	    HASH_ADD_MAC(eee->sw_macs, sw_mac);
+
+	    traceEvent(TRACE_INFO, "New switched MAC: %s via %s",
+		      macaddr_str(mac_buf, eth_srcmac),
+		      macaddr_str(mac_buf2, pkt->srcMac));
+	  } else {
+	    /* Possibly update the MAC */
+	    sw_mac->last_seen = now;
+	    memcpy(sw_mac->via_mac, pkt->srcMac, 6);
+	  }
 	}
 
 	/* Write ethernet packet to tap device. */
@@ -1284,7 +1365,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 static int check_query_peer_info(n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
   struct peer_info *scan;
 
-  HASH_FIND_PEER(eee->pending_peers, mac, scan);
+  HASH_FIND_MAC(eee->pending_peers, mac, scan);
 
   if(!scan) {
     scan = calloc(1, sizeof(struct peer_info));
@@ -1293,7 +1374,7 @@ static int check_query_peer_info(n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
     scan->timeout = REGISTER_SUPER_INTERVAL_DFL; /* TODO: should correspond to the peer supernode registration timeout */
     scan->last_seen = now; /* Don't change this it marks the pending peer for removal. */
 
-    HASH_ADD_PEER(eee->pending_peers, scan);
+    HASH_ADD_MAC(eee->pending_peers, scan);
   }
 
   if(now - scan->last_sent_query > REGISTER_SUPER_INTERVAL_DFL) {
@@ -1310,12 +1391,12 @@ static int check_query_peer_info(n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
 /* @return 1 if destination is a peer, 0 if destination is supernode */
 static int find_peer_destination(n2n_edge_t * eee,
                                  n2n_mac_t mac_address,
-                                 n2n_sock_t * destination) {
+                                 n2n_sock_t * destination,
+				 time_t now) {
   struct peer_info *scan;
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
   int retval=0;
-  time_t now = time(NULL);
 
   if(!memcmp(mac_address, broadcast_mac, 6)) {
     traceEvent(TRACE_DEBUG, "Broadcast destination peer, using supernode");
@@ -1327,7 +1408,7 @@ static int find_peer_destination(n2n_edge_t * eee,
 	     mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
 	     mac_address[3] & 0xFF, mac_address[4] & 0xFF, mac_address[5] & 0xFF);
 
-  HASH_FIND_PEER(eee->known_peers, mac_address, scan);
+  HASH_FIND_MAC(eee->known_peers, mac_address, scan);
 
   if(scan && (scan->last_seen > 0)) {
     if((now - scan->last_p2p) >= (scan->timeout / 2)) {
@@ -1367,7 +1448,8 @@ static int find_peer_destination(n2n_edge_t * eee,
 static int send_packet(n2n_edge_t * eee,
 		       n2n_mac_t dstMac,
 		       const uint8_t * pktbuf,
-		       size_t pktlen) {
+		       size_t pktlen,
+		       time_t now) {
   int is_p2p;
   /*ssize_t s; */
   n2n_sock_str_t sockbuf;
@@ -1376,7 +1458,7 @@ static int send_packet(n2n_edge_t * eee,
 
   /* hexdump(pktbuf, pktlen); */
 
-  is_p2p = find_peer_destination(eee, dstMac, &destination);
+  is_p2p = find_peer_destination(eee, dstMac, &destination, now);
 
   if(is_p2p)
     ++(eee->stats.tx_p2p);
@@ -1403,12 +1485,14 @@ void edge_send_packet2net(n2n_edge_t * eee,
 		     uint8_t *tap_pkt, size_t len) {
   ipstr_t ip_buf;
   n2n_mac_t destMac;
+  switched_mac_t *sw_mac;
 
   n2n_common_t cmn;
   n2n_PACKET_t pkt;
 
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   size_t idx=0;
+  time_t now = time(NULL);
   n2n_transform_t tx_transop_idx = eee->transop.transform_id;
 
   ether_hdr_t eh;
@@ -1435,11 +1519,14 @@ void edge_send_packet2net(n2n_edge_t * eee,
     }
   }
 
-  /* Optionally compress then apply transforms, eg encryption. */
+  HASH_FIND_MAC(eee->sw_macs, tap_pkt /* eth destMac */, sw_mac);
 
-  /* Once processed, send to destination in PACKET */
-
-  memcpy(destMac, tap_pkt, N2N_MAC_SIZE); /* dest MAC is first in ethernet header */
+  if(sw_mac) {
+    /* This is a switched MAC, use the edge MAC instead for the header */
+    memcpy(destMac, sw_mac->via_mac, N2N_MAC_SIZE);
+    sw_mac->last_seen = now;
+  } else
+    memcpy(destMac, tap_pkt /* eth destMac */, N2N_MAC_SIZE);
 
   memset(&cmn, 0, sizeof(cmn));
   cmn.ttl = N2N_DEFAULT_TTL;
@@ -1534,7 +1621,7 @@ void edge_send_packet2net(n2n_edge_t * eee,
 
   eee->transop.tx_cnt++; /* stats */
 
-  send_packet(eee, destMac, pktbuf, idx); /* to peer or supernode */
+  send_packet(eee, destMac, pktbuf, idx, now); /* to peer or supernode */
 }
 
 /* ************************************** */
@@ -1701,7 +1788,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	     * handle_PACKET to double check this.
 	     */
 	    traceEvent(TRACE_DEBUG, "Got P2P packet");
-	    find_and_remove_peer(&eee->pending_peers, pkt.srcMac);
+	    find_and_remove_peer(eee, &eee->pending_peers, pkt.srcMac);
 	  }
 
 	  traceEvent(TRACE_INFO, "Rx PACKET from %s (sender=%s) [%u B]",
@@ -1742,7 +1829,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	     * to double check this.
 	     */
 	    traceEvent(TRACE_DEBUG, "Got P2P register");
-	    find_and_remove_peer(&eee->pending_peers, reg.srcMac);
+	    find_and_remove_peer(eee, &eee->pending_peers, reg.srcMac);
 
 	    /* NOTE: only ACK to peers */
 	    send_register_ack(eee, orig_sender, &reg);
@@ -1834,7 +1921,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
           break;
         }
 
-	HASH_FIND_PEER(eee->pending_peers, pi.mac, scan);
+	HASH_FIND_MAC(eee->pending_peers, pi.mac, scan);
 	  if(scan) {
             scan->sock = pi.sock;
             traceEvent(TRACE_INFO, "Rx PEER_INFO for %s: is at %s",
@@ -1881,6 +1968,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   time_t lastTransop=0;
   time_t last_purge_known = 0;
   time_t last_purge_pending = 0;
+  time_t last_purge_macs = 0;
 #ifdef __ANDROID_NDK__
   time_t lastArpPeriod=0;
 #endif
@@ -1986,6 +2074,9 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     numPurged =  purge_expired_registrations(&eee->known_peers, &last_purge_known);
     numPurged += purge_expired_registrations(&eee->pending_peers, &last_purge_pending);
 
+    if((nowTime - last_purge_macs) >= PURGE_SW_MACS_FREQUENCY)
+      purge_old_sw_macs(&eee->sw_macs, nowTime - SW_MAC_TIMEOUT);
+
     if(numPurged > 0) {
      traceEvent(TRACE_INFO, "%u peers removed. now: pending=%u, operational=%u",
 		 numPurged,
@@ -2041,6 +2132,7 @@ void edge_term(n2n_edge_t * eee) {
 
   clear_peer_list(&eee->pending_peers);
   clear_peer_list(&eee->known_peers);
+  clear_sw_macs(&eee->sw_macs);
 
   eee->transop.deinit(&eee->transop);
 
