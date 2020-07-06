@@ -73,6 +73,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 endif(DEFINED UNIX)
 
+# Static target.
 #SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static")
 
 
@@ -80,7 +81,9 @@ INCLUDE_DIRECTORIES(.)
 INCLUDE_DIRECTORIES(include)
 if(DEFINED WIN32)
   INCLUDE_DIRECTORIES(win32)
+#  Customize include.
 #  INCLUDE_DIRECTORIES("D:/Program Files/MinGW/opt/include/" "D:/Program Files/MinGW/x86_64-w64-mingw32/include/")
+#  Customize library.
 #  LINK_DIRECTORIES("D:/Program Files/MinGW/opt/lib/" "D:/Program Files/MinGW/x86_64-w64-mingw32/lib/")
 endif(DEFINED WIN32)
 
@@ -155,7 +158,7 @@ install(TARGETS edge supernode
 
 # Tools
 add_executable(n2n-benchmark tools/benchmark.c)
-target_link_libraries(n2n-benchmark n2n ${OPENSSL_LIBRARIES})
+target_link_libraries(n2n-benchmark n2n)
 
 find_library(PCAP_LIB pcap)
 if(PCAP_LIB)

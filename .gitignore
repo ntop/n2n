@@ -14,6 +14,8 @@ supernode
 tools/n2n-benchmark
 tools/n2n-decode
 build
+.idea
+cmake-build-default
 packages/debian/debian/changelog
 packages/debian/debian/control
 packages/debian/debian/files

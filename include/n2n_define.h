@@ -75,6 +75,11 @@
 #define N2N_PATHNAME_MAXLEN     256
 #define N2N_EDGE_MGMT_PORT      5644
 
+#define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
+#define N2N_MACNAMSIZ           18 /* AA:BB:CC:DD:EE:FF + NULL*/
+#define N2N_IF_MODE_SIZE        16 /* static | dhcp */
+
+
 /* ************************************** */
 
 #define SUPERNODE_IP    "127.0.0.1"
