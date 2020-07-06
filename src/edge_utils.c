@@ -18,6 +18,7 @@
 
 #include "n2n.h"
 #include "header_encryption.h"
+#include "edge_utils_win32.h"
 
 /* heap allocation for compression as per lzo example doc */
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
@@ -60,57 +61,6 @@ int edge_verify_conf(const n2n_edge_conf_t *conf) {
   return(0);
 }
 
-/* ************************************** */
-
-struct n2n_edge_stats {
-  uint32_t tx_p2p;
-  uint32_t rx_p2p;
-  uint32_t tx_sup;
-  uint32_t rx_sup;
-  uint32_t tx_sup_broadcast;
-  uint32_t rx_sup_broadcast;
-};
-
-/* ************************************** */
-
-struct n2n_edge {
-  n2n_edge_conf_t     conf;
-
-  /* Status */
-  uint8_t             sn_idx;                 /**< Currently active supernode. */
-  uint8_t             sn_wait;                /**< Whether we are waiting for a supernode response. */
-  size_t              sup_attempts;           /**< Number of remaining attempts to this supernode. */
-  tuntap_dev          device;                 /**< All about the TUNTAP device */
-  n2n_trans_op_t      transop;                /**< The transop to use when encoding */
-  n2n_cookie_t        last_cookie;            /**< Cookie sent in last REGISTER_SUPER. */
-  n2n_route_t         *sn_route_to_clean;     /**< Supernode route to clean */
-  n2n_edge_callbacks_t cb;		      /**< API callbacks */
-  void 	              *user_data;             /**< Can hold user data */
-
-  /* Sockets */
-  n2n_sock_t          supernode;
-  int                 udp_sock;
-  int                 udp_mgmt_sock;          /**< socket for status info. */
-
-#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-  n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
-  int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
-  int                 multicast_joined;       /**< 1 if the group has been joined.*/
-#endif
-
-  /* Peers */
-  struct peer_info *  known_peers;            /**< Edges we are connected to. */
-  struct peer_info *  pending_peers;          /**< Edges we have tried to register with. */
-
-  /* Timers */
-  time_t              last_register_req;      /**< Check if time to re-register with super*/
-  time_t              last_p2p;               /**< Last time p2p traffic was received. */
-  time_t              last_sup;               /**< Last time a packet arrived from supernode. */
-  time_t              start_time;             /**< For calculating uptime */
-
-  /* Statistics */
-  struct n2n_edge_stats stats;
-};
 
 /* ************************************** */
 
@@ -1564,6 +1514,11 @@ void edge_read_from_tap(n2n_edge_t * eee) {
     {
       traceEvent(TRACE_WARNING, "read()=%d [%d/%s]",
                 (signed int)len, errno, strerror(errno));
+	    traceEvent(TRACE_WARNING, "TAP I/O operation aborted, restart after 10 seconds.");
+	    sleep(10);
+	    tuntap_close(&(eee->device));
+	    tuntap_open(&(eee->device), eee->priv_conf.tuntap_dev_name, eee->priv_conf.ip_mode, eee->priv_conf.ip_addr,
+	                eee->priv_conf.netmask, eee->priv_conf.device_mac, eee->priv_conf.mtu);
     }
   else
     {
@@ -1886,7 +1841,6 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #endif
 
 #ifdef WIN32
-  #include "edge_utils_win32.h"
   struct tunread_arg arg;
   arg.eee = eee;
   arg.keep_running = keep_running;

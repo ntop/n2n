@@ -65,7 +65,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <time.h>
+#include <unistd.h>
 
 #ifndef WIN32
 #include <unistd.h>
@@ -215,7 +215,7 @@ typedef struct n2n_route {
   in_addr_t gateway;
 } n2n_route_t;
 
-typedef struct n2n_edge n2n_edge_t; /* Opaque, see edge_utils.c */
+typedef struct n2n_edge n2n_edge_t;
 
 /* *************************************************** */
 
@@ -244,6 +244,23 @@ typedef struct n2n_edge_callbacks {
   void (*ip_address_changed)(n2n_edge_t *eee, uint32_t old_ip, uint32_t new_ip);
 } n2n_edge_callbacks_t;
 
+/* ***************************************************** */
+
+typedef struct n2n_priv_config {
+	char                tuntap_dev_name[N2N_IFNAMSIZ];
+	char                ip_mode[N2N_IF_MODE_SIZE];
+	char                ip_addr[N2N_NETMASK_STR_SIZE];
+	char                netmask[N2N_NETMASK_STR_SIZE];
+	char                device_mac[N2N_MACNAMSIZ];
+	int                 mtu;
+	uint8_t             got_s;
+	uint8_t             daemon;
+#ifndef WIN32
+	uid_t               userid;
+	gid_t               groupid;
+#endif
+} n2n_priv_config_t;
+
 /* *************************************************** */
 
 typedef struct n2n_edge_conf {
@@ -269,6 +286,55 @@ typedef struct n2n_edge_conf {
   int                 local_port;
   int                 mgmt_port;
 } n2n_edge_conf_t;
+
+struct n2n_edge_stats {
+	uint32_t tx_p2p;
+	uint32_t rx_p2p;
+	uint32_t tx_sup;
+	uint32_t rx_sup;
+	uint32_t tx_sup_broadcast;
+	uint32_t rx_sup_broadcast;
+};
+
+struct n2n_edge {
+	n2n_priv_config_t   priv_conf;
+	n2n_edge_conf_t     conf;
+
+	/* Status */
+	uint8_t             sn_idx;                 /**< Currently active supernode. */
+	uint8_t             sn_wait;                /**< Whether we are waiting for a supernode response. */
+	size_t              sup_attempts;           /**< Number of remaining attempts to this supernode. */
+	tuntap_dev          device;                 /**< All about the TUNTAP device */
+	n2n_trans_op_t      transop;                /**< The transop to use when encoding */
+	n2n_cookie_t        last_cookie;            /**< Cookie sent in last REGISTER_SUPER. */
+	n2n_route_t         *sn_route_to_clean;     /**< Supernode route to clean */
+	n2n_edge_callbacks_t cb;		      /**< API callbacks */
+	void 	              *user_data;             /**< Can hold user data */
+
+	/* Sockets */
+	n2n_sock_t          supernode;
+	int                 udp_sock;
+	int                 udp_mgmt_sock;          /**< socket for status info. */
+
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
+	n2n_sock_t          multicast_peer;         /**< Multicast peer group (for local edges) */
+	int                 udp_multicast_sock;     /**< socket for local multicast registrations. */
+	int                 multicast_joined;       /**< 1 if the group has been joined.*/
+#endif
+
+	/* Peers */
+	struct peer_info *  known_peers;            /**< Edges we are connected to. */
+	struct peer_info *  pending_peers;          /**< Edges we have tried to register with. */
+
+	/* Timers */
+	time_t              last_register_req;      /**< Check if time to re-register with super*/
+	time_t              last_p2p;               /**< Last time p2p traffic was received. */
+	time_t              last_sup;               /**< Last time a packet arrived from supernode. */
+	time_t              start_time;             /**< For calculating uptime */
+
+	/* Statistics */
+	struct n2n_edge_stats stats;
+};
 
 typedef struct sn_stats
 {

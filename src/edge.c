@@ -18,10 +18,6 @@
 
 #include "n2n.h"
 
-#define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
-#define N2N_MACNAMSIZ           18 /* AA:BB:CC:DD:EE:FF + NULL*/
-#define N2N_IF_MODE_SIZE        16 /* static | dhcp */
-
 /* *************************************************** */
 
 /** maximum length of command line arguments */
@@ -44,23 +40,6 @@ static cap_value_t cap_values[] = {
 
 int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
 #endif
-
-/* ***************************************************** */
-
-typedef struct n2n_priv_config {
-  char                tuntap_dev_name[N2N_IFNAMSIZ];
-  char                ip_mode[N2N_IF_MODE_SIZE];
-  char                ip_addr[N2N_NETMASK_STR_SIZE];
-  char                netmask[N2N_NETMASK_STR_SIZE];
-  char                device_mac[N2N_MACNAMSIZ];
-  int                 mtu;
-  uint8_t             got_s;
-  uint8_t             daemon;
-#ifndef WIN32
-  uid_t               userid;
-  gid_t               groupid;
-#endif
-} n2n_priv_config_t;
 
 /* ***************************************************** */
 
@@ -904,16 +883,17 @@ int main(int argc, char* argv[]) {
   /* setgid(0); */
 #endif
 
-  if(tuntap_open(&tuntap, ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
-    return(-1);
-
   if(conf.encrypt_key && !strcmp((char*)conf.community_name, conf.encrypt_key))
     traceEvent(TRACE_WARNING, "Community and encryption key must differ, otherwise security will be compromised");
 
-  if((eee = edge_init(&tuntap, &conf, &rc)) == NULL) {
-    traceEvent(TRACE_ERROR, "Failed in edge_init");
-    exit(1);
-  }
+	if(tuntap_open(&tuntap, ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
+		return(-1);
+
+	if((eee = edge_init(&tuntap, &conf, &rc)) == NULL) {
+		traceEvent(TRACE_ERROR, "Failed in edge_init");
+		exit(1);
+	}
+	memcpy(&(eee->priv_conf), &ec, sizeof(ec));
 
 #ifndef WIN32
   if(ec.daemon) {

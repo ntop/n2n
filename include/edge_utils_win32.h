@@ -16,6 +16,9 @@
  *
  */
 
+#ifndef _EDGE_UTILS_WIN32_H_
+#define _EDGE_UTILS_WIN32_H_
+
 #ifdef WIN32
 
 #include <process.h>
@@ -32,4 +35,6 @@ struct tunread_arg {
 extern HANDLE startTunReadThread(struct tunread_arg *arg);
 
 #endif
+
+#endif /* _EDGE_UTILS_WIN32_H_ */
 
