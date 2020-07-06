@@ -299,6 +299,8 @@ static int process_mgmt(n2n_sn_t *sss,
     uint32_t num_edges = 0;
     ssize_t r;
     struct sn_community *community, *tmp;
+    struct peer_info * peer, *tmpPeer;
+    macstr_t mac_buf;
 
     traceEvent(TRACE_DEBUG, "process_mgmt");
 
@@ -344,6 +346,21 @@ static int process_mgmt(n2n_sn_t *sss,
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "last reg  %lu sec ago\n",
                         (long unsigned int)(now - sss->stats.last_reg_super));
+
+    ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+                        "cur_cmnts");
+    HASH_ITER(hh, sss->communities, community, tmp) {
+      ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+                          " [%s]",
+                          community->community);
+      HASH_ITER(hh, community->edges, peer, tmpPeer) {
+        ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+                            " {%s}",
+                            macaddr_str(mac_buf, peer->mac_addr));
+      }
+    }
+    ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+                        "\n");
 
     r = sendto(sss->mgmt_sock, resbuf, ressize, 0 /*flags*/,
                (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
