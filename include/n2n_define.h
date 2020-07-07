@@ -95,3 +95,7 @@
 #define min(a, b) ((a > b) ? b : a)
 #endif
 
+#ifdef WIN32
+#include <windows.h>
+#define sleep(x) Sleep(x * 1000)
+#endif // WIN32
