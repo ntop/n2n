@@ -124,8 +124,8 @@ static void help() {
 #endif /* #ifndef WIN32 */
 #ifdef __linux__
 	 "[-T <tos>]"
-	 "[-n cidr:gateway] "
 #endif
+	 "[-n cidr:gateway] "
 	 "[-m <MAC address>] "
 	 "-l <supernode host:port>\n"
 	 "    "
@@ -182,8 +182,8 @@ static void help() {
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
   printf("-T <tos>                 | TOS for packets (e.g. 0x48 for SSH like priority)\n");
-  printf("-n <cidr:gateway>        | Route an IPv4 network via the gw. Use 0.0.0.0/0 for the default gw. Can be set multiple times.\n");
 #endif
+  printf("-n <cidr:gateway>        | Route an IPv4 network via the gw. Use 0.0.0.0/0 for the default gw. Can be set multiple times.\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
@@ -443,8 +443,9 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
 
       break;
     }
+#endif
 
-  case 'n':
+    case 'n':
     {
       char cidr_net[64], gateway[64];
       n2n_route_t route;
@@ -480,7 +481,6 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
 
       break;
     }
-#endif
 
   case 's': /* Subnet Mask */
     {

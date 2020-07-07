@@ -2389,6 +2389,26 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
   }
 #endif
 
+#ifdef WIN32
+  int i;
+  char cmd[256];
+
+  for (i = 0; i < num_routes; i++)
+  {
+    n2n_route_t *route = &routes[i];
+    if ((route->net_addr == 0) && (route->net_bitlen == 0))
+    {
+      return (-1);
+    }
+    else
+    {
+      /* ip route add net via n2n_gateway */
+      _snprintf(cmd, sizeof(cmd), "route add %s/%d %s > nul", inet_ntoa(route->net_addr), route->net_bitlen, inet_ntoa(route->gateway));
+      system(cmd);
+    }
+  }
+#endif
+
   return(0);
 }
 
