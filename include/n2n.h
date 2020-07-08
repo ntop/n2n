@@ -65,7 +65,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <unistd.h>
+#include <time.h>
 
 #ifndef WIN32
 #include <unistd.h>

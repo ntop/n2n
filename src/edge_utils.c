@@ -1512,9 +1512,8 @@ void edge_read_from_tap(n2n_edge_t * eee) {
 
   if((len <= 0) || (len > N2N_PKT_BUF_SIZE))
     {
-      traceEvent(TRACE_WARNING, "read()=%d [%d/%s]",
-                (signed int)len, errno, strerror(errno));
-	    traceEvent(TRACE_WARNING, "TAP I/O operation aborted, restart after 10 seconds.");
+      traceEvent(TRACE_WARNING, "read()=%d [%d/%s]",(signed int)len, errno, strerror(errno));
+	    traceEvent(TRACE_WARNING, "TAP I/O operation aborted, restart after 3 seconds.");
 	    sleep(3);
 	    tuntap_close(&(eee->device));
 	    tuntap_open(&(eee->device), eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode, eee->tuntap_priv_conf.ip_addr,
@@ -2391,6 +2390,9 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
 
 #ifdef WIN32
   int i;
+  struct in_addr net_addr, gateway;
+  char c_net_addr[32];
+  char c_gateway[32];
   char cmd[256];
 
   for (i = 0; i < num_routes; i++)
@@ -2398,12 +2400,18 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
     n2n_route_t *route = &routes[i];
     if ((route->net_addr == 0) && (route->net_bitlen == 0))
     {
+      traceEvent(TRACE_NORMAL, "Warning: The 0.0.0.0/0 route settings are not supported on Windows");
       return (-1);
     }
     else
     {
       /* ip route add net via n2n_gateway */
-      _snprintf(cmd, sizeof(cmd), "route add %s/%d %s > nul", inet_ntoa(route->net_addr), route->net_bitlen, inet_ntoa(route->gateway));
+      memcpy(&net_addr, &(route->net_addr), sizeof(net_addr));
+      memcpy(&gateway, &(route->gateway), sizeof(gateway));
+      _snprintf(c_net_addr, sizeof(c_net_addr), inet_ntoa(net_addr));
+      _snprintf(c_gateway, sizeof(c_gateway), inet_ntoa(gateway));
+      _snprintf(cmd, sizeof(cmd), "route add %s/%d %s > nul", c_net_addr, route->net_bitlen, c_gateway);
+      traceEvent(TRACE_NORMAL, "ROUTE CMD = '%s'\n", cmd);
       system(cmd);
     }
   }

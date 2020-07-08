@@ -540,9 +540,9 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap
   u_char c;
 
   while((c = getopt_long(argc, argv,
-			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::H"
+			 "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::Hn:"
 #ifdef __linux__
-			 "T:n:"
+			 "T:"
 #endif
 			 ,
 			 long_options, NULL)) != '?') {
