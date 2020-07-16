@@ -1498,18 +1498,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
   macstr_t            mac_buf;
   ssize_t             len;
 
-#ifdef __ANDROID_NDK__
-  if(uip_arp_len != 0) {
-    len = uip_arp_len;
-    memcpy(eth_pkt, uip_arp_buf, MIN(uip_arp_len, N2N_PKT_BUF_SIZE));
-    traceEvent(TRACE_DEBUG, "ARP reply packet to send");
-  } else {
-#endif /* #ifdef __ANDROID_NDK__ */
-      len = tuntap_read( &(eee->device), eth_pkt, N2N_PKT_BUF_SIZE );
-#ifdef __ANDROID_NDK__
-    }
-#endif /* #ifdef __ANDROID_NDK__ */
-
+  len = tuntap_read( &(eee->device), eth_pkt, N2N_PKT_BUF_SIZE );
   if((len <= 0) || (len > N2N_PKT_BUF_SIZE))
     {
       traceEvent(TRACE_WARNING, "read()=%d [%d/%s]",
@@ -1908,13 +1897,6 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 	      readFromIPSocket(eee, eee->udp_multicast_sock);
       }
 #endif
-
-#ifdef __ANDROID_NDK__
-      if(uip_arp_len != 0) {
-	edge_read_from_tap(eee);
-	uip_arp_len = 0;
-      }
-#endif /* #ifdef __ANDROID_NDK__ */
 
       if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
 	/* Read a cooked socket from the internet socket. Writes on the TAP
