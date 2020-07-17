@@ -1503,11 +1503,11 @@ void edge_read_from_tap(n2n_edge_t * eee) {
     {
       traceEvent(TRACE_WARNING, "read()=%d [%d/%s]",
                 (signed int)len, errno, strerror(errno));
-	    traceEvent(TRACE_WARNING, "TAP I/O operation aborted, restart after 10 seconds.");
-	    sleep(10);
+      traceEvent(TRACE_WARNING, "TAP I/O operation aborted, restart later.");
+      sleep(3);
 	    tuntap_close(&(eee->device));
-	    tuntap_open(&(eee->device), eee->priv_conf.tuntap_dev_name, eee->priv_conf.ip_mode, eee->priv_conf.ip_addr,
-	                eee->priv_conf.netmask, eee->priv_conf.device_mac, eee->priv_conf.mtu);
+	    tuntap_open(&(eee->device), eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode, eee->tuntap_priv_conf.ip_addr,
+	                eee->tuntap_priv_conf.netmask, eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu);
     }
   else
     {

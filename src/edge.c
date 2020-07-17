@@ -273,7 +273,7 @@ static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *optargument, n2n_priv_config_t *ec, n2n_edge_conf_t *conf) {
+static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec, n2n_edge_conf_t *conf) {
   /* traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : ""); */
 
   switch(optkey) {
@@ -536,7 +536,7 @@ static const struct option long_options[] =
 /* *************************************************** */
 
 /* read command line options */
-static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_priv_config_t *ec) {
+static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap_priv_config_t *ec) {
   u_char c;
 
   while((c = getopt_long(argc, argv,
@@ -573,7 +573,7 @@ static char *trim(char *s) {
 /* *************************************************** */
 
 /* parse the configuration file */
-static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_priv_config_t *ec) {
+static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv_config_t *ec) {
   char buffer[4096], *line, *key, *value;
   u_int line_len, opt_name_len;
   FILE *fd;
@@ -791,7 +791,7 @@ int main(int argc, char* argv[]) {
   tuntap_dev tuntap;    /* a tuntap device */
   n2n_edge_t *eee;      /* single instance for this program */
   n2n_edge_conf_t conf; /* generic N2N edge config */
-  n2n_priv_config_t ec; /* config used for standalone program execution */
+  n2n_tuntap_priv_config_t ec; /* config used for standalone program execution */
 #ifndef WIN32
   struct passwd *pw = NULL;
 #endif
@@ -893,7 +893,7 @@ int main(int argc, char* argv[]) {
 		traceEvent(TRACE_ERROR, "Failed in edge_init");
 		exit(1);
 	}
-	memcpy(&(eee->priv_conf), &ec, sizeof(ec));
+	memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
 
 #ifndef WIN32
   if(ec.daemon) {
