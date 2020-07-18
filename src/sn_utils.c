@@ -2,8 +2,6 @@
 #include "header_encryption.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
-#define N2N_SN_LPORT_DEFAULT 7654
-#define N2N_SN_PKTBUF_SIZE 2048
 
 static int try_forward(n2n_sn_t * sss,
 		       const struct sn_community *comm,
