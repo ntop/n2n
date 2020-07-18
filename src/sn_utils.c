@@ -807,7 +807,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
 #ifdef WIN32
                     traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
-                    keep_running = 0;
+                    *keep_running = 0;
                     break;
                 }
 
@@ -831,7 +831,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
                 if (bread <= 0)
                 {
                     traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
-                    keep_running = 0;
+                    *keep_running = 0;
                     break;
                 }
 
