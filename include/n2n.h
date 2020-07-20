@@ -115,11 +115,6 @@ typedef struct ether_hdr ether_hdr_t;
 #endif
 
 #ifdef __ANDROID_NDK__
-#undef N2N_HAVE_DAEMON
-#undef N2N_HAVE_SETUID
-#undef N2N_CAN_NAME_IFACE
-#include <tun2tap/tun2tap.h>
-#include <edge_jni/edge_jni.h>
 #define ARP_PERIOD_INTERVAL             (10) /* sec */
 #endif /* #ifdef __ANDROID_NDK__ */
 
@@ -377,9 +372,6 @@ typedef struct n2n_sn
 #include "header_encryption.h"
 #include "twofish.h"
 
-#ifdef __ANDROID_NDK__
-#include <android/log.h>
-#endif /* #ifdef __ANDROID_NDK__ */
 #ifndef TRACE_ERROR
 #define TRACE_ERROR     0, __FILE__, __LINE__
 #define TRACE_WARNING   1, __FILE__, __LINE__
