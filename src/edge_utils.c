@@ -1982,6 +1982,8 @@ void edge_term(n2n_edge_t * eee) {
 
   edge_cleanup_routes(eee);
 
+  closeTraceFile();
+
   free(eee);
 }
 

@@ -398,6 +398,7 @@ void setTraceLevel(int level);
 void setUseSyslog(int use_syslog);
 void setTraceFile(FILE *f);
 int getTraceLevel();
+void closeTraceFile();
 void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
 
 /* Tuntap API */
