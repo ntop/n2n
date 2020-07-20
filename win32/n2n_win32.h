@@ -11,6 +11,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#define WIN32_LEAN_AND_MEAN
+
 #if defined(__MINGW32__)
 /* should be defined here and before winsock gets included */
 #ifndef _WIN32_WINNT
@@ -106,6 +108,6 @@ typedef struct tuntap_dev {
 } tuntap_dev;
 
 #define index(a, b) strchr(a, b)
-
+#define sleep(x) Sleep(x * 1000)
 
 #endif

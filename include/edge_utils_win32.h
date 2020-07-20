@@ -21,8 +21,11 @@
 
 #ifdef WIN32
 
+#define WIN32_LEAN_AND_MEAN
+
 #include <process.h>
 #include <n2n.h>
+
 
 /* Multicast peers discovery disabled due to https://github.com/ntop/n2n/issues/65 */
 #define SKIP_MULTICAST_PEERS_DISCOVERY
@@ -34,7 +37,8 @@ struct tunread_arg {
 
 extern HANDLE startTunReadThread(struct tunread_arg *arg);
 
-#endif
+
+#endif /* WIN32 */
 
 #endif /* _EDGE_UTILS_WIN32_H_ */
 

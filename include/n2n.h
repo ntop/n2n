@@ -65,7 +65,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
-#include <unistd.h>
+#include <time.h>
 
 #ifndef WIN32
 #include <unistd.h>
@@ -248,7 +248,7 @@ typedef struct n2n_edge_callbacks {
 
 /* ***************************************************** */
 
-typedef struct n2n_priv_config {
+typedef struct n2n_tuntap_priv_config {
 	char                tuntap_dev_name[N2N_IFNAMSIZ];
 	char                ip_mode[N2N_IF_MODE_SIZE];
 	char                ip_addr[N2N_NETMASK_STR_SIZE];
@@ -261,7 +261,7 @@ typedef struct n2n_priv_config {
 	uid_t               userid;
 	gid_t               groupid;
 #endif
-} n2n_priv_config_t;
+} n2n_tuntap_priv_config_t;
 
 /* *************************************************** */
 
@@ -299,7 +299,6 @@ struct n2n_edge_stats {
 };
 
 struct n2n_edge {
-	n2n_priv_config_t   priv_conf;
 	n2n_edge_conf_t     conf;
 
 	/* Status */
@@ -336,6 +335,8 @@ struct n2n_edge {
 
 	/* Statistics */
 	struct n2n_edge_stats stats;
+  /* Tuntap config */
+  n2n_tuntap_priv_config_t tuntap_priv_conf;
 };
 
 typedef struct sn_stats
