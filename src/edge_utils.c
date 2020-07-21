@@ -1825,9 +1825,6 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   time_t lastTransop=0;
   time_t last_purge_known = 0;
   time_t last_purge_pending = 0;
-#ifdef __ANDROID_NDK__
-  time_t lastArpPeriod=0;
-#endif
 
 #ifdef WIN32
   struct tunread_arg arg;
@@ -1941,12 +1938,9 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 	eee->cb.ip_address_changed(eee, old_ip, eee->device.ip_addr);
     }
 
-#ifdef __ANDROID_NDK__
-    if((nowTime - lastArpPeriod) > ARP_PERIOD_INTERVAL) {
-      uip_arp_timer();
-      lastArpPeriod = nowTime;
-    }
-#endif /* #ifdef __ANDROID_NDK__ */
+    if (eee->cb.main_loop_period)
+      eee->cb.main_loop_period(eee, nowTime);
+
   } /* while */
 
 #ifdef WIN32

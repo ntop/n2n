@@ -114,10 +114,6 @@ typedef struct ether_hdr ether_hdr_t;
 #include <zstd.h>
 #endif
 
-#ifdef __ANDROID_NDK__
-#define ARP_PERIOD_INTERVAL             (10) /* sec */
-#endif /* #ifdef __ANDROID_NDK__ */
-
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
@@ -239,6 +235,9 @@ typedef struct n2n_edge_callbacks {
 
   /* Called whenever the IP address of the TAP interface changes. */
   void (*ip_address_changed)(n2n_edge_t *eee, uint32_t old_ip, uint32_t new_ip);
+
+  /* Called periodically in the main loop. */
+  void (*main_loop_period)(n2n_edge_t *eee, time_t now);
 } n2n_edge_callbacks_t;
 
 /* ***************************************************** */
