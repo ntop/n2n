@@ -25,6 +25,9 @@
 #define PURGE_REGISTRATION_FREQUENCY   30
 #define REGISTRATION_TIMEOUT           60
 
+#define TIME_STAMP_FRAME	0x0000001000000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
+#define TIME_STAMP_JITTER	0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another */
+
 static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
 static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
@@ -380,8 +383,8 @@ int sock_equal(const n2n_sock_t * a,
 /* *********************************************** */
 
 #if defined(WIN32) && !defined(__GNUC__)
-static int gettimeofday(struct timeval *tp, void *tzp)
-{
+// REVISIT during the years 2035...2038
+int gettimeofday(struct timeval *tp, void *tzp) {
   time_t clock;
   struct tm tm;
   SYSTEMTIME wtm;
@@ -399,3 +402,63 @@ static int gettimeofday(struct timeval *tp, void *tzp)
   return (0);
 }
 #endif
+
+
+// returns a time stamp for use with replay protection
+// REVISIT during the years 2035...2038
+uint64_t time_stamp (void) {
+
+  struct timeval tod;
+  uint64_t micro_seconds;
+
+  gettimeofday (&tod, NULL);
+  /* We will (roughly) calculate the microseconds since 1970 leftbound into the return value.
+     The leading 32 bits are used for tv_sec. The following 20 bits (sufficent as microseconds
+     fraction never exceeds 1,000,000,) encode the value tv_usec. The remaining lowest 12 bits
+     are kept random for use in IV */
+  micro_seconds = n2n_rand();
+  micro_seconds = ( (((uint64_t)(tod.tv_sec) << 32) + (tod.tv_usec << 12))
+                  |  (micro_seconds >> 52) );
+  // more exact but more costly due to the multiplication:
+  // micro_seconds = (tod.tv_sec * 1000000 + tod.tv_usec) << 12) | ...
+
+  return (micro_seconds);
+}
+
+
+// checks if a provided time stamp is consistent with current time and previously valid time stamps
+// returns the time stamp to store as "last valid time stamp" or zero in case of invalid time stamp
+// uses branchless sign extensio tricks inspired by  https://www.chessprogramming.org/Avoiding_Branches
+// and also  https://hbfs.wordpress.com/2008/08/05/branchless-equivalents-of-simple-functions
+// REVISIT during the years 2035...2038
+uint64_t time_stamp_verify (uint64_t stamp, uint64_t previous_stamp) {
+
+  int64_t diff; // do not change this to unsigned for keeping the following code work
+
+  // is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
+  diff = stamp - previous_stamp + TIME_STAMP_JITTER;
+  if(diff > 0) {
+
+    // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
+    diff = stamp - time_stamp();
+    // branchless abs()
+    diff = (diff + (diff >> 63)) ^ (diff >> 63);
+
+    if(diff < TIME_STAMP_FRAME) {
+
+      // for not allowing to exploit the allowed TIME_STAMP_JITTER to "turn the clock backwards",
+      // return the higher value making use of branchless max()
+      diff = stamp - previous_stamp;
+      diff = stamp - (diff & (diff >> 63));
+      return ((uint64_t)diff);
+
+    } else {
+      traceEvent(TRACE_DEBUG, "time_stamp_verify found a timestamp out of allowed frame.");
+      return (0);
+    }
+
+  } else {
+    traceEvent(TRACE_DEBUG, "time_stamp_verify found a timestamp too old / older than previous.");
+    return (0);
+  }
+}
