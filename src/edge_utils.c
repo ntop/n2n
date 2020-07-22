@@ -2288,92 +2288,137 @@ static int routectl(int cmd, int flags, n2n_route_t *route, int if_idx) {
  * the TAP device is destroyed. */
 static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
 #ifdef __linux__
-  int i;
-
-  for(i=0; i<num_routes; i++) {
-    n2n_route_t *route = &routes[i];
-
-    if((route->net_addr == 0) && (route->net_bitlen == 0)) {
-      /* This is a default gateway rule. We need to:
-       *
-       *  1. Add a route to the supernode via the host internet gateway
-       *  2. Add the new default gateway route
-       *
-       * Instead of modifying the system default gateway, we use the trick
-       * of adding a route to the networks 0.0.0.0/1 and 128.0.0.0/1, thus
-       * covering the whole IPv4 range. Such routes in linux take precedence
-       * over the default gateway (0.0.0.0/0) since are more specific.
-       * This leaves the default gateway unchanged so that after n2n is
-       * stopped the cleanup is easier.
-       * See https://github.com/zerotier/ZeroTierOne/issues/178#issuecomment-204599227
-       */
-      n2n_sock_t sn;
-      n2n_route_t custom_route;
-      uint32_t *a;
-
-      if(eee->sn_route_to_clean) {
-	traceEvent(TRACE_ERROR, "Only one default gateway route allowed");
-	return(-1);
-      }
-
-      if(eee->conf.sn_num != 1) {
-	traceEvent(TRACE_ERROR, "Only one supernode supported with routes");
-	return(-1);
-      }
-
-      if(supernode2addr(&sn, eee->conf.sn_ip_array[0]) < 0)
-	return(-1);
-
-      if(sn.family != AF_INET) {
-	traceEvent(TRACE_ERROR, "Only IPv4 routes supported");
-	return(-1);
-      }
-
-      a = (u_int32_t*)sn.addr.v4;
-      custom_route.net_addr = *a;
-      custom_route.net_bitlen = 32;
-      custom_route.gateway = get_gateway_ip();
-
-      if(!custom_route.gateway) {
-	traceEvent(TRACE_ERROR, "could not determine the gateway IP address");
-	return(-1);
-      }
-
-      /* ip route add supernode via internet_gateway */
-      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, -1) < 0)
-	return(-1);
-
-      /* Save the route to delete it when n2n is stopped */
-      eee->sn_route_to_clean = calloc(1, sizeof(n2n_route_t));
-
-      /* Store a copy of the rules into the runtime to delete it during shutdown */
-      if(eee->sn_route_to_clean)
-	*eee->sn_route_to_clean = custom_route;
-
-      /* ip route add 0.0.0.0/1 via n2n_gateway */
-      custom_route.net_addr = 0;
-      custom_route.net_bitlen = 1;
-      custom_route.gateway = route->gateway;
-
-      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
-	return(-1);
-
-      /* ip route add 128.0.0.0/1 via n2n_gateway */
-      custom_route.net_addr = 128;
-      custom_route.net_bitlen = 1;
-      custom_route.gateway = route->gateway;
-
-      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
-	return(-1);
-    } else {
-      /* ip route add net via n2n_gateway */
-      if(routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, route, eee->device.if_idx) < 0)
-	return(-1);
-    }
-  }
+    return  edge_init_routes_linux(eee, routes, num_routes);
 #endif
 
-  return(0);
+#ifdef WIN32
+  return  edge_init_routes_win(eee, routes, num_routes);
+#endif
+}
+
+static int edge_init_routes_linux(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
+#ifdef __linux__
+    int i;
+    for (i = 0; i<num_routes; i++) {
+        n2n_route_t *route = &routes[i];
+
+        if ((route->net_addr == 0) && (route->net_bitlen == 0)) {
+            /* This is a default gateway rule. We need to:
+            *
+            *  1. Add a route to the supernode via the host internet gateway
+            *  2. Add the new default gateway route
+            *
+            * Instead of modifying the system default gateway, we use the trick
+            * of adding a route to the networks 0.0.0.0/1 and 128.0.0.0/1, thus
+            * covering the whole IPv4 range. Such routes in linux take precedence
+            * over the default gateway (0.0.0.0/0) since are more specific.
+            * This leaves the default gateway unchanged so that after n2n is
+            * stopped the cleanup is easier.
+            * See https://github.com/zerotier/ZeroTierOne/issues/178#issuecomment-204599227
+            */
+            n2n_sock_t sn;
+            n2n_route_t custom_route;
+            uint32_t *a;
+
+            if (eee->sn_route_to_clean) {
+                traceEvent(TRACE_ERROR, "Only one default gateway route allowed");
+                return(-1);
+            }
+
+            if (eee->conf.sn_num != 1) {
+                traceEvent(TRACE_ERROR, "Only one supernode supported with routes");
+                return(-1);
+            }
+
+            if (supernode2addr(&sn, eee->conf.sn_ip_array[0]) < 0)
+                return(-1);
+
+            if (sn.family != AF_INET) {
+                traceEvent(TRACE_ERROR, "Only IPv4 routes supported");
+                return(-1);
+            }
+
+            a = (u_int32_t*)sn.addr.v4;
+            custom_route.net_addr = *a;
+            custom_route.net_bitlen = 32;
+            custom_route.gateway = get_gateway_ip();
+
+            if (!custom_route.gateway) {
+                traceEvent(TRACE_ERROR, "could not determine the gateway IP address");
+                return(-1);
+            }
+
+            /* ip route add supernode via internet_gateway */
+            if (routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, -1) < 0)
+                return(-1);
+
+            /* Save the route to delete it when n2n is stopped */
+            eee->sn_route_to_clean = calloc(1, sizeof(n2n_route_t));
+
+            /* Store a copy of the rules into the runtime to delete it during shutdown */
+            if (eee->sn_route_to_clean)
+                *eee->sn_route_to_clean = custom_route;
+
+            /* ip route add 0.0.0.0/1 via n2n_gateway */
+            custom_route.net_addr = 0;
+            custom_route.net_bitlen = 1;
+            custom_route.gateway = route->gateway;
+
+            if (routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
+                return(-1);
+
+            /* ip route add 128.0.0.0/1 via n2n_gateway */
+            custom_route.net_addr = 128;
+            custom_route.net_bitlen = 1;
+            custom_route.gateway = route->gateway;
+
+            if (routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, &custom_route, eee->device.if_idx) < 0)
+                return(-1);
+        }
+        else {
+            /* ip route add net via n2n_gateway */
+            if (routectl(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_EXCL, route, eee->device.if_idx) < 0)
+                return(-1);
+        }
+    }
+#endif
+
+    return(0);
+}
+
+static int edge_init_routes_win(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes)
+{
+#ifdef WIN32
+    int i;
+    struct in_addr net_addr, gateway;
+    char c_net_addr[32];
+    char c_gateway[32];
+    char cmd[256];
+
+    for (i = 0; i < num_routes; i++)
+    {
+        n2n_route_t *route = &routes[i];
+        if ((route->net_addr == 0) && (route->net_bitlen == 0))
+        {
+            traceEvent(TRACE_NORMAL, "Warning: The 0.0.0.0/0 route settings are not supported on Windows");
+            return (-1);
+        }
+        else
+        {
+            /* ip route add net via n2n_gateway */
+            memcpy(&net_addr, &(route->net_addr), sizeof(net_addr));
+            memcpy(&gateway, &(route->gateway), sizeof(gateway));
+            _snprintf(c_net_addr, sizeof(c_net_addr), inet_ntoa(net_addr));
+            _snprintf(c_gateway, sizeof(c_gateway), inet_ntoa(gateway));
+            _snprintf(cmd, sizeof(cmd), "route add %s/%d %s > nul", c_net_addr, route->net_bitlen, c_gateway);
+            traceEvent(TRACE_NORMAL, "ROUTE CMD = '%s'\n", cmd);
+            system(cmd);
+        }
+     }
+
+#endif // WIN32
+
+    return (0);
 }
 
 /* ************************************** */
