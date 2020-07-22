@@ -428,12 +428,10 @@ uint64_t time_stamp (void) {
 
 // checks if a provided time stamp is consistent with current time and previously valid time stamps
 // returns the time stamp to store as "last valid time stamp" or zero in case of invalid time stamp
-// uses branchless sign extensio tricks inspired by  https://www.chessprogramming.org/Avoiding_Branches
-// and also  https://hbfs.wordpress.com/2008/08/05/branchless-equivalents-of-simple-functions
 // REVISIT during the years 2035...2038
 uint64_t time_stamp_verify (uint64_t stamp, uint64_t previous_stamp) {
 
-  int64_t diff; // do not change this to unsigned for keeping the following code work
+  int64_t diff; // do not change to unsigned
 
   // is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
   diff = stamp - previous_stamp + TIME_STAMP_JITTER;
@@ -441,16 +439,14 @@ uint64_t time_stamp_verify (uint64_t stamp, uint64_t previous_stamp) {
 
     // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
     diff = stamp - time_stamp();
-    // branchless abs()
-    diff = (diff + (diff >> 63)) ^ (diff >> 63);
+    // abs()
+    diff = (diff < 0 ? -diff : diff);
 
     if(diff < TIME_STAMP_FRAME) {
 
       // for not allowing to exploit the allowed TIME_STAMP_JITTER to "turn the clock backwards",
-      // return the higher value making use of branchless max()
-      diff = stamp - previous_stamp;
-      diff = stamp - (diff & (diff >> 63));
-      return ((uint64_t)diff);
+      // return the higher value, max()
+      return (stamp > previous_stamp ? stamp : previous_stamp);
 
     } else {
       traceEvent(TRACE_DEBUG, "time_stamp_verify found a timestamp out of allowed frame.");
