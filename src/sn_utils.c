@@ -388,7 +388,7 @@ static int sendto_mgmt(n2n_sn_t *sss,
 
   if (r <= 0) {
     ++(sss->stats.errors);
-    traceEvent (TRACE_ERROR, "process_mgmt : sendto failed. %s", strerror (errno));
+    traceEvent (TRACE_ERROR, "sendto_mgmt : sendto failed. %s", strerror (errno));
     return -1;
   }
   return 0;
