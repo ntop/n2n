@@ -99,8 +99,6 @@
 #include <immintrin.h>
 #endif
 
-#define SAFE_SNPRINTF(BUF, SIZE, FORMAT, ...) (ssize_t)(SIZE) > 0 ? snprintf(BUF, SIZE, FORMAT, ##__VA_ARGS__) : 0
-
 #define ETH_ADDR_LEN 6
 
 struct ether_hdr

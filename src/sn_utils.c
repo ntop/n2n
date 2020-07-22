@@ -302,10 +302,10 @@ static int process_mgmt(n2n_sn_t *sss,
 
     traceEvent(TRACE_DEBUG, "process_mgmt");
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "----------------\n");
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "uptime    %lu\n", (now - sss->start_time));
 
     HASH_ITER(hh, sss->communities, community, tmp)
@@ -313,54 +313,54 @@ static int process_mgmt(n2n_sn_t *sss,
         num_edges += HASH_COUNT(community->edges);
     }
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "edges     %u\n",
                         num_edges);
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "errors    %u\n",
                         (unsigned int)sss->stats.errors);
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "reg_sup   %u\n",
                         (unsigned int)sss->stats.reg_super);
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "reg_nak   %u\n",
                         (unsigned int)sss->stats.reg_super_nak);
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "fwd       %u\n",
                         (unsigned int)sss->stats.fwd);
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "broadcast %u\n",
                         (unsigned int)sss->stats.broadcast);
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "last fwd  %lu sec ago\n",
                         (long unsigned int)(now - sss->stats.last_fwd));
 
-    ressize += SAFE_SNPRINTF(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "last reg  %lu sec ago\n",
                         (long unsigned int)(now - sss->stats.last_reg_super));
 
-    ressize += SAFE_SNPRINTF(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+    ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                         "cur_cmnts");
     HASH_ITER(hh, sss->communities, community, tmp) {
-      ressize += SAFE_SNPRINTF(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+      ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                           " [%s]",
                           community->community);
       HASH_ITER(hh, community->edges, peer, tmpPeer) {
-        ressize += SAFE_SNPRINTF(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+        ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                             " {%s}",
                             macaddr_str(mac_buf, peer->mac_addr));
       }
     }
-    ressize += SAFE_SNPRINTF(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
+    ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                         "\n");
 
-    r = sendto(sss->mgmt_sock, resbuf, MIN(ressize, N2N_SN_PKTBUF_SIZE), 0 /*flags*/,
+    r = sendto(sss->mgmt_sock, resbuf, ressize, 0 /*flags*/,
                (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
 
     if (r <= 0)
