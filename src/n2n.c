@@ -22,9 +22,6 @@
 
 #include <assert.h>
 
-#define PURGE_REGISTRATION_FREQUENCY   30
-#define REGISTRATION_TIMEOUT           60
-
 static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
 static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */

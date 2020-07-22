@@ -30,6 +30,10 @@ static int update_edge(n2n_sn_t *sss,
                        const n2n_sock_t *sender_sock,
                        time_t now);
 
+static int purge_expired_communities(n2n_sn_t *sss,
+                                     time_t* p_last_purge,
+                                     time_t now);
+
 static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
                         const uint8_t *mgmt_buf,
@@ -284,6 +288,35 @@ static int update_edge(n2n_sn_t *sss,
 
     scan->last_seen = now;
     return 0;
+}
+
+static int purge_expired_communities(n2n_sn_t *sss,
+                                     time_t* p_last_purge,
+                                     time_t now)
+{
+  struct sn_community *comm, *tmp;
+  size_t num_reg = 0;
+
+  if ((now - (*p_last_purge)) < PURGE_REGISTRATION_FREQUENCY) return 0;
+
+  traceEvent(TRACE_DEBUG, "Purging old communities and edges");
+
+  HASH_ITER(hh, sss->communities, comm, tmp) {
+    num_reg += purge_peer_list(&comm->edges, now - REGISTRATION_TIMEOUT);
+    if ((comm->edges == NULL) && (!sss->lock_communities)) {
+      traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
+      if (NULL != comm->header_encryption_ctx)
+        /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
+        free(comm->header_encryption_ctx);
+      HASH_DEL(sss->communities, comm);
+      free(comm);
+    }
+  }
+  (*p_last_purge) = now;
+
+  traceEvent(TRACE_DEBUG, "Remove %ld edges", num_reg);
+
+  return 0;
 }
 
 static int process_mgmt(n2n_sn_t *sss,
@@ -759,7 +792,6 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
 {
     uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
     time_t last_purge_edges = 0;
-    struct sn_community *comm, *tmp;
 
     sss->start_time = time(NULL);
 
@@ -844,20 +876,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
             traceEvent(TRACE_DEBUG, "timeout");
         }
 
-        HASH_ITER(hh, sss->communities, comm, tmp)
-        {
-            purge_expired_registrations(&comm->edges, &last_purge_edges);
-
-            if ((comm->edges == NULL) && (!sss->lock_communities))
-            {
-                traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
-                if (NULL != comm->header_encryption_ctx)
-		    /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
-                    free (comm->header_encryption_ctx);
-		HASH_DEL(sss->communities, comm);
-                free(comm);
-            }
-        }
+        purge_expired_communities(sss, &last_purge_edges, now);
 
     } /* while */
 
