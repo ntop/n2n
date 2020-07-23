@@ -17,7 +17,6 @@
  */
 
 #include "n2n.h"
-#include "header_encryption.h"
 #include "edge_utils_win32.h"
 
 /* heap allocation for compression as per lzo example doc */
@@ -731,7 +730,8 @@ static void send_register_super(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx,
+                                        time_stamp (), pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, supernode);
 }
@@ -763,7 +763,8 @@ static void send_query_peer( n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED){
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx,
+                                        time_stamp (), pearson_hash_16 (pktbuf, idx));
 	}
     sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
 }
@@ -810,7 +811,8 @@ static void send_register(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx,
+                                        time_stamp (), pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -853,7 +855,8 @@ static void send_register_ack(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-                                        eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
+                                        eee->conf.header_iv_ctx,
+                                        time_stamp (), pearson_hash_16 (pktbuf, idx));
 
   /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
 }
@@ -1471,7 +1474,8 @@ void edge_send_packet2net(n2n_edge_t * eee,
 
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
     packet_header_encrypt (pktbuf, headerIdx, eee->conf.header_encryption_ctx,
-                                              eee->conf.header_iv_ctx, pearson_hash_16 (pktbuf, idx));
+                                              eee->conf.header_iv_ctx,
+                                              time_stamp (), pearson_hash_16 (pktbuf, idx));
 
 #ifdef MTU_ASSERT_VALUE
   {
@@ -1564,6 +1568,7 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   n2n_sock_t          sender;
   n2n_sock_t *        orig_sender=NULL;
   time_t              now=0;
+  uint64_t 	      stamp = 0;
 
   size_t              i;
 
@@ -1601,10 +1606,16 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
     uint16_t checksum = 0;
     if( packet_header_decrypt (udp_buf, recvlen, (char *)eee->conf.community_name, eee->conf.header_encryption_ctx,
-                               eee->conf.header_iv_ctx, &checksum) == 0) {
+                               eee->conf.header_iv_ctx,
+                               &stamp, &checksum) == 0) {
       traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
       return;
     }
+
+    // time stamp verification follows in the packet specific section as it requires to determine the
+    // sender from the hash list by its MAC, or the packet might be from the supernode, this all depends
+    // on packet type, path taken (via supernode) and packet structure (MAC is not always in the same place)
+
     if (checksum != pearson_hash_16 (udp_buf, recvlen)) {
       traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to checksum error.");
       return;
@@ -1635,6 +1646,15 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	  decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
+// !!!
+/*   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+
+    if ( !time_stamp_verify (stamp, &... !!!) ) {
+      traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to time stamp error.");
+      return;
+    }
+  }
+*/
 	  if(is_valid_peer_sock(&pkt.sock))
 	    orig_sender = &(pkt.sock);
 

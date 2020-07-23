@@ -1,5 +1,4 @@
 #include "n2n.h"
-#include "header_encryption.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
@@ -391,6 +390,7 @@ static int process_udp(n2n_sn_t * sss,
   n2n_sock_str_t      sockbuf;
   char                buf[32];
   struct sn_community *comm, *tmp;
+  uint64_t	      stamp;
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -437,7 +437,8 @@ static int process_udp(n2n_sn_t * sss,
         continue;
       uint16_t checksum = 0;
       if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx,
-                                         comm->header_iv_ctx, &checksum)) ) {
+                                         comm->header_iv_ctx,
+                                         &stamp, &checksum)) ) {
        if (checksum != pearson_hash_16 (udp_buf, udp_size)) {
          traceEvent(TRACE_DEBUG, "process_udp dropped packet due to checksum error.");
          return -1;
@@ -537,7 +538,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, oldEncx, comm->header_encryption_ctx,
-                                                 comm->header_iv_ctx, pearson_hash_16 (rec_buf, encx));
+                                                 comm->header_iv_ctx,
+                                                 time_stamp (), pearson_hash_16 (rec_buf, encx));
 
     } else {
       /* Already from a supernode. Nothing to modify, just pass to
@@ -550,7 +552,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (rec_buf, udp_size));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (rec_buf, udp_size));
     }
 
     /* Common section to forward the final product. */
@@ -611,7 +614,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (rec_buf, encx));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (rec_buf, encx));
 
       try_forward(sss, comm, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
@@ -683,7 +687,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (ackbuf, encx));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (ackbuf, encx));
 
       sendto(sss->sock, ackbuf, encx, 0,
 	     (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
@@ -731,7 +736,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (encbuf, encx));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (encbuf, encx));
 
       sendto( sss->sock, encbuf, encx, 0,
 	      (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );

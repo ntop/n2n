@@ -428,6 +428,10 @@ SOCKET open_socket(int local_port, int bind_any);
 int sock_equal( const n2n_sock_t * a,
                        const n2n_sock_t * b );
 
+/* Header encryption */
+uint64_t time_stamp(void);
+int time_stamp_verify (uint64_t stamp, uint64_t * previous_stamp);
+
 /* Operations on peer_info lists. */
 size_t purge_peer_list( struct peer_info ** peer_list,
                         time_t purge_before );

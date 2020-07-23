@@ -25,7 +25,7 @@
 
 uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
 			        char * community_name, he_context_t * ctx,
-				he_context_t * ctx_iv, uint16_t * checksum) {
+				he_context_t * ctx_iv, uint64_t * stamp, uint16_t * checksum) {
 
   // assemble IV
   // the last four are ASCII "n2n!" and do not get overwritten
@@ -35,9 +35,10 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
   // to full 128 bit IV
   memcpy (iv, packet, 12);
 
-  // extract checksum (last 16 bit) blended in IV
+  // extract time stamp (first 64 bit) and checksum (last 16 bit) blended in IV
   speck_he_iv_decrypt (iv, (speck_context_t*)ctx_iv);
   *checksum = be16toh (((uint16_t*)iv)[5]);
+  *stamp    = be64toh (((uint64_t*)iv)[0]);
 
   memcpy (iv, packet, 12);
 
@@ -64,7 +65,7 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
 /* ********************************************************************** */
 
 int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_t * ctx,
-                               he_context_t * ctx_iv, uint16_t checksum) {
+                               he_context_t * ctx_iv, uint64_t stamp, uint16_t checksum) {
 
   uint8_t iv[16];
   uint16_t *iv16 = (uint16_t*)&iv;
@@ -79,7 +80,7 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
 
   memcpy (&packet[16], &packet[00], 4);
 
-  iv64[0] = n2n_rand ();
+  iv64[0] = htobe64 (stamp);
   iv16[4] = n2n_rand ();
   iv16[5] = htobe16 (checksum);
   iv32[3] = htobe32 (magic);

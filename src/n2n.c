@@ -427,14 +427,14 @@ uint64_t time_stamp (void) {
 
 
 // checks if a provided time stamp is consistent with current time and previously valid time stamps
-// returns the time stamp to store as "last valid time stamp" or zero in case of invalid time stamp
+// and, in case of validity, replaces the "last valid time stamp"
 // REVISIT during the years 2035...2038
-uint64_t time_stamp_verify (uint64_t stamp, uint64_t previous_stamp) {
+int time_stamp_verify (uint64_t stamp, uint64_t * previous_stamp) {
 
   int64_t diff; // do not change to unsigned
 
   // is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
-  diff = stamp - previous_stamp + TIME_STAMP_JITTER;
+  diff = stamp - *previous_stamp + TIME_STAMP_JITTER;
   if(diff > 0) {
 
     // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
@@ -445,16 +445,17 @@ uint64_t time_stamp_verify (uint64_t stamp, uint64_t previous_stamp) {
     if(diff < TIME_STAMP_FRAME) {
 
       // for not allowing to exploit the allowed TIME_STAMP_JITTER to "turn the clock backwards",
-      // return the higher value, max()
-      return (stamp > previous_stamp ? stamp : previous_stamp);
+      // set the higher of the values
+      *previous_stamp = (stamp > *previous_stamp ? stamp : *previous_stamp);
+      return (1); // success
 
     } else {
       traceEvent(TRACE_DEBUG, "time_stamp_verify found a timestamp out of allowed frame.");
-      return (0);
+      return (0); // failure
     }
 
   } else {
     traceEvent(TRACE_DEBUG, "time_stamp_verify found a timestamp too old / older than previous.");
-    return (0);
+    return (0); // failure
   }
 }
