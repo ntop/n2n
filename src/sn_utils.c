@@ -439,6 +439,9 @@ static int process_udp(n2n_sn_t * sss,
       if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx,
                                          comm->header_iv_ctx,
                                          &stamp, &checksum)) ) {
+        // time stamp verification follows in the packet specific section as it requires to determine the
+        // sender from the hash list by its MAC, this all depends on packet type and packet structure
+        // (MAC is not always in the same place)
        if (checksum != pearson_hash_16 (udp_buf, udp_size)) {
          traceEvent(TRACE_DEBUG, "process_udp dropped packet due to checksum error.");
          return -1;

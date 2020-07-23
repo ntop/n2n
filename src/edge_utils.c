@@ -1646,17 +1646,19 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	  decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
-// !!!
-/*   if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+	  if(is_valid_peer_sock(&pkt.sock))
+	    orig_sender = &(pkt.sock);
 
-    if ( !time_stamp_verify (stamp, &... !!!) ) {
-      traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to time stamp error.");
-      return;
+/*        // sketch for time stamp verification -- to be implemented !!!
+
+          if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+            // find edge and its specific last time stamp or supernode's one !!!
+            if ( !time_stamp_verify (stamp, &found_time_stamp !!!) ) {
+              traceEvent(TRACE_DEBUG, "readFromIPSocket dropped packet due to time stamp error.");
+              return;
     }
   }
 */
-	  if(is_valid_peer_sock(&pkt.sock))
-	    orig_sender = &(pkt.sock);
 
 	  if(!from_supernode) {
 	    /* This is a P2P packet from the peer. We purge a pending

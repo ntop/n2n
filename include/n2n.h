@@ -197,6 +197,7 @@ struct peer_info {
   time_t              last_seen;
   time_t              last_p2p;
   time_t              last_sent_query;
+  uint64_t            last_valid_time_stamp;
 
   UT_hash_handle hh; /* makes this structure hashable */
 };
@@ -304,8 +305,9 @@ struct n2n_edge {
 	n2n_trans_op_t      transop;                /**< The transop to use when encoding */
 	n2n_cookie_t        last_cookie;            /**< Cookie sent in last REGISTER_SUPER. */
 	n2n_route_t         *sn_route_to_clean;     /**< Supernode route to clean */
-	n2n_edge_callbacks_t cb;		      /**< API callbacks */
-	void 	              *user_data;             /**< Can hold user data */
+	n2n_edge_callbacks_t cb;	            /**< API callbacks */
+	void 	            *user_data;             /**< Can hold user data */
+        uint64_t            sn_last_valid_time_stamp;/*< last valid time stamp from supernode */
 
 	/* Sockets */
 	n2n_sock_t          supernode;
