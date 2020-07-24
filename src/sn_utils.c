@@ -782,7 +782,7 @@ static int process_udp(n2n_sn_t * sss,
     break;
   }
   case MSG_TYPE_REGISTER_ACK:
-    traceEvent(TRACE_DEBUG, "Rx REGISTER_ACK (NOT IMPLEMENTED) SHould not be via supernode");
+    traceEvent(TRACE_DEBUG, "Rx REGISTER_ACK (NOT IMPLEMENTED) Should not be via supernode");
     break;
   case MSG_TYPE_REGISTER_SUPER:
   {

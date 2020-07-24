@@ -103,6 +103,9 @@ static void help() {
 #if defined(N2N_HAVE_DAEMON)
   printf("[-f] ");
 #endif
+#ifndef WIN32
+  printf("[-u <uid> -g <gid>] ");
+#endif /* ifndef WIN32 */
   printf("[-t <mgmt port>] ");
   printf("[-v] ");
   printf("\n\n");
@@ -112,6 +115,10 @@ static void help() {
 #if defined(N2N_HAVE_DAEMON)
   printf("-f        \tRun in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
+#ifndef WIN32
+  printf("-u <UID>\tUser ID (numeric) to use when privileges are dropped.\n");
+  printf("-g <GID>\tGroup ID (numeric) to use when privileges are dropped.\n");
+#endif /* ifndef WIN32 */
   printf("-t <port>\tManagement UDP Port (for multiple supernodes on a machine).\n");
   printf("-v        \tIncrease verbosity. Can be used multiple times.\n");
   printf("-h        \tThis help message.\n");
@@ -134,6 +141,16 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
   case 't': /* mgmt-port */
     sss->mport = atoi(_optarg);
     break;
+
+#ifndef WIN32
+  case 'u': /* unprivileged uid */
+    sss->userid = atoi(_optarg);
+    break;
+
+  case 'g': /* unprivileged uid */
+    sss->groupid = atoi(_optarg);
+    break;
+#endif
 
   case 'c': /* community file */
     load_allowed_sn_community(sss, _optarg);
@@ -168,7 +185,7 @@ static const struct option long_options[] = {
   { "mgmt-port",       required_argument, NULL, 't' },
   { "help"   ,         no_argument,       NULL, 'h' },
   { "verbose",         no_argument,       NULL, 'v' },
-  { NULL,              0,         NULL,  0  }
+  { NULL,              0,                 NULL,  0  }
 };
 
 /* *************************************************** */
@@ -177,7 +194,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fl:t:c:vh",
+  while((c = getopt_long(argc, argv, "fl:u:g:t:c:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);
@@ -335,6 +352,9 @@ static void term_handler(int sig)
 /** Main program entry point from kernel. */
 int main(int argc, char * const argv[]) {
   int rc;
+#ifndef WIN32
+  struct passwd *pw = NULL;
+#endif
 
 	sn_init(&sss_node);
 
@@ -366,11 +386,6 @@ int main(int argc, char * const argv[]) {
   }
 #endif /* #if defined(N2N_HAVE_DAEMON) */
 
-#ifndef WIN32
-  if((getuid() == 0) || (getgid() == 0))
-    traceEvent(TRACE_WARNING, "Running as root is discouraged");
-#endif
-
   traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
   sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/);
@@ -387,6 +402,27 @@ int main(int argc, char * const argv[]) {
     exit(-2);
   } else
     traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", sss_node.mport);
+
+#ifndef WIN32
+  if (((pw = getpwnam ("n2n")) != NULL) || ((pw = getpwnam ("nobody")) != NULL)) {
+    sss_node.userid = sss_node.userid == 0 ? pw->pw_uid : 0;
+    sss_node.groupid = sss_node.groupid == 0 ? pw->pw_gid : 0;
+  }
+  if((sss_node.userid != 0) || (sss_node.groupid != 0)) {
+    traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
+                              (signed int)sss_node.userid, (signed int)sss_node.groupid);
+
+    /* Finished with the need for root privileges. Drop to unprivileged user. */
+    if((setgid(sss_node.groupid) != 0)
+       || (setuid(sss_node.userid) != 0)) {
+      traceEvent(TRACE_ERROR, "Unable to drop privileges [%u/%s]", errno, strerror(errno));
+      exit(1);
+    }
+  }
+
+  if((getuid() == 0) || (getgid() == 0))
+    traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
+#endif
 
   traceEvent(TRACE_NORMAL, "supernode started");
 
