@@ -104,7 +104,8 @@ static void help() {
 	 "or\n"
 	 );
   printf("supernode ");
-  printf("-l <lport> ");
+  printf("-l <local port> ");
+  printf("-t <mgmt port> ");
   printf("-c <path> ");
 #if defined(N2N_HAVE_DAEMON)
   printf("[-f] ");
@@ -112,7 +113,8 @@ static void help() {
   printf("[-v] ");
   printf("\n\n");
 
-  printf("-l <lport>\tSet UDP main listen port to <lport>\n");
+  printf("-l <port>\tSet UDP main listen port to <port>\n");
+  printf("-t <port>\tManagement UDP Port (for multiple supernodes on a machine).\n");
   printf("-c <path>\tFile containing the allowed communities.\n");
 #if defined(N2N_HAVE_DAEMON)
   printf("-f        \tRun in foreground.\n");
@@ -133,6 +135,10 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
   switch(optkey) {
   case 'l': /* local-port */
     sss->lport = atoi(_optarg);
+    break;
+
+  case 't': /* mgmt-port */
+    sss->mport = atoi(_optarg);
     break;
 
   case 'c': /* community file */
@@ -165,6 +171,7 @@ static const struct option long_options[] = {
   { "communities",     required_argument, NULL, 'c' },
   { "foreground",      no_argument,       NULL, 'f' },
   { "local-port",      required_argument, NULL, 'l' },
+  { "mgmt-port",       required_argument, NULL, 't' },
   { "help"   ,         no_argument,       NULL, 'h' },
   { "verbose",         no_argument,       NULL, 'v' },
   { NULL,              0,                 NULL,  0  }
@@ -176,7 +183,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fl:c:vh",
+  while((c = getopt_long(argc, argv, "fl:t:c:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);
@@ -380,12 +387,12 @@ int main(int argc, char * const argv[]) {
     traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (main)", sss_node.lport);
   }
 
-  sss_node.mgmt_sock = open_socket(N2N_SN_MGMT_PORT, 0 /* bind LOOPBACK */);
+  sss_node.mgmt_sock = open_socket(sss_node.mport, 0 /* bind LOOPBACK */);
   if(-1 == sss_node.mgmt_sock) {
     traceEvent(TRACE_ERROR, "Failed to open management socket. %s", strerror(errno));
     exit(-2);
   } else
-    traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", N2N_SN_MGMT_PORT);
+    traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", sss_node.mport);
 
   traceEvent(TRACE_NORMAL, "supernode started");
 
