@@ -105,20 +105,20 @@ static void help() {
 	 );
   printf("supernode ");
   printf("-l <local port> ");
-  printf("-t <mgmt port> ");
   printf("-c <path> ");
 #if defined(N2N_HAVE_DAEMON)
   printf("[-f] ");
 #endif
+  printf("[-t <mgmt port>] ");
   printf("[-v] ");
   printf("\n\n");
 
   printf("-l <port>\tSet UDP main listen port to <port>\n");
-  printf("-t <port>\tManagement UDP Port (for multiple supernodes on a machine).\n");
   printf("-c <path>\tFile containing the allowed communities.\n");
 #if defined(N2N_HAVE_DAEMON)
   printf("-f        \tRun in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
+  printf("-t <port>\tManagement UDP Port (for multiple supernodes on a machine).\n");
   printf("-v        \tIncrease verbosity. Can be used multiple times.\n");
   printf("-h        \tThis help message.\n");
   printf("\n");
@@ -174,7 +174,7 @@ static const struct option long_options[] = {
   { "mgmt-port",       required_argument, NULL, 't' },
   { "help"   ,         no_argument,       NULL, 'h' },
   { "verbose",         no_argument,       NULL, 'v' },
-  { NULL,              0,                 NULL,  0  }
+  { NULL,              0,         NULL,  0  }
 };
 
 /* *************************************************** */
