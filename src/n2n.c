@@ -90,6 +90,12 @@ void closeTraceFile() {
   if (traceFile != NULL && traceFile != stdout) {
     fclose(traceFile);
   }
+#ifndef WIN32
+  if (useSyslog && syslog_opened) {
+    closelog();
+    syslog_opened = 0;
+  }
+#endif
 }
 
 #define N2N_TRACE_DATESIZE 32

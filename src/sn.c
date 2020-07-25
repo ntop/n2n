@@ -356,7 +356,7 @@ int main(int argc, char * const argv[]) {
 
 #if defined(N2N_HAVE_DAEMON)
   if(sss_node.daemon) {
-    useSyslog=1; /* traceEvent output now goes to syslog. */
+    setUseSyslog(1); /* traceEvent output now goes to syslog. */
 
     if(-1 == daemon(0, 0)) {
       traceEvent(TRACE_ERROR, "Failed to become daemon.");
