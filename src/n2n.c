@@ -26,7 +26,8 @@
 #define REGISTRATION_TIMEOUT           60
 
 #define TIME_STAMP_FRAME	0x0000001000000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
-#define TIME_STAMP_JITTER	0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another */
+#define TIME_STAMP_JITTER	0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another 
+                                                      * set to 0x0000000000000000LL if increasing (or equal) time stamps allowed only */
 
 static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
@@ -383,7 +384,6 @@ int sock_equal(const n2n_sock_t * a,
 /* *********************************************** */
 
 #if defined(WIN32) && !defined(__GNUC__)
-// REVISIT during the years 2035...2038
 int gettimeofday(struct timeval *tp, void *tzp) {
   time_t clock;
   struct tm tm;
@@ -405,7 +405,6 @@ int gettimeofday(struct timeval *tp, void *tzp) {
 
 
 // returns a time stamp for use with replay protection
-// REVISIT during the years 2035...2038
 uint64_t time_stamp (void) {
 
   struct timeval tod;
@@ -426,36 +425,44 @@ uint64_t time_stamp (void) {
 }
 
 
+// returns an initial time stamp for use with replay protection
+uint64_t initial_time_stamp (void) {
+
+  return ( time_stamp() - TIME_STAMP_FRAME );
+}
+
+
 // checks if a provided time stamp is consistent with current time and previously valid time stamps
-// and, in case of validity, replaces the "last valid time stamp"
-// REVISIT during the years 2035...2038
-int time_stamp_verify (uint64_t stamp, uint64_t * previous_stamp) {
+// and, in case of validity, updates the "last valid time stamp"
+int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp) {
 
   int64_t diff; // do not change to unsigned
 
-  // is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
-  diff = stamp - *previous_stamp + TIME_STAMP_JITTER;
-  if(diff > 0) {
+  // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
+  diff = stamp - time_stamp();
+  // abs()
+  diff = (diff < 0 ? -diff : diff);
+  if(diff >= TIME_STAMP_FRAME) {
+      traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp out of allowed frame.");
+      return (0); // failure
+  }
 
-    // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
-    diff = stamp - time_stamp();
-    // abs()
-    diff = (diff < 0 ? -diff : diff);
-
-    if(diff < TIME_STAMP_FRAME) {
-
-      // for not allowing to exploit the allowed TIME_STAMP_JITTER to "turn the clock backwards",
-      // set the higher of the values
-      *previous_stamp = (stamp > *previous_stamp ? stamp : *previous_stamp);
-      return (1); // success
-
-    } else {
-      traceEvent(TRACE_DEBUG, "time_stamp_verify found a timestamp out of allowed frame.");
+  // if applicable: is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
+  if(NULL != previous_stamp) {
+    // if no jitter allowed, reset lowest three (random) nybbles; the codnition shoudl already be evaluated by the compiler
+    if(TIME_STAMP_JITTER == 0) {
+      stamp = (stamp >> 12) << 12;
+      *previous_stamp = (*previous_stamp >> 12) << 12;
+    }
+    diff = stamp - *previous_stamp + TIME_STAMP_JITTER;
+    if(diff <= 0) {
+      traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp too old compared to previous.");
       return (0); // failure
     }
-
-  } else {
-    traceEvent(TRACE_DEBUG, "time_stamp_verify found a timestamp too old / older than previous.");
-    return (0); // failure
+    // for not allowing to exploit the allowed TIME_STAMP_JITTER to "turn the clock backwards",
+    // set the higher of the values
+    *previous_stamp = (stamp > *previous_stamp ? stamp : *previous_stamp);
   }
+
+  return (1); // success
 }

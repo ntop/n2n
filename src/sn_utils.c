@@ -41,6 +41,8 @@ static int process_udp(n2n_sn_t *sss,
                        size_t udp_size,
                        time_t now);
 
+/* ************************************** */
+
 static int try_forward(n2n_sn_t * sss,
 		       const struct sn_community *comm,
 		       const n2n_common_t * cmn,
@@ -255,6 +257,7 @@ static int update_edge(n2n_sn_t *sss,
 
         memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
         memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+        scan->last_valid_time_stamp = initial_time_stamp ();
 
         HASH_ADD_PEER(comm->edges, scan);
 
@@ -284,6 +287,32 @@ static int update_edge(n2n_sn_t *sss,
     scan->last_seen = now;
     return 0;
 }
+
+/***
+ *
+ * For a given packet, find the apporopriate internal last valid time stamp for lookup
+ * and verify it (and also update, if applicable).
+ */
+static int find_edge_time_stamp_and_verify (struct peer_info * edges,
+                                           int from_supernode, n2n_mac_t mac,
+                                           uint64_t stamp) {
+
+  uint64_t * previous_stamp = NULL;
+
+  if(!from_supernode) {
+    struct peer_info *edge;
+    HASH_FIND_PEER(edges, mac, edge);
+    if(edge) {
+      // time_stamp_verify_and_update allows the pointer a previous stamp to be NULL
+      // if it is a (so far) unknown edge
+      previous_stamp = &(edge->last_valid_time_stamp);
+    }
+  }
+
+  // failure --> 0;  success --> 1
+  return ( time_stamp_verify_and_update (stamp, previous_stamp) );
+}
+
 
 static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
@@ -512,6 +541,14 @@ static int process_udp(n2n_sn_t * sss,
     sss->stats.last_fwd=now;
     decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
+    // already checked for valid comm
+    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, pkt.srcMac, stamp)) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped PACKET due to time stamp error.");
+        return -1;
+      }
+    }
+
     unicast = (0 == is_multi_broadcast(pkt.dstMac));
 
     traceEvent(TRACE_DEBUG, "RX PACKET (%s) %s -> %s %s",
@@ -585,6 +622,14 @@ static int process_udp(n2n_sn_t * sss,
     sss->stats.last_fwd=now;
     decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
+    // already checked for valid comm
+    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.srcMac, stamp)) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER due to time stamp error.");
+        return -1;
+      }
+    }
+
     unicast = (0 == is_multi_broadcast(reg.dstMac));
 
     if(unicast) {
@@ -640,6 +685,15 @@ static int process_udp(n2n_sn_t * sss,
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
     decode_REGISTER_SUPER(&reg, &cmn, udp_buf, &rem, &idx);
+
+    if (comm) {
+      if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+        if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.edgeMac, stamp)) {
+          traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER due to time stamp error.");
+          return -1;
+        }
+      }
+    }
 
     /*
       Before we move any further, we need to check if the requested
@@ -717,6 +771,14 @@ static int process_udp(n2n_sn_t * sss,
     }
 
     decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
+
+    // already checked for valid comm
+    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, query.srcMac, stamp)) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped QUERY_PEER due to time stamp error.");
+        return -1;
+      }
+    }
 
     traceEvent( TRACE_DEBUG, "Rx QUERY_PEER from %s for %s",
                 macaddr_str( mac_buf,  query.srcMac ),
