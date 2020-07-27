@@ -193,6 +193,7 @@ int sn_init(n2n_sn_t *sss)
 
     sss->daemon = 1; /* By defult run as a daemon. */
     sss->lport = N2N_SN_LPORT_DEFAULT;
+    sss->mport = N2N_SN_MGMT_PORT;
     sss->sock = -1;
     sss->mgmt_sock = -1;
 

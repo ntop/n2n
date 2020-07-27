@@ -361,6 +361,7 @@ typedef struct n2n_sn
     sn_stats_t stats;
     int daemon;           /* If non-zero then daemonise. */
     uint16_t lport;       /* Local UDP port to bind to. */
+    uint16_t mport;       /* Management UDP port to bind to. */
     int sock;             /* Main socket for UDP traffic with edges. */
     int mgmt_sock;        /* management socket. */
     int lock_communities; /* If true, only loaded communities can be used. */
