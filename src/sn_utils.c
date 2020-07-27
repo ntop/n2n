@@ -14,6 +14,11 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
                            const uint8_t *pktbuf,
                            size_t pktsize);
 
+static int sendto_mgmt(n2n_sn_t *sss,
+                       const struct sockaddr_in *sender_sock,
+                       const uint8_t *mgmt_buf,
+                       size_t mgmt_size);
+
 static int try_broadcast(n2n_sn_t * sss,
 		         const struct sn_community *comm,
 			 const n2n_common_t * cmn,
@@ -28,6 +33,10 @@ static int update_edge(n2n_sn_t *sss,
                        struct sn_community *comm,
                        const n2n_sock_t *sender_sock,
                        time_t now);
+
+static int purge_expired_communities(n2n_sn_t *sss,
+                                     time_t* p_last_purge,
+                                     time_t now);
 
 static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
@@ -185,6 +194,7 @@ int sn_init(n2n_sn_t *sss)
 
     sss->daemon = 1; /* By defult run as a daemon. */
     sss->lport = N2N_SN_LPORT_DEFAULT;
+    sss->mport = N2N_SN_MGMT_PORT;
     sss->sock = -1;
     sss->mgmt_sock = -1;
 
@@ -313,6 +323,35 @@ static int find_edge_time_stamp_and_verify (struct peer_info * edges,
   return ( time_stamp_verify_and_update (stamp, previous_stamp) );
 }
 
+static int purge_expired_communities(n2n_sn_t *sss,
+                                     time_t* p_last_purge,
+                                     time_t now)
+{
+  struct sn_community *comm, *tmp;
+  size_t num_reg = 0;
+
+  if ((now - (*p_last_purge)) < PURGE_REGISTRATION_FREQUENCY) return 0;
+
+  traceEvent(TRACE_DEBUG, "Purging old communities and edges");
+
+  HASH_ITER(hh, sss->communities, comm, tmp) {
+    num_reg += purge_peer_list(&comm->edges, now - REGISTRATION_TIMEOUT);
+    if ((comm->edges == NULL) && (!sss->lock_communities)) {
+      traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
+      if (NULL != comm->header_encryption_ctx)
+        /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
+        free(comm->header_encryption_ctx);
+      HASH_DEL(sss->communities, comm);
+      free(comm);
+    }
+  }
+  (*p_last_purge) = now;
+
+  traceEvent(TRACE_DEBUG, "Remove %ld edges", num_reg);
+
+  return 0;
+}
+
 
 static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
@@ -323,10 +362,11 @@ static int process_mgmt(n2n_sn_t *sss,
     char resbuf[N2N_SN_PKTBUF_SIZE];
     size_t ressize = 0;
     uint32_t num_edges = 0;
-    ssize_t r;
+    uint32_t num = 0;
     struct sn_community *community, *tmp;
     struct peer_info * peer, *tmpPeer;
     macstr_t mac_buf;
+    n2n_sock_str_t sockbuf;
 
     traceEvent(TRACE_DEBUG, "process_mgmt");
 
@@ -374,30 +414,46 @@ static int process_mgmt(n2n_sn_t *sss,
                         (long unsigned int)(now - sss->stats.last_reg_super));
 
     ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
-                        "cur_cmnts");
+                        "cur_cmnts %u\n", HASH_COUNT(sss->communities));
     HASH_ITER(hh, sss->communities, community, tmp) {
-      ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
-                          " [%s]",
-                          community->community);
+      ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+                          "community: %s\n", community->community);
+      sendto_mgmt(sss, sender_sock, resbuf, ressize);
+      ressize = 0;
+
+      num = 0;
       HASH_ITER(hh, community->edges, peer, tmpPeer) {
-        ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
-                            " {%s}",
-                            macaddr_str(mac_buf, peer->mac_addr));
+        ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+                            "\t[id: %u][MAC: %s][edge: %s][last seen: %lu sec ago]\n",
+                            ++num, macaddr_str(mac_buf, peer->mac_addr),
+                            sock_to_cstr(sockbuf, &(peer->sock)), now-peer->last_seen);
+
+        sendto_mgmt(sss, sender_sock, resbuf, ressize);
+        ressize = 0;
       }
     }
+
     ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                         "\n");
-
-    r = sendto(sss->mgmt_sock, resbuf, ressize, 0 /*flags*/,
-               (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
-
-    if (r <= 0)
-    {
-        ++(sss->stats.errors);
-        traceEvent(TRACE_ERROR, "process_mgmt : sendto failed. %s", strerror(errno));
-    }
+    sendto_mgmt(sss, sender_sock, resbuf, ressize);
 
     return 0;
+}
+
+static int sendto_mgmt(n2n_sn_t *sss,
+                       const struct sockaddr_in *sender_sock,
+                       const uint8_t *mgmt_buf,
+                       size_t mgmt_size)
+{
+  ssize_t r = sendto(sss->mgmt_sock, mgmt_buf, mgmt_size, 0 /*flags*/,
+                     (struct sockaddr *)sender_sock, sizeof (struct sockaddr_in));
+
+  if (r <= 0) {
+    ++(sss->stats.errors);
+    traceEvent (TRACE_ERROR, "sendto_mgmt : sendto failed. %s", strerror (errno));
+    return -1;
+  }
+  return 0;
 }
 
 /** Examine a datagram and determine what to do with it.
@@ -830,7 +886,6 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
 {
     uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
     time_t last_purge_edges = 0;
-    struct sn_community *comm, *tmp;
 
     sss->start_time = time(NULL);
 
@@ -915,20 +970,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
             traceEvent(TRACE_DEBUG, "timeout");
         }
 
-        HASH_ITER(hh, sss->communities, comm, tmp)
-        {
-            purge_expired_registrations(&comm->edges, &last_purge_edges);
-
-            if ((comm->edges == NULL) && (!sss->lock_communities))
-            {
-                traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
-                if (NULL != comm->header_encryption_ctx)
-		    /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
-                    free (comm->header_encryption_ctx);
-		HASH_DEL(sss->communities, comm);
-                free(comm);
-            }
-        }
+        purge_expired_communities(sss, &last_purge_edges, now);
 
     } /* while */
 

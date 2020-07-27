@@ -2504,6 +2504,7 @@ static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_r
 #ifdef WIN32
   return  edge_init_routes_win(eee, routes, num_routes);
 #endif
+  return 0;
 }
 
 /* ************************************** */
