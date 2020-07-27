@@ -56,6 +56,10 @@ static int purge_expired_communities(n2n_sn_t *sss,
                                      time_t* p_last_purge,
                                      time_t now);
 
+static int sort_communities (n2n_sn_t *sss,
+                             time_t* p_last_sort,
+                             time_t now);
+
 static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
                         const uint8_t *mgmt_buf,
@@ -371,6 +375,36 @@ static int purge_expired_communities(n2n_sn_t *sss,
 }
 
 
+static int number_enc_packets_sort (struct sn_community *a, struct sn_community *b) {
+  // comparison function for sorting communities in descending order of their
+  // number_enc_packets-fields
+  return (b->number_enc_packets - a->number_enc_packets);
+}
+
+static int sort_communities (n2n_sn_t *sss,
+                             time_t* p_last_sort,
+                             time_t now)
+{
+  struct sn_community *comm, *tmp;
+
+  if ((now - (*p_last_sort)) < SORT_COMMUNITIES_INTERVAL) return 0;
+
+  // this routine gets periodically called as defined in SORT_COMMUNITIES_INTERVAL
+  // it sorts the communities in descending order of their number_enc_packets-fields...
+  HASH_SORT(sss->communities, number_enc_packets_sort);
+
+  // ... and afterward resets the number_enc__packets-fields to zero
+  // (other models could reset it to half of their value to respect history)
+  HASH_ITER(hh, sss->communities, comm, tmp) {
+    comm->number_enc_packets = 0;
+  }
+
+  (*p_last_sort) = now;
+
+  return 0;
+}
+
+
 static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
                         const uint8_t *mgmt_buf,
@@ -555,6 +589,9 @@ static int process_udp(n2n_sn_t * sss,
           /* set 'encrypted' in case it is not set yet */
           comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
         }
+        // count the number of encrypted packets for sorting the communities from time to time
+	// for the HASH_ITER a few lines above gets faster for the more busy communities
+        (comm->number_enc_packets)++;
 	// no need to test further communities
         break;
       }
@@ -784,7 +821,7 @@ static int process_udp(n2n_sn_t * sss,
         /* new communities introduced by REGISTERs could not have had encrypted header */
         comm->header_encryption = HEADER_ENCRYPTION_NONE;
 	comm->header_encryption_ctx = NULL;
-
+        comm->number_enc_packets = 0;
 	HASH_ADD_STR(sss->communities, community, comm);
 
 	traceEvent(TRACE_INFO, "New community: %s", comm->community);
@@ -904,6 +941,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
 {
     uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
     time_t last_purge_edges = 0;
+    time_t last_sort_communities = 0;
 
     sss->start_time = time(NULL);
 
@@ -989,7 +1027,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
         }
 
         purge_expired_communities(sss, &last_purge_edges, now);
-
+	sort_communities (sss, &last_sort_communities, now);
     } /* while */
 
     sn_term(sss);

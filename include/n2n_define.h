@@ -38,6 +38,8 @@
 #define PURGE_REGISTRATION_FREQUENCY   30
 #define REGISTRATION_TIMEOUT           60
 
+#define SORT_COMMUNITIES_INTERVAL      90 /* sec. until supernode sorts communities' hash list again */
+
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
 #define IP4_DSTOFFSET 16
