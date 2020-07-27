@@ -35,6 +35,9 @@
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL           (10) /* sec */
 
+#define PURGE_REGISTRATION_FREQUENCY   30
+#define REGISTRATION_TIMEOUT           60
+
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
 #define IP4_DSTOFFSET 16
