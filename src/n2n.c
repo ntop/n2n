@@ -22,6 +22,13 @@
 
 #include <assert.h>
 
+
+#define PURGE_REGISTRATION_FREQUENCY   30
+#define REGISTRATION_TIMEOUT           60
+
+#define TIME_STAMP_FRAME	0x0000001000000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
+#define TIME_STAMP_JITTER	0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another 
+                                                      * set to 0x0000000000000000LL if increasing (or equal) time stamps allowed only */
 static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
 static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
@@ -380,3 +387,88 @@ int sock_equal(const n2n_sock_t * a,
   return(1);
 }
 
+/* *********************************************** */
+
+#if defined(WIN32) && !defined(__GNUC__)
+int gettimeofday(struct timeval *tp, void *tzp) {
+  time_t clock;
+  struct tm tm;
+  SYSTEMTIME wtm;
+  GetLocalTime(&wtm);
+  tm.tm_year = wtm.wYear - 1900;
+  tm.tm_mon = wtm.wMonth - 1;
+  tm.tm_mday = wtm.wDay;
+  tm.tm_hour = wtm.wHour;
+  tm.tm_min = wtm.wMinute;
+  tm.tm_sec = wtm.wSecond;
+  tm.tm_isdst = -1;
+  clock = mktime(&tm);
+  tp->tv_sec = clock;
+  tp->tv_usec = wtm.wMilliseconds * 1000;
+  return (0);
+}
+#endif
+
+
+// returns a time stamp for use with replay protection
+uint64_t time_stamp (void) {
+
+  struct timeval tod;
+  uint64_t micro_seconds;
+
+  gettimeofday (&tod, NULL);
+  /* We will (roughly) calculate the microseconds since 1970 leftbound into the return value.
+     The leading 32 bits are used for tv_sec. The following 20 bits (sufficent as microseconds
+     fraction never exceeds 1,000,000,) encode the value tv_usec. The remaining lowest 12 bits
+     are kept random for use in IV */
+  micro_seconds = n2n_rand();
+  micro_seconds = ( (((uint64_t)(tod.tv_sec) << 32) + (tod.tv_usec << 12))
+                  |  (micro_seconds >> 52) );
+  // more exact but more costly due to the multiplication:
+  // micro_seconds = (tod.tv_sec * 1000000 + tod.tv_usec) << 12) | ...
+
+  return (micro_seconds);
+}
+
+
+// returns an initial time stamp for use with replay protection
+uint64_t initial_time_stamp (void) {
+
+  return ( time_stamp() - TIME_STAMP_FRAME );
+}
+
+
+// checks if a provided time stamp is consistent with current time and previously valid time stamps
+// and, in case of validity, updates the "last valid time stamp"
+int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp) {
+
+  int64_t diff; // do not change to unsigned
+
+  // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
+  diff = stamp - time_stamp();
+  // abs()
+  diff = (diff < 0 ? -diff : diff);
+  if(diff >= TIME_STAMP_FRAME) {
+      traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp out of allowed frame.");
+      return (0); // failure
+  }
+
+  // if applicable: is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
+  if(NULL != previous_stamp) {
+    // if no jitter allowed, reset lowest three (random) nybbles; the codnition shoudl already be evaluated by the compiler
+    if(TIME_STAMP_JITTER == 0) {
+      stamp = (stamp >> 12) << 12;
+      *previous_stamp = (*previous_stamp >> 12) << 12;
+    }
+    diff = stamp - *previous_stamp + TIME_STAMP_JITTER;
+    if(diff <= 0) {
+      traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp too old compared to previous.");
+      return (0); // failure
+    }
+    // for not allowing to exploit the allowed TIME_STAMP_JITTER to "turn the clock backwards",
+    // set the higher of the values
+    *previous_stamp = (stamp > *previous_stamp ? stamp : *previous_stamp);
+  }
+
+  return (1); // success
+}

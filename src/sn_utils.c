@@ -1,5 +1,4 @@
 #include "n2n.h"
-#include "header_encryption.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
@@ -50,6 +49,8 @@ static int process_udp(n2n_sn_t *sss,
                        uint8_t *udp_buf,
                        size_t udp_size,
                        time_t now);
+
+/* ************************************** */
 
 static int try_forward(n2n_sn_t * sss,
 		       const struct sn_community *comm,
@@ -266,6 +267,7 @@ static int update_edge(n2n_sn_t *sss,
 
         memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
         memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+        scan->last_valid_time_stamp = initial_time_stamp ();
 
         HASH_ADD_PEER(comm->edges, scan);
 
@@ -296,6 +298,31 @@ static int update_edge(n2n_sn_t *sss,
     return 0;
 }
 
+/***
+ *
+ * For a given packet, find the apporopriate internal last valid time stamp for lookup
+ * and verify it (and also update, if applicable).
+ */
+static int find_edge_time_stamp_and_verify (struct peer_info * edges,
+                                           int from_supernode, n2n_mac_t mac,
+                                           uint64_t stamp) {
+
+  uint64_t * previous_stamp = NULL;
+
+  if(!from_supernode) {
+    struct peer_info *edge;
+    HASH_FIND_PEER(edges, mac, edge);
+    if(edge) {
+      // time_stamp_verify_and_update allows the pointer a previous stamp to be NULL
+      // if it is a (so far) unknown edge
+      previous_stamp = &(edge->last_valid_time_stamp);
+    }
+  }
+
+  // failure --> 0;  success --> 1
+  return ( time_stamp_verify_and_update (stamp, previous_stamp) );
+}
+
 static int purge_expired_communities(n2n_sn_t *sss,
                                      time_t* p_last_purge,
                                      time_t now)
@@ -324,6 +351,7 @@ static int purge_expired_communities(n2n_sn_t *sss,
 
   return 0;
 }
+
 
 static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
@@ -447,6 +475,7 @@ static int process_udp(n2n_sn_t * sss,
   n2n_sock_str_t      sockbuf;
   char                buf[32];
   struct sn_community *comm, *tmp;
+  uint64_t	      stamp;
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -493,7 +522,11 @@ static int process_udp(n2n_sn_t * sss,
         continue;
       uint16_t checksum = 0;
       if ( (ret = packet_header_decrypt (udp_buf, udp_size, comm->community, comm->header_encryption_ctx,
-                                         comm->header_iv_ctx, &checksum)) ) {
+                                         comm->header_iv_ctx,
+                                         &stamp, &checksum)) ) {
+        // time stamp verification follows in the packet specific section as it requires to determine the
+        // sender from the hash list by its MAC, this all depends on packet type and packet structure
+        // (MAC is not always in the same place)
        if (checksum != pearson_hash_16 (udp_buf, udp_size)) {
          traceEvent(TRACE_DEBUG, "process_udp dropped packet due to checksum error.");
          return -1;
@@ -564,6 +597,14 @@ static int process_udp(n2n_sn_t * sss,
     sss->stats.last_fwd=now;
     decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
+    // already checked for valid comm
+    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, pkt.srcMac, stamp)) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped PACKET due to time stamp error.");
+        return -1;
+      }
+    }
+
     unicast = (0 == is_multi_broadcast(pkt.dstMac));
 
     traceEvent(TRACE_DEBUG, "RX PACKET (%s) %s -> %s %s",
@@ -593,7 +634,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, oldEncx, comm->header_encryption_ctx,
-                                                 comm->header_iv_ctx, pearson_hash_16 (rec_buf, encx));
+                                                 comm->header_iv_ctx,
+                                                 time_stamp (), pearson_hash_16 (rec_buf, encx));
 
     } else {
       /* Already from a supernode. Nothing to modify, just pass to
@@ -606,7 +648,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, idx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (rec_buf, udp_size));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (rec_buf, udp_size));
     }
 
     /* Common section to forward the final product. */
@@ -634,6 +677,14 @@ static int process_udp(n2n_sn_t * sss,
 
     sss->stats.last_fwd=now;
     decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
+
+    // already checked for valid comm
+    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.srcMac, stamp)) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER due to time stamp error.");
+        return -1;
+      }
+    }
 
     unicast = (0 == is_multi_broadcast(reg.dstMac));
 
@@ -667,7 +718,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (rec_buf, encx));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (rec_buf, encx));
 
       try_forward(sss, comm, &cmn, reg.dstMac, rec_buf, encx); /* unicast only */
     } else
@@ -689,6 +741,15 @@ static int process_udp(n2n_sn_t * sss,
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
     decode_REGISTER_SUPER(&reg, &cmn, udp_buf, &rem, &idx);
+
+    if (comm) {
+      if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+        if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.edgeMac, stamp)) {
+          traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER due to time stamp error.");
+          return -1;
+        }
+      }
+    }
 
     /*
       Before we move any further, we need to check if the requested
@@ -739,7 +800,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (ackbuf, encx));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (ackbuf, encx));
 
       sendto(sss->sock, ackbuf, encx, 0,
 	     (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
@@ -766,6 +828,14 @@ static int process_udp(n2n_sn_t * sss,
 
     decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
+    // already checked for valid comm
+    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, query.srcMac, stamp)) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped QUERY_PEER due to time stamp error.");
+        return -1;
+      }
+    }
+
     traceEvent( TRACE_DEBUG, "Rx QUERY_PEER from %s for %s",
                 macaddr_str( mac_buf,  query.srcMac ),
                 macaddr_str( mac_buf2, query.targetMac ) );
@@ -787,7 +857,8 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx,
-                                             comm->header_iv_ctx, pearson_hash_16 (encbuf, encx));
+                                             comm->header_iv_ctx,
+                                             time_stamp (), pearson_hash_16 (encbuf, encx));
 
       sendto( sss->sock, encbuf, encx, 0,
 	      (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
