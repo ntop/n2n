@@ -21,13 +21,7 @@
 #include "n2n.h"
 #include "header_encryption.h"
 
-
-
-
-
 static n2n_sn_t sss_node;
-
-
 
 /** Load the list of allowed communities. Existing/previous ones will be removed
  *

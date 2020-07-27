@@ -1,3 +1,21 @@
+/**
+ * (C) 2007-20 - ntop.org and contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
+ *
+ */
+
 #include "n2n.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
@@ -418,7 +436,7 @@ static int process_mgmt(n2n_sn_t *sss,
     HASH_ITER(hh, sss->communities, community, tmp) {
       ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                           "community: %s\n", community->community);
-      sendto_mgmt(sss, sender_sock, resbuf, ressize);
+      sendto_mgmt(sss, sender_sock, (const uint8_t *)resbuf, ressize);
       ressize = 0;
 
       num = 0;
@@ -428,14 +446,14 @@ static int process_mgmt(n2n_sn_t *sss,
                             ++num, macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)), now-peer->last_seen);
 
-        sendto_mgmt(sss, sender_sock, resbuf, ressize);
+        sendto_mgmt(sss, sender_sock, (const uint8_t *)resbuf, ressize);
         ressize = 0;
       }
     }
 
     ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
                         "\n");
-    sendto_mgmt(sss, sender_sock, resbuf, ressize);
+    sendto_mgmt(sss, sender_sock, (const uint8_t *)resbuf, ressize);
 
     return 0;
 }
