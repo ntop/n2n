@@ -201,4 +201,4 @@ Upon receival, the time stamp as well as the checksum can be extracted from the 
 
 - Valid (remote) time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit can be adjusted by changing the `TIME_STAMP_JITTER` definition.
 
-The way the IV is used for replay protection and for checksumming make enabled header encryption a prerequisite for these features.
+The way the IV is used for replay protection and for checksumming makes enabled header encryption a prerequisite for these features.
