@@ -1702,13 +1702,14 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	     * handle_PACKET to double check this.
 	     */
 	    traceEvent(TRACE_DEBUG, "Got P2P packet");
-	    find_and_remove_peer(&eee->pending_peers, pkt.srcMac);
+      traceEvent(TRACE_DEBUG, "[P2P] Rx data from %s [%u B]", sock_to_cstr(sockbuf1, &sender), recvlen);
+      find_and_remove_peer(&eee->pending_peers, pkt.srcMac);
 	  }
-
-	traceEvent(TRACE_INFO, "Rx PACKET from %s (sender=%s) [%u B]",
-		   sock_to_cstr(sockbuf1, &sender),
-		   sock_to_cstr(sockbuf2, orig_sender),
-		   recvlen);
+    else {
+      /* [PsP] : edge Peer->Supernode->edge Peer */
+      traceEvent(TRACE_DEBUG, "[PsP] Rx data from %s (Via=%s) [%u B]",
+                 sock_to_cstr(sockbuf2, orig_sender), sock_to_cstr(sockbuf1, &sender), recvlen);
+    }
 
 	handle_PACKET(eee, &cmn, &pkt, orig_sender, udp_buf+idx, recvlen-idx);
 	break;
@@ -1750,17 +1751,17 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	   * to double check this.
 	   */
 	  traceEvent(TRACE_DEBUG, "Got P2P register");
-	  find_and_remove_peer(&eee->pending_peers, reg.srcMac);
+    traceEvent(TRACE_NORMAL, "[P2P] Rx REGISTER from %s", sock_to_cstr(sockbuf1, &sender));
+    find_and_remove_peer(&eee->pending_peers, reg.srcMac);
 
 	  /* NOTE: only ACK to peers */
 	  send_register_ack(eee, orig_sender, &reg);
 	}
-
-	traceEvent(TRACE_INFO, "Rx REGISTER src=%s dst=%s from peer %s (%s)",
-		   macaddr_str(mac_buf1, reg.srcMac),
-		   macaddr_str(mac_buf2, reg.dstMac),
-		   sock_to_cstr(sockbuf1, &sender),
-		   sock_to_cstr(sockbuf2, orig_sender));
+  else {
+    traceEvent(TRACE_NORMAL, "[PsP] Rx REGISTER src=%s dst=%s from sn=%s (edge:%s)",
+               macaddr_str(mac_buf1, reg.srcMac), macaddr_str(mac_buf2, reg.dstMac),
+               sock_to_cstr(sockbuf1, &sender), sock_to_cstr(sockbuf2, orig_sender));
+  }
 
 	check_peer_registration_needed(eee, from_supernode, reg.srcMac, orig_sender);
 	break;
