@@ -16,7 +16,15 @@
  *
  */
 
+#ifdef SYS_getrandom
+#include <errno.h>
+#endif
+
 #include "n2n.h"
+
+// syscall and inquiring random number from hardware generators might fail, so we will retry
+#define RND_RETRIES	1000
+
 
 /* The following code offers an alterate pseudo random number generator
    namely XORSHIFT128+ to use instead of C's rand(). Its performance is
@@ -93,24 +101,62 @@ uint64_t n2n_rand () {
    state yet, a call to   n2n_srand ( n2n_seed() )   would do. */
 uint64_t n2n_seed (void) {
 
-  uint64_t seed = 0;
-  uint64_t ret  = 0;
+  uint64_t seed;
+  uint64_t ret;
+  size_t i;
 
 #ifdef SYS_getrandom
-  syscall (SYS_getrandom, &seed, sizeof(seed), GRND_NONBLOCK);
-  ret += seed;
+  int rc = -1;
+  for(i = 0; (i < RND_RETRIES) && (rc != sizeof(seed)); i++) {
+    rc = syscall (SYS_getrandom, &seed, sizeof(seed), GRND_NONBLOCK);
+    // if successful, rc should contain the requested number of random bytes
+    if(rc != sizeof(seed)) {
+      if (errno != EAGAIN) {
+        traceEvent(TRACE_ERROR, "n2n_seed faced error errno=%u from getrandom syscall.", errno);
+        break;
+      }
+    }
+  }
+  // if we still see an EAGAIN error here, we must have run out of retries
+  if(errno == EAGAIN) {
+    traceEvent(TRACE_ERROR, "n2n_seed saw getrandom syscall indicate not being able to provide enough entropy yet.");
+  }
 #endif
+
+  // as we want randomness, it does no harm to add up even uninitialized values or
+  // erroneously arbitrary values returned from the syscall for the first time
+  ret += seed;
 
   // __RDRND__ is set only if architecturual feature is set, e.g. compile with -march=native
 #ifdef __RDRND__
-  _rdrand64_step ((unsigned long long*)&seed);
-  ret += seed;
+  for(i = 0; i < RND_RETRIES; i++) {
+    if(_rdrand64_step ((unsigned long long*)&seed)) {
+      // success!
+      // from now on, we keep this inside the loop because in case of failure
+      // and with unchanged values, we do not want to double the previous value
+      ret += seed;
+      break;
+    }
+    // continue loop to try again otherwise
+  }
+  if(i == RND_RETRIES){
+    traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDRND.");
+  }
 #endif
 
   // __RDSEED__ ist set only if architecturual feature is set, e.g. compile with -march=native
 #ifdef __RDSEED__
-  _rdseed64_step((unsigned long long*)&seed);
-  ret += seed;
+  for(i = 0; i < RND_RETRIES; i++) {
+    if(_rdseed64_step((unsigned long long*)&seed)) {
+      // success!
+      ret += seed;
+      break;
+    }
+    // continue loop to try again otherwise
+  }
+  if(i == RND_RETRIES){
+    traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDSEED.");
+  }
 #endif
 
   /* The WIN32 code is still untested and thus commented
@@ -126,7 +172,7 @@ uint64_t n2n_seed (void) {
   seed = time(NULL); /* UTC in seconds */
   ret += seed;
 
-  seed = clock() * 8996146197;  /* clock() = ticks since program start */
+  seed = clock() * 18444244737;  /* clock() = ticks since program start */
   ret += seed;
 
   return ret;
