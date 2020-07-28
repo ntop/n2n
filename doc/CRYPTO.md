@@ -4,14 +4,14 @@
 
 ### Overview
 
-Payload encryption currently comes four in different flavors from a variety of origins and all with their own specialities. Supported ciphers are enabled using the indicated command line option:
+Payload encryption currently comes in four different flavors from a variety of origins and all with their own specialities. Supported ciphers are enabled using the indicated command line option:
 
 - Twofish in CBC mode (`-A2`)
 - AES in CBC mode (`-A3`)
 - ChaCha20 (CTR) (`-A4`)
 - SPECK in CTR mode (`-A5`)
 
-To renounce encryption, `-A1` enables the so called `null_transform` transmitting all data unencrpytedly.
+To renounce encryption, `-A1` enables the so called `null_transform` transmitting all payload data unencryptedly.
 
 The following chart might help with a quick comparison and to make a decision on what cipher to use:
 
@@ -24,11 +24,11 @@ The following chart might help with a quick comparison and to make a decision on
 
 As the two block ciphers Twofish and AES are used in CBC mode, they require a padding which results in encrypted payload sizes modulo the respective blocksize. Sizewise, this could be considered a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
 
-Note that AES and ChaCha20 only are available if n2n is compiled with openSSL support while Twofish and SPECK always are available as built-ins.
+Note that AES and ChaCha20 are available only if n2n is compiled with openSSL support. n2n will work well without them offering the respectively reduced choice of remaining built-in ciphers (Twofish, SPECK).
 
 ### Twofish
 
-This implementation prepends a 32 bit random value to the plain text. In the `src/transform_tf.c` file, it is called `nonce'. In CBC mode, this basically has the same effect as a respectively shorter IV.
+This implementation prepends a 32 bit random value to the plain text. In the `src/transform_tf.c` file, it is called `nonce`. In CBC mode, this basically has the same effect as a respectively shorter IV.
 
 Padding to the last block happens by filling `0x00`-bytes and indicating their number as the last byte of the block. This could lead to up to 16 extra bytes.
 
@@ -40,7 +40,7 @@ _We might try to find a faster implementation._
 
 ### AES
 
-AES uses the standard way of an IV, but it does not neccessarily transmits the full IV along with the packets. The size of the transmitted part is adjustable by changing the `TRANSOP_AES_IV_SEED_SIZE` definition found in `src/transform_aes.c`. It defaults to 8 meaning that 8 bytes (of max 16) are transmitted. The remaining 8 bytes are fixed, key-derived materiel is used to fill up to full block size. For vrious reasons, a single AES-ECB encryption step is applied to these 16 bytes before they get used as regular IV for AES-CBCing the payload.
+AES uses the standard way of an IV, but it does not neccessarily transmit the full IV along with the packets. The size of the transmitted part is adjustable by changing the `TRANSOP_AES_IV_SEED_SIZE` definition found in `src/transform_aes.c`. It defaults to 8 meaning that 8 bytes (of max 16) are transmitted. The remaining 8 bytes are fixed, key-derived material is used to fill up to full block size. For various reasons, a single AES-ECB encryption step is applied to these 16 bytes before they get used as regular IV for AES-CBCing the payload.
 
 The padding scheme is the same as used with Twofish.
 
@@ -60,11 +60,11 @@ ChaCha20 usually performs faster than AES-CBC.
 
 ### SPECK
 
-SPECK is recommend by the NSA for offical use in case AES implementation is not feasible due to system constraints (performance, size, …). The block cipher is used in CTR mode making it a stream cipher. The random full 128-bit IV is transmitted in plain.
+SPECK is recommended by the NSA for offical use in case AES implementation is not feasible due to system constraints (performance, size, …). The block cipher is used in CTR mode making it a stream cipher. The random full 128-bit IV is transmitted in plain.
 
 On Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4 or AVX2 if available (compile using `-march=native`). On Raspberry's ARM CPU, it is second place behind ChaCha20 and before AES-CBC.
 
-_An ARM specific optimized implementation (NEON?) is still missing. Also, multi-threading might accelerate this cipher on all CPUs with more than one core._
+_Also, multi-threading might accelerate this cipher on all CPUs with more than one core._
 
 ### Random Numbers
 
@@ -74,7 +74,7 @@ Its initialization relies on seeding with a value as random as possible. Various
 
 ### Pearson Hashing
 
-For general purpose hashing, n2n employs Pearson hashing as it offers different hash sizes and is said to not be too collidy. However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash shall proove the knowledge of a secret without showing the secret.
+For general purpose hashing, n2n employs Pearson hashing as it offers variable hash sizes and is said to not be too collidy. However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash shall proove the knowledge of a secret without showing the secret.
 
 _Pearson hashing is tweakable by making your own permutation of the 256 byte table._
 
@@ -125,7 +125,7 @@ In case of a PACKET-type, it is succeeded by the fields depicted below:
 ```
 ### Encryption
 
-If enabled (`-H`), all fields but the Payload (which is handled seperately as outlined above) get encrypted using SPECK in CTR mode. As packet headers need to be decryptable by the supernode and we do not want to add another key (keep it a simple interface), the community name serves as key (keep it secret!) because it is already known to the supernode.
+If enabled (`-H`), all fields but the payload (which is handled seperately as outlined above) get encrypted using SPECK in CTR mode. As packet headers need to be decryptable by the supernode and we do not want to add another key (to keep it a simple interface), the community name serves as key (keep it secret!) because it is already known to the supernode.
 
 The scheme applied tries to maintain compatibility with current packet format and works as follows:
 
@@ -164,17 +164,19 @@ The scheme applied tries to maintain compatibility with current packet format an
 
 - As we use a stream cipher, the IV should be a nonce. The IV plays an additional role sketched later, see the following sections on checksum and replay protection.
 
-- To make a less predictable use of the key space – just think of usually reset MSB of ASCII characters of cimmunity names – we actually use a hash of the community name as key.
+- To make a less predictable use of the key space – just think of usually reset MSB of ASCII characters of community names – we actually use a hash of the community name as key.
 
-Decrpytion checks all known communities (several in case of supernode, only one at edge) as keys. On success, the emerging magic number will reveal the correct community whose name will be copied back to the original fiels allowing for regular packet handling. 
+- Encryption starts at byte number 12 and ends at header's end. It does not comprise the payload which eventually has its own encryption scheme as chosen with the `-A_` options.
 
-Thus, header encryption will only work with previously determined community names introduced to the supernode by `-c <path>` parameter. Also it should be clear that header encryption is a per-community decision, i.e. all nodes and the supernode need to have it enabled. However, the supernode supports encrpyted and unencrypted communities in parallel, it determines their status online at arrival of the first packet. Use a fresh community name for encrypted communities, do not use a previously used one as in unecrpyted communities, the names were openly transmitted.
+Decryption checks all known communities (several in case of supernode, only one at edge) as keys. On success, the emerging magic number will reveal the correct community whose name will be copied back to the original fiels allowing for regular packet handling. 
+
+Thus, header encryption will only work with previously determined community names introduced to the supernode by `-c <path>` parameter. Also it should be clear that header encryption is a per-community decision, i.e. all nodes and the supernode need to have it enabled. However, the supernode supports encrpyted and unencrypted communities in parallel, it determines their status online at arrival of the first packet. Use a fresh community name for encrypted communities, do not use a previously used one of former unecrpyted communities, their names were transmitted openly.
 
 ### Checksum
 
-The whole packet including the eventually present payload is checksummed using a modified Person hashing. It might seem a little short compared to usual message tags of 96 up to 128 bit, especially when using a stream cipher which easily allows for bit-flips. So, the 16-bit checksum is filled up with 80 more bits to obtain 96-bit pre-IV. This pre-IV gets encrypted using a single block-cipher step to get the pseudo-random looking IV. This way, the checksum resists targeted bit-flips as any change to the whole 96-bit IV would render the header un-decryptable.
+The whole packet including the eventually present payload is checksummed using a modified Person hashing. It might seem a little short compared to usual message tags of 96 up to 128 bit, especially when using a stream cipher which easily allows for bit-flips. So, the 16-bit checksum is filled up with 80 more bits to obtain a 96-bit pre-IV. This pre-IV gets encrypted using a single block-cipher step to get the pseudo-random looking IV. This way, the checksum resists targeted bit-flips (to header, payload, and IV) as any change to the whole 96-bit IV would render the header un-decryptable.
 
-The single block-cipher step employs SPECK as it is fast and offers a 96-bit version, the key is derived from the header key – a hash of the hash.
+The single block-cipher step employs SPECK because it is fast, always present as built-in and it offers a 96-bit version. The key is derived from the header key – a hash of the hash.
 
 The checksum gets verified by the edges and the supernode.
 
@@ -185,16 +187,18 @@ The aforementioned fill-up does not completely rely on random bits. A 52-bit tim
 ```
     012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345
    +------------------------------------------------------------------------------------------------+
-   !     52-bit time stamp with microsecond-accuracy    ! 28 pseudo-random bits     !    checksum   !
+   !     52-bit time stamp with microsecond-accuracy    ! 28 pseudo-random bits     !16-bit checksum!
    +------------------------------------------------------------------------------------------------+
 
 ```
 Encrypting this pre-IV with a block cipher step will generate a pseudo-random looking IV which gets written to the packet and used for the header encryption.
 
-Due to the time-stamp encoded, the IV will more likely be unique, e.g. almost assuredly be a nonce.
+Due to the time-stamp encoded, the IV will more likely be unique, e.g. almost assuredly be unique, a real nonce.
 
 Upon receival, the time stamp as well as the checksum can be extracted from the IV by performing a 96-bit block-cipher decryption step. Verification of the time stamp happens in two steps:
 
-- The time stamp is checked against the local clock. It may not deviate more than plus/minus 16 seconds. So, edge and supernode need to keep a somewhat current time. This limit can be adjusted by changing the `TIME_STAMP_FRAME` definition. It is time-zone indifferent as UTC is used.
+- The (remote) time stamp is checked against the local clock. It may not deviate more than plus/minus 16 seconds. So, edges and supernode need to keep a somewhat current time. This limit can be adjusted by changing the `TIME_STAMP_FRAME` definition. It is time-zone indifferent as UTC is used.
 
-- Valid time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit can be adjusted by changing the `TIME_STAMP_JITTER` definition.
+- Valid (remote) time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit can be adjusted by changing the `TIME_STAMP_JITTER` definition.
+
+The way the IV is used for replay protection and for checksumming make enabled header encryption a prerequisite for these features.
