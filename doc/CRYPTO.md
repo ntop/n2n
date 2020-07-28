@@ -162,7 +162,7 @@ The scheme applied tries to maintain compatibility with current packet format an
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-- As we use a stream cipher, the IV should be a nonce. The IV plays an additional role sketched later, see the following sections on checksum and replay protection.
+- As we use a stream cipher, the IV should be a nonce. The IV plays an additional role sketched later, see the following sections on checksum and replay protection. For use in header encryption and decryption, four bytes reading ASCII "n2n!" are appended to the 96-bit IV to internally make it a full 128-bit IV for use with 128-bit block size SPECK in CTR mode.
 
 - To make a less predictable use of the key space – just think of usually reset MSB of ASCII characters of community names – we actually use a hash of the community name as key.
 
