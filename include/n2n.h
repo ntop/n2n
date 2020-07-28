@@ -351,8 +351,9 @@ struct sn_community
   char community[N2N_COMMUNITY_SIZE];
   uint8_t	      header_encryption;      /* Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /* Header encryption cipher context. */
-  he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
+  he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
   struct peer_info *edges; 		      /* Link list of registered edges. */
+  int64_t	      number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
 
   UT_hash_handle hh; /* makes this structure hashable */
 };
