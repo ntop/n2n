@@ -22,9 +22,6 @@
 
 #include "n2n.h"
 
-// syscall and inquiring random number from hardware generators might fail, so we will retry
-#define RND_RETRIES	1000
-
 
 /* The following code offers an alterate pseudo random number generator
    namely XORSHIFT128+ to use instead of C's rand(). Its performance is

@@ -46,6 +46,14 @@
 #define IP4_MIN_SIZE  20
 #define UDP_SIZE      8
 
+/* parameters for replay protection */
+#define TIME_STAMP_FRAME	0x0000001000000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
+#define TIME_STAMP_JITTER	0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another 
+                                                      * set to 0x0000000000000000LL if increasing (or equal) time stamps allowed only */
+
+/* parameter for random number generation */
+#define RND_RETRIES     1000 /* syscall and inquiring random number from hardware generators might fail, so we will retry */
+
 /* N2N compression indicators. */
 /* Compression is disabled by default for outgoing packets if no cli
  * option is given. All edges are built with decompression support so
