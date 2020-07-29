@@ -999,7 +999,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 
   if(from_supernode)
     {
-      if(!memcmp(pkt->dstMac, broadcast_mac, 6))
+      if(!memcmp(pkt->dstMac, broadcast_mac, N2N_MAC_SIZE))
         ++(eee->stats.rx_sup_broadcast);
 
       ++(eee->stats.rx_sup);
@@ -1090,7 +1090,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	  uint8_t *dst_mac = (uint8_t*)eth_payload;
 
 	  /* Note: all elements of the_ip are in network order */
-	  if(!memcmp(dst_mac, broadcast_mac, 6))
+	  if(!memcmp(dst_mac, broadcast_mac, N2N_MAC_SIZE))
 	    traceEvent(TRACE_DEBUG, "Broadcast packet [%s]",
 		       intoa(ntohl(*dst), ip_buf, sizeof(ip_buf)));
 	  else if((*dst != eee->device.ip_addr)) {
@@ -1309,7 +1309,7 @@ static int find_peer_destination(n2n_edge_t * eee,
   int retval=0;
   time_t now = time(NULL);
 
-  if(!memcmp(mac_address, broadcast_mac, 6)) {
+  if(!memcmp(mac_address, broadcast_mac, N2N_MAC_SIZE)) {
     traceEvent(TRACE_DEBUG, "Broadcast destination peer, using supernode");
     memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
     return(0);
@@ -1375,7 +1375,7 @@ static int send_packet(n2n_edge_t * eee,
   else {
     ++(eee->stats.tx_sup);
 
-    if(!memcmp(dstMac, broadcast_mac, 6))
+    if(!memcmp(dstMac, broadcast_mac, N2N_MAC_SIZE))
       ++(eee->stats.tx_sup_broadcast);
   }
 
@@ -1732,14 +1732,14 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  if(is_valid_peer_sock(&reg.sock))
 	    orig_sender = &(reg.sock);
 
-	via_multicast = !memcmp(reg.dstMac, null_mac, 6);
+	via_multicast = !memcmp(reg.dstMac, null_mac, N2N_MAC_SIZE);
 
-	if(via_multicast && !memcmp(reg.srcMac, eee->device.mac_addr, 6)) {
+	if(via_multicast && !memcmp(reg.srcMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
 	  traceEvent(TRACE_DEBUG, "Skipping REGISTER from self");
 	  break;
 	}
 
-	if(!via_multicast && memcmp(reg.dstMac, eee->device.mac_addr, 6)) {
+	if(!via_multicast && memcmp(reg.dstMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
 	  traceEvent(TRACE_DEBUG, "Skipping REGISTER for other peer");
 	  break;
 	}
@@ -1823,6 +1823,11 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 			 sock_to_cstr(sockbuf1, &sender),
 			 sock_to_cstr(sockbuf2, orig_sender),
 			 (unsigned int)eee->sup_attempts);
+
+             if(memcmp(ra.edgeMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
+               traceEvent(TRACE_INFO, "readFromIPSocket dropped REGISTER_SUPER_ACK due to wrong addressing.");
+	       return;
+             }
 
 	      if(0 == memcmp(ra.cookie, eee->last_cookie, N2N_COOKIE_SIZE))
                 {
