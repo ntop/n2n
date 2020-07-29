@@ -1,6 +1,29 @@
 # IPv4 Routing (Linux)
 
-## Assumptions
+## General Remarks
+
+Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding including broadcasts as well as modifying the routing table. 
+
+In this context, the `server` is the edge node which provides access to the remote network/internet, whereas the `client` is the connecting edge node.
+
+In order to enable routing, the `server` must be configured as follows:
+
+1. Add the `-r` option to the edge options to enable routing
+2. Enable packet forwarding with `sudo sysctl -w net.ipv4.ip_forward=1`
+3. Enable IP masquerading: `sudo iptables -t nat -A POSTROUTING -j MASQUERADE`
+
+On the client side, the easiest way to configure routing is via the `-n` option. For example:
+
+- In order to connect to the remote network `192.168.100.0/24`, use `-n 192.168.100.0/24:10.0.0.1`
+- In order to tunnel all the internet traffic, use `-n 0.0.0.0/0:10.0.0.1`
+
+10.0.0.1 is the IP address of the gateway to use to route the specified network. It should correspond to the IP address of the `server` within n2n. Multiple `-n` options can be specified.
+
+As an alternative to the `-n` option, the `ip route` linux command can be manually used. See the [n2n_gateway.sh](doc/n2n_gateway.sh) script for an example. See also the follwing description of other use cases and in depth explanation.
+
+## Special Scenarios
+
+### Assumptions
 
 - There are two Local Area Networks, namely 10.11.12.0/24 (maybe at
   **h**ome) and 192.168.1.0/24 (maybe in **o**ffice).
@@ -14,7 +37,7 @@
   10.99.99.0/24 network.
 - The _iptables_ are flushed.
 
-## Prerequisites
+### Prerequisites
 
 - Both, **h**ickory and **o**scar have ip forwarding enabled: `echo 1 > /proc/sys/net/ipv4/ip_forward` or `sysctl -w net.ipv4.ip_forward=1`. To
   make this setting persistent over reboot, a file containing the line
@@ -25,7 +48,7 @@
   interfaces usually already allow packet forwarding and thus do not need
   any further configuration.
 
-## Reach Complete Office Network from n2n Node at Home
+### Reach Complete Office Network from n2n Node at Home
 
 - To make **h**ickory send all packets with office destination via
   **o**scar, **h**ickory needs to be made aware of where to route this
@@ -75,14 +98,14 @@ sent to **h**ickory, one more step is required:
     `iptables -P FORWARD ACCEPT`
     `iptables -P OUTPUT ACCEPT`
 
-## Reach n2n Node in Office from Whole Home Network
+### Reach n2n Node in Office from Whole Home Network
 
 This is easy:
 
 - Just exchange home and office IP addresses and the computer names in
   the instructions given above.
 
-## Reach Whole Home Network from Whole Office Network
+### Reach Whole Home Network from Whole Office Network
 
 This is not too complicated either. Basically, follow the given example
 above and apply the following changes:
@@ -102,7 +125,7 @@ above and apply the following changes:
   either to the router (best option) or all those computers that shall be
   able to connect to the other network.
 
-## Route All Internet Traffic from n2n Node at Home through Office Network
+### Route All Internet Traffic from n2n Node at Home through Office Network
 
 This scenario could be considered a n2n-tunneled VPN connection which
 also would work for travelling users on their laptop. All external
@@ -141,6 +164,8 @@ accordingly, maybe to Google's 8.8.8.8.
 
 If [DNS leaks](https://en.wikipedia.org/wiki/DNS_leak) do not matter,
 this setup is complete.
+
+### Preventing DNS Leaks
 
 Otherwise, there is more to it: Without changes, all future DNS queries
 go through the home router 10.11.12.1 to the ISP's servers or directly
