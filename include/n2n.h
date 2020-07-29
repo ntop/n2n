@@ -367,6 +367,10 @@ typedef struct n2n_sn
     uint16_t mport;       /* Management UDP port to bind to. */
     int sock;             /* Main socket for UDP traffic with edges. */
     int mgmt_sock;        /* management socket. */
+#ifndef WIN32
+	uid_t userid;
+	gid_t groupid;
+#endif
     int lock_communities; /* If true, only loaded communities can be used. */
     struct sn_community *communities;
 } n2n_sn_t;
