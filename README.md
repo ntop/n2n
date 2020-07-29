@@ -45,10 +45,6 @@ You can create your own infrastructure by setting up a supernode on a public ser
 
 Now the supernode service should be up and running on port 1234. On your edge nodes you can now specify `-l your_supernode_ip:1234` to use it. All the edge nodes must use the same supernode.
 
-## Routing the Traffic
-
-Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding including broadcasts as well as modifying the routing table. Details can be found in the [ROUTING.md](doc/Routing.md) document.
-
 ## Manual Compilation
 
 On linux, compilation from source is straight forward:
@@ -78,13 +74,6 @@ edge can also be run as a service instead of cli:
 You can run multiple edge service instances by creating `/etc/n2n/edge-instance1.conf` and
 starting it with `sudo systemctl start edge@instance1`.
 
-## IPv6 Support
-
-n2n can tunnel IPv6 traffic into the virtual network but does not support
-IPv6 for edge-to-supernode communication yet.
-
-Check out [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more information.
-
 ## Security Considerations
 
 When payload encryption is enabled (provide a key using `-k`), the supernode will not be able to decrypt
@@ -99,6 +88,19 @@ A benchmark of the encryption methods is available when compiled from source wit
 
 The header which contains some metadata like the virtual MAC address of the edge nodes, their IP address
 and the community name optionally can be encrypted applying `-H` on the edges.
+
+## Routing the Traffic
+
+Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`n`). Details can be found in the [Routing.md](doc/Routing.md) document.
+
+## IPv6 Support
+
+n2n can tunnel IPv6 traffic into the virtual network but does not support
+IPv6 for edge-to-supernode communication yet.
+
+Check out [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more information.
+
+
 
 ## Contribution
 
