@@ -91,7 +91,7 @@ and the community name optionally can be encrypted applying `-H` on the edges.
 
 ## Routing the Traffic
 
-Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`n`). Details can be found in the [Routing.md](doc/Routing.md) document.
+Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`-n`). Details can be found in the [Routing.md](doc/Routing.md) document.
 
 ## IPv6 Support
 
