@@ -577,7 +577,7 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
     scan->sock = *peer;
     scan->last_p2p = now;
 
-    traceEvent(TRACE_NORMAL, "P2P connection established: %s [%s]",
+    traceEvent(TRACE_DEBUG, "P2P connection established: %s [%s]",
 	       macaddr_str(mac_buf, mac),
 	       sock_to_cstr(sockbuf, peer));
 
@@ -1794,7 +1794,15 @@ static void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       }
     case MSG_TYPE_REGISTER_SUPER_ACK:
       {
-	n2n_REGISTER_SUPER_ACK_t ra;
+        // Indicates successful connection between the edge and SN nodes
+        static int bTrace = 1;
+        if (bTrace)
+        {
+          traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
+          bTrace = 0;
+        }
+
+        n2n_REGISTER_SUPER_ACK_t ra;
 
 	  if(eee->sn_wait)
             {
