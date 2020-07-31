@@ -17,6 +17,7 @@
  */
 
 #include "n2n.h"
+#include "n2n_regex.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
@@ -228,6 +229,7 @@ int sn_init(n2n_sn_t *sss)
 void sn_term(n2n_sn_t *sss)
 {
     struct sn_community *community, *tmp;
+    struct sn_community_filter *community_filter, *tmp_filter;
 
     if (sss->sock >= 0)
     {
@@ -248,6 +250,12 @@ void sn_term(n2n_sn_t *sss)
           free (community->header_encryption_ctx);
         HASH_DEL(sss->communities, community);
         free(community);
+    }
+
+    HASH_ITER(hh, sss->communities_filters, community_filter, tmp_filter)
+    {
+        HASH_DEL(sss->communities_filters, community_filter);
+        free(community_filter);
     }
 }
 
@@ -812,9 +820,27 @@ static int process_udp(n2n_sn_t * sss,
       not report any message back to the edge to hide the supernode
       existance (better from the security standpoint)
     */
-    if(!comm && !sss->lock_communities) {
-      comm = calloc(1, sizeof(struct sn_community));
+    if(!comm) {
+      // First check if the community name matches the regex filter      
+      if (sss->lock_communities)
+      {
+        struct sn_community_filter *comm_filter, *tmp_filter;
+        int length = 0;
+        int bMatch = 0;
+        HASH_ITER(hh, sss->communities_filters, comm_filter, tmp_filter)
+        {
+          int m = re_match(comm_filter->community_rule, (char *)cmn.community, &length);
+          if (m != -1) {
+            bMatch=1;
+            break;
+          }
+        }
+        if (!bMatch)
+          return -1;   // When the names don't match
+      }
 
+      // Add new matched community name
+      comm = calloc(1, sizeof(struct sn_community));
       if(comm) {
 	strncpy(comm->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
 	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
@@ -827,7 +853,7 @@ static int process_udp(n2n_sn_t * sss,
 	traceEvent(TRACE_INFO, "New community: %s", comm->community);
       }
     }
-
+       
     if(comm) {
       cmn2.ttl = N2N_DEFAULT_TTL;
       cmn2.pc = n2n_register_super_ack;

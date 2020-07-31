@@ -358,6 +358,13 @@ struct sn_community
   UT_hash_handle hh; /* makes this structure hashable */
 };
 
+struct sn_community_filter
+{
+  char community_rule[N2N_COMMUNITY_SIZE];  // Filtered regular expressions
+
+  UT_hash_handle hh; /* makes this structure hashable */
+};
+
 typedef struct n2n_sn
 {
     time_t start_time; /* Used to measure uptime. */
@@ -373,6 +380,7 @@ typedef struct n2n_sn
 #endif
     int lock_communities; /* If true, only loaded communities can be used. */
     struct sn_community *communities;
+    struct sn_community_filter *communities_filters; // Filtered regular expressions list
 } n2n_sn_t;
 
 /* ************************************** */
