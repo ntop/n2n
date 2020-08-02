@@ -1,19 +1,19 @@
 # n2n
 
-n2n is a light VPN software which make it easy to create virtual networks bypassing intermediate firewalls.
+n2n is a light VPN software which makes it easy to create virtual networks bypassing intermediate firewalls.
 
 In order to start using n2n, two elements are required:
 
 - A _supernode_: it allows edge nodes to announce and discover other nodes. It must have a port publicly accessible on internet.
-- _edge_ nodes: the nodes which will be part of the virtual networks
+- _edge_ nodes: the nodes which will be a part of the virtual networks
 
-A virtual network shared between multiple edge nodes in n2n is called a _community_. A single supernode can relay multiple communities and a single PC can be part of multiple communities at the same time. An encryption key can be used by the edge nodes to encrypt the packets within their community.
+A virtual network shared between multiple edge nodes in n2n is called a _community_. A single supernode can relay multiple communities and a single computer can be part of multiple communities at the same time. An encryption key can be used by the edge nodes to encrypt the packets within their community.
 
 n2n tries to establish a direct peer-to-peer connection between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
 
 ## Quick Setup
 
-Some Linux distributions already provide n2n as a package so a simple `sudo apt install n2n` will do the work. Alternatively, up to date packages for most distributions are available on [ntop repositories](http://packages.ntop.org/).
+Some Linux distributions already provide n2n as a package so a simple `sudo apt install n2n` will do the work. Alternatively, up-to-date packages for most distributions are available on [ntop repositories](http://packages.ntop.org/).
 
 On host1 run:
 
@@ -29,7 +29,7 @@ $ sudo edge -c mynetwork -k mysecretpass -a 192.168.100.2 -f -l supernode.ntop.o
 
 Now the two hosts can ping each other.
 
-**IMPORTANT** It is strongly advised to choose a custom community name (`-c`) and a secret encryption key (`-k`) in order to prevent other users to connect to your computer. For privacy and to reduce the above server load, it is also suggested to set up a custom supernode as explained below.
+**IMPORTANT** It is strongly advised to choose a custom community name (`-c`) and a secret encryption key (`-k`) in order to prevent other users from connecting to your computer. For the privacy of your data sent and to reduce the server load of `supernode.ntop.org:7777`, it is also suggested to set up a custom supernode as explained below.
 
 ## Setting up a Custom Supernode
 
@@ -58,10 +58,10 @@ make
 make install
 ```
 
-Parts of the code significantly benefit from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, use `./configure CFLAGS="-O3 -march=native"` for configuration instead.
+Some parts of the code significantly benefit from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, use `./configure CFLAGS="-O3 -march=native"` for configuration instead of `./configure`.
 
-For Windows, check out [Windows.md](doc/Windows.md) for compilation and run instuctions.
-For MacOS, check out [macOS.md](doc/macOS.md).
+For Windows, check out [Windows.md](doc/Windows.md) for compilation and running.
+For MacOS, see [macOS.md](doc/macOS.md).
 
 ## Running edge as a Service
 
@@ -77,10 +77,10 @@ starting it with `sudo systemctl start edge@instance1`.
 ## Security Considerations
 
 When payload encryption is enabled (provide a key using `-k`), the supernode will not be able to decrypt
-the traffic exchanged between two edge nodes, but it will know that edge A is talking with edge B.
+the traffic exchanged between two edge nodes but it will know that edge A is talking with edge B.
 
 The choice of encryption schemes that can be applied to payload has recently been enhanced. Please have
-a look at [CRYPTO.md](doc/CRYPTO.md) for a quick comparison chart to help make a choice. n2n edge nodes use 
+a look at [Crypto.md](doc/Crypto.md) for a quick comparison chart to help make a choice. n2n edge nodes use 
 Twofish encryption by default for compatibility reasons with existing versions. Other ciphers can be chosen
 using the `-A_` option.
 
@@ -98,7 +98,7 @@ Reaching a remote network or tunneling all the internet traffic via n2n are two 
 n2n can tunnel IPv6 traffic into the virtual network but does not support
 IPv6 for edge-to-supernode communication yet.
 
-Check out [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more information.
+Have a look at [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more information.
 
 
 

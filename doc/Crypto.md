@@ -4,7 +4,7 @@
 
 ### Overview
 
-Payload encryption currently comes in four different flavors from a variety of origins and all with their own specialities. Supported ciphers are enabled using the indicated command line option:
+Payload encryption currently comes in four different flavors using ciphers of different origins. Supported ciphers are enabled using the indicated command line option:
 
 - Twofish in CBC mode (`-A2`)
 - AES in CBC mode (`-A3`)
@@ -13,16 +13,16 @@ Payload encryption currently comes in four different flavors from a variety of o
 
 To renounce encryption, `-A1` enables the so called `null_transform` transmitting all payload data unencryptedly.
 
-The following chart might help with a quick comparison and to make a decision on what cipher to use:
+The following chart might help to make a quick comparison and decide what cipher to use:
 
 | Cipher | Mode | Block Size | Key Size         | IV length |Speed | Built-In | Origin |
 | :---:  | :---:| :---:      | :---:            | :---:     |:---: | :---:    | ---    |
-|Twofish | CBC  | 128 bits   | 128 bit (?)      | 32 bit    | -    | Y        | Bruce Schneier |
-|AES     | CBC  | 128 bits   | 128, 192,256 bit | 64 bit    | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
+|Twofish | CBC  | 128 bits   | 256 bit          | 32 bit    | -    | Y        | Bruce Schneier |
+|AES     | CBC  | 128 bits   | 128, 192, 256 bit| 64 bit    | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
 |ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| N        | Daniel J. Bernstein |
 |SPECK   | CTR  | Stream     | 256 bit          | 128 bit   | ++   | Y        | NSA |
 
-As the two block ciphers Twofish and AES are used in CBC mode, they require a padding which results in encrypted payload sizes modulo the respective blocksize. Sizewise, this could be considered a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
+As the two block ciphers Twofish and AES are used in CBC mode, they require a padding which results in encrypted payload size modulo their blocksize. Sizewise, this could be considered as a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
 
 Note that AES and ChaCha20 are available only if n2n is compiled with openSSL support. n2n will work well without them offering the respectively reduced choice of remaining built-in ciphers (Twofish, SPECK).
 
@@ -40,19 +40,21 @@ _We might try to find a faster implementation._
 
 ### AES
 
-AES uses the standard way of an IV, but it does not neccessarily transmit the full IV along with the packets. The size of the transmitted part is adjustable by changing the `TRANSOP_AES_IV_SEED_SIZE` definition found in `src/transform_aes.c`. It defaults to 8 meaning that 8 bytes (of max 16) are transmitted. The remaining 8 bytes are fixed, key-derived material is used to fill up to full block size. For various reasons, a single AES-ECB encryption step is applied to these 16 bytes before they get used as regular IV for AES-CBCing the payload.
+AES uses the standard way of an IV but it does not neccessarily transmit the full IV along with the packets. The size of the transmitted part is adjustable by changing the `TRANSOP_AES_IV_SEED_SIZE` definition found in `src/transform_aes.c`. It defaults to 8 meaning that 8 bytes (of max 16) are transmitted. The remaining 8 bytes are fixed, key-derived material is used to fill up to full block size. A single AES-ECB encryption step is applied to these 16 bytes before they get used as regular IV for AES-CBCing the payload.
 
-The padding scheme is the same as used with Twofish.
+The padding scheme is the same as the one used with Twofish.
 
-AES relies on openSSL's `evp_*` interface which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete to the optimized stream ciphers; maybe AES-CTR being a stream cipher could.
+AES relies on openSSL's `evp_*` interface which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
 
-_Current ideas are to bring CTS mode to AES in some future version, just to avoid unneccessary weight gains from padding. CTS mode works well starting with plain texts from one block plus. So, we might revert back to the Twofish-way of IV handling with a full block IV._
+_Perhaps, AES-CTR being a stream cipher could have competed with the stream ciphers._
+
+_Another possible extension would be to bring CTS mode to AES in some future version, just to avoid unneccessary weight gains from padding. CTS mode works well starting with plain texts from one block plus. So, we might revert back to the Twofish-way of IV handling with a full block IV._
 
 ### ChaCha20
 
 ChaCha20 was the first stream cipher supported by n2n.
 
-It also relies on openSSL's `evp_*` interface. It does not use the Poly1305 message tag from the same author, though. Whole packet's checksum will be handled in the header, see below.
+It also relies on openSSL's `evp_*` interface. It does not use the Poly1305 message tag from the same author though. Whole packet's checksum will be handled in the header (see below).
 
 The random full 128-bit IV is transmitted in plain.
 
@@ -64,21 +66,19 @@ SPECK is recommended by the NSA for offical use in case AES implementation is no
 
 On Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4 or AVX2 if available (compile using `-march=native`). On Raspberry's ARM CPU, it is second place behind ChaCha20 and before AES-CBC.
 
-_Also, multi-threading might accelerate this cipher on all CPUs with more than one core._
-
 ### Random Numbers
 
-Throughout n2n, pseudo-random numbers are generated for several purposes, e.g. random MAC assignment and the IVs for use with the various ciphers. With a view to the IVs, especially for use in the stream ciphers, the pseudo-random numbers shall be as collision-free as possible. n2n uses an implementation of XORSHIFT128+ which shows a periodicity of 2¹²⁸.
+Throughout n2n, pseudo-random numbers are generated for several purposes, e.g. random MAC assignment and the IVs for use with the various ciphers. Regarding IVs, especially for using in the stream ciphers, the pseudo-random numbers shall be as collision-free as possible. n2n uses an implementation of XORSHIFT128+ which shows a periodicity of 2¹²⁸.
 
 Its initialization relies on seeding with a value as random as possible. Various sources are tapped including a syscall to Linux' `SYS_getrandom` as well as Intels hardware random number generators `RDRND` and `RDSEED`, if available (compile using `-march=native`).
 
 ### Pearson Hashing
 
-For general purpose hashing, n2n employs Pearson hashing as it offers variable hash sizes and is said to not be too collidy. However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash shall proove the knowledge of a secret without showing the secret.
+For general purpose hashing, n2n employs Pearson hashing as it offers variable hash sizes and is said not to be too "collidy". However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash shall prove the knowledge of a secret without showing the secret.
 
 _Pearson hashing is tweakable by making your own permutation of the 256 byte table._
 
-_Pearson hashing allows for verifying only parts of the hash – just in case performance requirements would urge to do so._
+_Pearson hashing allows verification of parts of the hash only – just in case performance requirements would urge to do so._
 
 ## Header
 
@@ -144,7 +144,7 @@ The scheme applied tries to maintain compatibility with current packet format an
 16 ! Version=2     ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
-- To later be able to identify a correctly decrpyted header, a magic number is stamped in fourth line starting at byte number 12. We use "n2n" string and add the header length to later be able to stop header decryption right before an eventually following payload begins – in case of PACKET-type, header-length does not equal packet-length.
+- To be able to identify a correctly decrpyted header later on, a magic number is stamped in fourth line starting at byte number 12. We use "n2n" string and add the header length to be able to stop header decryption right before an eventually following payload begins – in case of PACKET-type, header-length does not equal packet-length.
 
 - The rest of the community field, namely the first 12 bytes, is reframed towards a 96-bit IV for the header encryption.  
 ```
@@ -162,15 +162,15 @@ The scheme applied tries to maintain compatibility with current packet format an
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-- As we use a stream cipher, the IV should be a nonce. The IV plays an additional role sketched later, see the following sections on checksum and replay protection. For use in header encryption and decryption, four bytes reading ASCII "n2n!" are appended to the 96-bit IV to internally make it a full 128-bit IV for use with 128-bit block size SPECK in CTR mode.
+- As we use a stream cipher, the IV should be a nonce. The IV plays an additional role sketched later, see the following sections on checksum and replay protection. For use in header encryption and decryption, four bytes reading ASCII "n2n!" are appended to the 96-bit IV hereby internally making it a full 128-bit IV.
 
-- To make a less predictable use of the key space – just think of usually reset MSB of ASCII characters of community names – we actually use a hash of the community name as key.
+- To make a less predictable use of the key space – just think of the typically reset MSB of ASCII characters of community names – we actually use a hash of the community name as key.
 
 - Encryption starts at byte number 12 and ends at header's end. It does not comprise the payload which eventually has its own encryption scheme as chosen with the `-A_` options.
 
-Decryption checks all known communities (several in case of supernode, only one at edge) as keys. On success, the emerging magic number will reveal the correct community whose name will be copied back to the original fiels allowing for regular packet handling. 
+Decryption checks all known communities (several in case of supernode, only one at edge) as keys. On success, the emerging magic number will reveal the correct community whose name will be copied back to the original fields allowing for regular packet handling. 
 
-Thus, header encryption will only work with previously determined community names introduced to the supernode by `-c <path>` parameter. Also it should be clear that header encryption is a per-community decision, i.e. all nodes and the supernode need to have it enabled. However, the supernode supports encrpyted and unencrypted communities in parallel, it determines their status online at arrival of the first packet. Use a fresh community name for encrypted communities, do not use a previously used one of former unecrpyted communities, their names were transmitted openly.
+Thus, header encryption will only work with previously determined community names introduced to the supernode by `-c <path>` parameter. Also, it should be clear that header encryption is a per-community decision, i.e. all nodes and the supernode need to have it enabled. However, the supernode supports encrpyted and unencrypted communities in parallel, it determines their status online at arrival of the first packet. Use a fresh community name for encrypted communities; do not use a previously used one of former unecrpyted communities: their names were transmitted openly.
 
 ### Checksum
 
@@ -193,7 +193,7 @@ The aforementioned fill-up does not completely rely on random bits. A 52-bit tim
 ```
 Encrypting this pre-IV with a block cipher step will generate a pseudo-random looking IV which gets written to the packet and used for the header encryption.
 
-Due to the time-stamp encoded, the IV will more likely be unique, e.g. almost assuredly be unique, a real nonce.
+Due to the time-stamp encoded, the IV will more likely be unique, close to a real nonce.
 
 Upon receival, the time stamp as well as the checksum can be extracted from the IV by performing a 96-bit block-cipher decryption step. Verification of the time stamp happens in two steps:
 
