@@ -9,7 +9,7 @@ In order to start using n2n, two elements are required:
 
 A virtual network shared between multiple edge nodes in n2n is called a _community_. A single supernode can relay multiple communities and a single computer can be part of multiple communities at the same time. An encryption key can be used by the edge nodes to encrypt the packets within their community.
 
-n2n tries to establish a direct peer-to-peer connection between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
+n2n tries to establish a direct peer-to-peer connection via udp between the edge nodes when possible. When this is not possible (usually due to special NAT devices), the supernode is also used to relay the packets.
 
 ## Quick Setup
 
@@ -29,7 +29,7 @@ $ sudo edge -c mynetwork -k mysecretpass -a 192.168.100.2 -f -l supernode.ntop.o
 
 Now the two hosts can ping each other.
 
-**IMPORTANT** It is strongly advised to choose a custom community name (`-c`) and a secret encryption key (`-k`) in order to prevent other users from connecting to your computer. For the privacy of your data sent and to reduce the server load of `supernode.ntop.org:7777`, it is also suggested to set up a custom supernode as explained below.
+**IMPORTANT** It is strongly advised to choose a custom community name (`-c`) and a secret encryption key (`-k`) in order to prevent other users from connecting to your computer. For the privacy of your data sent and to reduce the server load of `supernode.ntop.org`, it is also suggested to set up a custom supernode as explained below.
 
 ## Setting up a Custom Supernode
 
