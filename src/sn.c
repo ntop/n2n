@@ -64,6 +64,8 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
     if(s != NULL) {
       strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE-1);
       s->community[N2N_COMMUNITY_SIZE-1] = '\0';
+      /* loaded from file, this community is not to be unpurgeable */
+      s->purgeable = COMMUNITY_UNPURGEABLE;
       /* we do not know if header encryption is used in this community,
        * first packet will show. just in case, setup the key.           */
       s->header_encryption = HEADER_ENCRYPTION_UNKNOWN;

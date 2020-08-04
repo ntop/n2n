@@ -358,10 +358,10 @@ static int purge_expired_communities(n2n_sn_t *sss,
 
   HASH_ITER(hh, sss->communities, comm, tmp) {
     num_reg += purge_peer_list(&comm->edges, now - REGISTRATION_TIMEOUT);
-    if ((comm->edges == NULL) && (!sss->lock_communities)) {
+    if ((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
       traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
       if (NULL != comm->header_encryption_ctx)
-        /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
+        /* this should not happen as 'purgeable' and thus only communities w/o encrypted header here */
         free(comm->header_encryption_ctx);
       HASH_DEL(sss->communities, comm);
       free(comm);
@@ -818,9 +818,11 @@ static int process_udp(n2n_sn_t * sss,
       if(comm) {
 	strncpy(comm->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
 	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
-        /* new communities introduced by REGISTERs could not have had encrypted header */
+        /* new communities introduced by REGISTERs could not have had encrypted header... */
         comm->header_encryption = HEADER_ENCRYPTION_NONE;
 	comm->header_encryption_ctx = NULL;
+        /* ... and also are purgeable during periodic purge */
+        comm->purgeable = COMMUNITY_PURGEABLE;
         comm->number_enc_packets = 0;
 	HASH_ADD_STR(sss->communities, community, comm);
 
