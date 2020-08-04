@@ -71,6 +71,10 @@
 				 	           bits of transform_id; will be obsolete as soon as compression gets
 						   its own field in the packet. REVISIT then. */
 
+/* (un)purgeable community indicator (supernode) */
+#define COMMUNITY_UNPURGEABLE		0
+#define COMMUNITY_PURGEABLE		1
+
 /* Header encryption indicators */
 #define HEADER_ENCRYPTION_UNKNOWN       0
 #define HEADER_ENCRYPTION_NONE          1
