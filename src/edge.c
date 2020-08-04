@@ -887,9 +887,9 @@ int main(int argc, char* argv[]) {
     traceEvent(TRACE_WARNING, "Community and encryption key must differ, otherwise security will be compromised");
 
 	if(tuntap_open(&tuntap, ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
-		return(-1);
+    exit(1);
 
-	if((eee = edge_init(&tuntap, &conf, &rc)) == NULL) {
+  if((eee = edge_init(&tuntap, &conf, &rc)) == NULL) {
 		traceEvent(TRACE_ERROR, "Failed in edge_init");
 		exit(1);
 	}
