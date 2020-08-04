@@ -735,8 +735,7 @@ static void check_join_multicast_group(n2n_edge_t *eee) {
 /* ************************************** */
 
 /** Send a REGISTER_SUPER packet to the current supernode. */
-static void send_register_super(n2n_edge_t * eee,
-				const n2n_sock_t * supernode) {
+static void send_register_super(n2n_edge_t *eee, const n2n_sock_t *supernode, int sn_idx) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
   size_t idx;
   /* ssize_t sent; */
@@ -751,7 +750,7 @@ static void send_register_super(n2n_edge_t * eee,
   cmn.flags = 0;
   memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
-  for(idx=0; idx < N2N_COOKIE_SIZE; ++idx)
+  for (idx = 0; (sn_idx==0) && (idx < N2N_COOKIE_SIZE); ++idx)
     eee->last_cookie[idx] = n2n_rand() % 0xff;
 
   memcpy(reg.cookie, eee->last_cookie, N2N_COOKIE_SIZE);
@@ -938,7 +937,7 @@ static void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 		 sn_idx+1, eee->conf.sn_num,
 		 supernode_ip(eee), (unsigned int)eee->sup_attempts);
 
-      send_register_super(eee, &(eee->supernode));
+      send_register_super(eee, &(eee->supernode), sn_idx);
     }
   }
 
