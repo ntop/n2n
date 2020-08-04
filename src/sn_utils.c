@@ -812,7 +812,9 @@ static int process_udp(n2n_sn_t * sss,
       not report any message back to the edge to hide the supernode
       existance (better from the security standpoint)
     */
-    if(!comm && !sss->lock_communities) {
+// !!! check if the requested name matches any of the regExps (ITERate)
+// !!! put result in variable uint8_t (or so) "allowed_match"
+    if(!comm && (!sss->lock_communities || allowed_match)) {
       comm = calloc(1, sizeof(struct sn_community));
 
       if(comm) {

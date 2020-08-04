@@ -49,7 +49,8 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
     if((len < 2) || line[0] == '#')
       continue;
-
+// !!! if (isregexp) then add to regExp list [check this using a "meta"-regExp]
+// !!! otherwise (fixed name) do the following
     len--;
     while(len > 0) {
       if((line[len] == '\n') || (line[len] == '\r')) {
