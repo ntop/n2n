@@ -30,6 +30,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
   char buffer[4096], *line;
   FILE *fd = fopen(path, "r");
   struct sn_community *s, *tmp;
+  struct sn_community_regular_expression *re, *tmp_re;
   uint32_t num_communities = 0;
 
   if(fd == NULL) {
@@ -44,13 +45,17 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
     free(s);
   }
 
+  HASH_ITER(hh, sss->rules, re, tmp_re) {
+    HASH_DEL(sss->rules, re);
+    free(re);
+  }
+
   while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
     int len = strlen(line);
 
     if((len < 2) || line[0] == '#')
       continue;
-// !!! if (isregexp) then add to regExp list [check this using a "meta"-regExp]
-// !!! otherwise (fixed name) do the following
+
     len--;
     while(len > 0) {
       if((line[len] == '\n') || (line[len] == '\r')) {
@@ -58,6 +63,18 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 	len--;
       } else
 	break;
+    }
+
+    // if it contains typical characters...
+    if(NULL != strpbrk(line, ".^$*+?[]\\")) {
+      // ...it is treated as regular expression
+      re = (struct sn_community_regular_expression*)calloc(1,sizeof(struct sn_community_regular_expression));
+      if (re) {
+        re->rule = re_compile(line);
+        HASH_ADD_PTR(sss->rules, rule, re);
+        traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", line);
+        continue;
+      }
     }
 
     s = (struct sn_community*)calloc(1,sizeof(struct sn_community));
@@ -81,7 +98,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
   fclose(fd);
 
-  traceEvent(TRACE_NORMAL, "Loaded %u communities from %s",
+  traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
 	     num_communities, path);
 
   /* No new communities will be allowed */

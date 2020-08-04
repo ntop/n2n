@@ -155,6 +155,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include "pearson.h"
 #include "portable_endian.h"
 #include "speck.h"
+#include "n2n_regex.h"
 
 #ifdef WIN32
 #define N2N_IFNAMSIZ            64
@@ -359,6 +360,13 @@ struct sn_community
   UT_hash_handle hh; /* makes this structure hashable */
 };
 
+struct sn_community_regular_expression
+{
+  re_t rule;         // compiles regular expression
+
+  UT_hash_handle hh; /* makes this structure hashable */
+};
+
 typedef struct n2n_sn
 {
     time_t start_time; /* Used to measure uptime. */
@@ -372,8 +380,9 @@ typedef struct n2n_sn
 	uid_t userid;
 	gid_t groupid;
 #endif
-    int lock_communities; /* If true, only loaded communities can be used. */
+    int lock_communities; /* If true, only loaded and matching communities can be used. */
     struct sn_community *communities;
+    struct sn_community_regular_expression *rules;
 } n2n_sn_t;
 
 /* ************************************** */

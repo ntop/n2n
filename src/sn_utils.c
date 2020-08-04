@@ -791,7 +791,9 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                    cmn2;
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
-
+    struct sn_community_regular_expression *re, *tmp_re;
+    int8_t                         allowed_match = -1;
+    int				   match_length = 0;
     /* Edge requesting registration with us.  */
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
@@ -812,9 +814,14 @@ static int process_udp(n2n_sn_t * sss,
       not report any message back to the edge to hide the supernode
       existance (better from the security standpoint)
     */
-// !!! check if the requested name matches any of the regExps (ITERate)
-// !!! put result in variable uint8_t (or so) "allowed_match"
-    if(!comm && (!sss->lock_communities || allowed_match)) {
+
+    HASH_ITER(hh, sss->rules, re, tmp_re) {
+      allowed_match = re_matchp(re->rule, cmn.community, &match_length);
+      if(allowed_match != -1)
+        break;
+    }
+
+    if(!comm && (!sss->lock_communities || (allowed_match != -1))) {
       comm = calloc(1, sizeof(struct sn_community));
 
       if(comm) {
