@@ -6,7 +6,7 @@
 
 Payload encryption currently comes in four different flavors using ciphers of different origins. Supported ciphers are enabled using the indicated command line option:
 
-- Twofish in CBC mode (`-A2`)
+- Twofish in CTS mode (`-A2`)
 - AES in CBC mode (`-A3`)
 - ChaCha20 (CTR) (`-A4`)
 - SPECK in CTR mode (`-A5`)
@@ -17,12 +17,12 @@ The following chart might help to make a quick comparison and decide what cipher
 
 | Cipher | Mode | Block Size | Key Size         | IV length |Speed | Built-In | Origin |
 | :---:  | :---:| :---:      | :---:            | :---:     |:---: | :---:    | ---    |
-|Twofish | CBC  | 128 bits   | 256 bit          | 32 bit    | -    | Y        | Bruce Schneier |
+|Twofish | CTS  | 128 bits   | 256 bit          | 32 bit    | -    | Y        | Bruce Schneier |
 |AES     | CBC  | 128 bits   | 128, 192, 256 bit| 64 bit    | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
 |ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| N        | Daniel J. Bernstein |
 |SPECK   | CTR  | Stream     | 256 bit          | 128 bit   | ++   | Y        | NSA |
 
-As the two block ciphers Twofish and AES are used in CBC mode, they require a padding which results in encrypted payload size modulo their blocksize. Sizewise, this could be considered as a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
+As the two block ciphers Twofish and AES are used in CTS mode (Twofish) and CBC mode(AES). AES requires a padding which results in encrypted payload size modulo their blocksize. Sizewise, this could be considered as a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
 
 Note that AES and ChaCha20 are available only if n2n is compiled with openSSL support. n2n will work well without them offering the respectively reduced choice of remaining built-in ciphers (Twofish, SPECK).
 
@@ -30,9 +30,7 @@ Note that AES and ChaCha20 are available only if n2n is compiled with openSSL su
 
 This implementation prepends a 32 bit random value to the plain text. In the `src/transform_tf.c` file, it is called `nonce`. In CBC mode, this basically has the same effect as a respectively shorter IV.
 
-Padding to the last block happens by filling `0x00`-bytes and indicating their number as the last byte of the block. This could lead to up to 16 extra bytes.
-
-Other than that, it is plain Twofish in CBC mode.
+Twofish requires no padding as it employs a CBC/CTS scheme which can send out plaintext-length ciphertexts. The scheme however has a small flaw in handling messages shorter than one block, only low-level programmer might encounter this.
 
 Twofish is the slowest of the ciphers present.
 
@@ -42,7 +40,7 @@ _We might try to find a faster implementation._
 
 AES uses the standard way of an IV but it does not neccessarily transmit the full IV along with the packets. The size of the transmitted part is adjustable by changing the `TRANSOP_AES_IV_SEED_SIZE` definition found in `src/transform_aes.c`. It defaults to 8 meaning that 8 bytes (of max 16) are transmitted. The remaining 8 bytes are fixed, key-derived material is used to fill up to full block size. A single AES-ECB encryption step is applied to these 16 bytes before they get used as regular IV for AES-CBCing the payload.
 
-The padding scheme is the same as the one used with Twofish.
+Padding to the last block happens by filling `0x00`-bytes and indicating their number as the last byte of the block. This could lead to up to 16 extra bytes.
 
 AES relies on openSSL's `evp_*` interface which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
 
