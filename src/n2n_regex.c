@@ -248,8 +248,9 @@ re_t re_compile(const char* pattern)
   }
   /* 'UNUSED' is a sentinel used to indicate end-of-pattern */
   re_compiled[j].type = UNUSED;
-
-  return (re_t) re_compiled;
+  re_t re_p = (re_t)calloc(1, sizeof(re_compiled));
+  memcpy (re_p, re_compiled, sizeof(re_compiled));
+  return (re_t) re_p;
 }
 
 void re_print(regex_t* pattern)

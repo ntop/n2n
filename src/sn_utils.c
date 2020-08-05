@@ -817,7 +817,7 @@ static int process_udp(n2n_sn_t * sss,
 
     HASH_ITER(hh, sss->rules, re, tmp_re) {
       allowed_match = re_matchp(re->rule, cmn.community, &match_length);
-      if(allowed_match != -1)
+      if(allowed_match != -1) // ... && match_len == strlen(cmn.community) --- if only full matches allowed
         break;
     }
 
