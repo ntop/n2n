@@ -22,7 +22,7 @@ The following chart might help to make a quick comparison and decide what cipher
 |ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| N        | Daniel J. Bernstein |
 |SPECK   | CTR  | Stream     | 256 bit          | 128 bit   | ++   | Y        | NSA |
 
-As the two block ciphers Twofish and AES are used in CTS mode (Twofish) and CBC mode(AES). AES requires a padding which results in encrypted payload size modulo their blocksize. Sizewise, this could be considered as a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
+The two block ciphers Twofish and AES are used in CTS mode (Twofish) and CBC mode(AES). AES requires a padding which results in encrypted payload size modulo their blocksize. Sizewise, this could be considered as a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
 
 Note that AES and ChaCha20 are available only if n2n is compiled with openSSL support. n2n will work well without them offering the respectively reduced choice of remaining built-in ciphers (Twofish, SPECK).
 
