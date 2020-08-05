@@ -792,8 +792,9 @@ static int process_udp(n2n_sn_t * sss,
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
     struct sn_community_regular_expression *re, *tmp_re;
-    int8_t                         allowed_match = -1;
-    int				   match_length = 0;
+    int8_t                          allowed_match = -1;
+    uint8_t                         match = 0;
+    int				    match_length = 0;
     /* Edge requesting registration with us.  */
     sss->stats.last_reg_super=now;
     ++(sss->stats.reg_super);
@@ -817,11 +818,15 @@ static int process_udp(n2n_sn_t * sss,
 
     HASH_ITER(hh, sss->rules, re, tmp_re) {
       allowed_match = re_matchp(re->rule, cmn.community, &match_length);
-      if(allowed_match != -1) // ... && match_len == strlen(cmn.community) --- if only full matches allowed
+      if( (allowed_match != -1)
+        && (match_length == strlen(cmn.community)) // --- only full matches allowed (remove, if also partial matches wanted)
+        && (allowed_match == 0)) {                 // --- only full matches allowed (remove, if also partial matches wanted)
+        match = 1;
         break;
+      }
     }
 
-    if(!comm && (!sss->lock_communities || (allowed_match != -1))) {
+    if(!comm && (!sss->lock_communities || (match == 1))) {
       comm = calloc(1, sizeof(struct sn_community));
 
       if(comm) {

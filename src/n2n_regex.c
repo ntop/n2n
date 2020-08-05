@@ -50,6 +50,7 @@
 
 
 #include "n2n_regex.h"
+#include "n2n.h"
 
 /* Definitions: */
 
@@ -109,12 +110,12 @@ int re_matchp(re_t pattern, const char* text, int* matchlength)
       do
       {
         idx += 1;
-        
+
         if (matchpattern(pattern, text, matchlength))
         {
           if (text[0] == '\0')
             return -1;
-        
+
           return idx;
         }
       }
@@ -130,6 +131,8 @@ re_t re_compile(const char* pattern)
      MAX_REGEXP_OBJECTS is the max number of symbols in the expression.
      MAX_CHAR_CLASS_LEN determines the size of buffer for chars in all char-classes in the expression. */
   static regex_t re_compiled[MAX_REGEXP_OBJECTS];
+  re_t re_p;  /* pointer to (to be created) copy of compiled regex in re_compiled */
+
   static unsigned char ccl_buf[MAX_CHAR_CLASS_LEN];
   int ccl_bufidx = 1;
 
@@ -170,8 +173,8 @@ re_t re_compile(const char* pattern)
             case 's': {    re_compiled[j].type = WHITESPACE;       } break;
             case 'S': {    re_compiled[j].type = NOT_WHITESPACE;   } break;
 
-            /* Escaped character, e.g. '.' or '$' */ 
-            default:  
+            /* Escaped character, e.g. '.' or '$' */
+            default:
             {
               re_compiled[j].type = CHAR;
               re_compiled[j].ch = pattern[i];
@@ -181,7 +184,7 @@ re_t re_compile(const char* pattern)
         /* '\\' as last char in pattern -> invalid regular expression. */
 /*
         else
-        { 
+        {
           re_compiled[j].type = CHAR;
           re_compiled[j].ch = pattern[i];
         }
@@ -199,7 +202,7 @@ re_t re_compile(const char* pattern)
         {
           re_compiled[j].type = INV_CHAR_CLASS;
           i += 1; /* Increment i to avoid including '^' in the char-buffer */
-        }  
+        }
         else
         {
           re_compiled[j].type = CHAR_CLASS;
@@ -248,7 +251,8 @@ re_t re_compile(const char* pattern)
   }
   /* 'UNUSED' is a sentinel used to indicate end-of-pattern */
   re_compiled[j].type = UNUSED;
-  re_t re_p = (re_t)calloc(1, sizeof(re_compiled));
+
+  re_p = (re_t)calloc(1, sizeof(re_compiled));
   memcpy (re_p, re_compiled, sizeof(re_compiled));
   return (re_t) re_p;
 }
@@ -353,7 +357,7 @@ static int matchcharclass(char c, const char* str)
       if (matchmetachar(c, str))
       {
         return 1;
-      } 
+      }
       else if ((c == str[0]) && !ismetachar(c))
       {
         return 1;
@@ -427,7 +431,7 @@ static int matchplus(regex_t p, regex_t* pattern, const char* text, int* matchle
       return 1;
     (*matchlength)--;
   }
-  
+
   return 0;
 }
 
