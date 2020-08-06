@@ -816,7 +816,7 @@ static int process_udp(n2n_sn_t * sss,
       existance (better from the security standpoint)
     */
 
-    if (!comm) {
+    if (!comm && sss->lock_communities) {
       HASH_ITER(hh, sss->rules, re, tmp_re) {
         allowed_match = re_matchp(re->rule, cmn.community, &match_length);
 
