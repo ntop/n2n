@@ -91,7 +91,14 @@ static int ismetachar(char c);
 /* Public functions: */
 int re_match(const char* pattern, const char* text, int* matchlength)
 {
-  return re_matchp(re_compile(pattern), text, matchlength);
+  re_t re_p;  /* pointer to (to be created) copy of compiled regex */
+  int ret = -1;
+
+  re_p = re_compile (pattern);
+  ret  = re_matchp(re_p, text, matchlength);
+  free(re_p);
+
+  return(ret);
 }
 
 int re_matchp(re_t pattern, const char* text, int* matchlength)
