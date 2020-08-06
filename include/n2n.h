@@ -37,7 +37,12 @@
 /* Moved here to define _CRT_SECURE_NO_WARNINGS before all the including takes place */
 #ifdef WIN32
 #include "win32/n2n_win32.h"
+
+#ifdef _MSC_VER
+#include "config.h" /* Visual C++ */
+#else
 #include "win32/winconfig.h"
+#endif
 #define N2N_CAN_NAME_IFACE 1
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_SETUID
@@ -46,6 +51,8 @@
 #include "config.h"
 #endif
 #endif
+
+
 
 #define PACKAGE_BUILDDATE (__DATE__ " " __TIME__)
 

@@ -98,8 +98,8 @@ uint64_t n2n_rand () {
    state yet, a call to   n2n_srand ( n2n_seed() )   would do. */
 uint64_t n2n_seed (void) {
 
-  uint64_t seed;
-  uint64_t ret;
+  uint64_t seed = 0;
+  uint64_t ret = 0;
   size_t i;
 
 #ifdef SYS_getrandom

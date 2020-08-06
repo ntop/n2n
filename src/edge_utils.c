@@ -1449,7 +1449,7 @@ void edge_send_packet2net(n2n_edge_t * eee,
   pkt.compression = N2N_COMPRESSION_ID_NONE;
 
   if(eee->conf.compression) {
-    uint8_t * compression_buffer;
+    uint8_t * compression_buffer = NULL;
     int32_t  compression_len;
 
     switch (eee->conf.compression) {
