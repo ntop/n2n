@@ -1,5 +1,21 @@
 #
 # List of allowed communities
+# ---------------------------
+#
+#      these could either be fixed-name communities such as the following lines ...
 #
 mynetwork
 netleo
+#
+#      ... or regular expressions that a community name must fully match
+#      such as ntop[0-1][0-9] for communities from "ntop00" through "ntop19"
+# 
+ntop[0-1][0-9]
+#
+#   *  Note that fixed-name communities may not contain one of the following characters
+#      . ^ $  * + ? [ ] \
+#      as otherwise, they are interpreted as regular expression
+#
+#   *  Only fixed-name communities are supported for header encryption (-H)
+#
+
