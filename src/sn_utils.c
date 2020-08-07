@@ -883,9 +883,11 @@ static int process_udp(n2n_sn_t * sss,
       traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
 		 macaddr_str(mac_buf, reg.edgeMac),
 		 sock_to_cstr(sockbuf, &(ack.sock)));
-    } else
+    } else {
       traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
 		 (char*)cmn.community);
+      return -1;
+    }
     break;
   }
   case MSG_TYPE_QUERY_PEER: {
