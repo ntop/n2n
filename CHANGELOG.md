@@ -22,10 +22,11 @@ addresses some bugs.
 ### Improvements
 
 * Have AES and ChaCha20 use OpenSSL's `evp_*` interface to make better use of available hardware acceleration
-* Fix invalid sendto when supernode name resolution fails* Update to supernode's purge logic
+* Fix invalid sendto when supernode name resolution fails
+* Update to supernode's purge logic
 * Extended management supernode's port output
 * Fix read tap device failed when OS wakes up from sleep
-* Free choice of supernode's management UDP port (for multiple supernodes on one machine).
+* Free choice of supernode's management UDP port (for multiple supernodes on one machine)
 * Additional trace messages to better indicate established connections and connection type
 * Fix edge's register-to-supernode loop
 * Remove redundant code
