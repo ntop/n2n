@@ -289,129 +289,134 @@ int decode_REGISTER( n2n_REGISTER_t * reg,
     return retval;
 }
 
-int encode_REGISTER_SUPER( uint8_t * base,
-                           size_t * idx,
-                           const n2n_common_t * common,
-                           const n2n_REGISTER_SUPER_t * reg )
-{
-    int retval=0;
-    retval += encode_common( base, idx, common );
-    retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
-    retval += encode_mac( base, idx, reg->edgeMac );
-    retval += encode_uint16( base, idx, 0 ); /* NULL auth scheme */
-    retval += encode_uint16( base, idx, 0 ); /* No auth data */
 
-    return retval;
+int encode_REGISTER_SUPER(uint8_t *base,
+                          size_t *idx,
+                          const n2n_common_t *common,
+                          const n2n_REGISTER_SUPER_t *reg) {
+	int retval = 0;
+	retval += encode_common(base, idx, common);
+	retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+	retval += encode_mac(base, idx, reg->edgeMac);
+	retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
+	retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
+	retval += encode_uint16(base, idx, 0); /* NULL auth scheme */
+	retval += encode_uint16(base, idx, 0); /* No auth data */
+
+	return retval;
 }
 
-int decode_REGISTER_SUPER( n2n_REGISTER_SUPER_t * reg,
-                           const n2n_common_t * cmn, /* info on how to interpret it */
-                           const uint8_t * base,
-                           size_t * rem,
-                           size_t * idx )
-{
-    size_t retval=0;
-    memset( reg, 0, sizeof(n2n_REGISTER_SUPER_t) );
-    retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
-    retval += decode_mac( reg->edgeMac, base, rem, idx );
-    retval += decode_uint16( &(reg->auth.scheme), base, rem, idx );
-    retval += decode_uint16( &(reg->auth.toksize), base, rem, idx );
-    retval += decode_buf( reg->auth.token, reg->auth.toksize, base, rem, idx );
-    return retval;
+
+int decode_REGISTER_SUPER(n2n_REGISTER_SUPER_t *reg,
+                          const n2n_common_t *cmn, /* info on how to interpret it */
+                          const uint8_t *base,
+                          size_t *rem,
+                          size_t *idx) {
+	size_t retval = 0;
+	memset(reg, 0, sizeof(n2n_REGISTER_SUPER_t));
+	retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+	retval += decode_mac(reg->edgeMac, base, rem, idx);
+	retval += decode_uint32(&(reg->dev_addr.net_addr), base, rem, idx);
+	retval += decode_uint8(&(reg->dev_addr.net_bitlen), base, rem, idx);
+	retval += decode_uint16(&(reg->auth.scheme), base, rem, idx);
+	retval += decode_uint16(&(reg->auth.toksize), base, rem, idx);
+	retval += decode_buf(reg->auth.token, reg->auth.toksize, base, rem, idx);
+	return retval;
 }
 
-int encode_REGISTER_ACK( uint8_t * base,
-                         size_t * idx,
-                         const n2n_common_t * common,
-                         const n2n_REGISTER_ACK_t * reg )
-{
-    int retval=0;
-    retval += encode_common( base, idx, common );
-    retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
-    retval += encode_mac( base, idx, reg->dstMac );
-    retval += encode_mac( base, idx, reg->srcMac );
 
-    /* The socket in REGISTER_ACK is the socket from which the REGISTER
-     * arrived. This is sent back to the sender so it knows what its public
-     * socket is. */
-    if ( 0 != reg->sock.family )
-    {
-        retval += encode_sock( base, idx, &(reg->sock) );
-    }
+int encode_REGISTER_ACK(uint8_t *base,
+                        size_t *idx,
+                        const n2n_common_t *common,
+                        const n2n_REGISTER_ACK_t *reg) {
+	int retval = 0;
+	retval += encode_common(base, idx, common);
+	retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+	retval += encode_mac(base, idx, reg->dstMac);
+	retval += encode_mac(base, idx, reg->srcMac);
 
-    return retval;
+	/* The socket in REGISTER_ACK is the socket from which the REGISTER
+	 * arrived. This is sent back to the sender so it knows what its public
+	 * socket is. */
+	if (0 != reg->sock.family) {
+		retval += encode_sock(base, idx, &(reg->sock));
+	}
+
+	return retval;
 }
 
-int decode_REGISTER_ACK( n2n_REGISTER_ACK_t * reg,
-                         const n2n_common_t * cmn, /* info on how to interpret it */
-                         const uint8_t * base,
-                         size_t * rem,
-                         size_t * idx )
-{
-    size_t retval=0;
-    memset( reg, 0, sizeof(n2n_REGISTER_ACK_t) );
-    retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
-    retval += decode_mac( reg->dstMac, base, rem, idx );
-    retval += decode_mac( reg->srcMac, base, rem, idx );
 
-    /* The socket in REGISTER_ACK is the socket from which the REGISTER
-     * arrived. This is sent back to the sender so it knows what its public
-     * socket is. */
-    if ( cmn->flags & N2N_FLAGS_SOCKET )
-    {
-        retval += decode_sock( &(reg->sock), base, rem, idx );
-    }
+int decode_REGISTER_ACK(n2n_REGISTER_ACK_t *reg,
+                        const n2n_common_t *cmn, /* info on how to interpret it */
+                        const uint8_t *base,
+                        size_t *rem,
+                        size_t *idx) {
+	size_t retval = 0;
+	memset(reg, 0, sizeof(n2n_REGISTER_ACK_t));
+	retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+	retval += decode_mac(reg->dstMac, base, rem, idx);
+	retval += decode_mac(reg->srcMac, base, rem, idx);
 
-    return retval;
+	/* The socket in REGISTER_ACK is the socket from which the REGISTER
+	 * arrived. This is sent back to the sender so it knows what its public
+	 * socket is. */
+	if (cmn->flags & N2N_FLAGS_SOCKET) {
+		retval += decode_sock(&(reg->sock), base, rem, idx);
+	}
+
+	return retval;
 }
 
-int encode_REGISTER_SUPER_ACK( uint8_t * base,
-                               size_t * idx,
-                               const n2n_common_t * common,
-                               const n2n_REGISTER_SUPER_ACK_t * reg )
-{
-    int retval=0;
-    retval += encode_common( base, idx, common );
-    retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
-    retval += encode_mac( base, idx, reg->edgeMac );
-    retval += encode_uint16( base, idx, reg->lifetime );
-    retval += encode_sock( base, idx, &(reg->sock) );
-    retval += encode_uint8( base, idx, reg->num_sn );
-    if ( reg->num_sn > 0 )
-    {
-        /* We only support 0 or 1 at this stage */
-        retval += encode_sock( base, idx, &(reg->sn_bak) );
-    }
 
-    return retval;
+int encode_REGISTER_SUPER_ACK(uint8_t *base,
+                              size_t *idx,
+                              const n2n_common_t *common,
+                              const n2n_REGISTER_SUPER_ACK_t *reg) {
+	int retval = 0;
+	retval += encode_common(base, idx, common);
+	retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+	retval += encode_mac(base, idx, reg->edgeMac);
+	retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
+	retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
+	retval += encode_uint16(base, idx, reg->lifetime);
+	retval += encode_sock(base, idx, &(reg->sock));
+	retval += encode_uint8(base, idx, reg->num_sn);
+	if (reg->num_sn > 0) {
+		/* We only support 0 or 1 at this stage */
+		retval += encode_sock(base, idx, &(reg->sn_bak));
+	}
+
+	return retval;
 }
 
-int decode_REGISTER_SUPER_ACK( n2n_REGISTER_SUPER_ACK_t * reg,
-                               const n2n_common_t * cmn, /* info on how to interpret it */
-                               const uint8_t * base,
-                               size_t * rem,
-                               size_t * idx )
-{
-    size_t retval=0;
 
-    memset( reg, 0, sizeof(n2n_REGISTER_SUPER_ACK_t) );
-    retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
-    retval += decode_mac( reg->edgeMac, base, rem, idx );
-    retval += decode_uint16( &(reg->lifetime), base, rem, idx );
+int decode_REGISTER_SUPER_ACK(n2n_REGISTER_SUPER_ACK_t *reg,
+                              const n2n_common_t *cmn, /* info on how to interpret it */
+                              const uint8_t *base,
+                              size_t *rem,
+                              size_t *idx) {
+	size_t retval = 0;
 
-    /* Socket is mandatory in this message type */
-    retval += decode_sock( &(reg->sock), base, rem, idx );
+	memset(reg, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
+	retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+	retval += decode_mac(reg->edgeMac, base, rem, idx);
+	retval += decode_uint32(&(reg->dev_addr.net_addr), base, rem, idx);
+	retval += decode_uint8(&(reg->dev_addr.net_bitlen), base, rem, idx);
+	retval += decode_uint16(&(reg->lifetime), base, rem, idx);
 
-    /* Following the edge socket are an array of backup supernodes. */
-    retval += decode_uint8( &(reg->num_sn), base, rem, idx );
-    if ( reg->num_sn > 0 )
-    {
-        /* We only support 0 or 1 at this stage */
-        retval += decode_sock( &(reg->sn_bak), base, rem, idx );
-    }
+	/* Socket is mandatory in this message type */
+	retval += decode_sock(&(reg->sock), base, rem, idx);
 
-    return retval;
+	/* Following the edge socket are an array of backup supernodes. */
+	retval += decode_uint8(&(reg->num_sn), base, rem, idx);
+	if (reg->num_sn > 0) {
+		/* We only support 0 or 1 at this stage */
+		retval += decode_sock(&(reg->sn_bak), base, rem, idx);
+	}
+
+	return retval;
 }
+
 
 int fill_sockaddr( struct sockaddr * addr,
                    size_t addrlen,
@@ -475,34 +480,35 @@ int decode_PACKET( n2n_PACKET_t * pkt,
     return retval;
 }
 
-int encode_PEER_INFO( uint8_t * base,
-                      size_t * idx,
-                      const n2n_common_t * common,
-                      const n2n_PEER_INFO_t * pkt )
-{
-    int retval=0;
-    retval += encode_common( base, idx, common );
-    retval += encode_uint16( base, idx, pkt->aflags );
-    retval += encode_mac( base, idx, pkt->mac );
-    retval += encode_sock( base, idx, &pkt->sock );
 
-    return retval;
+int encode_PEER_INFO(uint8_t *base,
+                     size_t *idx,
+                     const n2n_common_t *common,
+                     const n2n_PEER_INFO_t *pkt) {
+	int retval = 0;
+	retval += encode_common(base, idx, common);
+	retval += encode_uint16(base, idx, pkt->aflags);
+	retval += encode_mac(base, idx, pkt->mac);
+	retval += encode_sock(base, idx, &pkt->sock);
+
+	return retval;
 }
 
-int decode_PEER_INFO( n2n_PEER_INFO_t * pkt,
-                           const n2n_common_t * cmn, /* info on how to interpret it */
-                           const uint8_t * base,
-                           size_t * rem,
-                           size_t * idx )
-{
-    size_t retval=0;
-    memset( pkt, 0, sizeof(n2n_PEER_INFO_t) );
-    retval += decode_uint16( &(pkt->aflags), base, rem, idx );
-    retval += decode_mac( pkt->mac, base, rem, idx );
-    retval += decode_sock( &pkt->sock, base, rem, idx );
 
-    return retval;
+int decode_PEER_INFO(n2n_PEER_INFO_t *pkt,
+                     const n2n_common_t *cmn, /* info on how to interpret it */
+                     const uint8_t *base,
+                     size_t *rem,
+                     size_t *idx) {
+	size_t retval = 0;
+	memset(pkt, 0, sizeof(n2n_PEER_INFO_t));
+	retval += decode_uint16(&(pkt->aflags), base, rem, idx);
+	retval += decode_mac(pkt->mac, base, rem, idx);
+	retval += decode_sock(&pkt->sock, base, rem, idx);
+
+	return retval;
 }
+
 
 int encode_QUERY_PEER( uint8_t * base,
                       size_t * idx,

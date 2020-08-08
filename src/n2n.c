@@ -185,6 +185,29 @@ char* intoa(uint32_t /* host order */ addr, char* buf, uint16_t buf_len) {
   return(retStr);
 }
 
+
+/** Convert subnet prefix bit length to host order subnet mask. */
+uint32_t bitlen2mask(uint8_t bitlen) {
+	uint8_t i;
+	uint32_t mask = 0;
+	for (i = 1; i <= bitlen; ++i) {
+		mask |= 1 << (32 - i);
+	}
+	return mask;
+}
+
+
+/** Convert host order subnet mask to subnet prefix bit length. */
+uint8_t mask2bitlen(uint32_t mask) {
+	uint8_t i, bitlen = 0;
+	for (i = 0; i < 32; ++i) {
+		if ((mask << i) & 0x80000000) ++bitlen;
+		else break;
+	}
+	return bitlen;
+}
+
+
 /* *********************************************** */
 
 char * macaddr_str(macstr_t buf,
@@ -231,20 +254,20 @@ char* msg_type2str(uint16_t msg_type) {
 
 /* *********************************************** */
 
-void hexdump(const uint8_t * buf, size_t len)
-{
-  size_t i;
+void hexdump(const uint8_t *buf, size_t len) {
+	size_t i;
 
-  if(0 == len) { return; }
+	if (0 == len) { return; }
 
-  for(i=0; i<len; i++)
-    {
-      if((i > 0) &&((i % 16) == 0)) { printf("\n"); }
-      printf("%02X ", buf[i] & 0xFF);
-    }
-
-  printf("\n");
+	printf("-----------------------------------------------\n");
+	for (i = 0; i < len; i++) {
+		if ((i > 0) && ((i % 16) == 0)) { printf("\n"); }
+		printf("%02X ", buf[i] & 0xFF);
+	}
+	printf("\n");
+	printf("-----------------------------------------------\n");
 }
+
 
 /* *********************************************** */
 
@@ -360,6 +383,17 @@ extern char * sock_to_cstr(n2n_sock_str_t out,
   }
 }
 
+char *ip_subnet_to_str(dec_ip_bit_str_t buf, const n2n_ip_subnet_t *ipaddr) {
+	snprintf(buf, sizeof(dec_ip_bit_str_t), "%hhu.%hhu.%hhu.%hhu/%hhu",
+	         (uint8_t) ((ipaddr->net_addr >> 24) & 0xFF),
+	         (uint8_t) ((ipaddr->net_addr >> 16) & 0xFF),
+	         (uint8_t) ((ipaddr->net_addr >> 8) & 0xFF),
+	         (uint8_t) (ipaddr->net_addr & 0xFF),
+	         ipaddr->net_bitlen);
+	return buf;
+}
+
+
 /* @return 1 if the two sockets are equivalent. */
 int sock_equal(const n2n_sock_t * a,
 	       const n2n_sock_t * b) {
@@ -383,7 +417,7 @@ int sock_equal(const n2n_sock_t * a,
 
 /* *********************************************** */
 
-#if defined(WIN32) && !defined(__GNUC__)
+#if defined(WIN32)
 int gettimeofday(struct timeval *tp, void *tzp) {
   time_t clock;
   struct tm tm;

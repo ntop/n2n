@@ -20,19 +20,10 @@
 #define N2N_WIRE_H_
 
 #include <stdlib.h>
-
-#if defined(WIN32)
-#include "win32/n2n_win32.h"
-
-#if defined(__MINGW32__)
+#ifndef _MSC_VER
+/* Not included in Visual Studio 2008 */
 #include <stdint.h>
-#endif /* #ifdef __MINGW32__ */
-
-#else /* #if defined(WIN32) */
-#include <stdint.h>
-#include <netinet/in.h>
-#include <sys/socket.h> /* AF_INET and AF_INET6 */
-#endif /* #if defined(WIN32) */
+#endif
 
 #define N2N_PKT_VERSION                 2
 #define N2N_DEFAULT_TTL                 2       /* can be forwarded twice at most */
@@ -50,6 +41,13 @@ typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
 typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
 
 typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer */
+
+#if defined(WIN32)
+#include "win32/n2n_win32.h"
+#else /* #if defined(WIN32) */
+#include <netinet/in.h>
+#include <sys/socket.h> /* AF_INET and AF_INET6 */
+#endif /* #if defined(WIN32) */
 
 typedef enum n2n_pc
 {
@@ -86,6 +84,12 @@ typedef enum n2n_pc
 #define N2N_EINVAL                      -3
 #define N2N_ENOSPACE                    -4
 
+typedef struct n2n_ip_subnet {
+	uint32_t            net_addr;       /* Host order IP address. */
+	uint8_t             net_bitlen;     /* Subnet prefix. */
+} n2n_ip_subnet_t;
+
+
 typedef struct n2n_sock
 {
     uint8_t     family;         /* AF_INET or AF_INET6; or 0 if invalid */
@@ -117,18 +121,18 @@ typedef struct n2n_common
 
 typedef struct n2n_REGISTER
 {
-    n2n_cookie_t        cookie;         /* Link REGISTER and REGISTER_ACK */
-    n2n_mac_t           srcMac;         /* MAC of registering party */
-    n2n_mac_t           dstMac;         /* MAC of target edge */
-    n2n_sock_t          sock;           /* REVISIT: unused? */
+	n2n_cookie_t         cookie;         /**< Link REGISTER and REGISTER_ACK */
+	n2n_mac_t            srcMac;         /**< MAC of registering party */
+	n2n_mac_t            dstMac;         /**< MAC of target edge */
+	n2n_sock_t           sock;           /**< REVISIT: unused? */
 } n2n_REGISTER_t;
 
 typedef struct n2n_REGISTER_ACK
 {
-    n2n_cookie_t        cookie;         /* Return cookie from REGISTER */
-    n2n_mac_t           srcMac;         /* MAC of acknowledging party (supernode or edge) */
-    n2n_mac_t           dstMac;         /* Reflected MAC of registering edge from REGISTER */
-    n2n_sock_t          sock;           /* Supernode's view of edge socket (IP Addr, port) */
+	n2n_cookie_t         cookie;         /**< Return cookie from REGISTER */
+	n2n_mac_t            srcMac;         /**< MAC of acknowledging party (supernode or edge) */
+	n2n_mac_t            dstMac;         /**< Reflected MAC of registering edge from REGISTER */
+	n2n_sock_t           sock;           /**< Supernode's view of edge socket (IP Addr, port) */
 } n2n_REGISTER_ACK_t;
 
 typedef struct n2n_PACKET
@@ -141,30 +145,30 @@ typedef struct n2n_PACKET
 } n2n_PACKET_t;
 
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */
-typedef struct n2n_REGISTER_SUPER
-{
-    n2n_cookie_t        cookie;         /* Link REGISTER_SUPER and REGISTER_SUPER_ACK */
-    n2n_mac_t           edgeMac;        /* MAC to register with edge sending socket */
-    n2n_auth_t          auth;           /* Authentication scheme and tokens */
+typedef struct n2n_REGISTER_SUPER {
+	n2n_cookie_t        cookie;         /**< Link REGISTER_SUPER and REGISTER_SUPER_ACK */
+	n2n_mac_t           edgeMac;        /**< MAC to register with edge sending socket */
+	n2n_ip_subnet_t     dev_addr;       /**< IP address of the tuntap adapter. */
+	n2n_auth_t          auth;           /**< Authentication scheme and tokens */
 } n2n_REGISTER_SUPER_t;
 
-/* Linked with n2n_register_super_ack in n2n_pc_t. Only from supernode to edge. */
-typedef struct n2n_REGISTER_SUPER_ACK
-{
-    n2n_cookie_t        cookie;         /* Return cookie from REGISTER_SUPER */
-    n2n_mac_t           edgeMac;        /* MAC registered to edge sending socket */
-    uint16_t            lifetime;       /* How long the registration will live */
-    n2n_sock_t          sock;           /* Sending sockets associated with edgeMac */
 
-    /* The packet format provides additional supernode definitions here.
-     * uint8_t count, then for each count there is one
-     * n2n_sock_t.
-     */
-    uint8_t             num_sn;         /* Number of supernodes that were send
+/* Linked with n2n_register_super_ack in n2n_pc_t. Only from supernode to edge. */
+typedef struct n2n_REGISTER_SUPER_ACK {
+	n2n_cookie_t         cookie;        /**< Return cookie from REGISTER_SUPER */
+	n2n_mac_t            edgeMac;       /**< MAC registered to edge sending socket */
+	n2n_ip_subnet_t      dev_addr;      /**< Assign an IP address to the tuntap adapter of edge. */
+	uint16_t             lifetime;      /**< How long the registration will live */
+	n2n_sock_t           sock;          /**< Sending sockets associated with edgeMac */
+
+	/** The packet format provides additional supernode definitions here.
+	 * uint8_t count, then for each count there is one
+	 * n2n_sock_t.
+	 */
+	uint8_t              num_sn;         /**< Number of supernodes that were send
                                          * even if we cannot store them all. If
                                          * non-zero then sn_bak is valid. */
-    n2n_sock_t          sn_bak;         /* Socket of the first backup supernode */
-
+	n2n_sock_t           sn_bak;         /**< Socket of the first backup supernode */
 } n2n_REGISTER_SUPER_ACK_t;
 
 
@@ -174,12 +178,13 @@ typedef struct n2n_REGISTER_SUPER_NAK
     n2n_cookie_t        cookie;         /* Return cookie from REGISTER_SUPER */
 } n2n_REGISTER_SUPER_NAK_t;
 
-typedef struct n2n_PEER_INFO
-{
-    uint16_t    aflags;
-    n2n_mac_t   mac;
-    n2n_sock_t  sock;
+
+typedef struct n2n_PEER_INFO {
+	uint16_t             aflags;
+	n2n_mac_t            mac;
+	n2n_sock_t           sock;
 } n2n_PEER_INFO_t;
+
 
 typedef struct n2n_QUERY_PEER
 {
