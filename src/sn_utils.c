@@ -228,6 +228,7 @@ int sn_init(n2n_sn_t *sss)
 void sn_term(n2n_sn_t *sss)
 {
     struct sn_community *community, *tmp;
+    struct sn_community_regular_expression *re, *tmp_re;
 
     if (sss->sock >= 0)
     {
@@ -248,6 +249,11 @@ void sn_term(n2n_sn_t *sss)
           free (community->header_encryption_ctx);
         HASH_DEL(sss->communities, community);
         free(community);
+    }
+
+    HASH_ITER(hh, sss->rules, re, tmp_re) {
+      HASH_DEL(sss->rules, re);
+      free(re);
     }
 }
 
@@ -816,7 +822,7 @@ static int process_udp(n2n_sn_t * sss,
       existance (better from the security standpoint)
     */
 
-    if (!comm && sss->lock_communities) {
+    if(!comm && sss->lock_communities) {
       HASH_ITER(hh, sss->rules, re, tmp_re) {
         allowed_match = re_matchp(re->rule, cmn.community, &match_length);
 
@@ -827,6 +833,11 @@ static int process_udp(n2n_sn_t * sss,
           break;
         }
       }
+    }
+    if(match != 1) {
+      traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
+                 (char*)cmn.community);
+      return -1;
     }
 
     if(!comm && (!sss->lock_communities || (match == 1))) {

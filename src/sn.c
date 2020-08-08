@@ -30,8 +30,9 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
   char buffer[4096], *line;
   FILE *fd = fopen(path, "r");
   struct sn_community *s, *tmp;
-  struct sn_community_regular_expression *re, *tmp_re;
   uint32_t num_communities = 0;
+  struct sn_community_regular_expression *re, *tmp_re;
+  uint32_t num_regex = 0;
 
   if(fd == NULL) {
     traceEvent(TRACE_WARNING, "File %s not found", path);
@@ -72,6 +73,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
       if (re) {
         re->rule = re_compile(line);
         HASH_ADD_PTR(sss->rules, rule, re);
+	num_regex++;
         traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", line);
         continue;
       }
@@ -98,8 +100,17 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
   fclose(fd);
 
+  if (num_regex>0 || num_communities>0 )
+  {
+    traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", path);
+    return -1;
+  }
+
   traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
 	     num_communities, path);
+
+  traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
+	     num_regex, path);
 
   /* No new communities will be allowed */
   sss->lock_communities = 1;
