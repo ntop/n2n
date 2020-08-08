@@ -253,6 +253,9 @@ void sn_term(n2n_sn_t *sss)
 
     HASH_ITER(hh, sss->rules, re, tmp_re) {
       HASH_DEL(sss->rules, re);
+      if (NULL!=re->rule) {
+        free(re->rule);
+      }
       free(re);
     }
 }
@@ -833,11 +836,11 @@ static int process_udp(n2n_sn_t * sss,
           break;
         }
       }
-    }
-    if(match != 1) {
-      traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
-                 (char*)cmn.community);
-      return -1;
+      if(match != 1) {
+        traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
+                   (char*)cmn.community);
+        return -1;
+      }
     }
 
     if(!comm && (!sss->lock_communities || (match == 1))) {

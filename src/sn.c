@@ -100,7 +100,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
   fclose(fd);
 
-  if (num_regex>0 || num_communities>0 )
+  if ((num_regex + num_communities) == 0)
   {
     traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", path);
     return -1;
