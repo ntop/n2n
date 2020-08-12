@@ -47,7 +47,7 @@ static int try_broadcast(n2n_sn_t * sss,
 static uint16_t reg_lifetime(n2n_sn_t *sss);
 
 static int update_edge(n2n_sn_t *sss,
-                       const n2n_mac_t edgeMac,
+                       const n2n_REGISTER_SUPER_t* reg,
                        struct sn_community *comm,
                        const n2n_sock_t *sender_sock,
                        time_t now);
@@ -204,23 +204,25 @@ static int try_broadcast(n2n_sn_t * sss,
 
 
 /** Initialise the supernode structure */
-int sn_init(n2n_sn_t *sss)
-{
+int sn_init(n2n_sn_t *sss) {
 #ifdef WIN32
-    initWin32();
+	initWin32();
 #endif
 
-    pearson_hash_init();
+	pearson_hash_init();
 
-    memset(sss, 0, sizeof(n2n_sn_t));
+	memset(sss, 0, sizeof(n2n_sn_t));
 
-    sss->daemon = 1; /* By defult run as a daemon. */
-    sss->lport = N2N_SN_LPORT_DEFAULT;
-    sss->mport = N2N_SN_MGMT_PORT;
-    sss->sock = -1;
-    sss->mgmt_sock = -1;
+	sss->daemon = 1; /* By defult run as a daemon. */
+	sss->lport = N2N_SN_LPORT_DEFAULT;
+	sss->mport = N2N_SN_MGMT_PORT;
+	sss->sock = -1;
+	sss->mgmt_sock = -1;
+	sss->dhcp_addr.net_addr = inet_addr(N2N_SN_DHCP_NET_ADDR_DEFAULT);
+	sss->dhcp_addr.net_addr = ntohl(sss->dhcp_addr.net_addr);
+	sss->dhcp_addr.net_bitlen = N2N_SN_DHCP_NET_BIT_DEFAULT;
 
-    return 0; /* OK */
+	return 0; /* OK */
 }
 
 /** Deinitialise the supernode structure and deallocate any memory owned by
@@ -265,60 +267,100 @@ static uint16_t reg_lifetime(n2n_sn_t *sss)
 /** Update the edge table with the details of the edge which contacted the
  *  supernode. */
 static int update_edge(n2n_sn_t *sss,
-                       const n2n_mac_t edgeMac,
+                       const n2n_REGISTER_SUPER_t* reg,
                        struct sn_community *comm,
                        const n2n_sock_t *sender_sock,
-                       time_t now)
-{
-    macstr_t mac_buf;
-    n2n_sock_str_t sockbuf;
-    struct peer_info *scan;
+                       time_t now) {
+	macstr_t mac_buf;
+	n2n_sock_str_t sockbuf;
+	struct peer_info *scan;
 
-    traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
-               macaddr_str(mac_buf, edgeMac),
-               sock_to_cstr(sockbuf, sender_sock));
+	traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
+	           macaddr_str(mac_buf, reg->edgeMac),
+	           sock_to_cstr(sockbuf, sender_sock));
 
-    HASH_FIND_PEER(comm->edges, edgeMac, scan);
+	HASH_FIND_PEER(comm->edges, reg->edgeMac, scan);
 
-    if (NULL == scan)
-    {
-        /* Not known */
+	if (NULL == scan) {
+		/* Not known */
 
-        scan = (struct peer_info *)calloc(1,
-                                          sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
+		scan = (struct peer_info *) calloc(1,
+		                                   sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
 
-        memcpy(&(scan->mac_addr), edgeMac, sizeof(n2n_mac_t));
-        memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
-        scan->last_valid_time_stamp = initial_time_stamp ();
+		memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
+		scan->dev_addr.net_addr = reg->dev_addr.net_addr;
+		scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
+		memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+		scan->last_valid_time_stamp = initial_time_stamp();
 
-        HASH_ADD_PEER(comm->edges, scan);
+		HASH_ADD_PEER(comm->edges, scan);
 
-        traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
-                   macaddr_str(mac_buf, edgeMac),
-                   sock_to_cstr(sockbuf, sender_sock));
-    }
-    else
-    {
-        /* Known */
-        if (!sock_equal(sender_sock, &(scan->sock)))
-        {
-            memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+		traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
+		           macaddr_str(mac_buf, reg->edgeMac),
+		           sock_to_cstr(sockbuf, sender_sock));
+	} else {
+		/* Known */
+		if (!sock_equal(sender_sock, &(scan->sock))) {
+			memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
 
-            traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
-                       macaddr_str(mac_buf, edgeMac),
-                       sock_to_cstr(sockbuf, sender_sock));
-        }
-        else
-        {
-            traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
-                       macaddr_str(mac_buf, edgeMac),
-                       sock_to_cstr(sockbuf, sender_sock));
-        }
-    }
+			traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
+			           macaddr_str(mac_buf, reg->edgeMac),
+			           sock_to_cstr(sockbuf, sender_sock));
+		} else {
+			traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
+			           macaddr_str(mac_buf, reg->edgeMac),
+			           sock_to_cstr(sockbuf, sender_sock));
+		}
+	}
 
-    scan->last_seen = now;
-    return 0;
+	scan->last_seen = now;
+	return 0;
 }
+
+
+static signed int peer_tap_ip_sort(struct peer_info *a, struct peer_info *b) {
+	uint32_t a_host_id = a->dev_addr.net_addr & (~bitlen2mask(a->dev_addr.net_bitlen));
+	uint32_t b_host_id = b->dev_addr.net_addr & (~bitlen2mask(b->dev_addr.net_bitlen));
+	return ((signed int)a_host_id - (signed int)b_host_id);
+}
+
+
+/** The IP address assigned to the edge by the DHCP function of sn. */
+static int assign_one_ip_addr(n2n_sn_t *sss,
+                              struct sn_community *comm,
+                              n2n_ip_subnet_t *ipaddr) {
+	struct peer_info *peer, *tmpPeer;
+	uint32_t net_id, mask, max_host, host_id = 1;
+	dec_ip_bit_str_t ip_bit_str = {'\0'};
+
+	mask = bitlen2mask(sss->dhcp_addr.net_bitlen);
+	net_id = sss->dhcp_addr.net_addr & mask;
+	max_host = ~mask;
+
+	HASH_SORT(comm->edges, peer_tap_ip_sort);
+	HASH_ITER(hh, comm->edges, peer, tmpPeer) {
+		if ((peer->dev_addr.net_addr & bitlen2mask(peer->dev_addr.net_bitlen)) == net_id) {
+			if (host_id >= max_host) {
+				traceEvent(TRACE_WARNING, "No assignable IP to edge tap adapter.");
+				return -1;
+			}
+			if (peer->dev_addr.net_addr == 0) {
+				continue;
+			}
+			if ((peer->dev_addr.net_addr & max_host) == host_id) {
+				++host_id;
+			} else {
+				break;
+			}
+		}
+	}
+	ipaddr->net_addr = net_id | host_id;
+	ipaddr->net_bitlen = sss->dhcp_addr.net_bitlen;
+
+	traceEvent(TRACE_INFO, "Assign IP %s to tap adapter of edge.", ip_subnet_to_str(ip_bit_str, ipaddr));
+	return 0;
+}
+
 
 /***
  *
@@ -409,88 +451,88 @@ static int process_mgmt(n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
                         const uint8_t *mgmt_buf,
                         size_t mgmt_size,
-                        time_t now)
-{
-    char resbuf[N2N_SN_PKTBUF_SIZE];
-    size_t ressize = 0;
-    uint32_t num_edges = 0;
-    uint32_t num = 0;
-    struct sn_community *community, *tmp;
-    struct peer_info * peer, *tmpPeer;
-    macstr_t mac_buf;
-    n2n_sock_str_t sockbuf;
+                        time_t now) {
+	char resbuf[N2N_SN_PKTBUF_SIZE];
+	size_t ressize = 0;
+	uint32_t num_edges = 0;
+	uint32_t num = 0;
+	struct sn_community *community, *tmp;
+	struct peer_info *peer, *tmpPeer;
+	macstr_t mac_buf;
+	n2n_sock_str_t sockbuf;
+	dec_ip_bit_str_t ip_bit_str = {'\0'};
 
-    traceEvent(TRACE_DEBUG, "process_mgmt");
+	traceEvent(TRACE_DEBUG, "process_mgmt");
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "----------------\n");
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "\tid    tun_tap             MAC                edge                   last_seen\n");
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "-------------------------------------------------------------------------------------\n");
+	HASH_ITER(hh, sss->communities, community, tmp) {
+		num_edges += HASH_COUNT(community->edges);
+		ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+		                    "community: %s\n", community->community);
+		sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+		ressize = 0;
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "uptime    %lu\n", (now - sss->start_time));
+		num = 0;
+		HASH_ITER(hh, community->edges, peer, tmpPeer) {
+			ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+			                    "\t%-4u  %-18s  %-17s  %-21s  %lu\n",
+			                    ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
+			                    macaddr_str(mac_buf, peer->mac_addr),
+			                    sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
 
-    HASH_ITER(hh, sss->communities, community, tmp)
-    {
-        num_edges += HASH_COUNT(community->edges);
-    }
+			sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+			ressize = 0;
+		}
+	}
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "-------------------------------------------------------------------------------------\n");
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "edges     %u\n",
-                        num_edges);
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "uptime %lu | ", (now - sss->start_time));
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "errors    %u\n",
-                        (unsigned int)sss->stats.errors);
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "edges %u | ",
+	                    num_edges);
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "reg_sup   %u\n",
-                        (unsigned int)sss->stats.reg_super);
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "reg_sup %u | ",
+	                    (unsigned int) sss->stats.reg_super);
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "reg_nak   %u\n",
-                        (unsigned int)sss->stats.reg_super_nak);
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "reg_nak %u | ",
+	                    (unsigned int) sss->stats.reg_super_nak);
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "fwd       %u\n",
-                        (unsigned int)sss->stats.fwd);
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "errors %u \n",
+	                    (unsigned int) sss->stats.errors);
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "broadcast %u\n",
-                        (unsigned int)sss->stats.broadcast);
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "fwd %u | ",
+	                    (unsigned int) sss->stats.fwd);
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "last fwd  %lu sec ago\n",
-                        (long unsigned int)(now - sss->stats.last_fwd));
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "broadcast %u | ",
+	                    (unsigned int) sss->stats.broadcast);
 
-    ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "last reg  %lu sec ago\n",
-                        (long unsigned int)(now - sss->stats.last_reg_super));
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "cur_cmnts %u\n", HASH_COUNT(sss->communities));
 
-    ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
-                        "cur_cmnts %u\n", HASH_COUNT(sss->communities));
-    HASH_ITER(hh, sss->communities, community, tmp) {
-      ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                          "community: %s\n", community->community);
-      sendto_mgmt(sss, sender_sock, (const uint8_t *)resbuf, ressize);
-      ressize = 0;
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "last fwd  %lu sec ago\n",
+	                    (long unsigned int) (now - sss->stats.last_fwd));
 
-      num = 0;
-      HASH_ITER(hh, community->edges, peer, tmpPeer) {
-        ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                            "\t[id: %u][MAC: %s][edge: %s][last seen: %lu sec ago]\n",
-                            ++num, macaddr_str(mac_buf, peer->mac_addr),
-                            sock_to_cstr(sockbuf, &(peer->sock)), now-peer->last_seen);
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+	                    "last reg  %lu sec ago\n\n",
+	                    (long unsigned int) (now - sss->stats.last_reg_super));
 
-        sendto_mgmt(sss, sender_sock, (const uint8_t *)resbuf, ressize);
-        ressize = 0;
-      }
-    }
+	sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
 
-    ressize += snprintf(resbuf+ressize, N2N_SN_PKTBUF_SIZE-ressize,
-                        "\n");
-    sendto_mgmt(sss, sender_sock, (const uint8_t *)resbuf, ressize);
-
-    return 0;
+	return 0;
 }
+
 
 static int sendto_mgmt(n2n_sn_t *sss,
                        const struct sockaddr_in *sender_sock,
@@ -528,6 +570,7 @@ static int process_udp(n2n_sn_t * sss,
   char                buf[32];
   struct sn_community *comm, *tmp;
   uint64_t	      stamp;
+  const n2n_mac_t               null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -791,6 +834,9 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                    cmn2;
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
+    n2n_ip_subnet_t                 ipaddr;
+
+	  memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
     /* Edge requesting registration with us.  */
     sss->stats.last_reg_super=now;
@@ -836,6 +882,12 @@ static int process_udp(n2n_sn_t * sss,
 
       memcpy(&(ack.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
       memcpy(ack.edgeMac, reg.edgeMac, sizeof(n2n_mac_t));
+	    if ((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
+	        ((reg.dev_addr.net_addr & 0xFFFF0000) == 0xA9FE0000 /* 169.254.0.0 */)) {
+		    assign_one_ip_addr(sss, comm, &ipaddr);
+		    ack.dev_addr.net_addr = ipaddr.net_addr;
+		    ack.dev_addr.net_bitlen = ipaddr.net_bitlen;
+	    }
       ack.lifetime = reg_lifetime(sss);
 
       ack.sock.family = AF_INET;
@@ -843,13 +895,14 @@ static int process_udp(n2n_sn_t * sss,
       memcpy(ack.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
 
       ack.num_sn=0; /* No backup */
-      memset(&(ack.sn_bak), 0, sizeof(n2n_sock_t));
 
       traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER for %s [%s]",
 		 macaddr_str(mac_buf, reg.edgeMac),
 		 sock_to_cstr(sockbuf, &(ack.sock)));
 
-      update_edge(sss, reg.edgeMac, comm, &(ack.sock), now);
+      if(memcmp(reg.edgeMac, &null_mac, N2N_MAC_SIZE) != 0){
+	      update_edge(sss, &reg, comm, &(ack.sock), now);
+      }
 
       encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
 

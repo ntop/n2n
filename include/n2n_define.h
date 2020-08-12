@@ -97,6 +97,15 @@
 #define N2N_SN_PKTBUF_SIZE   2048
 
 
+/* The way TUNTAP allocated IP. */
+#define TUNTAP_IP_MODE_SN_ASSIGN 0
+#define TUNTAP_IP_MODE_STATIC 1
+#define TUNTAP_IP_MODE_DHCP 2
+
+/* Default network segment of the dhcp service provided by sn. */
+#define N2N_SN_DHCP_NET_ADDR_DEFAULT "172.17.12.0"
+#define N2N_SN_DHCP_NET_BIT_DEFAULT 24
+
 /* ************************************** */
 
 #define SUPERNODE_IP    "127.0.0.1"

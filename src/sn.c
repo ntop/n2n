@@ -92,100 +92,137 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
 /** Help message to print if the command line arguments are not valid. */
 static void help() {
-  print_n2n_version();
+	print_n2n_version();
 
-  printf("supernode <config file> (see supernode.conf)\n"
-	 "or\n"
-	 );
-  printf("supernode ");
-  printf("-l <local port> ");
-  printf("-c <path> ");
+	printf("supernode <config file> (see supernode.conf)\n"
+	       "or\n"
+	);
+	printf("supernode ");
+	printf("-l <local port> ");
+	printf("-c <path> ");
 #if defined(N2N_HAVE_DAEMON)
-  printf("[-f] ");
+	printf("[-f] ");
 #endif
 #ifndef WIN32
-  printf("[-u <uid> -g <gid>] ");
+	printf("[-u <uid> -g <gid>] ");
 #endif /* ifndef WIN32 */
-  printf("[-t <mgmt port>] ");
-  printf("[-v] ");
-  printf("\n\n");
+	printf("[-t <mgmt port>] ");
+	printf("[-d <net/bit>] ");
+	printf("[-v] ");
+	printf("\n\n");
 
-  printf("-l <port>\tSet UDP main listen port to <port>\n");
-  printf("-c <path>\tFile containing the allowed communities.\n");
+	printf("-l <port>     | Set UDP main listen port to <port>\n");
+	printf("-c <path>     | File containing the allowed communities.\n");
 #if defined(N2N_HAVE_DAEMON)
-  printf("-f        \tRun in foreground.\n");
+	printf("-f            | Run in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
 #ifndef WIN32
-  printf("-u <UID>\tUser ID (numeric) to use when privileges are dropped.\n");
-  printf("-g <GID>\tGroup ID (numeric) to use when privileges are dropped.\n");
+	printf("-u <UID>      | User ID (numeric) to use when privileges are dropped.\n");
+	printf("-g <GID>      | Group ID (numeric) to use when privileges are dropped.\n");
 #endif /* ifndef WIN32 */
-  printf("-t <port>\tManagement UDP Port (for multiple supernodes on a machine).\n");
-  printf("-v        \tIncrease verbosity. Can be used multiple times.\n");
-  printf("-h        \tThis help message.\n");
-  printf("\n");
+	printf("-t <port>     | Management UDP Port (for multiple supernodes on a machine).\n");
+	printf("-d <net/bit>  | Subnet that provides dhcp service for edge. eg. -d 172.17.12.0/24\n");
+	printf("-v            | Increase verbosity. Can be used multiple times.\n");
+	printf("-h            | This help message.\n");
+	printf("\n");
 
-  exit(1);
+	exit(1);
 }
 
 
 /* *************************************************** */
 
 static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
-  //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
+	//traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
 
-  switch(optkey) {
-  case 'l': /* local-port */
-    sss->lport = atoi(_optarg);
-    break;
+	switch (optkey) {
+		case 'l': /* local-port */
+			sss->lport = atoi(_optarg);
+			break;
 
-  case 't': /* mgmt-port */
-    sss->mport = atoi(_optarg);
-    break;
+		case 't': /* mgmt-port */
+			sss->mport = atoi(_optarg);
+			break;
+
+		case 'd': {
+			dec_ip_str_t ip_str = {'\0'};
+			in_addr_t net;
+			uint8_t bitlen;
+
+			if (sscanf(_optarg, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
+				traceEvent(TRACE_WARNING, "Bad net/bit format '%s'. See -h.", _optarg);
+				break;
+			}
+
+			net = inet_addr(ip_str);
+			if ((net < 0) || (net == INADDR_NONE) || (net == INADDR_ANY)) {
+				traceEvent(TRACE_WARNING, "Bad network '%s' in '%s', Use default: '%s/%d'",
+				           ip_str, _optarg,
+				           N2N_SN_DHCP_NET_ADDR_DEFAULT, N2N_SN_DHCP_NET_BIT_DEFAULT);
+				break;
+			}
+
+			if (bitlen > 32) {
+				traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', Use default: '%s/%d'",
+				           bitlen, _optarg,
+				           N2N_SN_DHCP_NET_ADDR_DEFAULT, N2N_SN_DHCP_NET_BIT_DEFAULT);
+				break;
+			}
+
+			traceEvent(TRACE_NORMAL, "The subnet of DHCP service is: '%s/%hhu'.", ip_str, bitlen);
+
+			sss->dhcp_addr.net_addr = ntohl(net);
+			sss->dhcp_addr.net_bitlen = bitlen;
+
+			break;
+		}
 
 #ifndef WIN32
-  case 'u': /* unprivileged uid */
-    sss->userid = atoi(_optarg);
-    break;
+		case 'u': /* unprivileged uid */
+			sss->userid = atoi(_optarg);
+			break;
 
-  case 'g': /* unprivileged uid */
-    sss->groupid = atoi(_optarg);
-    break;
+		case 'g': /* unprivileged uid */
+			sss->groupid = atoi(_optarg);
+			break;
 #endif
 
-  case 'c': /* community file */
-    load_allowed_sn_community(sss, _optarg);
-    break;
+		case 'c': /* community file */
+			load_allowed_sn_community(sss, _optarg);
+			break;
 
-  case 'f': /* foreground */
-    sss->daemon = 0;
-    break;
+		case 'f': /* foreground */
+			sss->daemon = 0;
+			break;
 
-  case 'h': /* help */
-    help();
-    break;
+		case 'h': /* help */
+			help();
+			break;
 
-  case 'v': /* verbose */
-    setTraceLevel(getTraceLevel() + 1);
-    break;
+		case 'v': /* verbose */
+			setTraceLevel(getTraceLevel() + 1);
+			break;
 
-  default:
-    traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char)optkey);
-    return(-1);
-  }
+		default:
+			traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char) optkey);
+			return (-1);
+	}
 
-  return(0);
+	return (0);
 }
+
 
 /* *********************************************** */
 
 static const struct option long_options[] = {
-  { "communities",     required_argument, NULL, 'c' },
-  { "foreground",      no_argument,       NULL, 'f' },
-  { "local-port",      required_argument, NULL, 'l' },
-  { "mgmt-port",       required_argument, NULL, 't' },
-  { "help"   ,         no_argument,       NULL, 'h' },
-  { "verbose",         no_argument,       NULL, 'v' },
-  { NULL,              0,                 NULL,  0  }
+		{"communities", required_argument, NULL, 'c'},
+		{"foreground",  no_argument,       NULL, 'f'},
+		{"local-port",  required_argument, NULL, 'l'},
+		{"mgmt-port",   required_argument, NULL, 't'},
+		{"dhcp",        required_argument, NULL, 'd'},
+		{"help",        no_argument,       NULL, 'h'},
+		{"verbose",     no_argument,       NULL, 'v'},
+		{NULL, 0,                          NULL, 0}
 };
 
 /* *************************************************** */
@@ -194,7 +231,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fl:u:g:t:c:vh",
+  while((c = getopt_long(argc, argv, "fl:u:g:t:d:c:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);
