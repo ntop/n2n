@@ -31,6 +31,8 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
   FILE *fd = fopen(path, "r");
   struct sn_community *s, *tmp;
   uint32_t num_communities = 0;
+  struct sn_community_regular_expression *re, *tmp_re;
+  uint32_t num_regex = 0;
 
   if(fd == NULL) {
     traceEvent(TRACE_WARNING, "File %s not found", path);
@@ -42,6 +44,11 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
     if (NULL != s->header_encryption_ctx)
       free (s->header_encryption_ctx);
     free(s);
+  }
+
+  HASH_ITER(hh, sss->rules, re, tmp_re) {
+    HASH_DEL(sss->rules, re);
+    free(re);
   }
 
   while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
@@ -59,11 +66,26 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 	break;
     }
 
+    // if it contains typical characters...
+    if(NULL != strpbrk(line, ".^$*+?[]\\")) {
+      // ...it is treated as regular expression
+      re = (struct sn_community_regular_expression*)calloc(1,sizeof(struct sn_community_regular_expression));
+      if (re) {
+        re->rule = re_compile(line);
+        HASH_ADD_PTR(sss->rules, rule, re);
+	num_regex++;
+        traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", line);
+        continue;
+      }
+    }
+
     s = (struct sn_community*)calloc(1,sizeof(struct sn_community));
 
     if(s != NULL) {
       strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE-1);
       s->community[N2N_COMMUNITY_SIZE-1] = '\0';
+      /* loaded from file, this community is unpurgeable */
+      s->purgeable = COMMUNITY_UNPURGEABLE;
       /* we do not know if header encryption is used in this community,
        * first packet will show. just in case, setup the key.           */
       s->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
@@ -78,8 +100,17 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
   fclose(fd);
 
-  traceEvent(TRACE_NORMAL, "Loaded %u communities from %s",
+  if ((num_regex + num_communities) == 0)
+  {
+    traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", path);
+    return -1;
+  }
+
+  traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
 	     num_communities, path);
+
+  traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
+	     num_regex, path);
 
   /* No new communities will be allowed */
   sss->lock_communities = 1;

@@ -110,6 +110,7 @@ add_library(n2n STATIC
         src/tuntap_netbsd.c
         src/tuntap_linux.c
         src/tuntap_osx.c
+        src/n2n_regex.c
         )
 
 if(DEFINED WIN32)

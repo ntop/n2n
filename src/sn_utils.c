@@ -230,6 +230,7 @@ int sn_init(n2n_sn_t *sss) {
 void sn_term(n2n_sn_t *sss)
 {
     struct sn_community *community, *tmp;
+    struct sn_community_regular_expression *re, *tmp_re;
 
     if (sss->sock >= 0)
     {
@@ -250,6 +251,14 @@ void sn_term(n2n_sn_t *sss)
           free (community->header_encryption_ctx);
         HASH_DEL(sss->communities, community);
         free(community);
+    }
+
+    HASH_ITER(hh, sss->rules, re, tmp_re) {
+      HASH_DEL(sss->rules, re);
+      if (NULL!=re->rule) {
+        free(re->rule);
+      }
+      free(re);
     }
 }
 
@@ -400,10 +409,10 @@ static int purge_expired_communities(n2n_sn_t *sss,
 
   HASH_ITER(hh, sss->communities, comm, tmp) {
     num_reg += purge_peer_list(&comm->edges, now - REGISTRATION_TIMEOUT);
-    if ((comm->edges == NULL) && (!sss->lock_communities)) {
+    if ((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
       traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
       if (NULL != comm->header_encryption_ctx)
-        /* this should not happen as no 'locked' and thus only communities w/o encrypted header here */
+        /* this should not happen as 'purgeable' and thus only communities w/o encrypted header here */
         free(comm->header_encryption_ctx);
       HASH_DEL(sss->communities, comm);
       free(comm);
@@ -834,6 +843,10 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                    cmn2;
     uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
     size_t                          encx=0;
+    struct sn_community_regular_expression *re, *tmp_re;
+    int8_t                          allowed_match = -1;
+    uint8_t                         match = 0;
+    int				    match_length = 0;
     n2n_ip_subnet_t                 ipaddr;
 
 	  memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
@@ -858,15 +871,36 @@ static int process_udp(n2n_sn_t * sss,
       not report any message back to the edge to hide the supernode
       existance (better from the security standpoint)
     */
-    if(!comm && !sss->lock_communities) {
+
+    if(!comm && sss->lock_communities) {
+      HASH_ITER(hh, sss->rules, re, tmp_re) {
+        allowed_match = re_matchp(re->rule, cmn.community, &match_length);
+
+        if( (allowed_match != -1)
+          && (match_length == strlen(cmn.community)) // --- only full matches allowed (remove, if also partial matches wanted)
+          && (allowed_match == 0)) {                 // --- only full matches allowed (remove, if also partial matches wanted)
+          match = 1;
+          break;
+        }
+      }
+      if(match != 1) {
+        traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
+                   (char*)cmn.community);
+        return -1;
+      }
+    }
+
+    if(!comm && (!sss->lock_communities || (match == 1))) {
       comm = calloc(1, sizeof(struct sn_community));
 
       if(comm) {
 	strncpy(comm->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
 	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
-        /* new communities introduced by REGISTERs could not have had encrypted header */
+        /* new communities introduced by REGISTERs could not have had encrypted header... */
         comm->header_encryption = HEADER_ENCRYPTION_NONE;
 	comm->header_encryption_ctx = NULL;
+        /* ... and also are purgeable during periodic purge */
+        comm->purgeable = COMMUNITY_PURGEABLE;
         comm->number_enc_packets = 0;
 	HASH_ADD_STR(sss->communities, community, comm);
 
@@ -917,9 +951,11 @@ static int process_udp(n2n_sn_t * sss,
       traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
 		 macaddr_str(mac_buf, reg.edgeMac),
 		 sock_to_cstr(sockbuf, &(ack.sock)));
-    } else
+    } else {
       traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
 		 (char*)cmn.community);
+      return -1;
+    }
     break;
   }
   case MSG_TYPE_QUERY_PEER: {

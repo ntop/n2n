@@ -160,6 +160,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include "pearson.h"
 #include "portable_endian.h"
 #include "speck.h"
+#include "n2n_regex.h"
 
 #ifdef WIN32
 #define N2N_IFNAMSIZ            64
@@ -363,6 +364,7 @@ typedef struct sn_stats
 struct sn_community
 {
   char community[N2N_COMMUNITY_SIZE];
+  uint8_t             purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
   uint8_t	      header_encryption;      /* Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /* Header encryption cipher context. */
   he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
@@ -372,21 +374,29 @@ struct sn_community
   UT_hash_handle hh; /* makes this structure hashable */
 };
 
-typedef struct n2n_sn {
-	time_t start_time;         /* Used to measure uptime. */
-	sn_stats_t stats;
-	int daemon;                /* If non-zero then daemonise. */
-	uint16_t lport;            /* Local UDP port to bind to. */
-	uint16_t mport;            /* Management UDP port to bind to. */
-	int sock;                  /* Main socket for UDP traffic with edges. */
-	int mgmt_sock;             /* management socket. */
-	n2n_ip_subnet_t dhcp_addr; /* Address range of dhcp service. */
+struct sn_community_regular_expression
+{
+  re_t rule;         // compiles regular expression
+
+  UT_hash_handle hh; /* makes this structure hashable */
+};
+
+typedef struct n2n_sn
+{
+    time_t start_time; /* Used to measure uptime. */
+    sn_stats_t stats;
+    int daemon;           /* If non-zero then daemonise. */
+    uint16_t lport;       /* Local UDP port to bind to. */
+    uint16_t mport;       /* Management UDP port to bind to. */
+    int sock;             /* Main socket for UDP traffic with edges. */
+    int mgmt_sock;        /* management socket. */
 #ifndef WIN32
 	uid_t userid;
 	gid_t groupid;
 #endif
-	int lock_communities;      /* If true, only loaded communities can be used. */
-	struct sn_community *communities;
+    int lock_communities; /* If true, only loaded and matching communities can be used. */
+    struct sn_community *communities;
+    struct sn_community_regular_expression *rules;
 } n2n_sn_t;
 
 /* ************************************** */
