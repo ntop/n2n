@@ -450,7 +450,7 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
       char cidr_net[64], gateway[64];
       n2n_route_t route;
 
-      if(sscanf(optargument, "%63[^/]/%d:%63s", cidr_net, &route.net_bitlen, gateway) != 3) {
+      if(sscanf(optargument, "%63[^/]/%hhd:%63s", cidr_net, &route.net_bitlen, gateway) != 3) {
         traceEvent(TRACE_WARNING, "Bad cidr/gateway format '%d'. See -h.", optargument);
         break;
       }
@@ -818,7 +818,6 @@ int main(int argc, char* argv[]) {
 #else
   snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), "edge0");
 #endif
-  snprintf(ec.ip_mode, sizeof(ec.ip_mode), "static");
   snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
 
   if((argc >= 2) && (argv[1][0] != '-')) {
@@ -861,21 +860,6 @@ int main(int argc, char* argv[]) {
   /* Random seed */
   n2n_srand (n2n_seed());
 
-  if(0 == strcmp("dhcp", ec.ip_mode)) {
-    traceEvent(TRACE_NORMAL, "Dynamic IP address assignment enabled.");
-
-    conf.dyn_ip_mode = 1;
-  } else
-    traceEvent(TRACE_NORMAL, "ip_mode='%s'", ec.ip_mode);
-
-  if(!(
-#ifdef __linux__
-       (ec.tuntap_dev_name[0] != 0) &&
-#endif
-       (ec.ip_addr[0] != 0)
-       ))
-    help();
-
 #ifndef WIN32
   /* If running suid root then we need to setuid before using the force. */
   if(setuid(0) != 0)
@@ -886,17 +870,51 @@ int main(int argc, char* argv[]) {
   if(conf.encrypt_key && !strcmp((char*)conf.community_name, conf.encrypt_key))
     traceEvent(TRACE_WARNING, "Community and encryption key must differ, otherwise security will be compromised");
 
-	if(tuntap_open(&tuntap, ec.tuntap_dev_name, ec.ip_mode, ec.ip_addr, ec.netmask, ec.device_mac, ec.mtu) < 0)
-    exit(1);
-
-  if((eee = edge_init(&tuntap, &conf, &rc)) == NULL) {
+	if((eee = edge_init(&conf, &rc)) == NULL) {
 		traceEvent(TRACE_ERROR, "Failed in edge_init");
 		exit(1);
 	}
 	memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
 
+	if ((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
+	    ((eee->tuntap_priv_conf.ip_mode[0] == '\0') && (eee->tuntap_priv_conf.ip_addr[0] != '\0'))) {
+		traceEvent(TRACE_NORMAL, "Use manually set IP address.");
+		eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_STATIC;
+	} else if (0 == strcmp("dhcp", eee->tuntap_priv_conf.ip_mode)) {
+		traceEvent(TRACE_NORMAL, "Obtain IP from other edge DHCP services.");
+		eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_DHCP;
+	} else {
+		traceEvent(TRACE_NORMAL, "Automatically assign IP address by supernode.");
+		eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
+		do {
+			fd_set socket_mask;
+			struct timeval wait_time;
+
+			update_supernode_reg(eee, time(NULL));
+			FD_ZERO(&socket_mask);
+			FD_SET(eee->udp_sock, &socket_mask);
+			wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS;
+			wait_time.tv_usec = 0;
+
+			if (select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
+				if (FD_ISSET(eee->udp_sock, &socket_mask)) {
+					readFromIPSocket(eee, eee->udp_sock);
+				}
+			}
+		} while (eee->sn_wait);
+		eee->last_register_req = 0;
+	}
+
+	if (tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
+	                eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
+	                eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0) exit(1);
+	traceEvent(TRACE_NORMAL, "Local tuntap IP: %s, Mask: %s",
+	           eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask);
+	memcpy(&eee->device, &tuntap, sizeof(tuntap));
+//	hexdump((unsigned char*)&tuntap,sizeof(tuntap_dev));
+
 #ifndef WIN32
-  if(ec.daemon) {
+  if(eee->tuntap_priv_conf.daemon) {
     setUseSyslog(1); /* traceEvent output now goes to syslog. */
     daemonize();
   }
@@ -919,13 +937,13 @@ int main(int argc, char* argv[]) {
 #endif
 #endif /* HAVE_LIBCAP */
 
-  if((ec.userid != 0) || (ec.groupid != 0)) {
+  if((eee->tuntap_priv_conf.userid != 0) || (eee->tuntap_priv_conf.groupid != 0)) {
     traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
-	       (signed int)ec.userid, (signed int)ec.groupid);
+	       (signed int)eee->tuntap_priv_conf.userid, (signed int)eee->tuntap_priv_conf.groupid);
 
     /* Finished with the need for root privileges. Drop to unprivileged user. */
-    if((setgid(ec.groupid) != 0)
-       || (setuid(ec.userid) != 0)) {
+    if((setgid(eee->tuntap_priv_conf.groupid) != 0)
+       || (setuid(eee->tuntap_priv_conf.userid) != 0)) {
       traceEvent(TRACE_ERROR, "Unable to drop privileges [%u/%s]", errno, strerror(errno));
       exit(1);
     }
@@ -961,10 +979,8 @@ int main(int argc, char* argv[]) {
 
   /* Cleanup */
   edge_term(eee);
-  edge_term_conf(&conf);
-  tuntap_close(&tuntap);
-
-  if(conf.encrypt_key) free(conf.encrypt_key);
+  edge_term_conf(&eee->conf);
+  tuntap_close(&eee->device);
 
   return(rc);
 }
