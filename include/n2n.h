@@ -170,13 +170,13 @@ typedef struct ether_hdr ether_hdr_t;
 
 #ifndef WIN32
 typedef struct tuntap_dev {
-	int             fd;
-	int             if_idx;
-	n2n_mac_t       mac_addr;
-	uint32_t        ip_addr;
-	uint32_t        device_mask;
-	uint16_t        mtu;
-	char            dev_name[N2N_IFNAMSIZ];
+  int             fd;
+  int             if_idx;
+  n2n_mac_t       mac_addr;
+  uint32_t        ip_addr;
+  uint32_t        device_mask;
+  uint16_t        mtu;
+  char            dev_name[N2N_IFNAMSIZ];
 } tuntap_dev;
 
 #define SOCKET int
@@ -197,16 +197,16 @@ typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
 
 
 struct peer_info {
-	n2n_mac_t        mac_addr;
-	n2n_ip_subnet_t  dev_addr;
-	n2n_sock_t       sock;
-	int              timeout;
-	time_t           last_seen;
-	time_t           last_p2p;
-	time_t           last_sent_query;
-	uint64_t         last_valid_time_stamp;
+  n2n_mac_t        mac_addr;
+  n2n_ip_subnet_t  dev_addr;
+  n2n_sock_t       sock;
+  int              timeout;
+  time_t           last_seen;
+  time_t           last_p2p;
+  time_t           last_sent_query;
+  uint64_t         last_valid_time_stamp;
 
-	UT_hash_handle   hh; /* makes this structure hashable */
+  UT_hash_handle   hh; /* makes this structure hashable */
 };
 
 
@@ -214,9 +214,9 @@ typedef struct speck_context_t he_context_t;
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 
 typedef struct n2n_route {
-	in_addr_t        net_addr;
-	uint8_t          net_bitlen;
-	in_addr_t        gateway;
+  in_addr_t        net_addr;
+  uint8_t          net_bitlen;
+  in_addr_t        gateway;
 } n2n_route_t;
 
 typedef struct n2n_edge n2n_edge_t;
@@ -256,17 +256,17 @@ typedef struct n2n_edge_callbacks {
 /* ***************************************************** */
 
 typedef struct n2n_tuntap_priv_config {
-	char                tuntap_dev_name[N2N_IFNAMSIZ];
-	char                ip_mode[N2N_IF_MODE_SIZE];
-	dec_ip_str_t        ip_addr;
-	dec_ip_str_t        netmask;
-	char                device_mac[N2N_MACNAMSIZ];
-	int                 mtu;
-	uint8_t             got_s;
-	uint8_t             daemon;
+  char                tuntap_dev_name[N2N_IFNAMSIZ];
+  char                ip_mode[N2N_IF_MODE_SIZE];
+  dec_ip_str_t        ip_addr;
+  dec_ip_str_t        netmask;
+  char                device_mac[N2N_MACNAMSIZ];
+  int                 mtu;
+  uint8_t             got_s;
+  uint8_t             daemon;
 #ifndef WIN32
-	uid_t               userid;
-	gid_t               groupid;
+  uid_t               userid;
+  gid_t               groupid;
 #endif
 } n2n_tuntap_priv_config_t;
 
@@ -274,91 +274,91 @@ typedef struct n2n_tuntap_priv_config {
 
 
 typedef struct n2n_edge_conf {
-	n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
-	n2n_route_t         *routes;                /**< Networks to route through n2n */
-	n2n_community_t     community_name;         /**< The community. 16 full octets. */
-	uint8_t	            header_encryption;      /**< Header encryption indicator. */
-	he_context_t        *header_encryption_ctx; /**< Header encryption cipher context. */
-	he_context_t        *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
-	n2n_transform_t     transop_id;             /**< The transop to use. */
-	uint16_t            compression;            /**< Compress outgoing data packets before encryption */
-	uint16_t            num_routes;	            /**< Number of routes in routes */
-	uint8_t             tuntap_ip_mode;         /**< Interface IP address allocated mode, eg. DHCP. */
-	uint8_t             allow_routing;          /**< Accept packet no to interface address. */
-	uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
-	uint8_t             disable_pmtu_discovery; /**< Disable the Path MTU discovery. */
-	uint8_t             allow_p2p;              /**< Allow P2P connection */
-	uint8_t             sn_num;                 /**< Number of supernode addresses defined. */
-	uint8_t             tos;                    /** TOS for sent packets */
-	char                *encrypt_key;
-	int                 register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
-	int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
-	int                 local_port;
-	int                 mgmt_port;
+  n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
+  n2n_route_t         *routes;                /**< Networks to route through n2n */
+  n2n_community_t     community_name;         /**< The community. 16 full octets. */
+  uint8_t	            header_encryption;      /**< Header encryption indicator. */
+  he_context_t        *header_encryption_ctx; /**< Header encryption cipher context. */
+  he_context_t        *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
+  n2n_transform_t     transop_id;             /**< The transop to use. */
+  uint16_t            compression;            /**< Compress outgoing data packets before encryption */
+  uint16_t            num_routes;	            /**< Number of routes in routes */
+  uint8_t             tuntap_ip_mode;         /**< Interface IP address allocated mode, eg. DHCP. */
+  uint8_t             allow_routing;          /**< Accept packet no to interface address. */
+  uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
+  uint8_t             disable_pmtu_discovery; /**< Disable the Path MTU discovery. */
+  uint8_t             allow_p2p;              /**< Allow P2P connection */
+  uint8_t             sn_num;                 /**< Number of supernode addresses defined. */
+  uint8_t             tos;                    /** TOS for sent packets */
+  char                *encrypt_key;
+  int                 register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
+  int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
+  int                 local_port;
+  int                 mgmt_port;
 } n2n_edge_conf_t;
 
 
 struct n2n_edge_stats {
-	uint32_t tx_p2p;
-	uint32_t rx_p2p;
-	uint32_t tx_sup;
-	uint32_t rx_sup;
-	uint32_t tx_sup_broadcast;
-	uint32_t rx_sup_broadcast;
+  uint32_t tx_p2p;
+  uint32_t rx_p2p;
+  uint32_t tx_sup;
+  uint32_t rx_sup;
+  uint32_t tx_sup_broadcast;
+  uint32_t rx_sup_broadcast;
 };
 
 struct n2n_edge {
-	n2n_edge_conf_t     conf;
+  n2n_edge_conf_t     conf;
 
-	/* Status */
-	uint8_t             sn_idx;                  /**< Currently active supernode. */
-	uint8_t             sn_wait;                 /**< Whether we are waiting for a supernode response. */
-	size_t              sup_attempts;            /**< Number of remaining attempts to this supernode. */
-	tuntap_dev          device;                  /**< All about the TUNTAP device */
-	n2n_trans_op_t      transop;                 /**< The transop to use when encoding */
-	n2n_cookie_t        last_cookie;             /**< Cookie sent in last REGISTER_SUPER. */
-	n2n_route_t         *sn_route_to_clean;      /**< Supernode route to clean */
-	n2n_edge_callbacks_t cb;                     /**< API callbacks */
-	void 	            *user_data;              /**< Can hold user data */
-	uint64_t            sn_last_valid_time_stamp;/**< last valid time stamp from supernode */
+  /* Status */
+  uint8_t             sn_idx;                  /**< Currently active supernode. */
+  uint8_t             sn_wait;                 /**< Whether we are waiting for a supernode response. */
+  size_t              sup_attempts;            /**< Number of remaining attempts to this supernode. */
+  tuntap_dev          device;                  /**< All about the TUNTAP device */
+  n2n_trans_op_t      transop;                 /**< The transop to use when encoding */
+  n2n_cookie_t        last_cookie;             /**< Cookie sent in last REGISTER_SUPER. */
+  n2n_route_t         *sn_route_to_clean;      /**< Supernode route to clean */
+  n2n_edge_callbacks_t cb;                     /**< API callbacks */
+  void 	            *user_data;              /**< Can hold user data */
+  uint64_t            sn_last_valid_time_stamp;/**< last valid time stamp from supernode */
 
-	/* Sockets */
-	n2n_sock_t          supernode;
-	int                 udp_sock;
-	int                 udp_mgmt_sock;           /**< socket for status info. */
+  /* Sockets */
+  n2n_sock_t          supernode;
+  int                 udp_sock;
+  int                 udp_mgmt_sock;           /**< socket for status info. */
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-	n2n_sock_t          multicast_peer;          /**< Multicast peer group (for local edges) */
-	int                 udp_multicast_sock;      /**< socket for local multicast registrations. */
-	int                 multicast_joined;        /**< 1 if the group has been joined.*/
+  n2n_sock_t          multicast_peer;          /**< Multicast peer group (for local edges) */
+  int                 udp_multicast_sock;      /**< socket for local multicast registrations. */
+  int                 multicast_joined;        /**< 1 if the group has been joined.*/
 #endif
 
-	/* Peers */
-	struct peer_info *  known_peers;             /**< Edges we are connected to. */
-	struct peer_info *  pending_peers;           /**< Edges we have tried to register with. */
+  /* Peers */
+  struct peer_info *  known_peers;             /**< Edges we are connected to. */
+  struct peer_info *  pending_peers;           /**< Edges we have tried to register with. */
 
-	/* Timers */
-	time_t              last_register_req;       /**< Check if time to re-register with super*/
-	time_t              last_p2p;                /**< Last time p2p traffic was received. */
-	time_t              last_sup;                /**< Last time a packet arrived from supernode. */
-	time_t              start_time;              /**< For calculating uptime */
+  /* Timers */
+  time_t              last_register_req;       /**< Check if time to re-register with super*/
+  time_t              last_p2p;                /**< Last time p2p traffic was received. */
+  time_t              last_sup;                /**< Last time a packet arrived from supernode. */
+  time_t              start_time;              /**< For calculating uptime */
 
 
-	struct n2n_edge_stats stats;                 /**< Statistics */
+  struct n2n_edge_stats stats;                 /**< Statistics */
 
-	n2n_tuntap_priv_config_t tuntap_priv_conf;   /**< Tuntap config */
+  n2n_tuntap_priv_config_t tuntap_priv_conf;   /**< Tuntap config */
 };
 
 
 typedef struct sn_stats
 {
-    size_t errors;         /* Number of errors encountered. */
-    size_t reg_super;      /* Number of REGISTER_SUPER requests received. */
-    size_t reg_super_nak;  /* Number of REGISTER_SUPER requests declined. */
-    size_t fwd;            /* Number of messages forwarded. */
-    size_t broadcast;      /* Number of messages broadcast to a community. */
-    time_t last_fwd;       /* Time when last message was forwarded. */
-    time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
+  size_t errors;         /* Number of errors encountered. */
+  size_t reg_super;      /* Number of REGISTER_SUPER requests received. */
+  size_t reg_super_nak;  /* Number of REGISTER_SUPER requests declined. */
+  size_t fwd;            /* Number of messages forwarded. */
+  size_t broadcast;      /* Number of messages broadcast to a community. */
+  time_t last_fwd;       /* Time when last message was forwarded. */
+  time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
 } sn_stats_t;
 
 struct sn_community
@@ -383,20 +383,21 @@ struct sn_community_regular_expression
 
 typedef struct n2n_sn
 {
-    time_t start_time; /* Used to measure uptime. */
-    sn_stats_t stats;
-    int daemon;           /* If non-zero then daemonise. */
-    uint16_t lport;       /* Local UDP port to bind to. */
-    uint16_t mport;       /* Management UDP port to bind to. */
-    int sock;             /* Main socket for UDP traffic with edges. */
-    int mgmt_sock;        /* management socket. */
+  time_t start_time; /* Used to measure uptime. */
+  sn_stats_t stats;
+  int daemon;           /* If non-zero then daemonise. */
+  uint16_t lport;       /* Local UDP port to bind to. */
+  uint16_t mport;       /* Management UDP port to bind to. */
+  int sock;             /* Main socket for UDP traffic with edges. */
+  int mgmt_sock;        /* management socket. */
+  n2n_ip_subnet_t dhcp_addr; /* Address range of dhcp service. */
 #ifndef WIN32
-	uid_t userid;
-	gid_t groupid;
+  uid_t userid;
+  gid_t groupid;
 #endif
-    int lock_communities; /* If true, only loaded and matching communities can be used. */
-    struct sn_community *communities;
-    struct sn_community_regular_expression *rules;
+  int lock_communities; /* If true, only loaded and matching communities can be used. */
+  struct sn_community *communities;
+  struct sn_community_regular_expression *rules;
 } n2n_sn_t;
 
 /* ************************************** */
@@ -435,7 +436,7 @@ void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
 
 /* Tuntap API */
 int tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
-			char *device_mask, const char * device_mac, int mtu);
+		char *device_mask, const char * device_mac, int mtu);
 int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
 int tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
 void tuntap_close(struct tuntap_dev *tuntap);
@@ -456,11 +457,11 @@ void print_edge_stats(const n2n_edge_t *eee);
 
 /* Sockets */
 char* sock_to_cstr( n2n_sock_str_t out,
-                            const n2n_sock_t * sock );
+		    const n2n_sock_t * sock );
 char * ip_subnet_to_str(dec_ip_bit_str_t buf, const n2n_ip_subnet_t *ipaddr);
 SOCKET open_socket(int local_port, int bind_any);
 int sock_equal( const n2n_sock_t * a,
-                       const n2n_sock_t * b );
+		const n2n_sock_t * b );
 
 /* Header encryption */
 uint64_t time_stamp(void);
