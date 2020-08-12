@@ -6,3 +6,5 @@ Code contributions courtesy of:
  * Lukasz Taczuk
  * Alaric Snell-Pym <alaric@kitten-technologies.co.uk>
  * Babak Farrokhi <babak@farrokhi.net> [FreeBSD port]
+ * Logan oos Even
+ 
