@@ -123,39 +123,19 @@ uint8_t TwoFish__b(uint32_t x,int n)
  *	initializes important values (such as subkeys, sBoxes), generates subkeys
  *	and precomputes the MDS matrix if not already done.
  *
- *	Input:	User supplied password (will be appended by default password of 'SnortHas2FishEncryptionRoutines!')
+ *	Input:	User supplied key of correct length (TwoFish_KEY_LENGTH, 256 bits = 32 bytes by default)
  *
  *      Output: Pointer to TWOFISH structure. This data structure contains key dependent data.
  *		This pointer is used with all other crypt functions.
  */
 
-TWOFISH *TwoFishInit(const uint8_t *userkey, uint32_t keysize)
+TWOFISH *TwoFishInit(const uint8_t *userkey)
 {  TWOFISH *tfdata;
-  int i,x,m;
-  uint8_t tkey[TwoFish_KEY_LENGTH+40];
 
-  memset( tkey, 0, TwoFish_KEY_LENGTH+40 );
   tfdata=(TWOFISH *)malloc(sizeof(TWOFISH));			/* allocate the TwoFish structure */
   if(tfdata!=NULL)
   {
-
-      /* Changes here prevented a dangerous random key segment for keys of length < TwoFish_KEY_LENGTH */
-      if(keysize > 0)
-      {
-          memcpy( tkey, userkey, keysize ); /* The rest will be zeros */
-      }
-      else
-      {
-          memcpy( tkey, TwoFish_DEFAULT_PW, TwoFish_DEFAULT_PW_LEN ); /* if no key defined, use default password */
-      }
-
-      /* This loop is awful - surely a loop on memcpy() would be clearer and more efficient */
-      for(i=0,x=0,m=keysize;i<TwoFish_KEY_LENGTH;i++)	/* copy into data structure */
-      {
-          tfdata->key[i]=tkey[x++];			/* fill the whole keyspace with repeating key. */
-          if(x==m)
-              x=0;
-      }
+      memcpy(tfdata->key, userkey, TwoFish_KEY_LENGTH);
 
       if(!TwoFish_MDSready)
           _TwoFish_PrecomputeMDSmatrix();		/* "Wake Up, Neo" */
@@ -966,9 +946,16 @@ int main(int argc, char* argv[])
     char outbuf[4096];
     char * outp = outbuf;
 
-    uint8_t key[] = { 0xfc, 0x77, 0x1a, 0xda, 0xaa };
-    TWOFISH *tfa = TwoFishInit( key, 5 );
-    TWOFISH *tfb = TwoFishInit( key, 5 );
+    uint8_t key[] = { 0xfc, 0x77, 0x1a, 0xda, 0xaa,
+                      0xfc, 0x77, 0x1a, 0xda, 0xaa,
+                      0xfc, 0x77, 0x1a, 0xda, 0xaa,
+                      0xfc, 0x77, 0x1a, 0xda, 0xaa,
+                      0xfc, 0x77, 0x1a, 0xda, 0xaa,
+                      0xfc, 0x77, 0x1a, 0xda, 0xaa,
+                      0xfc, 0x77 };
+
+    TWOFISH *tfa = TwoFishInit( key );
+    TWOFISH *tfb = TwoFishInit( key );
 
     uint8_t out[2048], out2[2048];
     uint8_t in[TEST_DATA_SIZE];
