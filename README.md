@@ -60,7 +60,7 @@ make install
 
 Some parts of the code significantly benefit from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, use `./configure CFLAGS="-O3 -march=native"` for configuration instead of `./configure`.
 
-For Windows, MacOS and general build options, please check out [Building.md](doc/Building.md) for compilation and running.
+For Windows, MacOS and general building options, please check out [Building.md](doc/Building.md) for compilation and running.
 
 ## Running edge as a Service
 
