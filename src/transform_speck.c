@@ -18,14 +18,12 @@
 
 #include "n2n.h"
 
-#define N2N_SPECK_TRANSFORM_VERSION       1  /* version of the transform encoding */
 #define N2N_SPECK_IVEC_SIZE               16
 
 #define SPECK_KEY_BYTES (256/8)
 
 /* Speck plaintext preamble */
-#define TRANSOP_SPECK_VER_SIZE     1       /* Support minor variants in encoding in one module. */
-#define TRANSOP_SPECK_PREAMBLE_SIZE (TRANSOP_SPECK_VER_SIZE + N2N_SPECK_IVEC_SIZE)
+#define TRANSOP_SPECK_PREAMBLE_SIZE (N2N_SPECK_IVEC_SIZE)
 
 typedef unsigned char n2n_speck_ivec_t[N2N_SPECK_IVEC_SIZE];
 
@@ -64,12 +62,11 @@ static void set_speck_iv(transop_speck_t *priv, n2n_speck_ivec_t ivec) {
 
 /** The Speck packet format consists of:
  *
- *  - a 8-bit speck encoding version in clear text
  *  - a 128-bit random IV
  *  - encrypted payload.
  *
- *  [V|IIII|DDDDDDDDDDDDDDDDDDDDD]
- *         |<---- encrypted ---->|
+ *  [IIII|DDDDDDDDDDDDDDDDDDDDD]
+ *       |<---- encrypted ---->|
  */
 static int transop_encode_speck(n2n_trans_op_t * arg,
 			       uint8_t * outbuf,
@@ -86,9 +83,6 @@ static int transop_encode_speck(n2n_trans_op_t * arg,
       n2n_speck_ivec_t enc_ivec = {0};
 
       traceEvent(TRACE_DEBUG, "encode_speck %lu bytes", in_len);
-
-      /* Encode the Speck format version. */
-      encode_uint8(outbuf, &idx, N2N_SPECK_TRANSFORM_VERSION);
 
       /* Generate and encode the IV. */
       set_speck_iv(priv, enc_ivec);
@@ -129,18 +123,13 @@ static int transop_decode_speck(n2n_trans_op_t * arg,
   transop_speck_t * priv = (transop_speck_t *)arg->priv;
 
   if(((in_len - TRANSOP_SPECK_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* Cipher text fits in buffer */
-     && (in_len >= TRANSOP_SPECK_PREAMBLE_SIZE) /* Has at least version, iv */
+     && (in_len >= TRANSOP_SPECK_PREAMBLE_SIZE) /* Has at least iv */
   )
   {
     size_t rem=in_len;
     size_t idx=0;
-    uint8_t speck_enc_ver=0;
     n2n_speck_ivec_t dec_ivec = {0};
 
-    /* Get the encoding version to make sure it is supported */
-    decode_uint8(&speck_enc_ver, inbuf, &rem, &idx );
-
-    if(N2N_SPECK_TRANSFORM_VERSION == speck_enc_ver) {
       traceEvent(TRACE_DEBUG, "decode_speck %lu bytes", in_len);
       len = (in_len - TRANSOP_SPECK_PREAMBLE_SIZE);
 
@@ -155,8 +144,6 @@ static int transop_decode_speck(n2n_trans_op_t * arg,
 #endif
       traceEvent(TRACE_DEBUG, "decode_speck: decrypted %u bytes.\n", len);
 
-    } else
-      traceEvent(TRACE_ERROR, "decode_speck unsupported Speck version %u.", speck_enc_ver);
   } else
   traceEvent(TRACE_ERROR, "decode_speck inbuf wrong size (%ul) to decrypt.", in_len);
 
@@ -215,4 +202,3 @@ int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   /* Setup the cipher and key */
   return(setup_speck_key(priv, encrypt_key, encrypt_key_len));
 }
-

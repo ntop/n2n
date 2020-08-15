@@ -18,9 +18,6 @@
 
 #include "n2n.h"
 
-#define N2N_TWOFISH_NUM_SA              32 /* space for SAa */
-
-#define N2N_TWOFISH_TRANSFORM_VERSION   1  /* version of the transform encoding */
 
 typedef struct transop_tf {
   TWOFISH*           enc_tf; /* tx state */
@@ -39,18 +36,14 @@ static int transop_deinit_twofish( n2n_trans_op_t * arg ) {
   return 0;
 }
 
-#define TRANSOP_TF_VER_SIZE     1       /* Support minor variants in encoding in one module. */
 #define TRANSOP_TF_NONCE_SIZE   4
-#define TRANSOP_TF_SA_SIZE      4
 
 /** The twofish packet format consists of:
  *
- *  - a 8-bit twofish encoding version in clear text
- *  - a 32-bit SA number in clear text
  *  - ciphertext encrypted from a 32-bit nonce followed by the payload.
  *
- *  [V|SSSS|nnnnDDDDDDDDDDDDDDDDDDDDD]
- *         |<------ encrypted ------>|
+ *  [nnnnDDDDDDDDDDDDDDDDDDDDD]
+ *  |<------ encrypted ------>|
  */
 static int transop_encode_twofish( n2n_trans_op_t * arg,
                                    uint8_t * outbuf,
@@ -66,18 +59,9 @@ static int transop_encode_twofish( n2n_trans_op_t * arg,
 
   if ( (in_len + TRANSOP_TF_NONCE_SIZE) <= N2N_PKT_BUF_SIZE )
     {
-      if ( (in_len + TRANSOP_TF_NONCE_SIZE + TRANSOP_TF_SA_SIZE + TRANSOP_TF_VER_SIZE) <= out_len )
+      if ( (in_len + TRANSOP_TF_NONCE_SIZE) <= out_len )
         {
-	  size_t idx=0;
-	  uint32_t sa_id=0; // Not used
-
 	  traceEvent(TRACE_DEBUG, "encode_twofish %lu", in_len);
-            
-	  /* Encode the twofish format version. */
-	  encode_uint8( outbuf, &idx, N2N_TWOFISH_TRANSFORM_VERSION );
-
-	  /* Encode the security association (SA) number */
-	  encode_uint32( outbuf, &idx, sa_id );
 
 	  /* The assembly buffer is a source for encrypting data. The nonce is
 	   * written in first followed by the packet payload. The whole
@@ -88,14 +72,10 @@ static int transop_encode_twofish( n2n_trans_op_t * arg,
 
 	  /* Encrypt the assembly contents and write the ciphertext after the SA. */
 	  len = TwoFishEncryptRaw( assembly, /* source */
-				   outbuf + TRANSOP_TF_VER_SIZE + TRANSOP_TF_SA_SIZE, 
+				   outbuf,
 				   in_len + TRANSOP_TF_NONCE_SIZE, /* enc size */
 				   priv->enc_tf);
-	  if ( len > 0 )
-            {
-	      len += TRANSOP_TF_VER_SIZE + TRANSOP_TF_SA_SIZE; /* size of data carried in UDP. */
-            }
-	  else
+	  if ( len <= 0 )
             {
 	      traceEvent( TRACE_ERROR, "encode_twofish encryption failed." );
             }
@@ -114,15 +94,7 @@ static int transop_encode_twofish( n2n_trans_op_t * arg,
   return len;
 }
 
-/** The twofish packet format consists of:
- *
- *  - a 8-bit twofish encoding version in clear text
- *  - a 32-bit SA number in clear text
- *  - ciphertext encrypted from a 32-bit nonce followed by the payload.
- *
- *  [V|SSSS|nnnnDDDDDDDDDDDDDDDDDDDDD]
- *         |<------ encrypted ------>|
- */
+
 static int transop_decode_twofish( n2n_trans_op_t * arg,
                                    uint8_t * outbuf,
                                    size_t out_len,
@@ -134,26 +106,15 @@ static int transop_decode_twofish( n2n_trans_op_t * arg,
   transop_tf_t * priv = (transop_tf_t *)arg->priv;
   uint8_t assembly[N2N_PKT_BUF_SIZE];
 
-  if ( ( (in_len - (TRANSOP_TF_VER_SIZE + TRANSOP_TF_SA_SIZE)) <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */ 
-       && (in_len >= (TRANSOP_TF_VER_SIZE + TRANSOP_TF_SA_SIZE + TRANSOP_TF_NONCE_SIZE) ) /* Has at least version, SA and nonce */
+  if ( ( in_len <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */
+       && (in_len >= TRANSOP_TF_NONCE_SIZE ) /* Has at least nonce */
        ) {
-      size_t rem=in_len;
-      size_t idx=0;
-      uint8_t tf_enc_ver=0;
-      uint32_t sa_rx=0; // Not used
-
-      /* Get the encoding version to make sure it is supported */
-      decode_uint8( &tf_enc_ver, inbuf, &rem, &idx );
-
-      if ( N2N_TWOFISH_TRANSFORM_VERSION == tf_enc_ver ) {
-	  /* Get the SA number and make sure we are decrypting with the right one. */
-	  decode_uint32( &sa_rx, inbuf, &rem, &idx );
 
 	  traceEvent(TRACE_DEBUG, "decode_twofish %lu", in_len);
 
-	  len = TwoFishDecryptRaw( (void *)(inbuf + TRANSOP_TF_VER_SIZE + TRANSOP_TF_SA_SIZE),
+	  len = TwoFishDecryptRaw( (void *)inbuf,
 				     assembly, /* destination */
-				     (in_len - (TRANSOP_TF_VER_SIZE + TRANSOP_TF_SA_SIZE)), 
+				     in_len,
 				     priv->dec_tf);
 
 	  if(len > 0) {
@@ -165,8 +126,6 @@ static int transop_decode_twofish( n2n_trans_op_t * arg,
 		    len );
 	  } else
 	    traceEvent(TRACE_ERROR, "decode_twofish decryption failed");
-      } else
-	traceEvent( TRACE_ERROR, "decode_twofish unsupported twofish version %u.", tf_enc_ver );   
   } else
     traceEvent( TRACE_ERROR, "decode_twofish inbuf wrong size (%ul) to decrypt.", in_len );
 
