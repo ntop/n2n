@@ -1020,17 +1020,10 @@ static int handle_PACKET(n2n_edge_t * eee,
     uint8_t decodebuf[N2N_PKT_BUF_SIZE];
     size_t eth_size;
     n2n_transform_t rx_transop_id;
+    uint8_t rx_compression_id;
 
     rx_transop_id = (n2n_transform_t)pkt->transform;
-    /* optional compression is encoded in uppermost bit of transform field.
-     * this is an intermediate solution to maintain compatibility until some
-     * upcoming major release (3.0?) brings up changes in packet structure anyway
-     * in the course of which a dedicated compression field could be spent.
-     * REVISIT then. */
-    uint16_t rx_compression_id;
-
-    rx_compression_id = (uint16_t)rx_transop_id >> (8*sizeof((uint16_t)rx_transop_id)-N2N_COMPRESSION_ID_BITLEN);
-    rx_transop_id &= (1 << (8*sizeof((uint16_t)rx_transop_id)-N2N_COMPRESSION_ID_BITLEN)) -1;
+    rx_compression_id = pkt->compression;
 
     if(rx_transop_id == eee->conf.transop_id) {
       uint8_t is_multicast;
@@ -1071,7 +1064,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	return (-1); // cannot handle it
       }
 
-      if(rx_compression_id) {
+      if(rx_compression_id != N2N_COMPRESSION_ID_NONE) {
 	traceEvent (TRACE_DEBUG, "payload decompression [%s]: deflated %u bytes to %u bytes",
 		    compression_str(rx_compression_id), eth_size, (int)deflated_len);
 	memcpy(eth_payload ,deflation_buffer, deflated_len );
@@ -1484,7 +1477,7 @@ void edge_send_packet2net(n2n_edge_t * eee,
       break;
     }
 
-    if(pkt.compression) {
+    if(pkt.compression != N2N_COMPRESSION_ID_NONE) {
       traceEvent (TRACE_DEBUG, "payload compression [%s]: compressed %u bytes to %u bytes\n",
 		  compression_str(pkt.compression), len, compression_len);
 
@@ -1493,12 +1486,6 @@ void edge_send_packet2net(n2n_edge_t * eee,
       free (compression_buffer);
     }
   }
-  /* optional compression is encoded in uppermost bits of transform field.
-   * this is an intermediate solution to maintain compatibility until some
-   * upcoming major release (3.0?) brings up changes in packet structure anyway
-   * in the course of which a dedicated compression field could be spent.
-   * REVISIT then. */
-  pkt.transform = pkt.transform | (pkt.compression << (8*sizeof(pkt.transform)-N2N_COMPRESSION_ID_BITLEN));
 
   idx=0;
   encode_PACKET(pktbuf, &idx, &cmn, &pkt);
@@ -2618,6 +2605,7 @@ int quick_edge_init(char *device_name, char *community_name,
   edge_init_conf_defaults(&conf);
   conf.encrypt_key = encrypt_key;
   conf.transop_id = N2N_TRANSFORM_ID_TWOFISH;
+  conf.compression = N2N_COMPRESSION_ID_NONE;
   snprintf((char*)conf.community_name, sizeof(conf.community_name), "%s", community_name);
   edge_conf_add_supernode(&conf, supernode_ip_address_port);
 

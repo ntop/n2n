@@ -453,7 +453,8 @@ int encode_PACKET( uint8_t * base,
     {
         retval += encode_sock( base, idx, &(pkt->sock) );
     }
-    retval += encode_uint16( base, idx, pkt->transform );
+    retval += encode_uint8( base, idx, pkt->compression );
+    retval += encode_uint8( base, idx, pkt->transform );
 
     return retval;
 }
@@ -475,7 +476,8 @@ int decode_PACKET( n2n_PACKET_t * pkt,
         retval += decode_sock( &(pkt->sock), base, rem, idx );
     }
 
-    retval += decode_uint16( &(pkt->transform), base, rem, idx );
+    retval += decode_uint8( &(pkt->compression), base, rem, idx );
+    retval += decode_uint8( &(pkt->transform), base, rem, idx );
 
     return retval;
 }

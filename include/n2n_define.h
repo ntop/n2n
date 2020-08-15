@@ -58,18 +58,13 @@
 /* Compression is disabled by default for outgoing packets if no cli
  * option is given. All edges are built with decompression support so
  * they are able to understand each other (this applies to lzo only). */
-#define N2N_COMPRESSION_ID_NONE		0	/* default, see edge_init_conf_defaults(...) in edge_utils.c */
-#define N2N_COMPRESSION_ID_LZO		1	/* set if '-z1' or '-z' cli option is present, see setOption(...) in edge.c */
+#define N2N_COMPRESSION_ID_INVALID	0
+#define N2N_COMPRESSION_ID_NONE		1	/* default, see edge_init_conf_defaults(...) in edge_utils.c */
+#define N2N_COMPRESSION_ID_LZO		2	/* set if '-z1' or '-z' cli option is present, see setOption(...) in edge.c */
 #ifdef N2N_HAVE_ZSTD
-#define N2N_COMPRESSION_ID_ZSTD		2	/* set if '-z2' cli option is present, available only if compiled with zstd lib */
+#define N2N_COMPRESSION_ID_ZSTD		3	/* set if '-z2' cli option is present, available only if compiled with zstd lib */
 #define ZSTD_COMPRESSION_LEVEL		7	/* 1 (faster) ... 22 (more compression) */
 #endif
-// with the next major packet structure update, make '0' = invalid, and '1' = no compression
-// '2' = LZO, '3' = ZSTD, ... REVISIT then (also: change all occurences in source).
-
-#define N2N_COMPRESSION_ID_BITLEN	3	/* number of bits used for encoding compression id in the uppermost
-				 	           bits of transform_id; will be obsolete as soon as compression gets
-						   its own field in the packet. REVISIT then. */
 
 /* (un)purgeable community indicator (supernode) */
 #define COMMUNITY_UNPURGEABLE		0
