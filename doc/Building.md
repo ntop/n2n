@@ -90,7 +90,7 @@ See `edge.exe --help` and `supernode.exe --help` for a list of supported options
 
 ## Low Memory Footprint
 
-Some parts of the code (well, one for now: Pearson hashing) offer an optional low memory footprint if compiled using with the macro `LOW_MEM_FOOTPRINT`. GCC will make it happen with `-D LOW_MEM_FOOTPRINT` eventually specified along with other options of choice during configuration:
+Some parts of the code (well, one for now: Pearson hashing) offer an optional low memory footprint if compiled using with the macro `LOW_MEM_FOOTPRINT`. GCC will make it happen with `-DLOW_MEM_FOOTPRINT` eventually specified along with other options of choice during configuration:
 
-`./configure CFLAGS="-O3 -march=native -D LOW_MEM_FOOTPRINT"`
+`./configure CFLAGS="-O3 -march=native -DLOW_MEM_FOOTPRINT"`
 
