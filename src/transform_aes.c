@@ -25,7 +25,6 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
-#define N2N_AES_TRANSFORM_VERSION       1  /* version of the transform encoding */
 #define N2N_AES_IVEC_SIZE               (AES_BLOCK_SIZE)
 
 #define AES256_KEY_BYTES (256/8)
@@ -33,13 +32,12 @@
 #define AES128_KEY_BYTES (128/8)
 
 /* AES plaintext preamble */
-#define TRANSOP_AES_VER_SIZE     1       /* Support minor variants in encoding in one module. */
 #define TRANSOP_AES_IV_SEED_SIZE 8    /* size of transmitted random part of IV in bytes; could range
 				       * from 0=lowest security (constant IV)  to  16=higest security
 				       * (fully random IV); default=8 */
 #define TRANSOP_AES_IV_PADDING_SIZE (N2N_AES_IVEC_SIZE - TRANSOP_AES_IV_SEED_SIZE)
 #define TRANSOP_AES_IV_KEY_BYTES (AES128_KEY_BYTES) /* use AES128 for IV encryption */
-#define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_VER_SIZE + TRANSOP_AES_IV_SEED_SIZE)
+#define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_IV_SEED_SIZE)
 
 typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
 
@@ -138,12 +136,11 @@ static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint8_t * i
 
 /** The aes packet format consists of:
  *
- *  - a 8-bit aes encoding version in clear text
  *  - a TRANSOP_AES_IV_SEED_SIZE-sized [bytes] random IV seed
  *  - encrypted payload.
  *
- *  [V|II|DDDDDDDDDDDDDDDDDDDDD]
- *       |<---- encrypted ---->|
+ *  [II|DDDDDDDDDDDDDDDDDDDDD]
+ *     |<---- encrypted ---->|
  */
 static int transop_encode_aes(n2n_trans_op_t * arg,
 			      uint8_t * outbuf,
@@ -164,9 +161,6 @@ static int transop_encode_aes(n2n_trans_op_t * arg,
       n2n_aes_ivec_t enc_ivec = {0};
 
       traceEvent(TRACE_DEBUG, "encode_aes %lu", in_len);
-
-      /* Encode the aes format version. */
-      encode_uint8(outbuf, &idx, N2N_AES_TRANSFORM_VERSION);
 
       /* Generate and encode the IV seed using as many calls to n2n_rand() as neccessary.
        * Note: ( N2N_AES_IV_SEED_SIZE % sizeof(rand_value) ) not neccessarily equals 0. */
@@ -257,18 +251,13 @@ static int transop_decode_aes(n2n_trans_op_t * arg,
   uint8_t assembly[N2N_PKT_BUF_SIZE];
 
   if(((in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* Cipher text fits in assembly */
-     && (in_len >= TRANSOP_AES_PREAMBLE_SIZE) /* Has at least version, iv seed */
+     && (in_len >= TRANSOP_AES_PREAMBLE_SIZE) /* Has at least iv seed */
      )
     {
       size_t rem=in_len;
       size_t idx=0;
-      uint8_t aes_enc_ver=0;
       uint8_t iv_seed[TRANSOP_AES_IV_SEED_SIZE];
 
-      /* Get the encoding version to make sure it is supported */
-      decode_uint8(&aes_enc_ver, inbuf, &rem, &idx );
-
-      if(N2N_AES_TRANSFORM_VERSION == aes_enc_ver) {
 	/* Get the IV seed */
 	decode_buf((uint8_t *)&iv_seed, TRANSOP_AES_IV_SEED_SIZE, inbuf, &rem, &idx);
 
@@ -336,8 +325,6 @@ static int transop_decode_aes(n2n_trans_op_t * arg,
 	  traceEvent(TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE);
 	  len = 0;
 	}
-      } else
-	traceEvent(TRACE_ERROR, "decode_aes unsupported aes version %u.", aes_enc_ver);
     } else
     traceEvent(TRACE_ERROR, "decode_aes inbuf wrong size (%ul) to decrypt.", in_len);
 
