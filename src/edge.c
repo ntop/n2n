@@ -624,11 +624,11 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv
 
       if(equal) {
 	equal[0] = '\0';
-
 	value = &equal[1];
 
+	if((value[0] == '\0') && (key[1] != '\0'))
+	  value = &key[1];
       } else {
-
 	value = NULL;
 
 	/* Adding an exception for -A_ -z_ which can come
