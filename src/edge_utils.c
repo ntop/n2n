@@ -1232,14 +1232,14 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
   traceEvent(TRACE_DEBUG, "mgmt status rq");
 
   msg_len=0;
-  msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
+  msg_len += snprintf((char*)&udp_buf[msg_len], (N2N_PKT_BUF_SIZE-msg_len),
                     "STATISTICS FOR EDGE\n");
-  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+  msg_len += snprintf((char*)&udp_buf[msg_len], N2N_SN_PKTBUF_SIZE - msg_len,
                     "community: %s\n", eee->conf.community_name);
 
-  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+  msg_len += snprintf((char*)&udp_buf[msg_len], N2N_SN_PKTBUF_SIZE - msg_len,
                     "\tid    tun_tap             MAC                edge                   last_seen\n");
-  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+  msg_len += snprintf((char*)&udp_buf[msg_len], N2N_SN_PKTBUF_SIZE - msg_len,
                     "--- pending peers -------------------------------------------------------------------\n");
 
   sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
@@ -1247,7 +1247,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
   msg_len = 0;
 
   HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
-    msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+    msg_len += snprintf((char*)&udp_buf[msg_len], N2N_SN_PKTBUF_SIZE - msg_len,
                       "\t%-4u  %-18s  %-17s  %-21s  %lu\n",
                       ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                       macaddr_str(mac_buf, peer->mac_addr),
@@ -1258,11 +1258,11 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
     msg_len = 0;
   }
 
-  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+  msg_len += snprintf((char*)&udp_buf[msg_len], N2N_SN_PKTBUF_SIZE - msg_len,
                     "--- known peers ---------------------------------------------------------------------\n");
 
   HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
-    msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+    msg_len += snprintf((char*)&udp_buf[msg_len], N2N_SN_PKTBUF_SIZE - msg_len,
                       "\t%-4u  %-18s  %-17s  %-21s  %lu\n",
                       ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                       macaddr_str(mac_buf, peer->mac_addr),
@@ -1273,7 +1273,7 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
     msg_len = 0;
   }
 
-  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+  msg_len += snprintf((char*)&udp_buf[msg_len], N2N_SN_PKTBUF_SIZE - msg_len,
                       "-------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),

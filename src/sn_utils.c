@@ -874,10 +874,10 @@ static int process_udp(n2n_sn_t * sss,
 
       if(!comm && sss->lock_communities) {
 	HASH_ITER(hh, sss->rules, re, tmp_re) {
-	  allowed_match = re_matchp(re->rule, cmn.community, &match_length);
+	  allowed_match = re_matchp(re->rule, (const char *)cmn.community, &match_length);
 
 	  if( (allowed_match != -1)
-	      && (match_length == strlen(cmn.community)) // --- only full matches allowed (remove, if also partial matches wanted)
+	      && (match_length == strlen((const char *)cmn.community)) // --- only full matches allowed (remove, if also partial matches wanted)
 	      && (allowed_match == 0)) {                 // --- only full matches allowed (remove, if also partial matches wanted)
 	    match = 1;
 	    break;
