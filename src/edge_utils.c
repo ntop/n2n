@@ -988,6 +988,8 @@ static int handle_PACKET(n2n_edge_t * eee,
   time_t              now;
   ether_hdr_t *       eh;
   ipstr_t             ip_buf;
+  macstr_t            mac_buf;
+  n2n_sock_str_t      sockbuf;
 
   now = time(NULL);
 
@@ -1119,9 +1121,11 @@ static int handle_PACKET(n2n_edge_t * eee,
     }
     else
       {
-	traceEvent(TRACE_ERROR, "invalid transop ID: expected %s(%u), got %s(%u)",
+	traceEvent(TRACE_ERROR, "invalid transop ID: expected %s(%u), got %s(%u) from %s [%s]",
 		   transop_str(eee->conf.transop_id), eee->conf.transop_id,
-		   transop_str(rx_transop_id), rx_transop_id);
+		   transop_str(rx_transop_id), rx_transop_id,
+                   sock_to_cstr(sockbuf, orig_sender),
+                   macaddr_str(mac_buf, pkt->srcMac));
       }
   }
 
