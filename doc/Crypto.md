@@ -116,7 +116,7 @@ In case of a PACKET-type, it is succeeded by the fields depicted below:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 36 ! Destination IPv4 Address                                      !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-40 ! Transform ID                  ! Payload ...                   !
+40 ! Compress'n ID !  Transform ID ! Payload ...                   !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
 44 !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+...

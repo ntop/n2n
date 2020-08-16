@@ -140,8 +140,8 @@ typedef struct n2n_PACKET
     n2n_mac_t           srcMac;
     n2n_mac_t           dstMac;
     n2n_sock_t          sock;
-    uint16_t            transform;
-    uint16_t		compression;
+    uint8_t             transform;
+    uint8_t		compression;
 } n2n_PACKET_t;
 
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */

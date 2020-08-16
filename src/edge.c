@@ -389,7 +389,7 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
       if (optargument) {
         compression = atoi(optargument);
       } else
-	compression = N2N_COMPRESSION_ID_LZO; // default, if '-z' only
+	compression = 1; // default, if '-z' only, equals -z1
 
       setPayloadCompression(conf, compression);
       break;
