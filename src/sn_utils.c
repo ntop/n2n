@@ -474,9 +474,9 @@ static int process_mgmt(n2n_sn_t *sss,
   traceEvent(TRACE_DEBUG, "process_mgmt");
 
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "\tid    tun_tap             MAC                edge                   last_seen\n");
+		      "    id    tun_tap             MAC                edge                   last_seen\n");
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "-------------------------------------------------------------------------------------\n");
+		      "---------------------------------------------------------------------------------\n");
   HASH_ITER(hh, sss->communities, community, tmp) {
     num_edges += HASH_COUNT(community->edges);
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -487,7 +487,7 @@ static int process_mgmt(n2n_sn_t *sss,
     num = 0;
     HASH_ITER(hh, community->edges, peer, tmpPeer) {
       ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-			  "\t%-4u  %-18s  %-17s  %-21s  %lu\n",
+			  "    %-4u  %-18s  %-17s  %-21s  %lu\n",
 			  ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
 			  macaddr_str(mac_buf, peer->mac_addr),
 			  sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
@@ -497,7 +497,7 @@ static int process_mgmt(n2n_sn_t *sss,
     }
   }
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "-------------------------------------------------------------------------------------\n");
+		      "---------------------------------------------------------------------------------\n");
 
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "uptime %lu | ", (now - sss->start_time));
@@ -530,7 +530,7 @@ static int process_mgmt(n2n_sn_t *sss,
 		      "cur_cmnts %u\n", HASH_COUNT(sss->communities));
 
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "last fwd  %lu sec ago\n",
+		      "last_fwd  %lu sec ago | ",
 		      (long unsigned int) (now - sss->stats.last_fwd));
 
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -811,10 +811,10 @@ static int process_udp(n2n_sn_t * sss,
 	  reg.sock.port = ntohs(sender_sock->sin_port);
 	  memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
 
-	  rec_buf = encbuf;
+		/* Re-encode the header. */
+		encode_REGISTER(encbuf, &encx, &cmn2, &reg);
 
-	  /* Re-encode the header. */
-	  encode_REGISTER(encbuf, &encx, &cmn2, &reg);
+	  rec_buf = encbuf;
 	} else {
 	  /* Already from a supernode. Nothing to modify, just pass to
 	   * destination. */
