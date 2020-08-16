@@ -201,7 +201,6 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
       traceEvent(TRACE_ERROR, "LZO compression error");
       goto edge_init_error;
     }
-
 #ifdef N2N_HAVE_ZSTD
   // zstd does not require initialization. if it were required, this would be a good place
 #endif
@@ -1141,6 +1140,11 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
   socklen_t           i;
   size_t              msg_len;
   time_t              now;
+  n2n_sock_str_t sockbuf;
+  macstr_t mac_buf;
+  struct peer_info *peer, *tmpPeer;
+  dec_ip_bit_str_t ip_bit_str = {'\0'};
+  uint32_t num = 0;
 
   now = time(NULL);
   i = sizeof(sender_sock);
@@ -1229,7 +1233,48 @@ static void readFromMgmtSocket(n2n_edge_t * eee, int * keep_running) {
 
   msg_len=0;
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
-		      "Statistics for edge\n");
+                    "STATISTICS FOR EDGE\n");
+  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+                    "community: %s\n", eee->conf.community_name);
+
+  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+                    "\tid    tun_tap             MAC                edge                   last_seen\n");
+  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+                    "--- pending peers -------------------------------------------------------------------\n");
+
+  sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+                 (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
+  msg_len = 0;
+
+  HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
+    msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+                      "\t%-4u  %-18s  %-17s  %-21s  %lu\n",
+                      ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
+                      macaddr_str(mac_buf, peer->mac_addr),
+                      sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+               (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
+    msg_len = 0;
+  }
+
+  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+                    "--- known peers ---------------------------------------------------------------------\n");
+
+  HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
+    msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+                      "\t%-4u  %-18s  %-17s  %-21s  %lu\n",
+                      ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
+                      macaddr_str(mac_buf, peer->mac_addr),
+                      sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+               (struct sockaddr *)&sender_sock, sizeof(struct sockaddr_in));
+    msg_len = 0;
+  }
+
+  msg_len += snprintf(udp_buf + msg_len, N2N_SN_PKTBUF_SIZE - msg_len,
+                      "-------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *)(udp_buf+msg_len), (N2N_PKT_BUF_SIZE-msg_len),
 		      "uptime %lu\n",
