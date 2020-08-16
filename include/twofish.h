@@ -62,7 +62,6 @@ typedef uint8_t  uint8_t;
 
 /* Constants */
 
-#define TwoFish_DEFAULT_PW		"SnortHas2FishEncryptionRoutines!" /* default password (not more than 32 chars) */
 #define TwoFish_DEFAULT_PW_LEN		32
 #define TwoFish_MAGIC			"TwoFish"			/* to indentify a successful decryption */
 
@@ -133,13 +132,13 @@ typedef struct
  *	This routine generates a global data structure for use with TwoFish,
  *	initializes important values (such as subkeys, sBoxes), generates subkeys
  *	and precomputes the MDS matrix if not already done.
- *	
- *	Input:	User supplied password (will be appended by default password of 'SnortHas2FishEncryptionRoutines!')
  *
- *  Output:	Pointer to TWOFISH structure. This data structure contains key dependent data.
+ *      Input:  User supplied key of correct length (TwoFish_KEY_LENGTH, 256 bits = 32 bytes by default)
+ *
+ *      Output:	Pointer to TWOFISH structure. This data structure contains key dependent data.
  *			This pointer is used with all other crypt functions.
  */
-TWOFISH *TwoFishInit(const uint8_t *userkey, uint32_t keysize );
+TWOFISH *TwoFishInit(const uint8_t *userkey);
 
 
 /*	TwoFish Destroy

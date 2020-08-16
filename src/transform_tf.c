@@ -180,6 +180,7 @@ int n2n_transop_twofish_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   transop_tf_t *priv;
   const u_char *encrypt_key = (const u_char *)conf->encrypt_key;
   size_t encrypt_key_len = strlen(conf->encrypt_key);
+  uint8_t key_hash[32];
 
   memset(ttt, 0, sizeof(*ttt));
   ttt->transform_id = N2N_TRANSFORM_ID_TWOFISH;
@@ -197,8 +198,9 @@ int n2n_transop_twofish_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   ttt->priv = priv;
 
   /* This is a preshared key setup. Both Tx and Rx are using the same security association. */
-  priv->enc_tf = TwoFishInit(encrypt_key, encrypt_key_len);
-  priv->dec_tf = TwoFishInit(encrypt_key, encrypt_key_len);
+  pearson_hash_256 (key_hash, encrypt_key, encrypt_key_len);
+  priv->enc_tf = TwoFishInit(key_hash);
+  priv->dec_tf = TwoFishInit(key_hash);
 
   if((!priv->enc_tf) || (!priv->dec_tf)) {
     if(priv->enc_tf) TwoFishDestroy(priv->enc_tf);
