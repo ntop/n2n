@@ -75,24 +75,30 @@ if ! grep -q n2n /etc/group; then
 fi
 
 if ! /usr/bin/id -u n2n > /dev/null 2>&1; then
-  echo 'Creating n2n user'
+  cho 'Creating n2n user'
   /usr/sbin/useradd -M -N -g n2n -r -s /bin/false n2n
 fi
 
 %post
-if [ ! -f /.dockerenv ]; then
-    /bin/systemctl daemon-reload
-    # NOTE: do not enable any services during first installation
+if [ -f /bin/systemctl ]; then
+  if [ ! -f /.dockerenv ]; then
+      /bin/systemctl daemon-reload
+      # NOTE: do not enable any services during first installation
+  fi
 fi
 
 %preun
-if [ ! -f /.dockerenv ]; then
-    # possibly remove the installed services
-    %systemd_preun supernode.service edge.service 'edge-ntopng@*.service' 'edge@*.service'
+if [ -f /bin/systemctl ]; then
+  if [ ! -f /.dockerenv ]; then
+      # possibly remove the installed services
+      %systemd_preun supernode.service edge.service 'edge-ntopng@*.service' 'edge@*.service'
+  fi
 fi
 
 %postun
-if [ ! -f /.dockerenv ]; then
-    # possibly restart the running services
-    %systemd_postun_with_restart supernode.service edge.service 'edge-ntopng@*.service' 'edge@*.service'
+if [ -f /bin/systemctl ]; then
+  if [ ! -f /.dockerenv ]; then
+      # possibly restart the running services
+      %systemd_postun_with_restart supernode.service edge.service 'edge-ntopng@*.service' 'edge@*.service'
+  fi
 fi
