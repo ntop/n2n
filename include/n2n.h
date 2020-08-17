@@ -281,7 +281,7 @@ typedef struct n2n_edge_conf {
   he_context_t        *header_encryption_ctx; /**< Header encryption cipher context. */
   he_context_t        *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
   n2n_transform_t     transop_id;             /**< The transop to use. */
-  uint16_t            compression;            /**< Compress outgoing data packets before encryption */
+  uint8_t             compression;            /**< Compress outgoing data packets before encryption */
   uint16_t            num_routes;	            /**< Number of routes in routes */
   uint8_t             tuntap_ip_mode;         /**< Interface IP address allocated mode, eg. DHCP. */
   uint8_t             allow_routing;          /**< Accept packet no to interface address. */
