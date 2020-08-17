@@ -7,6 +7,13 @@ GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
 MACHINE=`uname -m`
 SHORT_MACHINE=`uname -m | cut -b1-3`
 
+DEBIAN_VERSION=`cat /etc/debian_version | grep "^8" | wc -l`
+
+EXTRA_DEP=""
+if test $DEBIAN_VERSION = "0"; then
+EXTRA_DEP=", libzstd1"
+fi
+
 if test $MACHINE = "x86_64"; then
    EXTN="amd64"
 else
@@ -37,6 +44,7 @@ AC_SUBST(N2N_VERSION_SHORT)
 AC_SUBST(GIT_COMMITS)
 AC_SUBST(EXTN)
 AC_SUBST(DATE)
+AC_SUBST(EXTRA_DEP)
 
 AC_CONFIG_FILES(debian/changelog)
 AC_CONFIG_FILES(debian/files)

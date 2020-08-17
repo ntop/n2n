@@ -8,7 +8,7 @@ Build-Depends:
 Package: n2n
 Architecture: @EXTN@
 Suggests: uml-utilities
-Depends: ${shlibs:Depends}, ${misc:Depends}, libzstd1
+Depends: ${shlibs:Depends}, ${misc:Depends} @EXTRA_DEP@
 Conflicts: n2n (<< 2.1.0-1)
 Replaces: n2n (<< 2.1.0-1)
 Description: a layer-two peer-to-peer virtual private network (VPN)

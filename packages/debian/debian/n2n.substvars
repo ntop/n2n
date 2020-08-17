@@ -1,2 +1,1 @@
 misc:Depends=debconf (>= 0.5) | debconf-2.0
-misc:Pre-Depends=
