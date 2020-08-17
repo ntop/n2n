@@ -9,7 +9,7 @@ Source: n2n-%{version}.tgz
 Packager: Luca Deri <deri@ntop.org>
 # Temporary location where the RPM will be built
 BuildRoot:  %{_tmppath}/%{name}-%{version}-root
-#Requires: ntopng
+Requires: libzstd
 
 %description
 n2n peer-to-peer VPN
