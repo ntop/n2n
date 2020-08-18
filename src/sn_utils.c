@@ -222,6 +222,8 @@ int sn_init(n2n_sn_t *sss) {
   sss->dhcp_addr.net_addr = ntohl(sss->dhcp_addr.net_addr);
   sss->dhcp_addr.net_bitlen = N2N_SN_DHCP_NET_BIT_DEFAULT;
 
+  n2n_srand (n2n_seed());
+
   return 0; /* OK */
 }
 
