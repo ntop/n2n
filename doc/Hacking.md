@@ -1,9 +1,6 @@
-file: HACKING
-
-Last updated: 2010-01-01 09:55 UTC
+# Hacking
 
 --------
-(C) 2008-2010 - Richard Andrews
 
 This program and document is free software; you can redistribute 
 it and/or modify it under the terms of the GNU General Public License 
@@ -16,18 +13,15 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not see see <http://www.gnu.org/licenses/>
+along with this program; if not see see [<http://www.gnu.org/licenses/>](http://www.gnu.org/licenses/)
 
 --------
-
 
 This file describes the internals of n2n. Read this before starting to modify
 the code. Because coding examples may be present in this document it is licensed
 under the GPL rather than FDL.
 
-
-SYMMETRIC NAT
--------------
+## Symmetric NAT
 
 Symmetric NAT is a form of firewall NAT in which an UDP packets are only passed
 back to an inside host socket when the return packets originate from the outside
@@ -36,12 +30,16 @@ inside host sends UDP to some outside socket; other hosts cannot piggyback on
 this opening in the firewall to send data to the inside host.
 
 For example, an asymmetric NAT would keep the mapping:
-   <UDP,ExtPort> -> <IntIP, IntPort>
+
+   `<UDP,ExtPort> -> <IntIP, IntPort>`
+
 and would redirect all the packets on external port ExtPort to the internal host
 regardless of the remote IP.
 
 Whereas a symmetric NAT would keep the mapping:
-   <UDP,RemoteIP,ExtPort> -> <IntIP, IntPort>
+
+   `<UDP,RemoteIP,ExtPort> -> <IntIP, IntPort>`
+
 so only RemoteIP can send packets to the internal host. RemoteIP is the supernode
 IP in case of n2n, to which the internal host has registered.
 
@@ -52,24 +50,23 @@ NAT. For example, if A is behind symmetric NAT and B is behind asymmetric NAT
 
 If both the peers are behind symmetric NAT, then no P2P communication is possible.
 
-ARP CACHE
----------
+## ARP Cache
 
 n2n makes use of the host operating system's own ARP cache. Each edge node
 allocates a random MAC address to itself. This MAC is constant for the life of
 the edge process. ARP packets are passed around as broadcast ethernet packets
 over n2n and these packets cause the native ARP cache to be updated.
 
-Edge nodes send gratuitous ARP packets on startup. See GRATUITOUS ARP below.
+Edge nodes send gratuitous ARP packets on startup. See section on gratuitous ARP below.
 
 
-REGISTRATION AND PEER-TO-PEER COMMUNICATION SETUP
--------------------------------------------------
+## Registration and Peer-to-Peer Communication Setup
 
 A and B are edge nodes with public sockets Apub and Bpub; and private network
 addresses A and B respectively.  S is the supernode.
 
 A sends {REGISTER,Amac} to S. S registers {Amac->Apub}.
+
 B sends {REGISTER,Bmac} to S. S registers {Bmac->Bpub}.
 
 Now ping from A to B.
@@ -106,9 +103,7 @@ the supervisor for some edge (eg. A) may be different to the socket seen by
 another edge due to the actions of symmetric NAT (alocating a new public socket
 for the new outbound UDP "connection").
 
-
-EDGE REGISTRATION DESIGN AMMENDMENTS (starting from 2008-04-10)
-------------------------------------
+## Edge Resgitration Design Ammendments (starting from 2008-04-10)
 
  * Send REGISTER on rx of PACKET or REGISTER only when dest_mac == device MAC
 (do not send REGISTER on Rx of broadcast packets).
@@ -125,7 +120,6 @@ restart registration to the new peer.
 exists. Direct peer-to-peer sockets are always given more priority as the
 supernode socket will not be usable for direct contact if the peer is behind
 symmetric NAT.
-
 
 The pending_peers list concept is to prevent massive registration traffic when
 supernode relay is in force - this would occur if REGISTER was sent for every
@@ -147,9 +141,7 @@ If a peer wants to be remembered it can send gratuitous ARP traffic which will
 keep its entry in the known_peers list of any peers which already have the
 entry.
 
-
-
-
+```
 peer = find_by_src_mac( hdr, known_peers ); /* return NULL or entry */
 
 if ( peer )
@@ -172,9 +164,9 @@ else
         }
     }
 }
+```
 
-
-(Notes):
+### Notes
 
  * In testing it was noted that if a symmetric NAT firewall shuts down the UDP
 association but the known_peers registration is still active, then the peer
@@ -185,8 +177,7 @@ ways to mitigate this problem:
        eg. 60 sec.
 
 
-GRATUITOUS ARP
---------------
+## Gratuitous ARP
 
 In addition to the ARP who-has mechanism noted above, two edge nodes can become
 aware of one another by gratuitous ARP. A gratuitous ARP packet is a broadcast
@@ -195,26 +186,25 @@ identify its MAC and IP address. Gratuitous ARP packets are to keep ARP caches
 up to date so contacting the host will be faster after an long idle time.
 
 
-MAN PAGES
----------
+## man Pages
 
 Look at a non-installed man page like this (linux/UNIX):
 
-nroff -man edge.8 | less
+`nroff -man edge.8 | less`
 
 
-PACKET message FORMAT
----------------------
+## PACKET message format
 
 All message encoding and decoding is contained in wire.c. The PACKET message is
 of main concern as it is the most frequently transferred as it contains
 encapsulated ethernet packets.
 
-Version 2
+```
+Version 3
 
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   ! Version=2     ! TTL           ! Flags                         !
+   ! Version=3     ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  4 ! Community                                                     :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -238,6 +228,7 @@ Version 2
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 44 ! Payload
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 So each n2n PACKET has a 44 byte overhead. For a 1500 byte ethernet packet this
 is roughly 3%.
@@ -245,6 +236,7 @@ is roughly 3%.
 Socket flags provides support for IPv6. In this case the PACKET message ends as
 follows:
 
+```
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 32 ! Socket Flags (v=IPv6)         ! Destination UDP Port          !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -260,8 +252,9 @@ follows:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 56 ! Encapsulated ethernet payload
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
+```
 
 -------
+(C) 2008-2010 - Richard Andrews
 
 January 2010 - Richard Andrews <andrews@ntop.org>
