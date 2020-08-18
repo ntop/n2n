@@ -35,3 +35,31 @@ ntop[0-1][0-9]
 #      '\d'       Digits, [0-9]
 #      '\D'       Non-digits
 #
+#      fixed-name communities can optionally be followed by a network using the 
+#      network/bitlen syntax such as the following line
+#
+home 192.168.1.0/24
+#
+#      the supernode draws ip addresses to assign to the edges (if they omit the `-a`
+#      parameter) from this network. note that the network is delimited by [SPACE] so
+#      community names cannot contain a [SPACE] either.
+#   
+#      if no network is provided here, the supernode assigns some other network to each
+#      community. networks are taken from the default range 10.128.0.0 - 10.255.255.0/24
+#      as long as no other network rane is provided through the supernode's command line
+#      option `-d`. those sub-networks are distinct so several edges with different
+#      communities can be used at the same computer (being served ip addresses from the
+#      same supernode). also, the networks described in this file are avoided.
+#
+#      however, all networks assigned in this file are not checked for colliding ranges
+#      so different communities can use same or overlapping sub-networks. that does not
+#      impose a problem if the communities do not share edge nodes.
+#
+#      there seems to be no sense in pre-assigning sub-networks to communities whose
+#      names are defined by regular expressions. those will be assigned a sub-network
+#      from the default range or the `-d` range.
+#
+#      if `-a` is used with the edge, the edge uses the ip address specified with the
+#      `-a xxx.xxx.xxx.xxx` option. also, the enhanced syntax `-r -a dhcp:0.0.0.0` is
+#      still available to serve more professional needs by a dhcp server.
+#

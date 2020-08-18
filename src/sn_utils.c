@@ -218,9 +218,12 @@ int sn_init(n2n_sn_t *sss) {
   sss->mport = N2N_SN_MGMT_PORT;
   sss->sock = -1;
   sss->mgmt_sock = -1;
-  sss->dhcp_addr.net_addr = inet_addr(N2N_SN_DHCP_NET_ADDR_DEFAULT);
-  sss->dhcp_addr.net_addr = ntohl(sss->dhcp_addr.net_addr);
-  sss->dhcp_addr.net_bitlen = N2N_SN_DHCP_NET_BIT_DEFAULT;
+  sss->min_dhcp_net.net_addr = inet_addr(N2N_SN_MIN_DHCP_NET_DEFAULT);
+  sss->min_dhcp_net.net_addr = ntohl(sss->min_dhcp_net.net_addr);
+  sss->min_dhcp_net.net_bitlen = N2N_SN_DHCP_NET_BIT_DEFAULT;
+  sss->max_dhcp_net.net_addr = inet_addr(N2N_SN_MAX_DHCP_NET_DEFAULT);
+  sss->max_dhcp_net.net_addr = ntohl(sss->max_dhcp_net.net_addr);
+  sss->max_dhcp_net.net_bitlen = N2N_SN_DHCP_NET_BIT_DEFAULT;
 
   return 0; /* OK */
 }
@@ -335,15 +338,14 @@ static signed int peer_tap_ip_sort(struct peer_info *a, struct peer_info *b) {
 
 
 /** The IP address assigned to the edge by the DHCP function of sn. */
-static int assign_one_ip_addr(n2n_sn_t *sss,
-                              struct sn_community *comm,
+static int assign_one_ip_addr(struct sn_community *comm,
                               n2n_ip_subnet_t *ipaddr) {
   struct peer_info *peer, *tmpPeer;
   uint32_t net_id, mask, max_host, host_id = 1;
   dec_ip_bit_str_t ip_bit_str = {'\0'};
 
-  mask = bitlen2mask(sss->dhcp_addr.net_bitlen);
-  net_id = sss->dhcp_addr.net_addr & mask;
+  mask = bitlen2mask(comm->dhcp_net.net_bitlen);
+  net_id = comm->dhcp_net.net_addr & mask;
   max_host = ~mask;
 
   HASH_SORT(comm->edges, peer_tap_ip_sort);
@@ -364,10 +366,84 @@ static int assign_one_ip_addr(n2n_sn_t *sss,
     }
   }
   ipaddr->net_addr = net_id | host_id;
-  ipaddr->net_bitlen = sss->dhcp_addr.net_bitlen;
+  ipaddr->net_bitlen = comm->dhcp_net.net_bitlen;
 
   traceEvent(TRACE_INFO, "Assign IP %s to tap adapter of edge.", ip_subnet_to_str(ip_bit_str, ipaddr));
   return 0;
+}
+
+
+/** checks if a certain sub-network is still available, i.e. does not cut any other community's sub-network */
+int subnet_available(n2n_sn_t *sss,
+                     struct sn_community *comm,
+                     uint32_t net_id,
+                     uint32_t mask) {
+
+  struct sn_community *cmn, *tmpCmn;
+  int success = 1;
+
+  HASH_ITER(hh, sss->communities, cmn, tmpCmn) {
+    if (cmn == comm) continue;
+    if( (net_id <= (cmn->dhcp_net.net_addr + ~bitlen2mask(cmn->dhcp_net.net_bitlen)))
+      &&(net_id + ~mask >= cmn->dhcp_net.net_addr) ) {
+        success = 0;
+        break;
+    }
+  }
+
+  return success;
+}
+
+
+/** The IP address assigned to the edge by the DHCP function of sn. */
+int assign_one_ip_subnet(n2n_sn_t *sss,
+                         struct sn_community *comm) {
+
+  uint32_t net_id, net_id_i, mask, net_increment;
+  uint32_t no_subnets;
+  uint8_t success;
+  in_addr_t net;
+
+  mask = bitlen2mask(sss->min_dhcp_net.net_bitlen);
+  // number of possible sub-networks
+  no_subnets   = (sss->max_dhcp_net.net_addr - sss->min_dhcp_net.net_addr);
+  no_subnets >>= (32 - sss->min_dhcp_net.net_bitlen);
+  no_subnets  += 1;
+
+  // proposal for sub-network to choose
+  net_id  = pearson_hash_32(comm->community, N2N_COMMUNITY_SIZE) % no_subnets;
+  net_id  = sss->min_dhcp_net.net_addr + (net_id << (32 - sss->min_dhcp_net.net_bitlen));
+
+  // check for availability starting from net_id, then downwards, ...
+  net_increment = (~mask+1);
+  for(net_id_i=net_id; net_id_i >= sss->min_dhcp_net.net_addr; net_id_i -= net_increment) {
+    success = subnet_available(sss, comm, net_id_i, mask);
+    if(success) break;
+  }
+  // ... then upwards
+  if(!success) {
+    for(net_id_i=net_id + net_increment; net_id_i <= sss->max_dhcp_net.net_addr; net_id_i += net_increment) {
+      success = subnet_available(sss, comm, net_id_i, mask);
+      if(success) break;
+    }
+  }
+
+  if(success) {
+    comm->dhcp_net.net_addr = net_id_i;
+    comm->dhcp_net.net_bitlen = sss->min_dhcp_net.net_bitlen;
+    net = htonl(comm->dhcp_net.net_addr);
+    traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
+                           inet_ntoa(*(struct in_addr *) &net),
+                           comm->dhcp_net.net_bitlen,
+                           comm->community);
+    return 0;
+  } else {
+    comm->dhcp_net.net_addr = 0;
+    comm->dhcp_net.net_bitlen = 0;
+    traceEvent(TRACE_WARNING, "No assignable sub-network left for community '%s'.",
+                               comm->community);
+    return -1;
+  }
 }
 
 
@@ -905,6 +981,7 @@ static int process_udp(n2n_sn_t * sss,
 	  HASH_ADD_STR(sss->communities, community, comm);
 
 	  traceEvent(TRACE_INFO, "New community: %s", comm->community);
+          assign_one_ip_subnet(sss, comm);
 	}
       }
 
@@ -918,7 +995,7 @@ static int process_udp(n2n_sn_t * sss,
 	memcpy(ack.edgeMac, reg.edgeMac, sizeof(n2n_mac_t));
 	if ((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
 	    ((reg.dev_addr.net_addr & 0xFFFF0000) == 0xA9FE0000 /* 169.254.0.0 */)) {
-	  assign_one_ip_addr(sss, comm, &ipaddr);
+	  assign_one_ip_addr(comm, &ipaddr);
 	  ack.dev_addr.net_addr = ipaddr.net_addr;
 	  ack.dev_addr.net_bitlen = ipaddr.net_bitlen;
 	}

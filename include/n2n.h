@@ -370,6 +370,7 @@ struct sn_community
   he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
   struct peer_info *edges; 		      /* Link list of registered edges. */
   int64_t	      number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
+  n2n_ip_subnet_t     dhcp_net;               /* Address range of dhcp service. */
 
   UT_hash_handle hh; /* makes this structure hashable */
 };
@@ -390,7 +391,8 @@ typedef struct n2n_sn
   uint16_t mport;       /* Management UDP port to bind to. */
   int sock;             /* Main socket for UDP traffic with edges. */
   int mgmt_sock;        /* management socket. */
-  n2n_ip_subnet_t dhcp_addr; /* Address range of dhcp service. */
+  n2n_ip_subnet_t min_dhcp_net; /* Address range of dhcp service. */
+  n2n_ip_subnet_t max_dhcp_net; /* Address range of dhcp service. */
 #ifndef WIN32
   uid_t userid;
   gid_t groupid;
@@ -502,6 +504,7 @@ int quick_edge_init(char *device_name, char *community_name,
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
+int assign_one_ip_subnet(n2n_sn_t *sss, struct sn_community *comm);
 const char* compression_str(uint8_t cmpr);
 const char* transop_str(enum n2n_transform tr);
 

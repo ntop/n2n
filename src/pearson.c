@@ -270,7 +270,7 @@ void pearson_hash_128 (uint8_t *out, const uint8_t *in, size_t len) {
   *o = lower_hash;
 }
 
-/* --- for later use ---
+
 // 32-bit hash: the return value has to be interpreted as uint32_t and
 // follows machine-specific endianess in memory
 uint32_t pearson_hash_32 (const uint8_t *in, size_t len) {
@@ -300,7 +300,7 @@ uint32_t pearson_hash_32 (const uint8_t *in, size_t len) {
   }
   // output
   return hash;
-} --- pearson_hash_32 for later use --- */
+}
 
 
 // 16-bit hash: the return value has to be interpreted as uint16_t and
