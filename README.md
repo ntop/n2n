@@ -110,7 +110,7 @@ You can contribute to n2n in various ways:
 - Improve the documentation
 - Provide pull requests with enhancements
 
-For details about the internals of n2n check out [Hacking guide](https://github.com/ntop/n2n/blob/dev/doc/HACKING).
+For details about the internals of n2n check out [Hacking guide](https://github.com/ntop/n2n/blob/dev/doc/Hacking.md).
 
 ## Related Projects
 
