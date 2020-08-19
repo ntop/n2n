@@ -128,11 +128,11 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
         }
       }
       if(has_net) {
-        s->dhcp_net.net_addr = ntohl(net);
-        s->dhcp_net.net_bitlen = bitlen;
+        s->auto_ip_net.net_addr = ntohl(net);
+        s->auto_ip_net.net_bitlen = bitlen;
         traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
                                 inet_ntoa(*(struct in_addr *) &net),
-                                s->dhcp_net.net_bitlen,
+                                s->auto_ip_net.net_bitlen,
                                 s->community);
       } else {
         assign_one_ip_subnet(sss, s);
@@ -183,7 +183,7 @@ static void help() {
   printf("[-u <uid> -g <gid>] ");
 #endif /* ifndef WIN32 */
   printf("[-t <mgmt port>] ");
-  printf("[-d <net-net/bit>] ");
+  printf("[-a <net-net/bit>] ");
   printf("[-v] ");
   printf("\n\n");
 
@@ -197,7 +197,8 @@ static void help() {
   printf("-g <GID>          | Group ID (numeric) to use when privileges are dropped.\n");
 #endif /* ifndef WIN32 */
   printf("-t <port>         | Management UDP Port (for multiple supernodes on a machine).\n");
-  printf("-d <net-net/bit>  | Subnet range for community ip address service for edges. eg. -d 10.128.255.0-10.255.255.0/24\n");
+  printf("-a <net-net/bit>  | Subnet range for auto ip address service, e.g.\n");
+  printf("                  | -a 192.168.0.0-192.168.255.0/24, defaults to 10.128.255.0-10.255.255.0/24\n");
   printf("-v                | Increase verbosity. Can be used multiple times.\n");
   printf("-h                | This help message.\n");
   printf("\n");
@@ -219,7 +220,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     sss->mport = atoi(_optarg);
     break;
 
-  case 'd': {
+  case 'a': {
     dec_ip_str_t ip_min_str = {'\0'};
     dec_ip_str_t ip_max_str = {'\0'};
     in_addr_t net_min, net_max;
@@ -240,23 +241,23 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
      || ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0) ) {
       traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
 		 ip_min_str, ip_max_str, bitlen, _optarg,
-		 N2N_SN_MIN_DHCP_NET_DEFAULT, N2N_SN_MAX_DHCP_NET_DEFAULT, N2N_SN_DHCP_NET_BIT_DEFAULT);
+		 N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
       break;
     }
 
     if ((bitlen > 30) || (bitlen == 0)) {
       traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
 		 bitlen, _optarg,
-		 N2N_SN_MIN_DHCP_NET_DEFAULT, N2N_SN_MAX_DHCP_NET_DEFAULT, N2N_SN_DHCP_NET_BIT_DEFAULT);
+		 N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
       break;
     }
 
     traceEvent(TRACE_NORMAL, "The network range for community ip address service is '%s...%s/%hhu'.", ip_min_str, ip_max_str, bitlen);
 
-    sss->min_dhcp_net.net_addr = ntohl(net_min);
-    sss->min_dhcp_net.net_bitlen = bitlen;
-    sss->max_dhcp_net.net_addr = ntohl(net_max);
-    sss->max_dhcp_net.net_bitlen = bitlen;
+    sss->min_auto_ip_net.net_addr = ntohl(net_min);
+    sss->min_auto_ip_net.net_bitlen = bitlen;
+    sss->max_auto_ip_net.net_addr = ntohl(net_max);
+    sss->max_auto_ip_net.net_bitlen = bitlen;
 
     break;
   }
@@ -303,7 +304,7 @@ static const struct option long_options[] = {
 					     {"foreground",  no_argument,       NULL, 'f'},
 					     {"local-port",  required_argument, NULL, 'l'},
 					     {"mgmt-port",   required_argument, NULL, 't'},
-					     {"dhcp",        required_argument, NULL, 'd'},
+					     {"autoip",      required_argument, NULL, 'a'},
 					     {"help",        no_argument,       NULL, 'h'},
 					     {"verbose",     no_argument,       NULL, 'v'},
 					     {NULL, 0,                          NULL, 0}
@@ -315,7 +316,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fl:u:g:t:d:c:vh",
+  while((c = getopt_long(argc, argv, "fl:u:g:t:a:c:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);

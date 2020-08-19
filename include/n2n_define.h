@@ -101,10 +101,10 @@
 #define TUNTAP_IP_MODE_STATIC 1
 #define TUNTAP_IP_MODE_DHCP 2
 
-/* Default network segment of the dhcp service provided by sn. */
-#define N2N_SN_MIN_DHCP_NET_DEFAULT "10.128.0.0"
-#define N2N_SN_MAX_DHCP_NET_DEFAULT "10.255.255.0"
-#define N2N_SN_DHCP_NET_BIT_DEFAULT 24
+/* Default network segment of the auto ip address service provided by sn. */
+#define N2N_SN_MIN_AUTO_IP_NET_DEFAULT "10.128.0.0"
+#define N2N_SN_MAX_AUTO_IP_NET_DEFAULT "10.255.255.0"
+#define N2N_SN_AUTO_IP_NET_BIT_DEFAULT 24
 
 /* ************************************** */
 

@@ -370,7 +370,7 @@ struct sn_community
   he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
   struct peer_info *edges; 		      /* Link list of registered edges. */
   int64_t	      number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
-  n2n_ip_subnet_t     dhcp_net;               /* Address range of dhcp service. */
+  n2n_ip_subnet_t     auto_ip_net;            /* Address range of auto ip address service. */
 
   UT_hash_handle hh; /* makes this structure hashable */
 };
@@ -391,8 +391,8 @@ typedef struct n2n_sn
   uint16_t mport;       /* Management UDP port to bind to. */
   int sock;             /* Main socket for UDP traffic with edges. */
   int mgmt_sock;        /* management socket. */
-  n2n_ip_subnet_t min_dhcp_net; /* Address range of dhcp service. */
-  n2n_ip_subnet_t max_dhcp_net; /* Address range of dhcp service. */
+  n2n_ip_subnet_t min_auto_ip_net; /* Address range of auto_ip service. */
+  n2n_ip_subnet_t max_auto_ip_net; /* Address range of auto_ip service. */
 #ifndef WIN32
   uid_t userid;
   gid_t groupid;
