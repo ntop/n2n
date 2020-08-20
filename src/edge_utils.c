@@ -939,9 +939,15 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
     // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
     // closing and re-opening the socket(s) allows for re-establishing communication
-    if(edge_init_sockets(eee, eee->conf.local_port, eee->conf.mgmt_port, eee->conf.tos) < 0) {
-      traceEvent(TRACE_ERROR, "socket re-initiliaization failed");
+    // this can only be done, if working on som eunprivileged port and/or having sufficent
+    // privileges. as we are not able to check for sufficent privileges here, we only do it
+    // if port is sufficently high or unset. uncovered: privileged port and sufficent privileges
+    if( (eee->conf.local_port == 0) || (eee->conf.local_port > 1024) ) {
+      if(edge_init_sockets(eee, eee->conf.local_port, eee->conf.mgmt_port, eee->conf.tos) < 0) {
+        traceEvent(TRACE_ERROR, "socket re-initiliaization failed");
+      }
     }
+
   }
   else
     --(eee->sup_attempts);
