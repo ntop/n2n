@@ -247,6 +247,14 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   if(eee->transop.no_encryption)
     traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
+  // first time calling edge_init_sockets needs -1 in the sockets for it does throw an error
+  // on trying to close them (open_sockets does so for also being able to RE-open the sockets
+  // if called in-between, see "Supernode not responding" in update_supernode_reg(...)
+  eee->udp_sock = -1;
+  eee->udp_mgmt_sock = -1;
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
+  eee->udp_multicast_sock = -1;
+#endif
   if(edge_init_sockets(eee, eee->conf.local_port, eee->conf.mgmt_port, eee->conf.tos) < 0) {
     traceEvent(TRACE_ERROR, "socket setup failed");
     goto edge_init_error;
@@ -928,6 +936,12 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
     traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
 
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
+
+    // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
+    // closing and re-opening the socket(s) allows for re-establishing communication
+    if(edge_init_sockets(eee, eee->conf.local_port, eee->conf.mgmt_port, eee->conf.tos) < 0) {
+      traceEvent(TRACE_ERROR, "socket re-initiliaization failed");
+    }
   }
   else
     --(eee->sup_attempts);
@@ -2141,6 +2155,17 @@ void edge_term(n2n_edge_t * eee) {
 
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos) {
   int sockopt;
+
+ if(eee->udp_sock >= 0)
+    closesocket(eee->udp_sock);
+
+  if(eee->udp_mgmt_sock >= 0)
+    closesocket(eee->udp_mgmt_sock);
+
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
+  if(eee->udp_multicast_sock >= 0)
+    closesocket(eee->udp_multicast_sock);
+#endif
 
   if(udp_local_port > 0)
     traceEvent(TRACE_NORMAL, "Binding to local port %d", udp_local_port);
