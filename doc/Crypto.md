@@ -18,11 +18,11 @@ The following chart might help to make a quick comparison and decide what cipher
 | Cipher | Mode | Block Size | Key Size         | IV length |Speed | Built-In | Origin |
 | :---:  | :---:| :---:      | :---:            | :---:     |:---: | :---:    | ---    |
 |Twofish | CTS  | 128 bits   | 256 bit          | 32 bit    | -    | Y        | Bruce Schneier |
-|AES     | CBC  | 128 bits   | 128, 192, 256 bit| 64 bit    | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
+|AES     | CBC  | 128 bits   | 128, 192, 256 bit| 128 bit   | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
 |ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| N        | Daniel J. Bernstein |
 |SPECK   | CTR  | Stream     | 256 bit          | 128 bit   | ++   | Y        | NSA |
 
-The two block ciphers Twofish and AES are used in CTS mode (Twofish) and CBC mode(AES). AES requires a padding which results in encrypted payload size modulo their blocksize. Sizewise, this could be considered as a disadvantage. On the other hand, stream ciphers need a longer initialization vector (IV) to be transmitted with the cipher.
+The two block ciphers Twofish and AES are used in CTS mode.
 
 Note that AES and ChaCha20 are available only if n2n is compiled with openSSL support. n2n will work well without them offering the respectively reduced choice of remaining built-in ciphers (Twofish, SPECK).
 
@@ -38,15 +38,11 @@ _We might try to find a faster implementation._
 
 ### AES
 
-AES uses the standard way of an IV but it does not neccessarily transmit the full IV along with the packets. The size of the transmitted part is adjustable by changing the `TRANSOP_AES_IV_SEED_SIZE` definition found in `src/transform_aes.c`. It defaults to 8 meaning that 8 bytes (of max 16) are transmitted. The remaining 8 bytes are fixed, key-derived material is used to fill up to full block size. A single AES-ECB encryption step is applied to these 16 bytes before they get used as regular IV for AES-CBCing the payload.
-
-Padding to the last block happens by filling `0x00`-bytes and indicating their number as the last byte of the block. This could lead to up to 16 extra bytes.
+AES also prepends a random value to the plaintext. Its size is adjustable by changing the `AES_PREAMBLE_SIZE` definition found in `src/transform_aes.c`. It defaults to AES_BLOCK_SIZE (== 16). The AES scheme uses a CBC/CTS scheme which can send out plaintext-length ciphertexts as long as they are one block or more in length.
 
 AES relies on openSSL's `evp_*` interface which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
 
 _Perhaps, AES-CTR being a stream cipher could have competed with the stream ciphers._
-
-_Another possible extension would be to bring CTS mode to AES in some future version, just to avoid unneccessary weight gains from padding. CTS mode works well starting with plain texts from one block plus. So, we might revert back to the Twofish-way of IV handling with a full block IV._
 
 ### ChaCha20
 

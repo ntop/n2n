@@ -16,43 +16,29 @@
  *
  */
 
+
 #include "n2n.h"
 
 #ifdef N2N_HAVE_AES
 
-#include <openssl/aes.h>
-#include <openssl/sha.h>
-#include <openssl/evp.h>
-#include <openssl/err.h>
 
-#define N2N_AES_IVEC_SIZE               (AES_BLOCK_SIZE)
+#define AES_BLOCK_SIZE           16
 
-#define AES256_KEY_BYTES (256/8)
-#define AES192_KEY_BYTES (192/8)
-#define AES128_KEY_BYTES (128/8)
+// size of random value prepended to plaintext defaults to AES BLOCK_SIZE;
+// gradually abandoning security, lower values could be chosen;
+// however, minimum transmission size with cipher text stealing scheme is one
+// block; as network packets should be longer anyway, only low level programmer
+// might encounter an issue with lower values here
+#define AES_PREAMBLE_SIZE       (AES_BLOCK_SIZE)
 
-/* AES plaintext preamble */
-#define TRANSOP_AES_IV_SEED_SIZE 8    /* size of transmitted random part of IV in bytes; could range
-				       * from 0=lowest security (constant IV)  to  16=higest security
-				       * (fully random IV); default=8 */
-#define TRANSOP_AES_IV_PADDING_SIZE (N2N_AES_IVEC_SIZE - TRANSOP_AES_IV_SEED_SIZE)
-#define TRANSOP_AES_IV_KEY_BYTES (AES128_KEY_BYTES) /* use AES128 for IV encryption */
-#define TRANSOP_AES_PREAMBLE_SIZE (TRANSOP_AES_IV_SEED_SIZE)
+#define AES_IV_SIZE             (AES_BLOCK_SIZE)
 
-typedef unsigned char n2n_aes_ivec_t[N2N_AES_IVEC_SIZE];
+// cbc mode is being used with random value prepended to plaintext
+// instead of iv so, actual iv is null_iv
+const uint8_t null_iv[AES_IV_SIZE] = {0};
 
 typedef struct transop_aes {
-#ifdef HAVE_OPENSSL_1_1
-  EVP_CIPHER_CTX      *enc_ctx;	      /* openssl's reusable evp_* encryption context */
-  EVP_CIPHER_CTX      *dec_ctx;	      /* openssl's reusable evp_* decryption context */
-  const EVP_CIPHER    *cipher;	      /* cipher to use: e.g. EVP_aes_128_cbc */
-  uint8_t  	      key[32];	      /* the pure key data for payload encryption & decryption */
-#else
-  AES_KEY             enc_key;        /* tx key */
-  AES_KEY             dec_key;        /* tx key */
-#endif
-  AES_KEY             iv_enc_key;     /* key used to encrypt the IV */
-  uint8_t             iv_pad_val[TRANSOP_AES_IV_PADDING_SIZE]; /* key used to pad the random IV seed to full block size */
+  aes_context_t       *ctx;
 } transop_aes_t;
 
 /* ****************************************************** */
@@ -60,364 +46,174 @@ typedef struct transop_aes {
 static int transop_deinit_aes(n2n_trans_op_t *arg) {
   transop_aes_t *priv = (transop_aes_t *)arg->priv;
 
-#ifdef HAVE_OPENSSL_1_1
-  EVP_CIPHER_CTX_free(priv->enc_ctx);
-  EVP_CIPHER_CTX_free(priv->dec_ctx);
-#endif
+  if(priv->ctx) free(priv->ctx);
 
-  if(priv)
-    free(priv);
+  if(priv) free(priv);
 
   return 0;
 }
 
 /* ****************************************************** */
 
-#ifdef HAVE_OPENSSL_1_1
-/* get any erorr message out of openssl
-   taken from https://en.wikibooks.org/wiki/OpenSSL/Error_handling */
-static char *openssl_err_as_string (void) {
-  BIO *bio = BIO_new (BIO_s_mem ());
-  ERR_print_errors (bio);
-  char *buf = NULL;
-  size_t len = BIO_get_mem_data (bio, &buf);
-  char *ret = (char *) calloc (1, 1 + len);
-
-  if(ret)
-    memcpy (ret, buf, len);
-
-  BIO_free (bio);
-  return ret;
-}
-#endif
-
-/* ****************************************************** */
-
-/* convert a given number of bytes from memory to hex string; taken (and modified) from
-   https://stackoverflow.com/questions/6357031/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-in-c */
-const char* to_hex(unsigned char * in, size_t insz, char * out, size_t outsz)
-{
-  unsigned char * pin = in;
-  const char * hex = "0123456789abcdef";
-  char * pout = out;
-  for(; pin < in+insz; pout +=2, pin++){
-    pout[0] = hex[(*pin>>4) & 0xF];
-    pout[1] = hex[ *pin     & 0xF];
-    if (pout + 2 - out > outsz){
-      /* Better to truncate output string than overflow buffer */
-      /* it would be still better to either return a status */
-      /* or ensure the target buffer is large enough and it never happen */
-      break;
-      }
-    }
-    pout[2] = 0;
-    return out;
-}
-
-/* ****************************************************** */
-
-static void set_aes_cbc_iv(transop_aes_t *priv, n2n_aes_ivec_t ivec, uint8_t * iv_seed) {
-  uint8_t iv_full[N2N_AES_IVEC_SIZE];
-
-  /* Extend the seed to full block size with padding value */
-  memcpy(iv_full, priv->iv_pad_val, TRANSOP_AES_IV_PADDING_SIZE);
-  memcpy(iv_full + TRANSOP_AES_IV_PADDING_SIZE, iv_seed, TRANSOP_AES_IV_SEED_SIZE);
-
-  /* Encrypt the IV with secret key to make it unpredictable.
-   * As discussed in https://github.com/ntop/n2n/issues/72, it's important to
-   * have an unpredictable IV since the initial part of the packet plaintext
-   * can be easily reconstructed from plaintext headers and used by an attacker
-   * to perform differential analysis.
-   */
-  AES_ecb_encrypt(iv_full, ivec, &priv->iv_enc_key, AES_ENCRYPT);
-}
-
-/* ****************************************************** */
-
-/** The aes packet format consists of:
- *
- *  - a TRANSOP_AES_IV_SEED_SIZE-sized [bytes] random IV seed
- *  - encrypted payload.
- *
- *  [II|DDDDDDDDDDDDDDDDDDDDD]
- *     |<---- encrypted ---->|
- */
+// the aes packet format consists of
+//
+//  - a random AES_PREAMBLE_SIZE-sized value prepended to plaintext
+//    encrypted together with the...
+//  - ... payload data
+//
+//  [VV|DDDDDDDDDDDDDDDDDDDDD]
+//  | <---- encrypted ---->  |
+//
 static int transop_encode_aes(n2n_trans_op_t * arg,
 			      uint8_t * outbuf,
 			      size_t out_len,
 			      const uint8_t * inbuf,
 			      size_t in_len,
 			      const uint8_t * peer_mac) {
-  int len2=-1;
+
   transop_aes_t * priv = (transop_aes_t *)arg->priv;
-  uint8_t assembly[N2N_PKT_BUF_SIZE] = {0};
+
+  // the assembly buffer is a source for encrypting data
+  // the whole contents of assembly are encrypted
+  uint8_t assembly[N2N_PKT_BUF_SIZE];
+  size_t idx = 0;
+  int padded_len;
+  uint8_t padding;
+  uint8_t buf[AES_BLOCK_SIZE];
 
   if(in_len <= N2N_PKT_BUF_SIZE) {
-    if((in_len + TRANSOP_AES_PREAMBLE_SIZE) <= out_len) {
-      int len=-1;
-      size_t idx=0;
-      uint8_t iv_seed[TRANSOP_AES_IV_SEED_SIZE];
-      uint8_t padding = 0;
-      n2n_aes_ivec_t enc_ivec = {0};
+    if((in_len + AES_PREAMBLE_SIZE + AES_BLOCK_SIZE) <= out_len) {
 
-      traceEvent(TRACE_DEBUG, "encode_aes %lu", in_len);
+        traceEvent(TRACE_DEBUG, "transop_encode_aes %lu bytes plaintext", in_len);
 
-      /* Generate and encode the IV seed using as many calls to n2n_rand() as neccessary.
-       * Note: ( N2N_AES_IV_SEED_SIZE % sizeof(rand_value) ) not neccessarily equals 0. */
-      uint64_t rand_value;
-      int8_t i;
-      for (i = TRANSOP_AES_IV_SEED_SIZE; i >= sizeof(rand_value); i -= sizeof(rand_value)) {
-        rand_value = n2n_rand();
-        memcpy(iv_seed + TRANSOP_AES_IV_SEED_SIZE - i, &rand_value, sizeof(rand_value));
-      }
-      /* Are there bytes left to fill? */
-      if (i != 0) {
-        rand_value = n2n_rand();
-        memcpy(iv_seed, &rand_value, i);
-      }
-      encode_buf(outbuf, &idx, iv_seed, TRANSOP_AES_IV_SEED_SIZE);
+        // full block sized random value (128 bit)
+        encode_uint64(assembly, &idx, n2n_rand());
+        encode_uint64(assembly, &idx, n2n_rand());
+        // adjust for maybe differently chosen AES_PREAMBLE_SIZE
+        idx = AES_PREAMBLE_SIZE;
 
-      /* Encrypt the assembly contents and write the ciphertext after the iv seed. */
-      /* len is set to the length of the cipher plain text to be encrpyted 
-	 which is (in this case) identical to original packet lentgh */
-      len = in_len;
+        // the plaintext data
+        encode_buf(assembly, &idx, inbuf, in_len);
 
-      /* The assembly buffer is a source for encrypting data.
-       * The whole contents of assembly are encrypted. */
-      memcpy(assembly, inbuf, in_len);
+        // round up to next whole AES block size
+        padded_len = (((idx - 1) / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE;
+        padding = (padded_len-idx);
+        // pad the following bytes with zero, fixed length (AES_BLOCK_SIZE) seems to compile
+        // to slightly faster code than run-time dependant 'padding'
+        memset (assembly + idx, 0, AES_BLOCK_SIZE);
 
-      /* Need at least one encrypted byte at the end for the padding. */
-      len2 = ((len / AES_BLOCK_SIZE) + 1) * AES_BLOCK_SIZE; /* Round up to next whole AES adding at least one byte. */
-      padding = (len2-len);
-      assembly[len2 - 1] = padding;
+        aes_cbc_encrypt(outbuf, assembly, padded_len, null_iv, priv->ctx);
 
-      char iv_seed_hex[2 * N2N_AES_IVEC_SIZE + 1];
-      traceEvent(TRACE_DEBUG, "padding = %u, seed = 0x%s", padding, to_hex (iv_seed, TRANSOP_AES_IV_SEED_SIZE, iv_seed_hex, 2 * N2N_AES_IVEC_SIZE + 1) );
-
-      set_aes_cbc_iv(priv, enc_ivec, iv_seed);
-
-#ifdef HAVE_OPENSSL_1_1
-      EVP_CIPHER_CTX *ctx = priv->enc_ctx;
-      int evp_len;
-      int evp_ciphertext_len;
-
-      if(1 == EVP_EncryptInit_ex(ctx, priv->cipher, NULL, priv->key, enc_ivec)) {
-	if(1 == EVP_CIPHER_CTX_set_padding(ctx, 0)) {
-	  if(1 == EVP_EncryptUpdate(ctx, outbuf + TRANSOP_AES_PREAMBLE_SIZE, &evp_len, assembly, len2)) {
-	    evp_ciphertext_len = evp_len;
-	    if(1 == EVP_EncryptFinal_ex(ctx, outbuf + TRANSOP_AES_PREAMBLE_SIZE + evp_len, &evp_len)) {
-	      evp_ciphertext_len += evp_len;
-
-	      if(evp_ciphertext_len != len2)
-		traceEvent(TRACE_ERROR, "encode_aes openssl encryption: encrypted %u bytes where %u were expected.\n",
-			   evp_ciphertext_len, len2);
-	    } else
-	      traceEvent(TRACE_ERROR, "encode_aes openssl final encryption: %s\n", openssl_err_as_string());
-	  } else
-	    traceEvent(TRACE_ERROR, "encode_aes openssl encrpytion: %s\n", openssl_err_as_string());
-	} else
-	  traceEvent(TRACE_ERROR, "encode_aes openssl padding setup: %s\n", openssl_err_as_string());
-      } else
-	traceEvent(TRACE_ERROR, "encode_aes openssl init: %s\n", openssl_err_as_string());
-
-      EVP_CIPHER_CTX_reset(ctx);
-#else
-      AES_cbc_encrypt(assembly, /* source */
-		      outbuf + TRANSOP_AES_PREAMBLE_SIZE, /* dest */
-		      len2, /* enc size */
-		      &(priv->enc_key), enc_ivec, AES_ENCRYPT);
-#endif
-
-      len2 += TRANSOP_AES_PREAMBLE_SIZE; /* size of data carried in UDP. */
+        if(padding) {
+          // exchange last two cipher blocks
+          memcpy (buf, outbuf+padded_len - AES_BLOCK_SIZE, AES_BLOCK_SIZE);
+          memcpy (outbuf + padded_len - AES_BLOCK_SIZE, outbuf + padded_len - 2 * AES_BLOCK_SIZE, AES_BLOCK_SIZE);
+          memcpy (outbuf + padded_len - 2 * AES_BLOCK_SIZE, buf, AES_BLOCK_SIZE);
+        }
     } else
-      traceEvent(TRACE_ERROR, "encode_aes outbuf too small.");
+      traceEvent(TRACE_ERROR, "transop_encode_aes outbuf too small");
   } else
-    traceEvent(TRACE_ERROR, "encode_aes inbuf too big to encrypt.");
+    traceEvent(TRACE_ERROR, "transop_encode_aes inbuf too big to encrypt");
 
-  return len2;
+  return idx;
 }
 
 /* ****************************************************** */
 
-/* See transop_encode_aes for packet format */
+// see transop_encode_aes for packet format
 static int transop_decode_aes(n2n_trans_op_t * arg,
 			      uint8_t * outbuf,
 			      size_t out_len,
 			      const uint8_t * inbuf,
 			      size_t in_len,
 			      const uint8_t * peer_mac) {
-  int len=0;
+
   transop_aes_t * priv = (transop_aes_t *)arg->priv;
   uint8_t assembly[N2N_PKT_BUF_SIZE];
 
-  if(((in_len - TRANSOP_AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* Cipher text fits in assembly */
-     && (in_len >= TRANSOP_AES_PREAMBLE_SIZE) /* Has at least iv seed */
-     )
-    {
-      size_t rem=in_len;
-      size_t idx=0;
-      uint8_t iv_seed[TRANSOP_AES_IV_SEED_SIZE];
+  uint8_t rest;
+  size_t penultimate_block;
+  uint8_t buf[AES_BLOCK_SIZE];
+  int len=-1;
 
-	/* Get the IV seed */
-	decode_buf((uint8_t *)&iv_seed, TRANSOP_AES_IV_SEED_SIZE, inbuf, &rem, &idx);
+  if( ((in_len - AES_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) // cipher text fits in assembly
+    && (in_len >= AES_PREAMBLE_SIZE) // has at least random number
+    && (in_len >= AES_BLOCK_SIZE)    // minimum size requirement for cipher text stealing
+    ) {
 
-        char iv_seed_hex[2 * N2N_AES_IVEC_SIZE + 1];
-        traceEvent(TRACE_DEBUG, "decode_aes %lu with seed 0x%s", in_len, to_hex (iv_seed, TRANSOP_AES_IV_SEED_SIZE, iv_seed_hex, 2 * N2N_AES_IVEC_SIZE + 1) );
+    traceEvent(TRACE_DEBUG, "transop_decode_aes %lu bytes ciphertext", in_len);
 
-	len = (in_len - TRANSOP_AES_PREAMBLE_SIZE);
-
-	if(0 == (len % AES_BLOCK_SIZE)) {
-	  uint8_t padding;
-	  n2n_aes_ivec_t dec_ivec = {0};
-
-	  set_aes_cbc_iv(priv, dec_ivec, iv_seed);
-
-#ifdef HAVE_OPENSSL_1_1
-	  EVP_CIPHER_CTX *ctx = priv->dec_ctx;
-	  int evp_len;
-	  int evp_plaintext_len;
-
-	  if(1 == EVP_DecryptInit_ex(ctx, priv->cipher, NULL, priv->key, dec_ivec)) {
-	    if(1 == EVP_CIPHER_CTX_set_padding(ctx, 0)) {
-	      if(1 == EVP_DecryptUpdate(ctx, assembly, &evp_len, inbuf + TRANSOP_AES_PREAMBLE_SIZE, len)) {
-		evp_plaintext_len = evp_len;
-		if(1 == EVP_DecryptFinal_ex(ctx, assembly + evp_len, &evp_len)) {
-		  evp_plaintext_len += evp_len;
-		  
-		  if(evp_plaintext_len != len)
-		    traceEvent(TRACE_ERROR, "decode_aes openssl decryption: decrypted %u bytes where %u were expected.\n",
-			       evp_plaintext_len, len);
-		} else
-		  traceEvent(TRACE_ERROR, "decode_aes openssl final decryption: %s\n", openssl_err_as_string());
-	      } else
-		traceEvent(TRACE_ERROR, "decode_aes openssl decrpytion: %s\n", openssl_err_as_string());
-	    } else
-	      traceEvent(TRACE_ERROR, "decode_aes openssl padding setup: %s\n", openssl_err_as_string());
-
-	  } else
-	    traceEvent(TRACE_ERROR, "decode_aes openssl init: %s\n", openssl_err_as_string());
-
-	  EVP_CIPHER_CTX_reset(ctx);
-#else
-	  AES_cbc_encrypt((inbuf + TRANSOP_AES_PREAMBLE_SIZE),
-			  assembly, /* destination */
-			  len, 
-			  &(priv->dec_key),
-			  dec_ivec, AES_DECRYPT);
-#endif
-	  /* last byte is how much was padding: max value should be
-	   * AES_BLOCKSIZE-1 */
-	  padding = assembly[ len-1 ] & 0xff; 
-
-	  if(len >= padding) {
-	    /* strictly speaking for this to be an ethernet packet
-	     * it is going to need to be even bigger; but this is
-	     * enough to prevent segfaults. */
-	    traceEvent(TRACE_DEBUG, "padding = %u", padding);
-	    len -= padding;
-
-	    memcpy(outbuf, 
-		   assembly, 
-		   len);
-	  } else
-	    traceEvent(TRACE_WARNING, "UDP payload decryption failed.");
-	} else {
-	  traceEvent(TRACE_WARNING, "Encrypted length %d is not a multiple of AES_BLOCK_SIZE (%d)", len, AES_BLOCK_SIZE);
-	  len = 0;
-	}
-    } else
-    traceEvent(TRACE_ERROR, "decode_aes inbuf wrong size (%ul) to decrypt.", in_len);
+    rest = in_len % AES_BLOCK_SIZE;
+    if(rest) {
+      // cipher text stealing
+      penultimate_block = ((in_len / AES_BLOCK_SIZE) - 1) * AES_BLOCK_SIZE;
+      // everything normal up to penultimate block
+      memcpy(assembly, inbuf, penultimate_block);
+      // prepare new penultimate block in buf
+      aes_ecb_decrypt(buf, inbuf + penultimate_block, priv->ctx);
+      memcpy(buf, inbuf + in_len - rest, rest);
+      // former penultimate block becomes new ultimate block
+      memcpy(assembly + penultimate_block + AES_BLOCK_SIZE, inbuf + penultimate_block, AES_BLOCK_SIZE);
+      //  write new penultimate block from buf
+      memcpy(assembly + penultimate_block, buf, AES_BLOCK_SIZE);
+      // regular cbc decryption on the re-arranged ciphertext
+      aes_cbc_decrypt(assembly, assembly, in_len + AES_BLOCK_SIZE - rest, null_iv, priv->ctx);
+      // check for expected zero padding and give a warning otherwise
+      if (memcmp(assembly + in_len, null_iv, AES_BLOCK_SIZE - rest)) {
+        traceEvent(TRACE_WARNING, "transop_decode_aes payload decryption failed with unexpected cipher text stealing padding");
+        return -1;
+      }
+    } else {
+      // regular cbc decryption on multiple block-sized payload
+      aes_cbc_decrypt(assembly, inbuf, in_len, null_iv, priv->ctx);
+    }
+     len = in_len    - AES_PREAMBLE_SIZE;
+     memcpy(outbuf,
+            assembly + AES_PREAMBLE_SIZE,
+            len);
+  } else
+    traceEvent(TRACE_ERROR, "transop_decode_aes inbuf wrong size (%ul) to decrypt", in_len);
 
   return len;
 }
 
 /* ****************************************************** */
 
-static int setup_aes_key(transop_aes_t *priv, const uint8_t *key, ssize_t key_size) {
-  size_t aes_key_size_bytes;
-  size_t aes_key_size_bits;
+static int setup_aes_key(transop_aes_t *priv, const uint8_t *password, ssize_t password_len) {
 
-  uint8_t key_mat_buf[SHA512_DIGEST_LENGTH + SHA256_DIGEST_LENGTH];
-  size_t key_mat_buf_length;
+  unsigned char   key_mat[32];     // maximum aes key length, equals hash length
+  unsigned char   *key;
+  size_t          key_size;
 
-  /* Clear out any old possibly longer key matter. */
-#ifdef HAVE_OPENSSL_1_1
-  memset(&(priv->key), 0, sizeof(priv->key) );
-#else
-  memset(&(priv->enc_key), 0, sizeof(priv->enc_key) );
-  memset(&(priv->dec_key), 0, sizeof(priv->dec_key) );
-#endif
-  memset(&(priv->iv_enc_key), 0, sizeof(priv->iv_enc_key) );
-  memset(&(priv->iv_pad_val), 0, sizeof(priv->iv_pad_val) );
+  // let the user choose the degree of encryption:
+  // long input passwords will pick AES192 or AES256 with more robust but expensive encryption
 
-  /* Let the user choose the degree of encryption:
-   * Long input keys will pick AES192 or AES256 with more robust but expensive encryption.
-   *
-   * The input key always gets hashed to make a more unpredictable use of the key space and
-   * also to derive some additional material (key for IV encrpytion, IV padding).
-   *
-   * The following scheme for key setup was discussed on github:
-   * https://github.com/ntop/n2n/issues/101
-   */
+  // the input password always gets hashed to make a more unpredictable use of the key space
+  // just think of usually reset MSB of ASCII coded password bytes
+  pearson_hash_256(key_mat, password, password_len);
 
-  /* create a working buffer of maximal occuring hashes size and generate
-   * the hashes for the aes key material, key_mat_buf_lengh indicates the
-   * actual "filling level" of the buffer
-   */
-
-  if(key_size >= 65) {
-#ifdef HAVE_OPENSSL_1_1
-    priv->cipher = EVP_aes_256_cbc();
-#endif
-    aes_key_size_bytes = AES256_KEY_BYTES;
-    SHA512(key, key_size, key_mat_buf);
-    key_mat_buf_length = SHA512_DIGEST_LENGTH;
-  } else if(key_size >= 44) {
-#ifdef HAVE_OPENSSL_1_1
-    priv->cipher = EVP_aes_192_cbc();
-#endif
-    aes_key_size_bytes = AES192_KEY_BYTES;
-    SHA384(key, key_size, key_mat_buf);
-    /* append a hash of the first hash to create enough material for IV padding */
-    SHA256(key_mat_buf, SHA384_DIGEST_LENGTH, key_mat_buf + SHA384_DIGEST_LENGTH);
-    key_mat_buf_length = SHA384_DIGEST_LENGTH + SHA256_DIGEST_LENGTH;
+  // the length-dependant scheme for key setup was discussed on github:
+  // https://github.com/ntop/n2n/issues/101
+  if(password_len >= 65) {
+    key_size = AES256_KEY_BYTES;       // 256 bit
+  } else if(password_len >= 44) {
+    key_size = AES192_KEY_BYTES;       // 192 bit
   } else {
-#ifdef HAVE_OPENSSL_1_1
-    priv->cipher = EVP_aes_128_cbc();
-#endif
-    aes_key_size_bytes = AES128_KEY_BYTES;
-    SHA256(key, key_size, key_mat_buf);
-    /* append a hash of the first hash to create enough material for IV padding */
-    SHA256(key_mat_buf, SHA256_DIGEST_LENGTH, key_mat_buf + SHA256_DIGEST_LENGTH);
-    key_mat_buf_length = 2 * SHA256_DIGEST_LENGTH;
+    key_size = AES128_KEY_BYTES;       // 128 bit
+  }
+  // and use the last key-sized part of the hash as aes key
+  key = key_mat + sizeof(key_mat) - key_size;
+
+  // setup the key and have corresponding context created
+  if (aes_init (key, key_size, &(priv->ctx))) {
+    traceEvent(TRACE_ERROR, "setup_aes_key %u-bit key setup unsuccessful",
+	       key_size * 8);
+    return -1;
   }
 
-  /* is there enough material available? */
-  if(key_mat_buf_length < (aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES + TRANSOP_AES_IV_PADDING_SIZE)) {
-    /* this should never happen */
-    traceEvent(TRACE_ERROR, "AES missing %u bits hashed key material\n",
-	       (aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES + TRANSOP_AES_IV_PADDING_SIZE - key_mat_buf_length) * 8);
-    return(1);
-  }
-
-  /* setup of key, used for the CBC encryption */
-  aes_key_size_bits = 8 * aes_key_size_bytes;
-
-#ifdef HAVE_OPENSSL_1_1
-  memcpy (priv->key, key_mat_buf, aes_key_size_bytes);
-#else
-  AES_set_encrypt_key(key_mat_buf, aes_key_size_bits, &(priv->enc_key));
-  AES_set_decrypt_key(key_mat_buf, aes_key_size_bits, &(priv->dec_key));
-#endif
-
-  /* setup of iv_enc_key (AES128 key) and iv_pad_val, used for generating the CBC IV */
-  AES_set_encrypt_key(key_mat_buf + aes_key_size_bytes, TRANSOP_AES_IV_KEY_BYTES * 8, &(priv->iv_enc_key));
-  memcpy(priv->iv_pad_val, key_mat_buf + aes_key_size_bytes + TRANSOP_AES_IV_KEY_BYTES, TRANSOP_AES_IV_PADDING_SIZE);
-
-  traceEvent(TRACE_DEBUG, "AES %u bits setup completed\n",
-	     aes_key_size_bits);
-
-  return(0);
+  traceEvent(TRACE_DEBUG, "setup_aes_key %u-bit key setup completed",
+	     key_size * 8);
+  return 0;
 }
 
 /* ****************************************************** */
@@ -426,7 +222,7 @@ static void transop_tick_aes(n2n_trans_op_t * arg, time_t now) { ; }
 
 /* ****************************************************** */
 
-/* AES initialization function */
+// AES initialization function
 int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   transop_aes_t *priv;
   const u_char *encrypt_key = (const u_char *)conf->encrypt_key;
@@ -442,26 +238,13 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
 
   priv = (transop_aes_t*) calloc(1, sizeof(transop_aes_t));
   if(!priv) {
-    traceEvent(TRACE_ERROR, "cannot allocate transop_aes_t memory");
+    traceEvent(TRACE_ERROR, "n2n_transop_aes_cbc_init cannot allocate transop_aes_t memory");
     return(-1);
   }
   ttt->priv = priv;
 
-#ifdef HAVE_OPENSSL_1_1
-  /* Setup openssl's reusable evp_* contexts for encryption and decryption*/
-  if(!(priv->enc_ctx = EVP_CIPHER_CTX_new())) {
-    traceEvent(TRACE_ERROR, "openssl's evp_* encryption context creation: %s\n", openssl_err_as_string());
-    return(-1);
-  }
-
-  if(!(priv->dec_ctx = EVP_CIPHER_CTX_new())) {
-    traceEvent(TRACE_ERROR, "openssl's evp_* decryption context creation: %s\n", openssl_err_as_string());
-    return(-1);
-  }
-#endif
-
-  /* Setup the cipher and key */
+  // setup the cipher and key
   return(setup_aes_key(priv, encrypt_key, encrypt_key_len));
 }
 
-#endif /* N2N_HAVE_AES */
+#endif // N2N_HAVE_AES

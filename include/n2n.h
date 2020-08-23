@@ -159,6 +159,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include "random_numbers.h"
 #include "pearson.h"
 #include "portable_endian.h"
+#include "aes.h"
 #include "speck.h"
 #include "n2n_regex.h"
 
