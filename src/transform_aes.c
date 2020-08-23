@@ -35,7 +35,7 @@
 
 // cbc mode is being used with random value prepended to plaintext
 // instead of iv so, actual iv is null_iv
-const uint8_t null_iv[AES_IV_SIZE] = {0};
+uint8_t null_iv[AES_IV_SIZE] = {0};
 
 typedef struct transop_aes {
   aes_context_t       *ctx;

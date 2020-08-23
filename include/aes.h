@@ -48,10 +48,10 @@ typedef struct aes_context_t {
 
 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     const unsigned char *iv, aes_context_t *ctx);
+                     unsigned char *iv, aes_context_t *ctx);
 
 int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     const unsigned char *iv, aes_context_t *ctx);
+                     unsigned char *iv, aes_context_t *ctx);
 
 int aes_ecb_decrypt (unsigned char *out, const unsigned char *in, aes_context_t *ctx);
 
