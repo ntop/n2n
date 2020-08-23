@@ -225,6 +225,8 @@ int sn_init(n2n_sn_t *sss) {
   sss->max_auto_ip_net.net_addr = ntohl(sss->max_auto_ip_net.net_addr);
   sss->max_auto_ip_net.net_bitlen = N2N_SN_AUTO_IP_NET_BIT_DEFAULT;
 
+  n2n_srand (n2n_seed());
+
   return 0; /* OK */
 }
 
