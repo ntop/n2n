@@ -62,6 +62,8 @@ Some parts of the code significantly benefit from compiler optimizations and pla
 
 For Windows, MacOS and general building options, please check out [Building.md](doc/Building.md) for compilation and running.
 
+**IMPORTANT** It is generally recommended to use the [latest stable release](https://github.com/ntop/n2n/releases). Please note that the current _dev_ branch usually is not guaranteed to be backward compatible neither with the latest stable release nor with previous _dev_ states. On the other hand, if you dare to try the bleeding edge features, you are encouraged to compile from _dev_ – just keep track of sometimes rapidly occuring changes. Feedback in the _Issues_ section is appreciated.
+
 ## Running edge as a Service
 
 edge can also be run as a service instead of cli:
@@ -99,8 +101,6 @@ IPv6 for edge-to-supernode communication yet.
 
 Have a look at [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more information.
 
-
-
 ## Contribution
 
 You can contribute to n2n in various ways:
@@ -110,13 +110,14 @@ You can contribute to n2n in various ways:
 - Improve the documentation
 - Provide pull requests with enhancements
 
-For details about the internals of n2n check out [Hacking guide](https://github.com/ntop/n2n/blob/dev/doc/HACKING).
+For details about the internals of n2n check out [Hacking guide](https://github.com/ntop/n2n/blob/dev/doc/Hacking.md).
 
 ## Related Projects
 
 Here is a list of third-party projects connected to this repository.
 
-- N2N for Android: [hin2n](https://github.com/switch-iot/hin2n)
+- Collection of pre-built binaries for Windows: [lucktu](https://github.com/lucktu/n2n)
+- n2n for Android: [hin2n](https://github.com/switch-iot/hin2n)
 - Docker images: [Docker Hub](https://hub.docker.com/r/supermock/supernode/)
 - Go bindings, management daemons and CLIs for n2n edges and supernodes, Docker, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n/)
 
