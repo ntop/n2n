@@ -27,12 +27,17 @@ static n2n_sn_t sss_node;
  *
  */
 static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
-  char buffer[4096], *line;
+  char buffer[4096], *line, *cmn_str, net_str[20];
+  dec_ip_str_t ip_str = {'\0'};
+  uint8_t bitlen;
+  in_addr_t net;
+  uint32_t mask;
   FILE *fd = fopen(path, "r");
   struct sn_community *s, *tmp;
   uint32_t num_communities = 0;
   struct sn_community_regular_expression *re, *tmp_re;
   uint32_t num_regex = 0;
+  int has_net;
 
   if(fd == NULL) {
     traceEvent(TRACE_WARNING, "File %s not found", path);
@@ -66,15 +71,20 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 	break;
     }
 
+    // cut off any IP sub-network upfront
+    cmn_str = (char*)calloc(len+1, sizeof(char));
+    has_net = ( sscanf (line, "%s %s", cmn_str, net_str) == 2 );
+
     // if it contains typical characters...
-    if(NULL != strpbrk(line, ".^$*+?[]\\")) {
+    if(NULL != strpbrk(cmn_str, ".^$*+?[]\\")) {
       // ...it is treated as regular expression
       re = (struct sn_community_regular_expression*)calloc(1,sizeof(struct sn_community_regular_expression));
       if (re) {
-        re->rule = re_compile(line);
+        re->rule = re_compile(cmn_str);
         HASH_ADD_PTR(sss->rules, rule, re);
 	num_regex++;
-        traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", line);
+        traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", cmn_str);
+        free(cmn_str);
         continue;
       }
     }
@@ -82,7 +92,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
     s = (struct sn_community*)calloc(1,sizeof(struct sn_community));
 
     if(s != NULL) {
-      strncpy((char*)s->community, line, N2N_COMMUNITY_SIZE-1);
+      strncpy((char*)s->community, cmn_str, N2N_COMMUNITY_SIZE-1);
       s->community[N2N_COMMUNITY_SIZE-1] = '\0';
       /* loaded from file, this community is unpurgeable */
       s->purgeable = COMMUNITY_UNPURGEABLE;
@@ -95,7 +105,42 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
       num_communities++;
       traceEvent(TRACE_INFO, "Added allowed community '%s' [total: %u]",
 		 (char*)s->community, num_communities);
+
+      // check for sub-network address
+      if(has_net) {
+        if(sscanf(net_str, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
+          traceEvent(TRACE_WARNING, "Bad net/bit format '%s' for community '%c', ignoring. See comments inside community.list file.",
+                                     net_str, cmn_str);
+          has_net = 0;
+        }
+        net = inet_addr(ip_str);
+        mask = bitlen2mask(bitlen);
+        if((net == (in_addr_t)(-1)) || (net == INADDR_NONE) || (net == INADDR_ANY)
+          || ((ntohl(net) & ~mask) != 0) ) {
+          traceEvent(TRACE_WARNING, "Bad network '%s/%u' in '%s' for community '%s', ignoring.",
+                                    ip_str, bitlen, net_str, cmn_str);
+          has_net = 0;
+        }
+        if ((bitlen > 30) || (bitlen == 0)) {
+          traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s' for community '%s', ignoring.",
+                                    bitlen, net_str, cmn_str);
+          has_net = 0;
+        }
+      }
+      if(has_net) {
+        s->auto_ip_net.net_addr = ntohl(net);
+        s->auto_ip_net.net_bitlen = bitlen;
+        traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
+                                inet_ntoa(*(struct in_addr *) &net),
+                                s->auto_ip_net.net_bitlen,
+                                s->community);
+      } else {
+        assign_one_ip_subnet(sss, s);
+      }
     }
+
+    free(cmn_str);
+
   }
 
   fclose(fd);
@@ -138,23 +183,24 @@ static void help() {
   printf("[-u <uid> -g <gid>] ");
 #endif /* ifndef WIN32 */
   printf("[-t <mgmt port>] ");
-  printf("[-d <net/bit>] ");
+  printf("[-a <net-net/bit>] ");
   printf("[-v] ");
   printf("\n\n");
 
-  printf("-l <port>     | Set UDP main listen port to <port>\n");
-  printf("-c <path>     | File containing the allowed communities.\n");
+  printf("-l <port>         | Set UDP main listen port to <port>\n");
+  printf("-c <path>         | File containing the allowed communities.\n");
 #if defined(N2N_HAVE_DAEMON)
-  printf("-f            | Run in foreground.\n");
+  printf("-f                | Run in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
 #ifndef WIN32
-  printf("-u <UID>      | User ID (numeric) to use when privileges are dropped.\n");
-  printf("-g <GID>      | Group ID (numeric) to use when privileges are dropped.\n");
+  printf("-u <UID>          | User ID (numeric) to use when privileges are dropped.\n");
+  printf("-g <GID>          | Group ID (numeric) to use when privileges are dropped.\n");
 #endif /* ifndef WIN32 */
-  printf("-t <port>     | Management UDP Port (for multiple supernodes on a machine).\n");
-  printf("-d <net/bit>  | Subnet that provides dhcp service for edge. eg. -d 172.17.12.0/24\n");
-  printf("-v            | Increase verbosity. Can be used multiple times.\n");
-  printf("-h            | This help message.\n");
+  printf("-t <port>         | Management UDP Port (for multiple supernodes on a machine).\n");
+  printf("-a <net-net/bit>  | Subnet range for auto ip address service, e.g.\n");
+  printf("                  | -a 192.168.0.0-192.168.255.0/24, defaults to 10.128.255.0-10.255.255.0/24\n");
+  printf("-v                | Increase verbosity. Can be used multiple times.\n");
+  printf("-h                | This help message.\n");
   printf("\n");
 
   exit(1);
@@ -174,35 +220,44 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     sss->mport = atoi(_optarg);
     break;
 
-  case 'd': {
-    dec_ip_str_t ip_str = {'\0'};
-    in_addr_t net;
+  case 'a': {
+    dec_ip_str_t ip_min_str = {'\0'};
+    dec_ip_str_t ip_max_str = {'\0'};
+    in_addr_t net_min, net_max;
     uint8_t bitlen;
+    uint32_t mask;
 
-    if (sscanf(_optarg, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
-      traceEvent(TRACE_WARNING, "Bad net/bit format '%s'. See -h.", _optarg);
+    if (sscanf(_optarg, "%15[^\\-]-%15[^/]/%hhu", ip_min_str, ip_max_str, &bitlen) != 3) {
+      traceEvent(TRACE_WARNING, "Bad net-net/bit format '%s'. See -h.", _optarg);
       break;
     }
 
-    net = inet_addr(ip_str);
-    if ((net == (in_addr_t)(-1)) || (net == INADDR_NONE) || (net == INADDR_ANY)) {
-      traceEvent(TRACE_WARNING, "Bad network '%s' in '%s', Use default: '%s/%d'",
-		 ip_str, _optarg,
-		 N2N_SN_DHCP_NET_ADDR_DEFAULT, N2N_SN_DHCP_NET_BIT_DEFAULT);
+    net_min = inet_addr(ip_min_str);
+    net_max = inet_addr(ip_max_str);
+    mask = bitlen2mask(bitlen);
+    if ((net_min == (in_addr_t)(-1)) || (net_min == INADDR_NONE) || (net_min == INADDR_ANY)
+     || (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
+     || (ntohl(net_min) >  ntohl(net_max))
+     || ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0) ) {
+      traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
+		 ip_min_str, ip_max_str, bitlen, _optarg,
+		 N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
       break;
     }
 
-    if (bitlen > 32) {
-      traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', Use default: '%s/%d'",
+    if ((bitlen > 30) || (bitlen == 0)) {
+      traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
 		 bitlen, _optarg,
-		 N2N_SN_DHCP_NET_ADDR_DEFAULT, N2N_SN_DHCP_NET_BIT_DEFAULT);
+		 N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
       break;
     }
 
-    traceEvent(TRACE_NORMAL, "The subnet of DHCP service is: '%s/%hhu'.", ip_str, bitlen);
+    traceEvent(TRACE_NORMAL, "The network range for community ip address service is '%s...%s/%hhu'.", ip_min_str, ip_max_str, bitlen);
 
-    sss->dhcp_addr.net_addr = ntohl(net);
-    sss->dhcp_addr.net_bitlen = bitlen;
+    sss->min_auto_ip_net.net_addr = ntohl(net_min);
+    sss->min_auto_ip_net.net_bitlen = bitlen;
+    sss->max_auto_ip_net.net_addr = ntohl(net_max);
+    sss->max_auto_ip_net.net_bitlen = bitlen;
 
     break;
   }
@@ -249,7 +304,7 @@ static const struct option long_options[] = {
 					     {"foreground",  no_argument,       NULL, 'f'},
 					     {"local-port",  required_argument, NULL, 'l'},
 					     {"mgmt-port",   required_argument, NULL, 't'},
-					     {"dhcp",        required_argument, NULL, 'd'},
+					     {"autoip",      required_argument, NULL, 'a'},
 					     {"help",        no_argument,       NULL, 'h'},
 					     {"verbose",     no_argument,       NULL, 'v'},
 					     {NULL, 0,                          NULL, 0}
@@ -261,7 +316,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fl:u:g:t:d:c:vh",
+  while((c = getopt_long(argc, argv, "fl:u:g:t:a:c:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);

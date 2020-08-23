@@ -251,42 +251,44 @@ int decode_sock( n2n_sock_t * sock,
     return (idx-idx0);
 }
 
-int encode_REGISTER( uint8_t * base,
-                     size_t * idx,
-                     const n2n_common_t * common,
-                     const n2n_REGISTER_t * reg )
-{
-    int retval=0;
-    retval += encode_common( base, idx, common );
-    retval += encode_buf( base, idx, reg->cookie, N2N_COOKIE_SIZE );
-    retval += encode_mac( base, idx, reg->srcMac );
-    retval += encode_mac( base, idx, reg->dstMac );
-    if ( 0 != reg->sock.family )
-    {
-        retval += encode_sock( base, idx, &(reg->sock) );
-    }
 
-    return retval;
+int encode_REGISTER(uint8_t *base,
+                    size_t *idx,
+                    const n2n_common_t *common,
+                    const n2n_REGISTER_t *reg) {
+	int retval = 0;
+	retval += encode_common(base, idx, common);
+	retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+	retval += encode_mac(base, idx, reg->srcMac);
+	retval += encode_mac(base, idx, reg->dstMac);
+	if (0 != reg->sock.family) {
+		retval += encode_sock(base, idx, &(reg->sock));
+	}
+	retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
+	retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
+
+	return retval;
 }
 
-int decode_REGISTER( n2n_REGISTER_t * reg,
-                     const n2n_common_t * cmn, /* info on how to interpret it */
-                     const uint8_t * base,
-                     size_t * rem,
-                     size_t * idx )
-{
-    size_t retval=0;
-    memset( reg, 0, sizeof(n2n_REGISTER_t) );
-    retval += decode_buf( reg->cookie, N2N_COOKIE_SIZE, base, rem, idx );
-    retval += decode_mac( reg->srcMac, base, rem, idx );
-    retval += decode_mac( reg->dstMac, base, rem, idx );
 
-    if ( cmn->flags & N2N_FLAGS_SOCKET )
-    {
-        retval += decode_sock( &(reg->sock), base, rem, idx );
-    }
+int decode_REGISTER(n2n_REGISTER_t *reg,
+                    const n2n_common_t *cmn, /* info on how to interpret it */
+                    const uint8_t *base,
+                    size_t *rem,
+                    size_t *idx) {
+	size_t retval = 0;
+	memset(reg, 0, sizeof(n2n_REGISTER_t));
+	retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+	retval += decode_mac(reg->srcMac, base, rem, idx);
+	retval += decode_mac(reg->dstMac, base, rem, idx);
 
-    return retval;
+	if (cmn->flags & N2N_FLAGS_SOCKET) {
+		retval += decode_sock(&(reg->sock), base, rem, idx);
+	}
+	retval += decode_uint32(&(reg->dev_addr.net_addr), base, rem, idx);
+	retval += decode_uint8(&(reg->dev_addr.net_bitlen), base, rem, idx);
+
+	return retval;
 }
 
 
