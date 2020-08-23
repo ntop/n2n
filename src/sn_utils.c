@@ -220,6 +220,8 @@ int sn_init(n2n_sn_t *sss)
     sss->sock = -1;
     sss->mgmt_sock = -1;
 
+    n2n_srand (n2n_seed()); /* https://github.com/ntop/n2n/pull/373/files */
+	
     return 0; /* OK */
 }
 
