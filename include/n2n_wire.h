@@ -125,6 +125,7 @@ typedef struct n2n_REGISTER
 	n2n_mac_t            srcMac;         /**< MAC of registering party */
 	n2n_mac_t            dstMac;         /**< MAC of target edge */
 	n2n_sock_t           sock;           /**< REVISIT: unused? */
+	n2n_ip_subnet_t      dev_addr;       /**< IP address of the tuntap adapter. */
 } n2n_REGISTER_t;
 
 typedef struct n2n_REGISTER_ACK
