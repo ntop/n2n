@@ -28,6 +28,10 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
+
+#define AES_BLOCK_SIZE           16
+#define AES_IV_SIZE             (AES_BLOCK_SIZE)
+
 #define AES256_KEY_BYTES (256/8)
 #define AES192_KEY_BYTES (192/8)
 #define AES128_KEY_BYTES (128/8)
@@ -48,10 +52,10 @@ typedef struct aes_context_t {
 
 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     unsigned char *iv, aes_context_t *ctx);
+                     const unsigned char *iv, aes_context_t *ctx);
 
 int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     unsigned char *iv, aes_context_t *ctx);
+                     const unsigned char *iv, aes_context_t *ctx);
 
 int aes_ecb_decrypt (unsigned char *out, const unsigned char *in, aes_context_t *ctx);
 

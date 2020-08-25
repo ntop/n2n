@@ -45,7 +45,7 @@ static char *openssl_err_as_string (void) {
 /* ****************************************************** */
 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     unsigned char *iv, aes_context_t *ctx) {
+                     const unsigned char *iv, aes_context_t *ctx) {
 
 #ifdef HAVE_OPENSSL_1_1
   int evp_len;
@@ -75,20 +75,21 @@ int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
 
   EVP_CIPHER_CTX_reset(ctx->enc_ctx);
 #else
+  uint8_t tmp_iv[AES_IV_SIZE];
+  memcpy (tmp_iv, iv, AES_IV_SIZE);
   AES_cbc_encrypt(in,                // source
                   out,               // destination
                   in_len,            // enc size
                   &(ctx->enc_key),
-                  iv,
+                  tmp_iv,
                   AES_ENCRYPT);
-  memset(iv, 0, AES_BLOCK_SIZE);
 #endif
 }
 
 /* ****************************************************** */
 
 int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     unsigned char *iv, aes_context_t *ctx) {
+                     const unsigned char *iv, aes_context_t *ctx) {
 
 #ifdef HAVE_OPENSSL_1_1
   int evp_len;
@@ -118,13 +119,14 @@ int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
 
   EVP_CIPHER_CTX_reset(ctx->dec_ctx);
 #else
+  uint8_t tmp_iv[AES_IV_SIZE];
+  memcpy (tmp_iv, iv, AES_IV_SIZE);
   AES_cbc_encrypt(in,                // source
                   out,               // destination
                   in_len,            // enc size
                   &(ctx->dec_key),
-                  iv,
+                  tmp_iv,
                   AES_DECRYPT);
-    memset(iv, 0, AES_BLOCK_SIZE);
 #endif
 
   return 0;

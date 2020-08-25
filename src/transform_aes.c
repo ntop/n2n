@@ -22,8 +22,6 @@
 #ifdef N2N_HAVE_AES
 
 
-#define AES_BLOCK_SIZE           16
-
 // size of random value prepended to plaintext defaults to AES BLOCK_SIZE;
 // gradually abandoning security, lower values could be chosen;
 // however, minimum transmission size with cipher text stealing scheme is one
@@ -31,11 +29,9 @@
 // might encounter an issue with lower values here
 #define AES_PREAMBLE_SIZE       (AES_BLOCK_SIZE)
 
-#define AES_IV_SIZE             (AES_BLOCK_SIZE)
-
 // cbc mode is being used with random value prepended to plaintext
 // instead of iv so, actual iv is null_iv
-uint8_t null_iv[AES_IV_SIZE] = {0};
+const uint8_t null_iv[AES_IV_SIZE] = {0};
 
 typedef struct transop_aes {
   aes_context_t       *ctx;
