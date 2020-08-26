@@ -465,6 +465,7 @@ int tf_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                     const unsigned char *iv, tf_context_t *ctx) {
 
   uint8_t tmp[TF_BLOCK_SIZE];
+  uint8_t old[TF_BLOCK_SIZE];
   size_t i;
   size_t n;
 
@@ -472,9 +473,10 @@ int tf_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
 
   n = in_len / TF_BLOCK_SIZE;
   for(i=0; i < n; i++) {
+    memcpy(old, &in[i * TF_BLOCK_SIZE], TF_BLOCK_SIZE);
     twofish_internal_decrypt(ctx->K, ctx->QF, &out[i * TF_BLOCK_SIZE], &in[i * TF_BLOCK_SIZE]);
     fix_xor(&out[i * TF_BLOCK_SIZE], tmp);
-    memcpy(tmp, &in[i * TF_BLOCK_SIZE], TF_BLOCK_SIZE);
+    memcpy(tmp, old, TF_BLOCK_SIZE);
   }
 
   return n * TF_BLOCK_SIZE;
