@@ -23,7 +23,7 @@ You can request that information by just sending a new line, i.e. pressing [ENTE
 
 ## Edge
 
-### How can I know if p2p is successfully established?
+### How can I know if peer-to-peer connection has successfully been established?
 
 The edge also offer a management port at which it provides some information about connected _peers_, i.e. allowing a peer-to-peer connection, and _pending peers_ whose connections are forwarded through the supernode.
 
