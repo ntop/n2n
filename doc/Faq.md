@@ -12,5 +12,23 @@ Also, please see the community.list file for advanced use of that file.
 
 Beyond this access barrier you may want to use payload encryption `-A_` at the edges. Only the edges – not the supernode – are able to decipher the payload data. So, even if anyone would be able to break the access barrier to the supernode, the payload remains protected by the payload crypto, see [this document](https://github.com/ntop/n2n/blob/dev/doc/Crypto.md) for details.
 
+### Can I get a list of connected edge node and their community and source IP from the supernode?
+
+The supernode provides basic information via its localhost udp management port. It defaults to 5645.
+
+You can request that information by just sending a new line, i.e. pressing [ENTER] key, running the following command (localhost only):
+
+`netcat -u localhost 5645`
+
 
 ## Edge
+
+### How can I know if p2p is successfully established?
+
+The edge also offer a management port at which it provides some information about connected _peers_, i.e. allowing a peer-to-peer connection, and _pending peers_ whose connections are forwarded through the supernode.
+
+The edge's management port defaults 5644. Connecting using the following command
+
+`netcat -u localhost 5644`
+
+answers every new line, i.e. press [ENTER] key, with the current information. The edge even understands some simple commands, try `help`.
