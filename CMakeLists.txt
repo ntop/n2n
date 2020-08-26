@@ -96,7 +96,7 @@ add_library(n2n STATIC
         src/sn_utils.c
         src/wire.c
         src/minilzo.c
-        src/twofish.c
+        src/tf.c
         src/transform_null.c
         src/transform_tf.c
         src/transform_aes.c

@@ -62,7 +62,7 @@ static void parseArgs(int argc, char * argv[]) {
 
 int main(int argc, char * argv[]) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
-  n2n_trans_op_t transop_null, transop_twofish;
+  n2n_trans_op_t transop_null, transop_tf;
 #ifdef N2N_HAVE_AES
   n2n_trans_op_t transop_aes_cbc;
 #endif
@@ -82,7 +82,7 @@ int main(int argc, char * argv[]) {
 
   /* Init transopts */
   n2n_transop_null_init(&conf, &transop_null);
-  n2n_transop_twofish_init(&conf, &transop_twofish);
+  n2n_transop_tf_init(&conf, &transop_tf);
 #ifdef N2N_HAVE_AES
   n2n_transop_aes_cbc_init(&conf, &transop_aes_cbc);
 #endif
@@ -93,7 +93,7 @@ int main(int argc, char * argv[]) {
   
   /* Run the tests */
   run_transop_benchmark("transop_null", &transop_null, &conf, pktbuf);
-  run_transop_benchmark("transop_twofish", &transop_twofish, &conf, pktbuf);
+  run_transop_benchmark("transop_tf", &transop_tf, &conf, pktbuf);
 #ifdef N2N_HAVE_AES
   run_transop_benchmark("transop_aes", &transop_aes_cbc, &conf, pktbuf);
 #endif
@@ -104,7 +104,7 @@ int main(int argc, char * argv[]) {
 
   /* Cleanup */
   transop_null.deinit(&transop_null);
-  transop_twofish.deinit(&transop_twofish);
+  transop_tf.deinit(&transop_tf);
 #ifdef N2N_HAVE_AES
   transop_aes_cbc.deinit(&transop_aes_cbc);
 #endif
