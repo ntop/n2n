@@ -70,7 +70,6 @@ static int transop_encode_tf(n2n_trans_op_t * arg,
   // the assembly buffer is a source for encrypting data
   // the whole contents of assembly are encrypted
   uint8_t assembly[N2N_PKT_BUF_SIZE];
-  uint8_t assembly2[N2N_PKT_BUF_SIZE];
   size_t idx = 0;
   int padded_len;
   uint8_t padding;
