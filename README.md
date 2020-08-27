@@ -114,7 +114,7 @@ For details about the internals of n2n check out [Hacking guide](https://github.
 
 ## Further Readings and Related Projects
 
-Answers to frequenty asked questions can be found in our [FAQ document](https://github.com/ntop/n2n/blob/dev/doc/Faq.md).
+Answers to frequently asked questions can be found in our [FAQ document](https://github.com/ntop/n2n/blob/dev/doc/Faq.md).
 
 Here is a list of third-party projects connected to this repository:
 
