@@ -112,9 +112,11 @@ You can contribute to n2n in various ways:
 
 For details about the internals of n2n check out [Hacking guide](https://github.com/ntop/n2n/blob/dev/doc/Hacking.md).
 
-## Related Projects
+## Further Readings and Related Projects
 
-Here is a list of third-party projects connected to this repository.
+Answers to frequently asked questions can be found in our [FAQ document](https://github.com/ntop/n2n/blob/dev/doc/Faq.md).
+
+Here is a list of third-party projects connected to this repository:
 
 - Collection of pre-built binaries for Windows: [lucktu](https://github.com/lucktu/n2n)
 - n2n for Android: [hin2n](https://github.com/switch-iot/hin2n)
