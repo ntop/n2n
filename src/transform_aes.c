@@ -30,8 +30,8 @@
 #define AES_PREAMBLE_SIZE       (AES_BLOCK_SIZE)
 
 // cbc mode is being used with random value prepended to plaintext
-// instead of iv so, actual iv is null_iv
-const uint8_t null_iv[AES_IV_SIZE] = {0};
+// instead of iv so, actual iv is aes_null_iv
+const uint8_t aes_null_iv[AES_IV_SIZE] = {0};
 
 typedef struct transop_aes {
   aes_context_t       *ctx;
@@ -98,7 +98,7 @@ static int transop_encode_aes(n2n_trans_op_t * arg,
         // to slightly faster code than run-time dependant 'padding'
         memset (assembly + idx, 0, AES_BLOCK_SIZE);
 
-        aes_cbc_encrypt(outbuf, assembly, padded_len, null_iv, priv->ctx);
+        aes_cbc_encrypt(outbuf, assembly, padded_len, aes_null_iv, priv->ctx);
 
         if(padding) {
           // exchange last two cipher blocks
@@ -153,15 +153,15 @@ static int transop_decode_aes(n2n_trans_op_t * arg,
       //  write new penultimate block from buf
       memcpy(assembly + penultimate_block, buf, AES_BLOCK_SIZE);
       // regular cbc decryption on the re-arranged ciphertext
-      aes_cbc_decrypt(assembly, assembly, in_len + AES_BLOCK_SIZE - rest, null_iv, priv->ctx);
+      aes_cbc_decrypt(assembly, assembly, in_len + AES_BLOCK_SIZE - rest, aes_null_iv, priv->ctx);
       // check for expected zero padding and give a warning otherwise
-      if (memcmp(assembly + in_len, null_iv, AES_BLOCK_SIZE - rest)) {
+      if (memcmp(assembly + in_len, aes_null_iv, AES_BLOCK_SIZE - rest)) {
         traceEvent(TRACE_WARNING, "transop_decode_aes payload decryption failed with unexpected cipher text stealing padding");
         return -1;
       }
     } else {
       // regular cbc decryption on multiple block-sized payload
-      aes_cbc_decrypt(assembly, inbuf, in_len, null_iv, priv->ctx);
+      aes_cbc_decrypt(assembly, inbuf, in_len, aes_null_iv, priv->ctx);
     }
      len = in_len    - AES_PREAMBLE_SIZE;
      memcpy(outbuf,

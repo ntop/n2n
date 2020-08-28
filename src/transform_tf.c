@@ -28,8 +28,8 @@
 #define TF_PREAMBLE_SIZE       (TF_BLOCK_SIZE)
 
 // cbc mode is being used with random value prepended to plaintext
-// instead of iv so, actual iv is null_iv
-const uint8_t null_iv[TF_IV_SIZE] = {0};
+// instead of iv so, actual iv is tf_null_iv
+const uint8_t tf_null_iv[TF_IV_SIZE] = {0};
 
 typedef struct transop_tf {
   tf_context_t       *ctx;
@@ -100,7 +100,7 @@ static int transop_encode_tf(n2n_trans_op_t * arg,
         // pad the following bytes with zero, fixed length (TF_BLOCK_SIZE) seems to compile
         // to slightly faster code than run-time dependant 'padding'
         memset (assembly + idx, 0, TF_BLOCK_SIZE);
-        tf_cbc_encrypt(outbuf, assembly, padded_len, null_iv, priv->ctx);
+        tf_cbc_encrypt(outbuf, assembly, padded_len, tf_null_iv, priv->ctx);
 
         if(padding) {
           // exchange last two cipher blocks
@@ -156,16 +156,16 @@ static int transop_decode_tf(n2n_trans_op_t * arg,
       memcpy(assembly + penultimate_block, buf, TF_BLOCK_SIZE);
       // regular cbc decryption on the re-arranged ciphertext
 
-      tf_cbc_decrypt(assembly, assembly, in_len + TF_BLOCK_SIZE - rest, null_iv, priv->ctx);
+      tf_cbc_decrypt(assembly, assembly, in_len + TF_BLOCK_SIZE - rest, tf_null_iv, priv->ctx);
 
       // check for expected zero padding and give a warning otherwise
-      if (memcmp(assembly + in_len, null_iv, TF_BLOCK_SIZE - rest)) {
+      if (memcmp(assembly + in_len, tf_null_iv, TF_BLOCK_SIZE - rest)) {
         traceEvent(TRACE_WARNING, "transop_decode_tf payload decryption failed with unexpected cipher text stealing padding");
         return -1;
       }
     } else {
       // regular cbc decryption on multiple block-sized payload
-      tf_cbc_decrypt(assembly, inbuf, in_len, null_iv, priv->ctx);
+      tf_cbc_decrypt(assembly, inbuf, in_len, tf_null_iv, priv->ctx);
     }
     len = in_len    - TF_PREAMBLE_SIZE;
     memcpy(outbuf,
