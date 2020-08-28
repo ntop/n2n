@@ -84,6 +84,8 @@ int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                   tmp_iv,
                   AES_ENCRYPT);
 #endif
+
+  return(0);
 }
 
 /* ****************************************************** */
@@ -141,6 +143,8 @@ int aes_ecb_decrypt (unsigned char *out, const unsigned char *in, aes_context_t 
 #else
   AES_ecb_encrypt(in, out, &(ctx->dec_key), AES_DECRYPT);
 #endif
+
+  return(0);
 }
 
 /* ****************************************************** */

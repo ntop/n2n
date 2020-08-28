@@ -413,7 +413,7 @@ int assign_one_ip_subnet(n2n_sn_t *sss,
   no_subnets  += 1;
 
   // proposal for sub-network to choose
-  net_id  = pearson_hash_32(comm->community, N2N_COMMUNITY_SIZE) % no_subnets;
+  net_id  = pearson_hash_32((const uint8_t *)comm->community, N2N_COMMUNITY_SIZE) % no_subnets;
   net_id  = sss->min_auto_ip_net.net_addr + (net_id << (32 - sss->min_auto_ip_net.net_bitlen));
 
   // check for availability starting from net_id, then downwards, ...
