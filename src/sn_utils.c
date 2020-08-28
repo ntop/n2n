@@ -997,6 +997,7 @@ static int process_udp(n2n_sn_t * sss,
 	memcpy(ack.edgeMac, reg.edgeMac, sizeof(n2n_mac_t));
 	if ((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
 	    ((reg.dev_addr.net_addr & 0xFFFF0000) == 0xA9FE0000 /* 169.254.0.0 */)) {
+	  memset(&ipaddr, 0, sizeof(n2n_ip_subnet_t));
 	  assign_one_ip_addr(comm, &ipaddr);
 	  ack.dev_addr.net_addr = ipaddr.net_addr;
 	  ack.dev_addr.net_bitlen = ipaddr.net_bitlen;
