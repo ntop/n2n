@@ -406,7 +406,7 @@ typedef struct n2n_sn
 /* ************************************** */
 
 #include "header_encryption.h"
-#include "twofish.h"
+#include "tf.h"
 
 #ifndef TRACE_ERROR
 #define TRACE_ERROR     0, __FILE__, __LINE__
@@ -420,7 +420,7 @@ typedef struct n2n_sn
 
 /* Transop Init Functions */
 int n2n_transop_null_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-int n2n_transop_twofish_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+int n2n_transop_tf_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #ifdef N2N_HAVE_AES
 int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #endif

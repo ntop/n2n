@@ -219,7 +219,7 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   /* Set active transop */
   switch(transop_id) {
   case N2N_TRANSFORM_ID_TWOFISH:
-    rc = n2n_transop_twofish_init(&eee->conf, &eee->transop);
+    rc = n2n_transop_tf_init(&eee->conf, &eee->transop);
     break;
 #ifdef N2N_HAVE_AES
   case N2N_TRANSFORM_ID_AESCBC:

@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
     n2n_transop_aes_cbc_init(&conf, &transop);
   else
 #endif
-    n2n_transop_twofish_init(&conf, &transop);
+    n2n_transop_tf_init(&conf, &transop);
 
   if((handle = pcap_create(ifname, errbuf)) == NULL) {
     traceEvent(TRACE_ERROR, "Cannot open device %s: %s", ifname, errbuf);

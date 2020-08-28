@@ -16,158 +16,219 @@
  *
  */
 
+
 #include "n2n.h"
 
 
+// size of random value prepended to plaintext defaults to TF_BLOCK_SIZE;
+// gradually abandoning security, lower values could be chosen;
+// however, minimum transmission size with cipher text stealing scheme is one
+// block; as network packets should be longer anyway, only low level programmer
+// might encounter an issue with lower values here
+#define TF_PREAMBLE_SIZE       (TF_BLOCK_SIZE)
+
+// cbc mode is being used with random value prepended to plaintext
+// instead of iv so, actual iv is null_iv
+const uint8_t null_iv[TF_IV_SIZE] = {0};
+
 typedef struct transop_tf {
-  TWOFISH*           enc_tf; /* tx state */
-  TWOFISH*           dec_tf; /* rx state */
+  tf_context_t       *ctx;
 } transop_tf_t;
 
-static int transop_deinit_twofish( n2n_trans_op_t * arg ) {
+/* ****************************************************** */
+
+static int transop_deinit_tf(n2n_trans_op_t *arg) {
   transop_tf_t *priv = (transop_tf_t *)arg->priv;
 
-  if(priv) {
-    TwoFishDestroy(priv->enc_tf); /* deallocate TWOFISH */
-    TwoFishDestroy(priv->dec_tf); /* deallocate TWOFISH */
-    free(priv);
-  }
+  if(priv->ctx) free(priv->ctx);
+
+  if(priv) free(priv);
 
   return 0;
 }
 
-#define TRANSOP_TF_NONCE_SIZE   4
+/* ****************************************************** */
 
-/** The twofish packet format consists of:
- *
- *  - ciphertext encrypted from a 32-bit nonce followed by the payload.
- *
- *  [nnnnDDDDDDDDDDDDDDDDDDDDD]
- *  |<------ encrypted ------>|
- */
-static int transop_encode_twofish( n2n_trans_op_t * arg,
-                                   uint8_t * outbuf,
-                                   size_t out_len,
-                                   const uint8_t * inbuf,
-                                   size_t in_len,
-				   const uint8_t * peer_mac)
-{
-  int len=-1;
+// the Twofish packet format consists of
+//
+//  - a random TF_PREAMBLE_SIZE-sized value prepended to plaintext
+//    encrypted together with the...
+//  - ... payload data
+//
+//  [VV|DDDDDDDDDDDDDDDDDDDDD]
+//  | <---- encrypted ---->  |
+//
+static int transop_encode_tf(n2n_trans_op_t * arg,
+			     uint8_t * outbuf,
+			     size_t out_len,
+			     const uint8_t * inbuf,
+			     size_t in_len,
+			     const uint8_t * peer_mac) {
+
   transop_tf_t * priv = (transop_tf_t *)arg->priv;
+
+  // the assembly buffer is a source for encrypting data
+  // the whole contents of assembly are encrypted
   uint8_t assembly[N2N_PKT_BUF_SIZE];
-  uint32_t * pnonce;
+  size_t idx = 0;
+  int padded_len;
+  uint8_t padding;
+  uint8_t buf[TF_BLOCK_SIZE];
 
-  if ( (in_len + TRANSOP_TF_NONCE_SIZE) <= N2N_PKT_BUF_SIZE )
-    {
-      if ( (in_len + TRANSOP_TF_NONCE_SIZE) <= out_len )
-        {
-	  traceEvent(TRACE_DEBUG, "encode_twofish %lu", in_len);
+  if(in_len <= N2N_PKT_BUF_SIZE) {
+    if((in_len + TF_PREAMBLE_SIZE + TF_BLOCK_SIZE) <= out_len) {
 
-	  /* The assembly buffer is a source for encrypting data. The nonce is
-	   * written in first followed by the packet payload. The whole
-	   * contents of assembly are encrypted. */
-	  pnonce = (uint32_t *)assembly;
-	  *pnonce = n2n_rand();
-	  memcpy( assembly + TRANSOP_TF_NONCE_SIZE, inbuf, in_len );
+        traceEvent(TRACE_DEBUG, "transop_encode_tf %lu bytes plaintext", in_len);
 
-	  /* Encrypt the assembly contents and write the ciphertext after the SA. */
-	  len = TwoFishEncryptRaw( assembly, /* source */
-				   outbuf,
-				   in_len + TRANSOP_TF_NONCE_SIZE, /* enc size */
-				   priv->enc_tf);
-	  if ( len <= 0 )
-            {
-	      traceEvent( TRACE_ERROR, "encode_twofish encryption failed." );
-            }
+        // full block sized random value (128 bit)
+	// !!! replace with 2 calls to encode_uint64(...) as as available
+        // !!! which is still under consideration in pull request 'revAes'
+	encode_uint32(assembly, &idx, n2n_rand());
+	encode_uint32(assembly, &idx, n2n_rand());
+	encode_uint32(assembly, &idx, n2n_rand());
+	encode_uint32(assembly, &idx, n2n_rand());
 
+        // adjust for maybe differently chosen TF_PREAMBLE_SIZE
+        idx = TF_PREAMBLE_SIZE;
+
+        // the plaintext data
+        encode_buf(assembly, &idx, inbuf, in_len);
+
+        // round up to next whole TF block size
+        padded_len = (((idx - 1) / TF_BLOCK_SIZE) + 1) * TF_BLOCK_SIZE;
+        padding = (padded_len-idx);
+        // pad the following bytes with zero, fixed length (TF_BLOCK_SIZE) seems to compile
+        // to slightly faster code than run-time dependant 'padding'
+        memset (assembly + idx, 0, TF_BLOCK_SIZE);
+        tf_cbc_encrypt(outbuf, assembly, padded_len, null_iv, priv->ctx);
+
+        if(padding) {
+          // exchange last two cipher blocks
+          memcpy (buf, outbuf + padded_len - TF_BLOCK_SIZE, TF_BLOCK_SIZE);
+          memcpy (outbuf + padded_len - TF_BLOCK_SIZE, outbuf + padded_len - 2 * TF_BLOCK_SIZE, TF_BLOCK_SIZE);
+          memcpy (outbuf + padded_len - 2 * TF_BLOCK_SIZE, buf, TF_BLOCK_SIZE);
         }
-      else
-        {
-	  traceEvent( TRACE_ERROR, "encode_twofish outbuf too small." );
-        }
-    }
-  else
-    {
-      traceEvent( TRACE_ERROR, "encode_twofish inbuf too big to encrypt." );
-    }
-
-  return len;
-}
-
-
-static int transop_decode_twofish( n2n_trans_op_t * arg,
-                                   uint8_t * outbuf,
-                                   size_t out_len,
-                                   const uint8_t * inbuf,
-                                   size_t in_len,
-				   const uint8_t * peer_mac)
-{
-  int len=0;
-  transop_tf_t * priv = (transop_tf_t *)arg->priv;
-  uint8_t assembly[N2N_PKT_BUF_SIZE];
-
-  if ( ( in_len <= N2N_PKT_BUF_SIZE ) /* Cipher text fits in assembly */
-       && (in_len >= TRANSOP_TF_NONCE_SIZE ) /* Has at least nonce */
-       ) {
-
-	  traceEvent(TRACE_DEBUG, "decode_twofish %lu", in_len);
-
-	  len = TwoFishDecryptRaw( (void *)inbuf,
-				     assembly, /* destination */
-				     in_len,
-				     priv->dec_tf);
-
-	  if(len > 0) {
-	    /* Step over 4-byte random nonce value */
-	    len -= TRANSOP_TF_NONCE_SIZE; /* size of ethernet packet */
-
-	    memcpy( outbuf, 
-		    assembly + TRANSOP_TF_NONCE_SIZE, 
-		    len );
-	  } else
-	    traceEvent(TRACE_ERROR, "decode_twofish decryption failed");
+    } else
+      traceEvent(TRACE_ERROR, "transop_encode_tf outbuf too small");
   } else
-    traceEvent( TRACE_ERROR, "decode_twofish inbuf wrong size (%ul) to decrypt.", in_len );
+    traceEvent(TRACE_ERROR, "transop_encode_tf inbuf too big to encrypt");
+
+  return idx;
+}
+
+/* ****************************************************** */
+
+// see transop_encode_tf for packet format
+static int transop_decode_tf(n2n_trans_op_t * arg,
+			     uint8_t * outbuf,
+			     size_t out_len,
+			     const uint8_t * inbuf,
+			     size_t in_len,
+			     const uint8_t * peer_mac) {
+
+  transop_tf_t * priv = (transop_tf_t *)arg->priv;
+  uint8_t assembly[N2N_PKT_BUF_SIZE];
+
+  uint8_t rest;
+  size_t penultimate_block;
+  uint8_t buf[TF_BLOCK_SIZE];
+  int len=-1;
+
+  if( ((in_len - TF_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) // cipher text fits in assembly
+    && (in_len >= TF_PREAMBLE_SIZE) // has at least random number
+    && (in_len >= TF_BLOCK_SIZE)    // minimum size requirement for cipher text stealing
+    ) {
+
+    traceEvent(TRACE_DEBUG, "transop_decode_tf %lu bytes ciphertext", in_len);
+
+    rest = in_len % TF_BLOCK_SIZE;
+    if(rest) {
+      // cipher text stealing
+      penultimate_block = ((in_len / TF_BLOCK_SIZE) - 1) * TF_BLOCK_SIZE;
+      // everything normal up to penultimate block
+      memcpy(assembly, inbuf, penultimate_block);
+      // prepare new penultimate block in buf
+      tf_ecb_decrypt(buf, inbuf + penultimate_block, priv->ctx);
+      memcpy(buf, inbuf + in_len - rest, rest);
+      // former penultimate block becomes new ultimate block
+      memcpy(assembly + penultimate_block + TF_BLOCK_SIZE, inbuf + penultimate_block, TF_BLOCK_SIZE);
+      //  write new penultimate block from buf
+      memcpy(assembly + penultimate_block, buf, TF_BLOCK_SIZE);
+      // regular cbc decryption on the re-arranged ciphertext
+
+      tf_cbc_decrypt(assembly, assembly, in_len + TF_BLOCK_SIZE - rest, null_iv, priv->ctx);
+
+      // check for expected zero padding and give a warning otherwise
+      if (memcmp(assembly + in_len, null_iv, TF_BLOCK_SIZE - rest)) {
+        traceEvent(TRACE_WARNING, "transop_decode_tf payload decryption failed with unexpected cipher text stealing padding");
+        return -1;
+      }
+    } else {
+      // regular cbc decryption on multiple block-sized payload
+      tf_cbc_decrypt(assembly, inbuf, in_len, null_iv, priv->ctx);
+    }
+    len = in_len    - TF_PREAMBLE_SIZE;
+    memcpy(outbuf,
+           assembly + TF_PREAMBLE_SIZE,
+           len);
+  } else
+    traceEvent(TRACE_ERROR, "transop_decode_tf inbuf wrong size (%ul) to decrypt", in_len);
 
   return len;
 }
 
-static void transop_tick_twofish( n2n_trans_op_t * arg, time_t now ) {}
+/* ****************************************************** */
 
-/* Twofish initialization function */
-int n2n_transop_twofish_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
+static int setup_tf_key(transop_tf_t *priv, const uint8_t *password, ssize_t password_len) {
+
+  unsigned char   key[32];     // tf key length, equals hash length
+  size_t          key_size;
+
+  // the input password always gets hashed to make a more unpredictable use of the key space
+  // just think of usually reset MSB of ASCII coded password bytes
+  pearson_hash_256(key, password, password_len);
+
+  key_size = 32;                      // 256 bit
+
+  // setup the key and have corresponding context created
+  if (tf_init (key, key_size * 8, &(priv->ctx))) {
+    traceEvent(TRACE_ERROR, "setup_tf_key %u-bit key setup unsuccessful",
+	       key_size * 8);
+    return -1;
+  }
+
+  traceEvent(TRACE_DEBUG, "setup_tf_key %u-bit key setup completed",
+	     key_size * 8);
+  return 0;
+}
+
+/* ****************************************************** */
+
+static void transop_tick_tf(n2n_trans_op_t * arg, time_t now) { ; }
+
+/* ****************************************************** */
+
+// Twofish initialization function
+int n2n_transop_tf_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   transop_tf_t *priv;
   const u_char *encrypt_key = (const u_char *)conf->encrypt_key;
   size_t encrypt_key_len = strlen(conf->encrypt_key);
-  uint8_t key_hash[32];
 
   memset(ttt, 0, sizeof(*ttt));
   ttt->transform_id = N2N_TRANSFORM_ID_TWOFISH;
 
-  ttt->tick = transop_tick_twofish;
-  ttt->deinit = transop_deinit_twofish;
-  ttt->fwd = transop_encode_twofish;
-  ttt->rev = transop_decode_twofish;
+  ttt->tick = transop_tick_tf;
+  ttt->deinit = transop_deinit_tf;
+  ttt->fwd = transop_encode_tf;
+  ttt->rev = transop_decode_tf;
 
   priv = (transop_tf_t*) calloc(1, sizeof(transop_tf_t));
   if(!priv) {
-    traceEvent(TRACE_ERROR, "cannot allocate transop_tf_t memory");
+    traceEvent(TRACE_ERROR, "n2n_transop_tf_cbc_init cannot allocate transop_tf_t memory");
     return(-1);
   }
   ttt->priv = priv;
 
-  /* This is a preshared key setup. Both Tx and Rx are using the same security association. */
-  pearson_hash_256 (key_hash, encrypt_key, encrypt_key_len);
-  priv->enc_tf = TwoFishInit(key_hash);
-  priv->dec_tf = TwoFishInit(key_hash);
-
-  if((!priv->enc_tf) || (!priv->dec_tf)) {
-    if(priv->enc_tf) TwoFishDestroy(priv->enc_tf);
-    if(priv->dec_tf) TwoFishDestroy(priv->dec_tf);
-    free(priv);
-    traceEvent(TRACE_ERROR, "TwoFishInit failed");
-    return(-2);
-  }
-
-  return(0);
+  // setup the cipher and key
+  return(setup_tf_key(priv, encrypt_key, encrypt_key_len));
 }
