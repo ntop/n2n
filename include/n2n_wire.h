@@ -222,6 +222,15 @@ int decode_uint32( uint32_t * out,
                    size_t * rem,
                    size_t * idx );
 
+int encode_uint64( uint8_t * base,
+                   size_t * idx,
+                   const uint64_t v );
+
+int decode_uint64( uint64_t * out,
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx );
+
 int encode_buf( uint8_t * base,
                 size_t * idx,
                 const void * p,

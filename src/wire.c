@@ -103,6 +103,28 @@ int decode_uint32( uint32_t * out,
     return 4;
 }
 
+int encode_uint64( uint8_t * base,
+                   size_t * idx,
+                   const uint64_t v )
+{
+    *(uint64_t*)(base + *idx) = htobe64(v);
+    *idx += 8;
+    return 8;
+}
+
+int decode_uint64( uint64_t * out,
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx )
+{
+    if (*rem < 8 ) { return 0; }
+
+    *out = be64toh(*(uint64_t*)base + *idx);
+    *idx += 8;
+    *rem -= 8;
+    return 8;
+}
+
 int encode_buf( uint8_t * base,
                 size_t * idx,
                 const void * p,
