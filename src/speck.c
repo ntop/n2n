@@ -1,9 +1,26 @@
+/**
+ * (C) 2007-20 - ntop.org and contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
+ *
+ */
+
+
 // cipher SPECK -- 128 bit block size -- 256 bit key size -- CTR mode
 // taken from (and modified: removed pure crypto-stream generation and seperated key expansion)
 // https://github.com/nsacyber/simon-speck-supercop/blob/master/crypto_stream/speck128256ctr/
 
-#include <stdlib.h>
-#include "portable_endian.h"
 
 #include "speck.h"
 
@@ -139,8 +156,8 @@ static int speck_encrypt_xor(unsigned char *out, const unsigned char *in, u64 no
 }
 
 
-int speck_ctr( unsigned char *out, const unsigned char *in, unsigned long long inlen,
-	       const unsigned char *n, speck_context_t *ctx) {
+static int internal_speck_ctr(unsigned char *out, const unsigned char *in, unsigned long long inlen,
+                              const unsigned char *n, speck_context_t *ctx) {
 
   int i;
   u64 nonce[2];
@@ -195,10 +212,11 @@ int speck_ctr( unsigned char *out, const unsigned char *in, unsigned long long i
 }
 
 
-int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 
   u64 K[4];
   size_t i;
+
   for (i = 0; i < numkeywords; i++)
     K[i] = ((u64 *)k)[i];
 
@@ -281,6 +299,7 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
                            RK(C,A,k,key,28), RK(D,A,k,key,29), RK(B,A,k,key,30), RK(C,A,k,key,31), RK(D,A,k,key,32), RK(B,A,k,key,33))
 
 
+// attention: ctx is provided by value as it is faster in this case, astonishingly
 static int speck_encrypt_xor (unsigned char *out, const unsigned char *in, u64 nonce[], const speck_context_t ctx, int numbytes) {
 
   u64  x[2], y[2];
@@ -325,9 +344,9 @@ static int speck_encrypt_xor (unsigned char *out, const unsigned char *in, u64 n
   return 0;
 }
 
-
-int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
-	       const unsigned char *n, const speck_context_t ctx) {
+// attention: ctx is provided by value as it is faster in this case, astonishingly
+static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
+	                       const unsigned char *n, const speck_context_t ctx) {
 
   int i;
   u64 nonce[2];
@@ -377,10 +396,11 @@ int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long i
 }
 
 
-int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 
   u64 K[4];
   size_t i;
+
   for (i = 0; i < numkeywords; i++)
     K[i] = ((u64 *)k)[i];
 
@@ -497,8 +517,8 @@ static int speck_encrypt_xor (unsigned char *out, const unsigned char *in, u64 n
 }
 
 
-int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
-	       const unsigned char *n, speck_context_t *ctx) {
+static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
+                               const unsigned char *n, speck_context_t *ctx) {
 
   int i;
   u64 nonce[2];
@@ -548,10 +568,11 @@ int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long i
 }
 
 
-int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 
   u64 K[4];
   size_t i;
+
   for (i = 0; i < numkeywords; i++)
     K[i] = ((u64 *)k)[i];
 
@@ -582,8 +603,8 @@ static int speck_encrypt (u64 *u, u64 *v, speck_context_t *ctx) {
 }
 
 
-int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
-	       const unsigned char *n, speck_context_t *ctx) {
+static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
+                               const unsigned char *n, speck_context_t *ctx) {
 
   u64 i, nonce[2], x, y, t;
   unsigned char *block = malloc (16);
@@ -617,7 +638,7 @@ int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long i
 }
 
 
-int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 
   u64 K[4];
   u64 i;
@@ -638,12 +659,55 @@ int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 }
 
 
-#endif		// AVX, SSE, NEON, plain C ------------------------------------------------
+#endif		// AVX, SSE, NEON, plain C
+
+
+// this functions wraps the call to internal speck_ctr functions which have slightly different
+// signature -- ctx by value for SSE with SPECK_CTX_BYVAL defined in speck.h, by name otherwise
+inline int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
+                      const unsigned char *n, speck_context_t *ctx) {
+
+  return internal_speck_ctr (out, in, inlen, n,
+#if defined (SPECK_CTX_BYVAL)
+                             *ctx);
+#else
+                              ctx);
+#endif
+}
+
+
+int speck_init (const unsigned char *k, speck_context_t **ctx) {
+
+#if defined (SPECK_ALIGNED_CTX)
+  *ctx = (speck_context_t*) _mm_malloc (sizeof(speck_context_t), SPECK_ALIGNED_CTX);
+#else
+  *ctx = (speck_context_t*) calloc (1, sizeof(speck_context_t));
+#endif
+  if(!(*ctx)) {
+    return -1;
+  }
+
+  return speck_expand_key(k, *ctx);
+}
+
+
+int speck_deinit (speck_context_t *ctx) {
+
+#if defined (SPECK_ALIGNED_CTX)
+  _mm_free (ctx);
+#else
+  free (ctx);
+#endif
+  return 0;
+}
+
+
+// ----------------------------------------------------------------------------------------
 
 
 // cipher SPECK -- 128 bit block size -- 128 bit key size -- CTR mode
 // used for header encryption, thus the prefix 'he_'
-// for now: just plain C -- AVX, SSE, NEON might follow
+// for now: just plain C -- AVX, SSE, NEON do not make sense for short header
 
 #define ROR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
 #define ROL64(x,r) (((x)<<(r))|((x)>>(64-(r))))
@@ -787,97 +851,3 @@ int speck_expand_key_he_iv (const unsigned char *k, speck_context_t *ctx) {
 
   return 1;
 }
-
-
-// ----------------------------------------------------------------------------------------
-
-/*
-// code for testing -- to be removed when finished
-#include <stdio.h> // for testing
-#include <string.h>
-
-int speck_test () {
-
-  uint8_t key[32] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-		      0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-		      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-		      0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F };
-
-  uint8_t k96[12] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
-		      0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D };
-
-  uint8_t iv[16]  = { 0x70, 0x6f, 0x6f, 0x6e, 0x65, 0x72, 0x2e, 0x20,
-		      0x49, 0x6e, 0x20, 0x74, 0x68, 0x6f, 0x73, 0x65 };
-
-  uint8_t xv[16]  = { 0x20, 0x6d, 0x61, 0x64, 0x65, 0x20, 0x69, 0x74,
-		      0x20, 0x65, 0x71, 0x75, 0x69, 0x76, 0x61, 0x6c };
-
-  uint8_t p96[12] = { 0x20, 0x75, 0x73, 0x61, 0x67, 0x65,
-		      0x2C, 0x20, 0x68, 0x6F, 0x77, 0x65 };
-
-  uint8_t pt[16]  = { 0x00 };
-
-  // expected outcome (according to pp. 35 & 36 of Implementation Guide 1.1 as of 2019) and
-  // original cipher presentation as of 2013 in which notably a different endianess is used
-  uint8_t ct[16]  = { 0x43, 0x8f, 0x18, 0x9c, 0x8d, 0xb4, 0xee, 0x4e,
-		      0x3e, 0xf5, 0xc0, 0x05, 0x04, 0x01, 0x09, 0x41 };
-
-  uint8_t xt[16]  = { 0x18, 0x0d, 0x57, 0x5c, 0xdf, 0xfe, 0x60, 0x78,
-		      0x65, 0x32, 0x78, 0x79, 0x51, 0x98, 0x5d, 0xa6 };
-
-  uint8_t x96[12] = { 0xAA, 0x79, 0x8F, 0xDE, 0xBD, 0x62,
-		      0x78, 0x71, 0xAB, 0x09, 0x4D, 0x9E };
-  speck_context_t ctx;
-
-  speck_expand_key (key, &ctx);
-#if defined (SPECK_CTX_BYVAL)
-  speck_ctr (pt, pt, 16, iv, ctx);
-#else
-  speck_ctr (pt, pt, 16, iv, &ctx);
-#endif
-
-  u64 i;
-   fprintf (stderr, "rk00: %016llx\n",  ctx.key[0]);
-   fprintf (stderr, "rk33: %016llx\n",  ctx.key[33]);
-   fprintf (stderr, "out : %016lx\n", *(uint64_t*)pt);
-   fprintf (stderr, "mem : " ); for (i=0; i < 16; i++) fprintf (stderr, "%02x ", pt[i]); fprintf (stderr, "\n");
-
-  int ret = 1;
-  for (i=0; i < 16; i++)
-    if (pt[i] != ct[i]) ret = 0;
-
-  memset (pt, 0, 16);
-  speck_expand_key_he (key, &ctx);
-  speck_he (pt, pt, 16, xv, &ctx);
-
-   fprintf (stderr, "rk00: %016llx\n",  ctx.key[0]);
-   fprintf (stderr, "rk31: %016llx\n",  ctx.key[31]);
-   fprintf (stderr, "out : %016lx\n", *(uint64_t*)pt);
-   fprintf (stderr, "mem : " ); for (i=0; i < 16; i++) fprintf (stderr, "%02x ", pt[i]); fprintf (stderr, "\n");
-
-  for (i=0; i < 16; i++)
-    if (pt[i] != xt[i]) ret = 0;
-
-  speck_expand_key_he_iv (k96, &ctx);
-  speck_he_iv_encrypt (p96, &ctx);
-//  speck_he_iv_decrypt (p96, &ctx);
-//  speck_he_iv_encrypt (p96, &ctx);
-
-   fprintf (stderr, "rk00: %016llx\n",  ctx.key[0]);
-   fprintf (stderr, "rk27: %016llx\n",  ctx.key[27]);
-   fprintf (stderr, "out : %016lx\n", *(uint64_t*)p96);
-   fprintf (stderr, "mem : " ); for (i=0; i < 12; i++) fprintf (stderr, "%02x ", p96[i]); fprintf (stderr, "\n");
-
-  for (i=0; i < 12; i++)
-    if (p96[i] != x96[i]) ret = 0;
-
-  return (ret);
-}
-
-
-int main (int argc, char* argv[]) {
-
-  fprintf (stdout, "SPECK SELF TEST RESULT: %u\n", speck_test (0,NULL));
-}
-
-*/
