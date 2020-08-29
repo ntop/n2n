@@ -53,6 +53,7 @@ THE SOFTWARE.
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "portable_endian.h"
 
 
 #define TF_BLOCK_SIZE           16
@@ -77,6 +78,8 @@ int tf_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                     const unsigned char *iv, tf_context_t *ctx);
 
 int tf_init (const unsigned char *key, size_t key_size, tf_context_t **ctx);
+
+int tf_deinit (tf_context_t *ctx);
 
 
 #endif    // TF_H

@@ -48,7 +48,7 @@ THE SOFTWARE.
 
 
 #include "tf.h"
-#include "portable_endian.h"
+
 
 const uint8_t RS[4][8] = { { 0x01, 0xA4, 0x55, 0x87, 0x5A, 0x58, 0xDB, 0x9E, },
                            { 0xA4, 0x56, 0x82, 0xF3, 0x1E, 0xC6, 0x68, 0xE5, },
@@ -500,6 +500,14 @@ int tf_init (const unsigned char *key, size_t key_size, tf_context_t **ctx) {
   keySched(key, key_size, &S, (*ctx)->K, &k);
   fullKey(S, k, (*ctx)->QF);
   free(S);    // allocated in keySched(...)
+
+  return 0;
+}
+
+
+int tf_deinit (tf_context_t *ctx) {
+
+  if (ctx) free (ctx);
 
   return 0;
 }
