@@ -31,7 +31,7 @@
 #define RND_RETRIES      1000
 
 #if defined (__linux__)
-#include <sys/syscall.h> // syscall
+#include <sys/syscall.h> // syscall, SYS_getrandom
 #ifdef SYS_getrandom
 #define GRND_NONBLOCK       1
 #include <errno.h>       // errno, EAGAIN
