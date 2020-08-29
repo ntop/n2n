@@ -34,7 +34,7 @@
 #include <sys/syscall.h> // syscall
 #ifdef SYS_getrandom
 #define GRND_NONBLOCK       1
-#include <errno.h>       // errno
+#include <errno.h>       // errno, EAGAIN
 #endif
 #endif
 
