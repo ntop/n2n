@@ -693,11 +693,13 @@ int speck_init (const unsigned char *k, speck_context_t **ctx) {
 
 int speck_deinit (speck_context_t *ctx) {
 
+  if(ctx) {
 #if defined (SPECK_ALIGNED_CTX)
-  _mm_free (ctx);
+    _mm_free (ctx);
 #else
-  free (ctx);
+    free (ctx);
 #endif
+  }
   return 0;
 }
 
