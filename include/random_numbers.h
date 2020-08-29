@@ -16,19 +16,46 @@
  *
  */
 
-/* The WIN32 code is still untested and thus commented
+
+#ifndef RND_H
+#define RND_H
+
+
+#include <stdint.h>
+#include <stddef.h>
+#include <time.h>        // time, clock
+
+#include "n2n.h"         // traceEvent
+
+// syscall and inquiring random number from hardware generators might fail, so we will retry
+#define RND_RETRIES      1000
+
+#if defined (__linux__)
+#include <sys/syscall.h> // syscall
+#ifdef SYS_getrandom
+#define GRND_NONBLOCK       1
+#include <errno.h>       // errno
+#endif
+#endif
+
+#if defined (__RDRND__) || defined (__RDSEED__)
+#include <immintrin.h>  // _rdrand64_step, rdseed4_step
+#endif
+
+/* The WIN32 code is still untested and thus commented, also see random_numbers.c
    #if defined (WIN32)
-   #include <Wincrypt.h>
-   #endif 
+   #include <Wincrypt.h>   // HCTYPTPROV, Crypt*-functions
+   #endif
 */
 
-struct rn_generator_state_t {
-  uint64_t a, b;
-};
 
-struct splitmix64_state_t {
+typedef struct rn_generator_state_t {
+  uint64_t a, b;
+} rn_generator_state_t;
+
+typedef struct splitmix64_state_t {
     uint64_t s;
-};
+} splitmix64_state_t;
 
 
 int n2n_srand (uint64_t seed);
@@ -36,3 +63,6 @@ int n2n_srand (uint64_t seed);
 uint64_t n2n_rand ();
 
 uint64_t n2n_seed ();
+
+
+#endif // RND_H
