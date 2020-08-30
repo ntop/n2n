@@ -83,14 +83,12 @@
 #define N2N_CAN_NAME_IFACE 1
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 #include <net/if_arp.h>
 #include <net/if.h>
 #include <linux/if_tun.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#define GRND_NONBLOCK       1
 #endif /* #ifdef __linux__ */
 
 #ifdef __FreeBSD__
@@ -99,10 +97,6 @@
 
 #include <syslog.h>
 #include <sys/wait.h>
-
-#if defined (__RDRND__) || defined (__RDSEED__)
-#include <immintrin.h>
-#endif
 
 #define ETH_ADDR_LEN 6
 
@@ -134,7 +128,6 @@ typedef struct ether_hdr ether_hdr_t;
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif
-
 
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */

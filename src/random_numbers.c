@@ -16,11 +16,8 @@
  *
  */
 
-#ifdef SYS_getrandom
-#include <errno.h>
-#endif
 
-#include "n2n.h"
+#include "random_numbers.h"
 
 
 /* The following code offers an alterate pseudo random number generator
@@ -31,13 +28,13 @@
 
 /* The state must be seeded in a way that it is not all zero, choose some
    arbitrary defaults (in this case: taken from splitmix64) */
-static struct rn_generator_state_t rn_current_state = {
+static rn_generator_state_t rn_current_state = {
   .a    = 0x9E3779B97F4A7C15,
   .b    = 0xBF58476D1CE4E5B9 };
 
 
 /* used for mixing the initializing seed */
-static uint64_t splitmix64 (struct splitmix64_state_t *state) {
+static uint64_t splitmix64 (splitmix64_state_t *state) {
 
   uint64_t result = state->s;
 
@@ -51,8 +48,9 @@ static uint64_t splitmix64 (struct splitmix64_state_t *state) {
 
 
 int n2n_srand (uint64_t seed) {
+
   uint8_t i;
-  struct splitmix64_state_t smstate = {seed};
+  splitmix64_state_t smstate = {seed};
 
   rn_current_state.a = 0;
   rn_current_state.b = 0;
@@ -67,7 +65,7 @@ int n2n_srand (uint64_t seed) {
     rn_current_state.b = 0xBF58476D1CE4E5B9;
   }
 
-  /* stabilize in unlikely case of weak state with only a few bits set */
+  // stabilize in unlikely case of weak state with only a few bits set
   for(i = 0; i < 32; i++)
     n2n_rand();
 
@@ -160,16 +158,16 @@ uint64_t n2n_seed (void) {
      #ifdef WIN32
      HCRYPTPROV crypto_provider;
      CryptAcquireContext (&crypto_provider, NULL, (LPCWSTR)L"Microsoft Base Cryptographic Provider v1.0",
-     PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+                          PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
      CryptGenRandom (crypto_provider, 8, &seed);
      CryptReleaseContext (crypto_provider, 0);
      ret += seed;
      #endif */
 
-  seed = time(NULL); /* UTC in seconds */
+  seed = time(NULL);             // UTC in seconds
   ret += seed;
 
-  seed = clock() * 18444244737;  /* clock() = ticks since program start */
+  seed = clock() * 18444244737;  // clock() = ticks since program start
   ret += seed;
 
   return ret;
