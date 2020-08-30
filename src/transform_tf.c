@@ -40,7 +40,7 @@ typedef struct transop_tf {
 static int transop_deinit_tf(n2n_trans_op_t *arg) {
   transop_tf_t *priv = (transop_tf_t *)arg->priv;
 
-  if(priv->ctx) free(priv->ctx);
+  if(priv->ctx) tf_deinit(priv->ctx);
 
   if(priv) free(priv);
 
@@ -81,12 +81,8 @@ static int transop_encode_tf(n2n_trans_op_t * arg,
         traceEvent(TRACE_DEBUG, "transop_encode_tf %lu bytes plaintext", in_len);
 
         // full block sized random value (128 bit)
-	// !!! replace with 2 calls to encode_uint64(...) as as available
-        // !!! which is still under consideration in pull request 'revAes'
-	encode_uint32(assembly, &idx, n2n_rand());
-	encode_uint32(assembly, &idx, n2n_rand());
-	encode_uint32(assembly, &idx, n2n_rand());
-	encode_uint32(assembly, &idx, n2n_rand());
+	encode_uint64(assembly, &idx, n2n_rand());
+	encode_uint64(assembly, &idx, n2n_rand());
 
         // adjust for maybe differently chosen TF_PREAMBLE_SIZE
         idx = TF_PREAMBLE_SIZE;
@@ -159,7 +155,7 @@ static int transop_decode_tf(n2n_trans_op_t * arg,
       tf_cbc_decrypt(assembly, assembly, in_len + TF_BLOCK_SIZE - rest, tf_null_iv, priv->ctx);
 
       // check for expected zero padding and give a warning otherwise
-      if (memcmp(assembly + in_len, tf_null_iv, TF_BLOCK_SIZE - rest)) {
+      if(memcmp(assembly + in_len, tf_null_iv, TF_BLOCK_SIZE - rest)) {
         traceEvent(TRACE_WARNING, "transop_decode_tf payload decryption failed with unexpected cipher text stealing padding");
         return -1;
       }
@@ -191,7 +187,7 @@ static int setup_tf_key(transop_tf_t *priv, const uint8_t *password, ssize_t pas
   key_size = 32;                      // 256 bit
 
   // setup the key and have corresponding context created
-  if (tf_init (key, key_size * 8, &(priv->ctx))) {
+  if(tf_init(key, key_size * 8, &(priv->ctx))) {
     traceEvent(TRACE_ERROR, "setup_tf_key %u-bit key setup unsuccessful",
 	       key_size * 8);
     return -1;
@@ -210,6 +206,7 @@ static void transop_tick_tf(n2n_trans_op_t * arg, time_t now) { ; }
 
 // Twofish initialization function
 int n2n_transop_tf_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
+
   transop_tf_t *priv;
   const u_char *encrypt_key = (const u_char *)conf->encrypt_key;
   size_t encrypt_key_len = strlen(conf->encrypt_key);
@@ -225,10 +222,10 @@ int n2n_transop_tf_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   priv = (transop_tf_t*) calloc(1, sizeof(transop_tf_t));
   if(!priv) {
     traceEvent(TRACE_ERROR, "n2n_transop_tf_cbc_init cannot allocate transop_tf_t memory");
-    return(-1);
+    return -1;
   }
   ttt->priv = priv;
 
   // setup the cipher and key
-  return(setup_tf_key(priv, encrypt_key, encrypt_key_len));
+  return setup_tf_key(priv, encrypt_key, encrypt_key_len);
 }

@@ -17,7 +17,7 @@ The following chart might help to make a quick comparison and decide what cipher
 
 | Cipher | Mode | Block Size | Key Size         | IV length |Speed | Built-In | Origin |
 | :---:  | :---:| :---:      | :---:            | :---:     |:---: | :---:    | ---    |
-|Twofish | CTS  | 128 bits   | 256 bit          | 32 bit    | -    | Y        | Bruce Schneier |
+|Twofish | CTS  | 128 bits   | 256 bit          | 128 bit   | -..O | Y        | Bruce Schneier |
 |AES     | CBC  | 128 bits   | 128, 192, 256 bit| 128 bit   | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
 |ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| N        | Daniel J. Bernstein |
 |SPECK   | CTR  | Stream     | 256 bit          | 128 bit   | ++   | Y        | NSA |
@@ -28,21 +28,17 @@ Note that AES and ChaCha20 are available only if n2n is compiled with openSSL su
 
 ### Twofish
 
-This implementation prepends a 32 bit random value to the plain text. In the `src/transform_tf.c` file, it is called `nonce`. In CBC mode, this basically has the same effect as a respectively shorter IV.
+This implementation prepends a 128 bit random value to the plain text. Its size is adjustable by changing the `TF_PREAMBLE_SIZE` definition found in `src/transform_tf.c`. It defaults to TF_BLOCK_SIZE (== 16). As CTS uses underlying CBC mode, this basically has the same effect as a respectively shorter IV.
 
 Twofish requires no padding as it employs a CBC/CTS scheme which can send out plaintext-length ciphertexts. The scheme however has a small flaw in handling messages shorter than one block, only low-level programmer might encounter this.
 
-Twofish is the slowest of the ciphers present.
-
-_We might try to find a faster implementation._
+On Intel CPUs, Twofish usually is the slowest of the ciphers present. However, on Raspberry Pi 3B+, Twofish was observed to be faster than AES-CTS. Your mileage may vary. Cipher speed's can be compared running the `tools/n2n-benchmark` tool.
 
 ### AES
 
 AES also prepends a random value to the plaintext. Its size is adjustable by changing the `AES_PREAMBLE_SIZE` definition found in `src/transform_aes.c`. It defaults to AES_BLOCK_SIZE (== 16). The AES scheme uses a CBC/CTS scheme which can send out plaintext-length ciphertexts as long as they are one block or more in length.
 
 AES relies on openSSL's `evp_*` interface which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
-
-_Perhaps, AES-CTR being a stream cipher could have competed with the stream ciphers._
 
 ### ChaCha20
 
@@ -52,13 +48,13 @@ It also relies on openSSL's `evp_*` interface. It does not use the Poly1305 mess
 
 The random full 128-bit IV is transmitted in plain.
 
-ChaCha20 usually performs faster than AES-CBC.
+ChaCha20 usually performs faster than AES-CTS.
 
 ### SPECK
 
 SPECK is recommended by the NSA for offical use in case AES implementation is not feasible due to system constraints (performance, size, …). The block cipher is used in CTR mode making it a stream cipher. The random full 128-bit IV is transmitted in plain.
 
-On Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4 or AVX2 if available (compile using `-march=native`). On Raspberry's ARM CPU, it is second place behind ChaCha20 and before AES-CBC.
+On Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4 or AVX2 if available (compile using `-march=native`). On Raspberry's ARM CPU, it is second place behind ChaCha20 and before Twofish.
 
 ### Random Numbers
 
