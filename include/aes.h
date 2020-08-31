@@ -60,6 +60,16 @@ typedef struct aes_context_t {
   AES_KEY             dec_key;                 /* tx key */
 } aes_context_t;
 
+#elif defined (__AES__) && defined (__SSE2__) // Intel's AES-NI ---------------------------
+
+#include <immintrin.h>
+
+typedef struct aes_context_t {
+  __m128i rk_enc[15];
+  __m128i rk_dec[15];
+  int     Nr;
+} aes_context_t;
+
 #else // plain C --------------------------------------------------------------------------
 
 typedef struct aes_context_t {
@@ -68,7 +78,7 @@ typedef struct aes_context_t {
   int      Nr;            // number of rounds
 } aes_context_t;
 
-#endif
+#endif // ---------------------------------------------------------------------------------
 
 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
