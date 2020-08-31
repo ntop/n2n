@@ -124,8 +124,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include <assert.h>
 #include <sys/stat.h>
 #include <stdint.h>
-
-#ifdef N2N_HAVE_AES
+#if defined (HAVE_OPENSSL_1_0) || defined (HAVE_OPENSSL_1_1)
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif
@@ -415,9 +414,7 @@ typedef struct n2n_sn
 /* Transop Init Functions */
 int n2n_transop_null_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 int n2n_transop_tf_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-#ifdef N2N_HAVE_AES
-int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-#endif
+int n2n_transop_aes_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #ifdef HAVE_OPENSSL_1_1
 int n2n_transop_cc20_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 #endif

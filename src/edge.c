@@ -164,10 +164,7 @@ static void help() {
   printf("-r                       | Enable packet forwarding through n2n community.\n");
   printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
   printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
-  printf("                         | "
-#ifdef N2N_HAVE_AES
-  "-A3 or -A (deprecated) = AES-CBC, "
-#endif
+  printf("                         | -A3 or -A (deprecated) = AES, "
 #ifdef HAVE_OPENSSL_1_1
   "-A4 = ChaCha20, "
 #endif
@@ -243,13 +240,11 @@ static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
       conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
       break;
     }
-#ifdef N2N_HAVE_AES
   case 3:
     {
-      conf->transop_id = N2N_TRANSFORM_ID_AESCBC;
+      conf->transop_id = N2N_TRANSFORM_ID_AES;
       break;
     }
-#endif
 #ifdef HAVE_OPENSSL_1_1
   case 4:
     {
@@ -365,9 +360,9 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
         cipher = atoi(optargument);
       } else {
         traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
-		   "please use -A3 instead to choose a the AES-CBC cipher for payload encryption.");
+		   "please use -A3 instead to choose a the AES cipher for payload encryption.");
 
-      	cipher = N2N_TRANSFORM_ID_AESCBC; // default, if '-A' only   
+      	cipher = N2N_TRANSFORM_ID_AES; // default, if '-A' only
       }
 
       setPayloadEncryption(conf, cipher);

@@ -63,9 +63,7 @@ static void parseArgs(int argc, char * argv[]) {
 int main(int argc, char * argv[]) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   n2n_trans_op_t transop_null, transop_tf;
-#ifdef N2N_HAVE_AES
-  n2n_trans_op_t transop_aes_cbc;
-#endif
+  n2n_trans_op_t transop_aes;
 #ifdef HAVE_OPENSSL_1_1
   n2n_trans_op_t transop_cc20;
 #endif
@@ -83,9 +81,7 @@ int main(int argc, char * argv[]) {
   /* Init transopts */
   n2n_transop_null_init(&conf, &transop_null);
   n2n_transop_tf_init(&conf, &transop_tf);
-#ifdef N2N_HAVE_AES
-  n2n_transop_aes_cbc_init(&conf, &transop_aes_cbc);
-#endif
+  n2n_transop_aes_init(&conf, &transop_aes);
 #ifdef HAVE_OPENSSL_1_1
   n2n_transop_cc20_init(&conf, &transop_cc20);
 #endif
@@ -94,9 +90,7 @@ int main(int argc, char * argv[]) {
   /* Run the tests */
   run_transop_benchmark("transop_null", &transop_null, &conf, pktbuf);
   run_transop_benchmark("transop_tf", &transop_tf, &conf, pktbuf);
-#ifdef N2N_HAVE_AES
-  run_transop_benchmark("transop_aes", &transop_aes_cbc, &conf, pktbuf);
-#endif
+  run_transop_benchmark("transop_aes", &transop_aes, &conf, pktbuf);
 #ifdef HAVE_OPENSSL_1_1
   run_transop_benchmark("transop_cc20", &transop_cc20, &conf, pktbuf);
 #endif
@@ -105,9 +99,7 @@ int main(int argc, char * argv[]) {
   /* Cleanup */
   transop_null.deinit(&transop_null);
   transop_tf.deinit(&transop_tf);
-#ifdef N2N_HAVE_AES
-  transop_aes_cbc.deinit(&transop_aes_cbc);
-#endif
+  transop_aes.deinit(&transop_aes);
 #ifdef HAVE_OPENSSL_1_1
   transop_cc20.deinit(&transop_cc20);
 #endif

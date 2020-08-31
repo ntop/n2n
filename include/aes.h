@@ -17,38 +17,58 @@
  */
 
 
-#ifdef N2N_HAVE_AES
+#include "n2n.h"               // HAVE_OPENSSL_1_1, HAVE_OPENSSL_1_0, traceEvent ...
+
 
 #ifndef AES_H
 #define AES_H
 
+
 #include <stdint.h>
+#include <stdlib.h>
+
+#include "portable_endian.h"
+
+#define AES_BLOCK_SIZE           16
+#define AES_IV_SIZE             (AES_BLOCK_SIZE)
+
+#define AES256_KEY_BYTES        (256/8)
+#define AES192_KEY_BYTES        (192/8)
+#define AES128_KEY_BYTES        (128/8)
+
+
+#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------
 
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
-
-#define AES_BLOCK_SIZE           16
-#define AES_IV_SIZE             (AES_BLOCK_SIZE)
-
-#define AES256_KEY_BYTES (256/8)
-#define AES192_KEY_BYTES (192/8)
-#define AES128_KEY_BYTES (128/8)
-
-
 typedef struct aes_context_t {
-#ifdef HAVE_OPENSSL_1_1
   EVP_CIPHER_CTX      *enc_ctx;                /* openssl's reusable evp_* en/de-cryption context */
   EVP_CIPHER_CTX      *dec_ctx;                /* openssl's reusable evp_* en/de-cryption context */
   const EVP_CIPHER    *cipher;                 /* cipher to use: e.g. EVP_aes_128_cbc */
   uint8_t             key[AES256_KEY_BYTES];   /* the pure key data for payload encryption & decryption */
   AES_KEY             ecb_dec_key;             /* one step ecb decryption key */
-#else
+} aes_context_t;
+
+#elif defined (HAVE_OPENSSL_1_0) // openSSL 1.0 -------------------------------------------
+
+#include <openssl/aes.h>
+
+typedef struct aes_context_t {
   AES_KEY             enc_key;                 /* tx key */
   AES_KEY             dec_key;                 /* tx key */
-#endif
 } aes_context_t;
+
+#else // plain C --------------------------------------------------------------------------
+
+typedef struct aes_context_t {
+  uint32_t enc_rk[60];    // round keys for encryption
+  uint32_t dec_rk[60];    // round keys for decryption
+  int      Nr;            // number of rounds
+} aes_context_t;
+
+#endif
 
 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
@@ -61,7 +81,7 @@ int aes_ecb_decrypt (unsigned char *out, const unsigned char *in, aes_context_t 
 
 int aes_init (const unsigned char *key, size_t key_size, aes_context_t **ctx);
 
+int aes_deinit (aes_context_t *ctx);
+
 
 #endif // AES_H
-
-#endif // N2N_HAVE_AES

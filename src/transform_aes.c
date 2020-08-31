@@ -19,8 +19,6 @@
 
 #include "n2n.h"
 
-#ifdef N2N_HAVE_AES
-
 
 // size of random value prepended to plaintext defaults to AES BLOCK_SIZE;
 // gradually abandoning security, lower values could be chosen;
@@ -29,7 +27,7 @@
 // might encounter an issue with lower values here
 #define AES_PREAMBLE_SIZE       (AES_BLOCK_SIZE)
 
-// cbc mode is being used with random value prepended to plaintext
+// cts/cbc mode is being used with random value prepended to plaintext
 // instead of iv so, actual iv is aes_null_iv
 const uint8_t aes_null_iv[AES_IV_SIZE] = {0};
 
@@ -42,7 +40,7 @@ typedef struct transop_aes {
 static int transop_deinit_aes(n2n_trans_op_t *arg) {
   transop_aes_t *priv = (transop_aes_t *)arg->priv;
 
-  if(priv->ctx) free(priv->ctx);
+  if(priv->ctx) aes_deinit(priv->ctx);
 
   if(priv) free(priv);
 
@@ -219,13 +217,14 @@ static void transop_tick_aes(n2n_trans_op_t * arg, time_t now) { ; }
 /* ****************************************************** */
 
 // AES initialization function
-int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
+int n2n_transop_aes_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
+
   transop_aes_t *priv;
   const u_char *encrypt_key = (const u_char *)conf->encrypt_key;
   size_t encrypt_key_len = strlen(conf->encrypt_key);
 
   memset(ttt, 0, sizeof(*ttt));
-  ttt->transform_id = N2N_TRANSFORM_ID_AESCBC;
+  ttt->transform_id = N2N_TRANSFORM_ID_AES;
 
   ttt->tick = transop_tick_aes;
   ttt->deinit = transop_deinit_aes;
@@ -234,7 +233,7 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
 
   priv = (transop_aes_t*) calloc(1, sizeof(transop_aes_t));
   if(!priv) {
-    traceEvent(TRACE_ERROR, "n2n_transop_aes_cbc_init cannot allocate transop_aes_t memory");
+    traceEvent(TRACE_ERROR, "n2n_transop_aes_init cannot allocate transop_aes_t memory");
     return(-1);
   }
   ttt->priv = priv;
@@ -242,5 +241,3 @@ int n2n_transop_aes_cbc_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   // setup the cipher and key
   return(setup_aes_key(priv, encrypt_key, encrypt_key_len));
 }
-
-#endif // N2N_HAVE_AES
