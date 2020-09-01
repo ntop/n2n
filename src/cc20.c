@@ -81,57 +81,88 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 // taken (and modified) from https://github.com/Ginurx/chacha20-c (public domain)
 
 
-
 static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 
   const uint8_t *magic_constant = (uint8_t*)"expand 32-byte k";
 
-  memcpy(&(ctx->state[0]), magic_constant, 16);
-  memcpy (&(ctx->state[4]), ctx->key, CC20_KEY_BYTES);
+  memcpy(&(ctx->state[ 0]), magic_constant, 16);
+  memcpy(&(ctx->state[ 4]), ctx->key, CC20_KEY_BYTES);
   memcpy(&(ctx->state[12]), nonce, CC20_IV_SIZE);
 }
+
 
 #define ROL32(x,r) (((x)<<(r))|((x)>>(32-(r))))
 #define CHACHA20_QUARTERROUND(x, a, b, c, d)     \
     x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 16); \
     x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 12); \
-    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 8);  \
-    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 7)
-#define CHACHA20_DOUBLE_ROUND  \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 4, 8, 12);  \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 5, 9, 13);  \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 6, 10, 14); \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 7, 11, 15); \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 5, 10, 15); \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 6, 11, 12); \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 7, 8, 13);  \
-    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 4, 9, 14)
+    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a],  8); \
+    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c],  7)
+#define CHACHA20_DOUBLE_ROUND(s)                           \
+    /* odd round */                                        \
+    CHACHA20_QUARTERROUND(s, 0, 4,  8, 12); \
+    CHACHA20_QUARTERROUND(s, 1, 5,  9, 13); \
+    CHACHA20_QUARTERROUND(s, 2, 6, 10, 14); \
+    CHACHA20_QUARTERROUND(s, 3, 7, 11, 15); \
+    /* even round */                                       \
+    CHACHA20_QUARTERROUND(s, 0, 5, 10, 15); \
+    CHACHA20_QUARTERROUND(s, 1, 6, 11, 12); \
+    CHACHA20_QUARTERROUND(s, 2, 7,  8, 13); \
+    CHACHA20_QUARTERROUND(s, 3, 4,  9, 14)
 
 static void chacha20_block_next(cc20_context_t *ctx) {
 
-  int i;
+  size_t i;
+  uint32_t *counter = ctx->state + 12;
+  uint32_t c;
 
-  for(i = 0; i < 16; i++)
-    ctx->keystream32[i] = ctx->state[i];
+  ctx->keystream32[ 0] = ctx->state[ 0];
+  ctx->keystream32[ 1] = ctx->state[ 1];
+  ctx->keystream32[ 2] = ctx->state[ 2];
+  ctx->keystream32[ 3] = ctx->state[ 3];
+  ctx->keystream32[ 4] = ctx->state[ 4];
+  ctx->keystream32[ 5] = ctx->state[ 5];
+  ctx->keystream32[ 6] = ctx->state[ 6];
+  ctx->keystream32[ 7] = ctx->state[ 7];
+  ctx->keystream32[ 8] = ctx->state[ 8];
+  ctx->keystream32[ 9] = ctx->state[ 9];
+  ctx->keystream32[10] = ctx->state[10];
+  ctx->keystream32[11] = ctx->state[11];
+  ctx->keystream32[12] = ctx->state[12];
+  ctx->keystream32[13] = ctx->state[13];
+  ctx->keystream32[14] = ctx->state[14];
+  ctx->keystream32[15] = ctx->state[15];
 
   // 10 double rounds
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
-  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
 
-  for(i = 0; i < 16; i++)
-    ctx->keystream32[i] += ctx->state[i];
+  ctx->keystream32[ 0] += ctx->state[ 0];
+  ctx->keystream32[ 1] += ctx->state[ 1];
+  ctx->keystream32[ 2] += ctx->state[ 2];
+  ctx->keystream32[ 3] += ctx->state[ 3];
+  ctx->keystream32[ 4] += ctx->state[ 4];
+  ctx->keystream32[ 5] += ctx->state[ 5];
+  ctx->keystream32[ 6] += ctx->state[ 6];
+  ctx->keystream32[ 7] += ctx->state[ 7];
+  ctx->keystream32[ 8] += ctx->state[ 8];
+  ctx->keystream32[ 9] += ctx->state[ 9];
+  ctx->keystream32[10] += ctx->state[10];
+  ctx->keystream32[11] += ctx->state[11];
+  ctx->keystream32[12] += ctx->state[12];
+  ctx->keystream32[13] += ctx->state[13];
+  ctx->keystream32[14] += ctx->state[14];
+  ctx->keystream32[15] += ctx->state[15];
 
-  uint32_t *counter = ctx->state + 12;
-  // increment counter, make sure it is little endian in memory
-  uint32_t c = le32toh(counter[0]);
+  // increment counter, make sure it is and stays little endian in memory
+  c = le32toh(counter[0]);
   counter[0] = htole32(++c);
   if(0 == counter[0]) {
     // wrap around occured, increment higher 32 bits of counter
@@ -155,23 +186,52 @@ static void chacha20_block_next(cc20_context_t *ctx) {
 static void chacha20_init_context(cc20_context_t *ctx, const uint8_t *nonce) {
 
   chacha20_init_block(ctx, nonce);
-  ctx->position = 64;
 }
 
 
 int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
                 const unsigned char *iv, cc20_context_t *ctx) {
 
+  uint8_t   *keystream8 = (uint8_t*)ctx->keystream32;
+  uint32_t * in_p       = (uint32_t*)in;
+  uint32_t * out_p      = (uint32_t*)out;
+  size_t   tmp_len      = in_len;
+
   chacha20_init_context(ctx, iv);
 
-  uint8_t *keystream8 = (uint8_t*)ctx->keystream32;
-  for(size_t i = 0; i < in_len; i++) {
-    if(ctx->position >= 64) {
-      chacha20_block_next(ctx);
-      ctx->position = 0;
+  while(in_len >= 64) {
+
+    chacha20_block_next(ctx);
+
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 0]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 1]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 2]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 3]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 4]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 5]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 6]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 7]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 8]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 9]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[10]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[11]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[12]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[13]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[14]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[15]; in_p++; out_p++;
+    in_len -= 64;
+  }
+
+  tmp_len = tmp_len - in_len;
+  if(in_len > 0) {
+
+    chacha20_block_next(ctx);
+
+    while(in_len > 0) {
+      out[tmp_len] = in[tmp_len] ^ keystream8[tmp_len%64];
+      tmp_len++;
+      in_len--;
     }
-    out[i] = in[i] ^ keystream8[ctx->position];
-    ctx->position++;
   }
 }
 

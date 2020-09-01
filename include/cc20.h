@@ -41,13 +41,8 @@ typedef struct cc20_context_t {
 
 typedef struct cc20_context {
   uint32_t keystream32[16];
-  size_t position;
-
-  uint8_t key[CC20_KEY_BYTES];
-  uint8_t nonce[CC20_IV_SIZE];
-  uint64_t counter;
-
   uint32_t state[16];
+  uint8_t key[CC20_KEY_BYTES];
 } cc20_context_t;
 
 #endif // openSSL 1.1, plain C ------------------------------------------------------------
