@@ -160,6 +160,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include "pearson.h"
 #include "portable_endian.h"
 #include "aes.h"
+#include "cc20.h"
 #include "speck.h"
 #include "n2n_regex.h"
 
