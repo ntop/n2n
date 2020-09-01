@@ -81,31 +81,6 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 // taken (and modified) from https://github.com/Ginurx/chacha20-c (public domain)
 
 
-static uint32_t rotl32(uint32_t x, int n) {
-
-  return (x << n) | (x >> (32 - n));
-}
-
-// little endian
-static uint32_t pack4(const uint8_t *a) {
-
-  uint32_t res = 0;
-  res |= (uint32_t)a[0] << 0 * 8;
-  res |= (uint32_t)a[1] << 1 * 8;
-  res |= (uint32_t)a[2] << 2 * 8;
-  res |= (uint32_t)a[3] << 3 * 8;
-  return res;
-}
-
-
-static void unpack4(uint32_t src, uint8_t *dst) {
-
-  dst[0] = (src >> 0 * 8) & 0xff;
-  dst[1] = (src >> 1 * 8) & 0xff;
-  dst[2] = (src >> 2 * 8) & 0xff;
-  dst[3] = (src >> 3 * 8) & 0xff;
-}
-
 
 static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 
@@ -116,12 +91,12 @@ static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
   memcpy(&(ctx->state[12]), nonce, CC20_IV_SIZE);
 }
 
-
+#define ROL32(x,r) (((x)<<(r))|((x)>>(32-(r))))
 #define CHACHA20_QUARTERROUND(x, a, b, c, d) \
-    x[a] += x[b]; x[d] = rotl32(x[d] ^ x[a], 16); \
-    x[c] += x[d]; x[b] = rotl32(x[b] ^ x[c], 12); \
-    x[a] += x[b]; x[d] = rotl32(x[d] ^ x[a], 8); \
-    x[c] += x[d]; x[b] = rotl32(x[b] ^ x[c], 7);
+    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 16); \
+    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 12); \
+    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 8); \
+    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 7);
 
 static void chacha20_block_next(cc20_context_t *ctx) {
 
@@ -145,16 +120,24 @@ static void chacha20_block_next(cc20_context_t *ctx) {
     ctx->keystream32[i] += ctx->state[i];
 
   uint32_t *counter = ctx->state + 12;
-  // increment counter
-  counter[0]++;
+  // increment counter, make sure it is little endian in memory
+  uint32_t c = le32toh(counter[0]);
+  counter[0] = htole32(++c);
   if(0 == counter[0]) {
     // wrap around occured, increment higher 32 bits of counter
-    counter[1]++;
-    // Limited to 2^64 blocks of 64 bytes each.
-    // if you want to process more than 1180591620717411303424 bytes
-    // you have other problems.
-    // we could keep counting with counter[2] and counter[3] (nonce),
-    // but then we risk reusing the nonce which is very bad.
+    // unlikely with 1,500 byte sized packets
+    c = le32toh(counter[1]);
+    counter[1] = htole32(++c);
+    if(0 == counter[1]) {
+      // very unlikely
+      c = le32toh(counter[2]);
+      counter[2] = htole32(++c);
+      if(0 == counter[2]) {
+        // extremely unlikely
+        c = le32toh(counter[3]);
+        counter[3] = htole32(++c);
+      }
+    }
   }
 }
 
