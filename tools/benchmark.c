@@ -63,7 +63,6 @@ static void parseArgs(int argc, char * argv[]) {
 int main(int argc, char * argv[]) {
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   n2n_trans_op_t transop_null, transop_tf;
-  n2n_trans_op_t transop_aes_cbc;
   n2n_trans_op_t transop_aes;
   n2n_trans_op_t transop_cc20;
 
@@ -80,7 +79,7 @@ int main(int argc, char * argv[]) {
   /* Init transopts */
   n2n_transop_null_init(&conf, &transop_null);
   n2n_transop_tf_init(&conf, &transop_tf);
-  n2n_transop_aes_cbc_init(&conf, &transop_aes_cbc);
+  n2n_transop_aes_init(&conf, &transop_aes);
   n2n_transop_aes_init(&conf, &transop_aes);
   n2n_transop_cc20_init(&conf, &transop_cc20);
   n2n_transop_speck_init(&conf, &transop_speck);

@@ -92,11 +92,20 @@ static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 }
 
 #define ROL32(x,r) (((x)<<(r))|((x)>>(32-(r))))
-#define CHACHA20_QUARTERROUND(x, a, b, c, d) \
+#define CHACHA20_QUARTERROUND(x, a, b, c, d)     \
     x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 16); \
     x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 12); \
-    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 8); \
-    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 7);
+    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 8);  \
+    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 7)
+#define CHACHA20_DOUBLE_ROUND  \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 4, 8, 12);  \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 5, 9, 13);  \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 6, 10, 14); \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 7, 11, 15); \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 5, 10, 15); \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 6, 11, 12); \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 7, 8, 13);  \
+    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 4, 9, 14)
 
 static void chacha20_block_next(cc20_context_t *ctx) {
 
@@ -105,16 +114,17 @@ static void chacha20_block_next(cc20_context_t *ctx) {
   for(i = 0; i < 16; i++)
     ctx->keystream32[i] = ctx->state[i];
 
-  for(i = 0; i < 10; i++) {
-    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 4, 8, 12)
-    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 5, 9, 13)
-    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 6, 10, 14)
-    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 7, 11, 15)
-    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 5, 10, 15)
-    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 6, 11, 12)
-    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 7, 8, 13)
-    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 4, 9, 14)
-  }
+  // 10 double rounds
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
+  CHACHA20_DOUBLE_ROUND;
 
   for(i = 0; i < 16; i++)
     ctx->keystream32[i] += ctx->state[i];

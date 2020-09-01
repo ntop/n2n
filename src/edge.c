@@ -164,7 +164,6 @@ static void help() {
   printf("-r                       | Enable packet forwarding through n2n community.\n");
   printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
   printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
-  printf("                         | "
   printf("                         | -A3 or -A (deprecated) = AES, "
   "-A4 = ChaCha20, "
   "-A5 = Speck-CTR.\n");
