@@ -168,9 +168,7 @@ static void help() {
 #ifdef N2N_HAVE_AES
   "-A3 or -A (deprecated) = AES-CBC, "
 #endif
-#ifdef HAVE_OPENSSL_1_1
   "-A4 = ChaCha20, "
-#endif
   "-A5 = Speck-CTR.\n");
   printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
   printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
@@ -250,13 +248,11 @@ static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
       break;
     }
 #endif
-#ifdef HAVE_OPENSSL_1_1
   case 4:
     {
       conf->transop_id = N2N_TRANSFORM_ID_CHACHA20;
       break;
     }
-#endif
   case 5:
     {
       conf->transop_id = N2N_TRANSFORM_ID_SPECK;

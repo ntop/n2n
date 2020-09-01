@@ -20,25 +20,37 @@
 #ifndef CC20_H
 #define CC20_H
 
-#include "n2n.h"               // HAVE_OPENSSL_1_1, traceEvent ...
-
-
-#ifdef HAVE_OPENSSL_1_1
-
-
 #include <stdint.h>
-#include <openssl/evp.h>
-#include <openssl/err.h>
+#include "n2n.h"               // HAVE_OPENSSL_1_1, traceEvent ...
 
 #define CC20_IV_SIZE           16
 #define CC20_KEY_BYTES       (256/8)
 
+#ifdef HAVE_OPENSSL_1_1 // openSSL 1.1 ----------------------------------------------------
+
+#include <openssl/evp.h>
+#include <openssl/err.h>
 
 typedef struct cc20_context_t {
   EVP_CIPHER_CTX      *ctx;                    /* openssl's reusable evp_* en/de-cryption context */
   const EVP_CIPHER    *cipher;                 /* cipher to use: e.g. EVP_chacha20() */
   uint8_t             key[CC20_KEY_BYTES];     /* the pure key data for payload encryption & decryption */
 } cc20_context_t;
+
+#else // plain C --------------------------------------------------------------------------
+
+typedef struct cc20_context {
+  uint32_t keystream32[16];
+  size_t position;
+
+  uint8_t key[CC20_KEY_BYTES];
+  uint8_t nonce[CC20_IV_SIZE];
+  uint64_t counter;
+
+  uint32_t state[16];
+} cc20_context_t;
+
+#endif // openSSL 1.1, plain C ------------------------------------------------------------
 
 
 int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
@@ -49,9 +61,6 @@ int cc20_init (const unsigned char *key, cc20_context_t **ctx);
 
 
 int cc20_deinit (cc20_context_t *ctx);
-
-
-#endif // HAVE_OPENSSL_1_1
 
 
 #endif // CC20_H

@@ -20,10 +20,8 @@
 #include "cc20.h"
 
 
-#ifdef HAVE_OPENSSL_1_1
+#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------
 
-
-/* ****************************************************** */
 
 /* get any erorr message out of openssl
    taken from https://en.wikibooks.org/wiki/OpenSSL/Error_handling */
@@ -41,7 +39,6 @@ static char *openssl_err_as_string (void) {
   return ret;
 }
 
-/* ****************************************************** */
 
 // encryption == decryption
 int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
@@ -78,13 +75,124 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 }
 
 
+#else // plain C --------------------------------------------------------------------------
+
+
+// taken (and modified) from https://github.com/Ginurx/chacha20-c (public domain)
+
+
+static uint32_t rotl32(uint32_t x, int n) {
+
+  return (x << n) | (x >> (32 - n));
+}
+
+// little endian
+static uint32_t pack4(const uint8_t *a) {
+
+  uint32_t res = 0;
+  res |= (uint32_t)a[0] << 0 * 8;
+  res |= (uint32_t)a[1] << 1 * 8;
+  res |= (uint32_t)a[2] << 2 * 8;
+  res |= (uint32_t)a[3] << 3 * 8;
+  return res;
+}
+
+
+static void unpack4(uint32_t src, uint8_t *dst) {
+
+  dst[0] = (src >> 0 * 8) & 0xff;
+  dst[1] = (src >> 1 * 8) & 0xff;
+  dst[2] = (src >> 2 * 8) & 0xff;
+  dst[3] = (src >> 3 * 8) & 0xff;
+}
+
+
+static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
+
+  const uint8_t *magic_constant = (uint8_t*)"expand 32-byte k";
+
+  memcpy(&(ctx->state[0]), magic_constant, 16);
+  memcpy (&(ctx->state[4]), ctx->key, CC20_KEY_BYTES);
+  memcpy(&(ctx->state[12]), nonce, CC20_IV_SIZE);
+}
+
+
+#define CHACHA20_QUARTERROUND(x, a, b, c, d) \
+    x[a] += x[b]; x[d] = rotl32(x[d] ^ x[a], 16); \
+    x[c] += x[d]; x[b] = rotl32(x[b] ^ x[c], 12); \
+    x[a] += x[b]; x[d] = rotl32(x[d] ^ x[a], 8); \
+    x[c] += x[d]; x[b] = rotl32(x[b] ^ x[c], 7);
+
+static void chacha20_block_next(cc20_context_t *ctx) {
+
+  int i;
+
+  for(i = 0; i < 16; i++)
+    ctx->keystream32[i] = ctx->state[i];
+
+  for(i = 0; i < 10; i++) {
+    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 4, 8, 12)
+    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 5, 9, 13)
+    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 6, 10, 14)
+    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 7, 11, 15)
+    CHACHA20_QUARTERROUND(ctx->keystream32, 0, 5, 10, 15)
+    CHACHA20_QUARTERROUND(ctx->keystream32, 1, 6, 11, 12)
+    CHACHA20_QUARTERROUND(ctx->keystream32, 2, 7, 8, 13)
+    CHACHA20_QUARTERROUND(ctx->keystream32, 3, 4, 9, 14)
+  }
+
+  for(i = 0; i < 16; i++)
+    ctx->keystream32[i] += ctx->state[i];
+
+  uint32_t *counter = ctx->state + 12;
+  // increment counter
+  counter[0]++;
+  if(0 == counter[0]) {
+    // wrap around occured, increment higher 32 bits of counter
+    counter[1]++;
+    // Limited to 2^64 blocks of 64 bytes each.
+    // if you want to process more than 1180591620717411303424 bytes
+    // you have other problems.
+    // we could keep counting with counter[2] and counter[3] (nonce),
+    // but then we risk reusing the nonce which is very bad.
+  }
+}
+
+
+static void chacha20_init_context(cc20_context_t *ctx, const uint8_t *nonce) {
+
+  chacha20_init_block(ctx, nonce);
+  ctx->position = 64;
+}
+
+
+int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
+                const unsigned char *iv, cc20_context_t *ctx) {
+
+  chacha20_init_context(ctx, iv);
+
+  uint8_t *keystream8 = (uint8_t*)ctx->keystream32;
+  for(size_t i = 0; i < in_len; i++) {
+    if(ctx->position >= 64) {
+      chacha20_block_next(ctx);
+      ctx->position = 0;
+    }
+    out[i] = in[i] ^ keystream8[ctx->position];
+    ctx->position++;
+  }
+}
+
+
+#endif // openSSL 1.1, plain C ------------------------------------------------------------
+
+
 int cc20_init (const unsigned char *key, cc20_context_t **ctx) {
 
  // allocate context...
   *ctx = (cc20_context_t*) calloc(1, sizeof(cc20_context_t));
   if (!(*ctx))
     return -1;
-
+#if defined (HAVE_OPENSSL_1_1)
   if(!((*ctx)->ctx = EVP_CIPHER_CTX_new())) {
     traceEvent(TRACE_ERROR, "cc20_init openssl's evp_* encryption context creation failed: %s",
                             openssl_err_as_string());
@@ -92,7 +200,7 @@ int cc20_init (const unsigned char *key, cc20_context_t **ctx) {
   }
 
   (*ctx)->cipher = EVP_chacha20();
-
+#endif
   memcpy((*ctx)->key, key, CC20_KEY_BYTES);
 
   return 0;
@@ -101,10 +209,8 @@ int cc20_init (const unsigned char *key, cc20_context_t **ctx) {
 
 int cc20_deinit (cc20_context_t *ctx) {
 
+#if defined (HAVE_OPENSSL_1_1)
   if (ctx->ctx) EVP_CIPHER_CTX_free(ctx->ctx);
-
+#endif
   return 0;
 }
-
-
-#endif // HAVE_OPENSSL_1_1

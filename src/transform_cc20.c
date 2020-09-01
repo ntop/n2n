@@ -16,9 +16,9 @@
  *
  */
 
+
 #include "n2n.h"
 
-#ifdef HAVE_OPENSSL_1_1
 
 /* ChaCha20 plaintext preamble */
 #define CC20_PREAMBLE_SIZE    (CC20_IV_SIZE)
@@ -177,5 +177,3 @@ int n2n_transop_cc20_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   /* Setup the cipher and key */
   return setup_cc20_key(priv, encrypt_key, encrypt_key_len);
 }
-
-#endif /* HAVE_OPENSSL_1_1 */
