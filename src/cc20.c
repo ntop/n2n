@@ -221,11 +221,11 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
     in_len -= 64;
   }
 
-  tmp_len = tmp_len - in_len;
   if(in_len > 0) {
 
     chacha20_block_next(ctx);
 
+    tmp_len -= in_len;
     while(in_len > 0) {
       out[tmp_len] = in[tmp_len] ^ keystream8[tmp_len%64];
       tmp_len++;
