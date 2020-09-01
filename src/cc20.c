@@ -111,7 +111,6 @@ static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 
 static void chacha20_block_next(cc20_context_t *ctx) {
 
-  size_t i;
   uint32_t *counter = ctx->state + 12;
   uint32_t c;
 
