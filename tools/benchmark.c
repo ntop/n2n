@@ -80,7 +80,6 @@ int main(int argc, char * argv[]) {
   n2n_transop_null_init(&conf, &transop_null);
   n2n_transop_tf_init(&conf, &transop_tf);
   n2n_transop_aes_init(&conf, &transop_aes);
-  n2n_transop_aes_init(&conf, &transop_aes);
   n2n_transop_cc20_init(&conf, &transop_cc20);
   n2n_transop_speck_init(&conf, &transop_speck);
   
