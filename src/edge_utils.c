@@ -101,8 +101,8 @@ int edge_get_management_socket(n2n_edge_t *eee) {
 const char* transop_str(enum n2n_transform tr) {
   switch(tr) {
   case N2N_TRANSFORM_ID_NULL:    return("null");
-  case N2N_TRANSFORM_ID_TWOFISH: return("twofish");
-  case N2N_TRANSFORM_ID_AESCBC:  return("AES-CBC");
+  case N2N_TRANSFORM_ID_TWOFISH: return("Twofish");
+  case N2N_TRANSFORM_ID_AES:     return("AES");
   case N2N_TRANSFORM_ID_CHACHA20:return("ChaCha20");
   case N2N_TRANSFORM_ID_SPECK   :return("Speck");
   default:                       return("invalid");
@@ -221,11 +221,9 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   case N2N_TRANSFORM_ID_TWOFISH:
     rc = n2n_transop_tf_init(&eee->conf, &eee->transop);
     break;
-#ifdef N2N_HAVE_AES
-  case N2N_TRANSFORM_ID_AESCBC:
-    rc = n2n_transop_aes_cbc_init(&eee->conf, &eee->transop);
+  case N2N_TRANSFORM_ID_AES:
+    rc = n2n_transop_aes_init(&eee->conf, &eee->transop);
     break;
-#endif
   case N2N_TRANSFORM_ID_CHACHA20:
     rc = n2n_transop_cc20_init(&eee->conf, &eee->transop);
     break;

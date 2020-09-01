@@ -4,7 +4,7 @@ include(CheckFunctionExists)
 SET(CMAKE_VERBOSE_MAKEFILE ON)
 
 # N2n release information
-set(N2N_VERSION "2.7.0")
+set(N2N_VERSION "2.9.0")
 set(N2N_OSNAME ${CMAKE_SYSTEM})
 execute_process(
         COMMAND git --version
@@ -29,7 +29,7 @@ MESSAGE(STATUS "Build from git rev: ${N2N_VERSION}")
 endif (GIT_EXIST)
 
 add_definitions(-DCMAKE_BUILD)
-add_definitions(-DGIT_RELEASE="" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${N2N_OSNAME}")
+add_definitions(-DGIT_RELEASE="${N2N_VERSION}" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${N2N_OSNAME}")
 add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 
 

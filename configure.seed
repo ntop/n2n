@@ -28,9 +28,9 @@ fi
 AC_CHECK_LIB([crypto], [AES_cbc_encrypt])
 
 if test "x$ac_cv_lib_crypto_AES_cbc_encrypt" != xyes; then
-  AC_MSG_RESULT(Building n2n without AES support)
+  AC_MSG_RESULT(OpenSSL not present)
 else
-  AC_DEFINE([N2N_HAVE_AES], [], [Have AES support])
+  AC_DEFINE([HAVE_OPENSSL_1_0], [], [OpenSSL 1.0 is present])
   N2N_LIBS="-lcrypto ${N2N_LIBS}"
 fi
 

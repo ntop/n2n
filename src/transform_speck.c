@@ -16,19 +16,16 @@
  *
  */
 
+
 #include "n2n.h"
 
-#define N2N_SPECK_IVEC_SIZE               16
-
-#define SPECK_KEY_BYTES (256/8)
 
 /* Speck plaintext preamble */
-#define TRANSOP_SPECK_PREAMBLE_SIZE (N2N_SPECK_IVEC_SIZE)
+#define TRANSOP_SPECK_PREAMBLE_SIZE   (N2N_SPECK_IVEC_SIZE)
 
-typedef unsigned char n2n_speck_ivec_t[N2N_SPECK_IVEC_SIZE];
 
 typedef struct transop_speck {
-  speck_context_t      ctx;	      /* the round keys for payload encryption & decryption */
+  speck_context_t      *ctx;	      /* the round keys for payload encryption & decryption */
 } transop_speck_t;
 
 /* ****************************************************** */
@@ -36,26 +33,11 @@ typedef struct transop_speck {
 static int transop_deinit_speck(n2n_trans_op_t *arg) {
   transop_speck_t *priv = (transop_speck_t *)arg->priv;
 
-  if(priv)
-#if defined (SPECK_ALIGNED_CTX)
-    _mm_free (priv);
-#else
-    free (priv);
-#endif
+  if(priv->ctx) speck_deinit(priv->ctx);
+
+  if(priv) free (priv);
+
   return 0;
-}
-
-/* ****************************************************** */
-
-static void set_speck_iv(transop_speck_t *priv, n2n_speck_ivec_t ivec) {
-  // keep in mind the following condition: N2N_SPECK_IVEC_SIZE % sizeof(rand_value) == 0 !
-  uint64_t rand_value;
-  uint8_t i;
-
-  for (i = 0; i < N2N_SPECK_IVEC_SIZE; i += sizeof(rand_value)) {
-    rand_value = n2n_rand();
-    memcpy(ivec + i, &rand_value, sizeof(rand_value));
-  }
 }
 
 /* ****************************************************** */
@@ -74,31 +56,30 @@ static int transop_encode_speck(n2n_trans_op_t * arg,
 			       const uint8_t * inbuf,
 			       size_t in_len,
 			       const uint8_t * peer_mac) {
+
   int len=-1;
   transop_speck_t * priv = (transop_speck_t *)arg->priv;
 
   if(in_len <= N2N_PKT_BUF_SIZE) {
     if((in_len + TRANSOP_SPECK_PREAMBLE_SIZE) <= out_len) {
       size_t idx=0;
-      n2n_speck_ivec_t enc_ivec = {0};
 
       traceEvent(TRACE_DEBUG, "encode_speck %lu bytes", in_len);
 
       /* Generate and encode the IV. */
-      set_speck_iv(priv, enc_ivec);
-      encode_buf(outbuf, &idx, &enc_ivec, N2N_SPECK_IVEC_SIZE);
+        encode_uint64(outbuf, &idx, n2n_rand());
+        encode_uint64(outbuf, &idx, n2n_rand());
 
       /* Encrypt the payload and write the ciphertext after the iv. */
       /* len is set to the length of the cipher plain text to be encrpyted
 	 which is (in this case) identical to original packet lentgh */
       len = in_len;
+      speck_ctr (outbuf + TRANSOP_SPECK_PREAMBLE_SIZE, // output starts right after the iv
+                 inbuf,       // input
+                 in_len,      // len
+                 outbuf,      // iv (already encoded in outbuf, speck does not change it)
+                 priv->ctx);  // ctx already setup with round keys
 
-      speck_ctr (outbuf + TRANSOP_SPECK_PREAMBLE_SIZE, inbuf, in_len, enc_ivec,
-#if defined (SPECK_CTX_BYVAL)
-	         (priv->ctx));
-#else
-	         &(priv->ctx));
-#endif
       traceEvent(TRACE_DEBUG, "encode_speck: encrypted %u bytes.\n", in_len);
 
       len += TRANSOP_SPECK_PREAMBLE_SIZE; /* size of data carried in UDP. */
@@ -119,6 +100,7 @@ static int transop_decode_speck(n2n_trans_op_t * arg,
 			       const uint8_t * inbuf,
 			       size_t in_len,
 			       const uint8_t * peer_mac) {
+
   int len=0;
   transop_speck_t * priv = (transop_speck_t *)arg->priv;
 
@@ -128,21 +110,17 @@ static int transop_decode_speck(n2n_trans_op_t * arg,
   {
     size_t rem=in_len;
     size_t idx=0;
-    n2n_speck_ivec_t dec_ivec = {0};
 
       traceEvent(TRACE_DEBUG, "decode_speck %lu bytes", in_len);
+
       len = (in_len - TRANSOP_SPECK_PREAMBLE_SIZE);
+      speck_ctr (outbuf,     // output
+                 inbuf + TRANSOP_SPECK_PREAMBLE_SIZE, // encrypted data starts right after preamble (IV)
+                 len,        // len
+                 inbuf,      // IV can be found at input's beginning
+                 priv->ctx); // ctx already setup with round keys
 
-      /* Get the IV */
-      decode_buf((uint8_t *)&dec_ivec, N2N_SPECK_IVEC_SIZE, inbuf, &rem, &idx);
-
-      speck_ctr (outbuf, inbuf + TRANSOP_SPECK_PREAMBLE_SIZE, len, dec_ivec,
-#if defined (SPECK_CTX_BYVAL)
-		 (priv->ctx));
-#else
-		 &(priv->ctx));
-#endif
-      traceEvent(TRACE_DEBUG, "decode_speck: decrypted %u bytes.\n", len);
+      traceEvent(TRACE_DEBUG, "decode_speck decrypted %u bytes.\n", len);
 
   } else
   traceEvent(TRACE_ERROR, "decode_speck inbuf wrong size (%ul) to decrypt.", in_len);
@@ -154,20 +132,17 @@ static int transop_decode_speck(n2n_trans_op_t * arg,
 
 static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t key_size) {
 
-  uint8_t key_mat_buf[32] = { 0x00 };
-
-  /* Clear out any old possibly longer key matter. */
-  memset(&(priv->ctx), 0, sizeof(speck_context_t) );
+  uint8_t key_mat_buf[32];
 
   /* the input key always gets hashed to make a more unpredictable and more complete use of the key space */
-  pearson_hash_256 (key_mat_buf, key, key_size);
+  pearson_hash_256(key_mat_buf, key, key_size);
 
   /* expand the key material to the context (= round keys) */
-  speck_expand_key (key_mat_buf, &(priv->ctx));
+  speck_init(key_mat_buf, &(priv->ctx));
 
-  traceEvent(TRACE_DEBUG, "Speck key setup completed\n");
+  traceEvent(TRACE_DEBUG, "setup_speck_key completed\n");
 
-  return(0);
+  return 0;
 }
 
 /* ****************************************************** */
@@ -175,8 +150,10 @@ static int setup_speck_key(transop_speck_t *priv, const uint8_t *key, ssize_t ke
 static void transop_tick_speck(n2n_trans_op_t * arg, time_t now) { ; }
 
 /* ****************************************************** */
+
 /* Speck initialization function */
 int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
+
   transop_speck_t *priv;
   const u_char *encrypt_key = (const u_char *)conf->encrypt_key;
   size_t encrypt_key_len = strlen(conf->encrypt_key);
@@ -188,17 +165,14 @@ int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
   ttt->deinit = transop_deinit_speck;
   ttt->fwd = transop_encode_speck;
   ttt->rev = transop_decode_speck;
-#if defined (SPECK_ALIGNED_CTX)
-  priv = (transop_speck_t*) _mm_malloc (sizeof(transop_speck_t), SPECK_ALIGNED_CTX);
-#else
-  priv = (transop_speck_t*) calloc (1, sizeof(transop_speck_t));
-#endif
+
+  priv = (transop_speck_t*) calloc(1, sizeof(transop_speck_t));
   if(!priv) {
-    traceEvent(TRACE_ERROR, "cannot allocate transop_speck_t memory");
+    traceEvent(TRACE_ERROR, "n2n_transop_speck_init cannot allocate transop_speck_t memory");
     return(-1);
   }
   ttt->priv = priv;
 
   /* Setup the cipher and key */
-  return(setup_speck_key(priv, encrypt_key, encrypt_key_len));
+  return setup_speck_key(priv, encrypt_key, encrypt_key_len);
 }
