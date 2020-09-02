@@ -165,9 +165,7 @@ static void help() {
   printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
   printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
   printf("                         | -A3 or -A (deprecated) = AES, "
-#ifdef HAVE_OPENSSL_1_1
   "-A4 = ChaCha20, "
-#endif
   "-A5 = Speck-CTR.\n");
   printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
   printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
@@ -245,13 +243,11 @@ static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
       conf->transop_id = N2N_TRANSFORM_ID_AES;
       break;
     }
-#ifdef HAVE_OPENSSL_1_1
   case 4:
     {
       conf->transop_id = N2N_TRANSFORM_ID_CHACHA20;
       break;
     }
-#endif
   case 5:
     {
       conf->transop_id = N2N_TRANSFORM_ID_SPECK;

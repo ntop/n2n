@@ -153,6 +153,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include "pearson.h"
 #include "portable_endian.h"
 #include "aes.h"
+#include "cc20.h"
 #include "speck.h"
 #include "n2n_regex.h"
 
@@ -415,9 +416,7 @@ typedef struct n2n_sn
 int n2n_transop_null_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 int n2n_transop_tf_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 int n2n_transop_aes_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-#ifdef HAVE_OPENSSL_1_1
 int n2n_transop_cc20_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-#endif
 int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 
 /* Log */
