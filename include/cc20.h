@@ -37,6 +37,16 @@ typedef struct cc20_context_t {
   uint8_t             key[CC20_KEY_BYTES];     /* the pure key data for payload encryption & decryption */
 } cc20_context_t;
 
+#elif defined (__SSE2__)  // SSE ----------------------------------------------------------
+
+#include <immintrin.h>
+
+typedef struct cc20_context {
+  uint32_t keystream32[16];
+  uint32_t state[16];
+  uint8_t key[CC20_KEY_BYTES];
+} cc20_context_t;
+
 #else // plain C --------------------------------------------------------------------------
 
 typedef struct cc20_context {

@@ -75,13 +75,187 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 }
 
 
+#elif defined (__SSE2__)  // SSE ----------------------------------------------------------
+
+
+// taken (and modified and enhanced) from
+// https://github.com/Ginurx/chacha20-c (public domain)
+
+
+static void cc20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
+
+  const uint8_t *magic_constant = (uint8_t*)"expand 32-byte k";
+
+  memcpy(&(ctx->state[ 0]), magic_constant, 16);
+  memcpy(&(ctx->state[ 4]), ctx->key, CC20_KEY_BYTES);
+  memcpy(&(ctx->state[12]), nonce, CC20_IV_SIZE);
+}
+
+
+#define SL  _mm_slli_epi32
+#define SR  _mm_srli_epi32
+#define XOR _mm_xor_si128
+#define AND _mm_and_si128
+#define ADD _mm_add_epi32
+#define ROL(X,r) (XOR(SL(X,r),SR(X,(32-r))))
+
+#if defined (__SSE3__) // --- SSE3
+#define L8  _mm_set_epi32(0x0e0d0c0fL, 0x0a09080bL, 0x06050407L, 0x02010003L)
+#define L16 _mm_set_epi32(0x0d0c0f0eL, 0x09080b0aL, 0x05040706L, 0x01000302L)
+#define ROL8(X)  ( _mm_shuffle_epi8(X, L8))  /* SSE 3 */
+#define ROL16(X) ( _mm_shuffle_epi8(X, L16)) /* SSE 3 */
+#else // --- regular SSE2 --------
+#define ROL8(X)  ROL(X,8)
+#define ROL16(X) ROL(X,16)
+#endif // ------------------------
+
+#define CC20_PERMUTE_ROWS(A,B,C,D)                   \
+  B = _mm_shuffle_epi32(B, _MM_SHUFFLE(0, 3, 2, 1)); \
+  C = _mm_shuffle_epi32(C, _MM_SHUFFLE(1, 0, 3, 2)); \
+  D = _mm_shuffle_epi32(D, _MM_SHUFFLE(2, 1, 0, 3))
+
+#define CC20_PERMUTE_ROWS_INV(A,B,C,D)               \
+  B = _mm_shuffle_epi32(B, _MM_SHUFFLE(2, 1, 0, 3)); \
+  C = _mm_shuffle_epi32(C, _MM_SHUFFLE(1, 0, 3, 2)); \
+  D = _mm_shuffle_epi32(D, _MM_SHUFFLE(0, 3, 2, 1))
+
+#define CC20_ODD_ROUND(A,B,C,D)          \
+  /* odd round */                        \
+  A = ADD(A, B); D = ROL16(XOR(D, A));   \
+  C = ADD(C, D); B = ROL(XOR(B, C), 12); \
+  A = ADD(A, B); D = ROL8(XOR(D, A));    \
+  C = ADD(C, D); B = ROL(XOR(B, C),  7)
+
+#define CC20_EVEN_ROUND(A,B,C,D)     \
+  CC20_PERMUTE_ROWS    (A, B, C, D); \
+  CC20_ODD_ROUND       (A, B, C, D); \
+  CC20_PERMUTE_ROWS_INV(A, B, C, D)
+
+#define CC20_DOUBLE_ROUND(A,B,C,D) \
+  CC20_ODD_ROUND (A, B, C, D);     \
+  CC20_EVEN_ROUND(A, B, C, D)
+
+static void cc20_block_next(cc20_context_t *ctx) {
+
+  uint32_t *counter = ctx->state + 12;
+  uint32_t cnt;
+
+  __m128i a, b, c, d, k0, k1, k2, k3;
+
+  a = _mm_loadu_si128 ((__m128i*)&(ctx->state[ 0]));
+  b = _mm_loadu_si128 ((__m128i*)&(ctx->state[ 4]));
+  c = _mm_loadu_si128 ((__m128i*)&(ctx->state[ 8]));
+  d = _mm_loadu_si128 ((__m128i*)&(ctx->state[12]));
+
+  k0 = a;
+  k1 = b;
+  k2 = c;
+  k3 = d;
+
+  // 10 double rounds
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+  CC20_DOUBLE_ROUND(k0, k1, k2, k3);
+
+  k0 = ADD(k0, a);
+  k1 = ADD(k1, b);
+  k2 = ADD(k2, c);
+  k3 = ADD(k3, d);
+
+  _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[ 0]), k0);
+  _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[ 4]), k1);
+  _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[ 8]), k2);
+  _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[12]), k3);
+
+  // increment counter, make sure it is and stays little endian in memory
+  cnt = le32toh(counter[0]);
+  counter[0] = htole32(++cnt);
+  if(0 == counter[0]) {
+    // wrap around occured, increment higher 32 bits of counter
+    // unlikely with 1,500 byte sized packets
+    cnt = le32toh(counter[1]);
+    counter[1] = htole32(++cnt);
+    if(0 == counter[1]) {
+      // very unlikely
+      cnt = le32toh(counter[2]);
+      counter[2] = htole32(++cnt);
+      if(0 == counter[2]) {
+        // extremely unlikely
+        cnt = le32toh(counter[3]);
+        counter[3] = htole32(++cnt);
+      }
+    }
+  }
+}
+
+
+static void cc20_init_context(cc20_context_t *ctx, const uint8_t *nonce) {
+
+  cc20_init_block(ctx, nonce);
+}
+
+
+int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
+                const unsigned char *iv, cc20_context_t *ctx) {
+
+  uint8_t   *keystream8 = (uint8_t*)ctx->keystream32;
+  uint32_t * in_p       = (uint32_t*)in;
+  uint32_t * out_p      = (uint32_t*)out;
+  size_t   tmp_len      = in_len;
+
+  cc20_init_context(ctx, iv);
+
+  while(in_len >= 64) {
+
+    cc20_block_next(ctx);
+
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 0]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 1]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 2]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 3]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 4]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 5]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 6]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 7]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 8]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 9]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[10]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[11]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[12]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[13]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[14]; in_p++; out_p++;
+    *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[15]; in_p++; out_p++;
+    in_len -= 64;
+  }
+
+  if(in_len > 0) {
+
+    cc20_block_next(ctx);
+
+    tmp_len -= in_len;
+    while(in_len > 0) {
+      out[tmp_len] = in[tmp_len] ^ keystream8[tmp_len%64];
+      tmp_len++;
+      in_len--;
+    }
+  }
+}
+
+
 #else // plain C --------------------------------------------------------------------------
 
 
 // taken (and modified) from https://github.com/Ginurx/chacha20-c (public domain)
 
 
-static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
+static void cc20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 
   const uint8_t *magic_constant = (uint8_t*)"expand 32-byte k";
 
@@ -92,24 +266,24 @@ static void chacha20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 
 
 #define ROL32(x,r) (((x)<<(r))|((x)>>(32-(r))))
-#define CHACHA20_QUARTERROUND(x, a, b, c, d)     \
-    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 16); \
-    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 12); \
-    x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a],  8); \
-    x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c],  7)
-#define CHACHA20_DOUBLE_ROUND(s)                           \
-    /* odd round */                                        \
-    CHACHA20_QUARTERROUND(s, 0, 4,  8, 12); \
-    CHACHA20_QUARTERROUND(s, 1, 5,  9, 13); \
-    CHACHA20_QUARTERROUND(s, 2, 6, 10, 14); \
-    CHACHA20_QUARTERROUND(s, 3, 7, 11, 15); \
-    /* even round */                                       \
-    CHACHA20_QUARTERROUND(s, 0, 5, 10, 15); \
-    CHACHA20_QUARTERROUND(s, 1, 6, 11, 12); \
-    CHACHA20_QUARTERROUND(s, 2, 7,  8, 13); \
-    CHACHA20_QUARTERROUND(s, 3, 4,  9, 14)
+#define CC20_QUARTERROUND(x, a, b, c, d)       \
+  x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a], 16); \
+  x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c], 12); \
+  x[a] += x[b]; x[d] = ROL32(x[d] ^ x[a],  8); \
+  x[c] += x[d]; x[b] = ROL32(x[b] ^ x[c],  7)
+#define CC20_DOUBLE_ROUND(s)          \
+  /* odd round */                     \
+  CC20_QUARTERROUND(s, 0, 4,  8, 12); \
+  CC20_QUARTERROUND(s, 1, 5,  9, 13); \
+  CC20_QUARTERROUND(s, 2, 6, 10, 14); \
+  CC20_QUARTERROUND(s, 3, 7, 11, 15); \
+  /* even round */                    \
+  CC20_QUARTERROUND(s, 0, 5, 10, 15); \
+  CC20_QUARTERROUND(s, 1, 6, 11, 12); \
+  CC20_QUARTERROUND(s, 2, 7,  8, 13); \
+  CC20_QUARTERROUND(s, 3, 4,  9, 14)
 
-static void chacha20_block_next(cc20_context_t *ctx) {
+static void cc20_block_next(cc20_context_t *ctx) {
 
   uint32_t *counter = ctx->state + 12;
   uint32_t c;
@@ -132,16 +306,16 @@ static void chacha20_block_next(cc20_context_t *ctx) {
   ctx->keystream32[15] = ctx->state[15];
 
   // 10 double rounds
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
-  CHACHA20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
+  CC20_DOUBLE_ROUND(ctx->keystream32);
 
   ctx->keystream32[ 0] += ctx->state[ 0];
   ctx->keystream32[ 1] += ctx->state[ 1];
@@ -182,9 +356,9 @@ static void chacha20_block_next(cc20_context_t *ctx) {
 }
 
 
-static void chacha20_init_context(cc20_context_t *ctx, const uint8_t *nonce) {
+static void cc20_init_context(cc20_context_t *ctx, const uint8_t *nonce) {
 
-  chacha20_init_block(ctx, nonce);
+  cc20_init_block(ctx, nonce);
 }
 
 
@@ -196,11 +370,11 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
   uint32_t * out_p      = (uint32_t*)out;
   size_t   tmp_len      = in_len;
 
-  chacha20_init_context(ctx, iv);
+  cc20_init_context(ctx, iv);
 
   while(in_len >= 64) {
 
-    chacha20_block_next(ctx);
+    cc20_block_next(ctx);
 
     *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 0]; in_p++; out_p++;
     *(uint32_t*)out_p = *(uint32_t*)in_p ^ ctx->keystream32[ 1]; in_p++; out_p++;
@@ -223,7 +397,7 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 
   if(in_len > 0) {
 
-    chacha20_block_next(ctx);
+    cc20_block_next(ctx);
 
     tmp_len -= in_len;
     while(in_len > 0) {
