@@ -99,15 +99,15 @@ static void cc20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 #define ADD _mm_add_epi32
 #define ROL(X,r) (XOR(SL(X,r),SR(X,(32-r))))
 
-#if defined (__SSE4_1__) // --- SSE3  (__SSE3__ is not a reliable macro to detect SSE3 hardware features, better use __SSE_4_1__)
+#if defined (__SSSE3__) // --- SSSE3
 #define L8  _mm_set_epi32(0x0e0d0c0fL, 0x0a09080bL, 0x06050407L, 0x02010003L)
 #define L16 _mm_set_epi32(0x0d0c0f0eL, 0x09080b0aL, 0x05040706L, 0x01000302L)
-#define ROL8(X)  ( _mm_shuffle_epi8(X, L8))  /* SSE 3 */
-#define ROL16(X) ( _mm_shuffle_epi8(X, L16)) /* SSE 3 */
-#else // --- regular SSE2 --------
+#define ROL8(X)  ( _mm_shuffle_epi8(X, L8))  /* SSSE 3 */
+#define ROL16(X) ( _mm_shuffle_epi8(X, L16)) /* SSSE 3 */
+#else // --- regular SSE2 ---------
 #define ROL8(X)  ROL(X,8)
 #define ROL16(X) ROL(X,16)
-#endif // ------------------------
+#endif // -------------------------
 
 #define CC20_PERMUTE_ROWS(A,B,C,D)                   \
   B = _mm_shuffle_epi32(B, _MM_SHUFFLE(0, 3, 2, 1)); \
