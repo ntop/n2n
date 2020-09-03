@@ -99,7 +99,7 @@ static void cc20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 #define ADD _mm_add_epi32
 #define ROL(X,r) (XOR(SL(X,r),SR(X,(32-r))))
 
-#if defined (__SSE3__) // --- SSE3
+#if defined (__SSE4_1__) // --- SSE3  (__SSE3__ is not a reliable macro to detect SSE3 hardware features, better use __SSE_4_1__)
 #define L8  _mm_set_epi32(0x0e0d0c0fL, 0x0a09080bL, 0x06050407L, 0x02010003L)
 #define L16 _mm_set_epi32(0x0d0c0f0eL, 0x09080b0aL, 0x05040706L, 0x01000302L)
 #define ROL8(X)  ( _mm_shuffle_epi8(X, L8))  /* SSE 3 */
