@@ -18,17 +18,17 @@ The following chart might help to make a quick comparison and decide what cipher
 | Cipher | Mode | Block Size | Key Size         | IV length |Speed | Built-In | Origin |
 | :---:  | :---:| :---:      | :---:            | :---:     |:---: | :---:    | ---    |
 |Twofish | CTS  | 128 bits   | 256 bit          | 128 bit   | -..O | Y        | Bruce Schneier |
-|AES     | CBC  | 128 bits   | 128, 192, 256 bit| 128 bit   | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
+|AES     | CTS  | 128 bits   | 128, 192, 256 bit| 128 bit   | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
 |ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| N        | Daniel J. Bernstein |
 |SPECK   | CTR  | Stream     | 256 bit          | 128 bit   | ++   | Y        | NSA |
 
 The two block ciphers Twofish and AES are used in CTS mode.
 
-Note that AES and ChaCha20 are available only if n2n is compiled with openSSL support. n2n will work well without them offering the respectively reduced choice of remaining built-in ciphers (Twofish, SPECK).
+n2n has all four ciphers built-in as basic versions. Some of them optionally compile to faster versions by the means of available hardware support (AES-NI, SSE, AVX – please see the [Building document](./Building.md) for details. Also, AES and ChaCha20 might draw notable acceleration from compiling with openSSL 1.1 support.
 
 ### Twofish
 
-This implementation prepends a 128 bit random value to the plain text. Its size is adjustable by changing the `TF_PREAMBLE_SIZE` definition found in `src/transform_tf.c`. It defaults to TF_BLOCK_SIZE (== 16). As CTS uses underlying CBC mode, this basically has the same effect as a respectively shorter IV.
+This implementation prepends a 128 bit random value to the plain text. Its size is adjustable by changing the `TF_PREAMBLE_SIZE` definition found in `src/transform_tf.c`. It defaults to TF_BLOCK_SIZE (== 16). As CTS uses underlying CBC mode, this basically has the same effect as a respectively shorter IV. However, this flexibility does not come for free as an additional block needs to be encrypted.
 
 Twofish requires no padding as it employs a CBC/CTS scheme which can send out plaintext-length ciphertexts. The scheme however has a small flaw in handling messages shorter than one block, only low-level programmer might encounter this.
 
@@ -38,13 +38,13 @@ On Intel CPUs, Twofish usually is the slowest of the ciphers present. However, o
 
 AES also prepends a random value to the plaintext. Its size is adjustable by changing the `AES_PREAMBLE_SIZE` definition found in `src/transform_aes.c`. It defaults to AES_BLOCK_SIZE (== 16). The AES scheme uses a CBC/CTS scheme which can send out plaintext-length ciphertexts as long as they are one block or more in length.
 
-AES relies on openSSL's `evp_*` interface which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
+Apart from n2n's plain C implementation, Intel's AES-NI is supported – again, please habe a look at the [Building document](./Building.md). In case of openSSL support its `evp_*` interface gets used which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
 
 ### ChaCha20
 
 ChaCha20 was the first stream cipher supported by n2n.
 
-It also relies on openSSL's `evp_*` interface. It does not use the Poly1305 message tag from the same author though. Whole packet's checksum will be handled in the header (see below).
+In addition to the basic C implementation, a SSE version is offered. If compiled with openSSL support, ChaCha20 is provided via the `evp_*` interface. It is not used together with the Poly1305 message tag from the same author though. Whole packet's checksum will be handled in the header (see below).
 
 The random full 128-bit IV is transmitted in plain.
 
@@ -66,7 +66,7 @@ Its initialization relies on seeding with a value as random as possible. Various
 
 For general purpose hashing, n2n employs Pearson hashing as it offers variable hash sizes and is said not to be too "collidy". However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash shall prove the knowledge of a secret without showing the secret.
 
-_Pearson hashing is tweakable by making your own permutation of the 256 byte table._
+_Pearson hashing is tweakable by making your own permutation of the 256 byte table._ Here, the AES' s-box is used: Given appropriate hardware, a lookup could even be accelerated.
 
 _Pearson hashing allows verification of parts of the hash only – just in case performance requirements would urge to do so._
 
@@ -166,7 +166,7 @@ Thus, header encryption will only work with previously determined community name
 
 The whole packet including the eventually present payload is checksummed using a modified Person hashing. It might seem a little short compared to usual message tags of 96 up to 128 bit, especially when using a stream cipher which easily allows for bit-flips. So, the 16-bit checksum is filled up with 80 more bits to obtain a 96-bit pre-IV. This pre-IV gets encrypted using a single block-cipher step to get the pseudo-random looking IV. This way, the checksum resists targeted bit-flips (to header, payload, and IV) as any change to the whole 96-bit IV would render the header un-decryptable.
 
-The single block-cipher step employs SPECK because it is fast, always present as built-in and it offers a 96-bit version. The key is derived from the header key – a hash of the hash.
+The single block-cipher step employs SPECK because it is fast and it offers a 96-bit version. The key is derived from the header key – a hash of the hash.
 
 The checksum gets verified by the edges and the supernode.
 

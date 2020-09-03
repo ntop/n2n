@@ -88,9 +88,27 @@ See `edge.exe --help` and `supernode.exe --help` for a list of supported options
 
 # General Building Options
 
-## Low Memory Footprint
+## Compiler Optimizations
 
-Some parts of the code (well, one for now: Pearson hashing) offer an optional low memory footprint if compiled using with the macro `LOW_MEM_FOOTPRINT`. GCC will make it happen with `-DLOW_MEM_FOOTPRINT` eventually specified along with other options of choice during configuration:
+The easiest way to boosting speed is by allowing the compiler to apply optimization to the code. To let the compiler know, the configuration process can take in the optionally specified compiler flag `-O3`:
 
-`./configure CFLAGS="-O3 -march=native -DLOW_MEM_FOOTPRINT"`
+`./configure CFLAGS="-O3"`
 
+The `tools/n2n-benchmark` tool reports speed-ups of 200% or more! There is no known risk in terms of instable code or so.
+
+## Hardware Features
+
+Some parts of the code can be compiled to benefit from available hardware acceleration. It needs to be decided at compile-time. So, if compiling for a specific platform with known features (maybe the local one), it should be specified to the compiler, for example through the `-march=sandybridge` (you name it) or just `-march=native` for local use.
+
+So far, the following portions of n2n's code benefit from hardware acceleration:
+
+```
+AES:               AES-NI
+ChaCha20:          SSE2, SSSE3
+SPECK:             SSE4.2, AVX2, NEON
+Pearson Hashing:   AES-NI
+```
+
+The compilations flags could easily be combined:
+
+`./configure CFLAGS="-O3 -march=native"`.
