@@ -16,6 +16,18 @@
  *
  */
 
+
+#include <stddef.h>
+#include <stdint.h>
+
+
+#if defined (__SSSE3__) && defined (__AES__) // AES-NI & SSSE3 -----------------------------
+
+#include <immintrin.h>
+
+#endif // AES-NI & SSSE3 -------------------------------------------------------------------
+
+
 void pearson_hash_256 (uint8_t *out, const uint8_t *in, size_t len);
 
 void pearson_hash_128 (uint8_t *out, const uint8_t *in, size_t len);
