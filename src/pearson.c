@@ -65,12 +65,6 @@ static const uint8_t t[256] ={
 */
 
 
-static uint16_t t16[65536]; // 16-bit look-up table
-
-#define ROR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
-#define ROR32(x,r) (((x)>>(r))|((x)<<(32-(r))))
-
-
 #if defined (__AES__) && defined (__SSSE3__) // AES-NI & SSSE3 ----------------------------
 
 
@@ -182,6 +176,12 @@ uint16_t pearson_hash_16 (const uint8_t *in, size_t len) {
 
 
 #else // plain C --------------------------------------------------------------------------
+
+
+static uint16_t t16[65536]; // 16-bit look-up table
+
+#define ROR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
+#define ROR32(x,r) (((x)>>(r))|((x)<<(32-(r))))
 
 
 void pearson_hash_256 (uint8_t *out, const uint8_t *in, size_t len) {
@@ -360,8 +360,12 @@ uint16_t pearson_hash_16 (const uint8_t *in, size_t len) {
 
 void pearson_hash_init () {
 
+#if defined (__AES__) && (__SSSE3__)
+
+#else
   size_t i;
 
   for (i = 0; i < 65536; i++)
     t16[i] = (t[i >> 8] << 8) + t[(uint8_t)i];
+#endif
 }
