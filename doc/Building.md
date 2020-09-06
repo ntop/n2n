@@ -123,4 +123,4 @@ which then will include OpenSSL 1.0 or 1.1 if found on the system. This can be c
 
 `./configure --with-openssl CFLAGS="-O3 -march=native"`
 
-Please do no forget to `make clean` after (re-)configuration and before building using `make`.
+Please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
