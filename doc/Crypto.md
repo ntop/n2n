@@ -24,7 +24,7 @@ The following chart might help to make a quick comparison and decide what cipher
 
 The two block ciphers Twofish and AES are used in CTS mode.
 
-n2n has all four ciphers built-in as basic versions. Some of them optionally compile to faster versions by the means of available hardware support (AES-NI, SSE, AVX – please see the [Building document](./Building.md) for details. Also, AES and ChaCha20 might draw notable acceleration from compiling with openSSL 1.1 support.
+n2n has all four ciphers built-in as basic versions. Some of them optionally compile to faster versions by the means of available hardware support (AES-NI, SSE, AVX – please see the [Building document](./Building.md) for details. Depending on your platform, AES and ChaCha20 might also draw notable acceleration from optionally compiling with openSSL 1.1 support.
 
 ### Twofish
 

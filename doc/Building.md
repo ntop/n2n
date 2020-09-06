@@ -112,3 +112,15 @@ Pearson Hashing:   AES-NI
 The compilations flags could easily be combined:
 
 `./configure CFLAGS="-O3 -march=native"`.
+
+## OpenSSL Support
+
+Some ciphers' speed can take advantage of OpenSSL support which is disabled by default as the built-in ciphers already prove reasonably fast in most cases. OpenSSL support can be configured using
+
+`./configure --with-openssl`
+
+which then will include OpenSSL 1.0 or 1.1 if found on the system. This can be combined with the hardware support and compiler optimizations such as
+
+`./configure --with-openssl CFLAGS="-O3 -march=native"`
+
+Please do no forget to `make clean` after (re-)configuration and before building using `make`.
