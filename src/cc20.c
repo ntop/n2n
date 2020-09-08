@@ -138,7 +138,6 @@ static void cc20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 static void cc20_block_next(cc20_context_t *ctx) {
 
   uint32_t *counter = ctx->state + 12;
-  uint32_t cnt;
 
   __m128i a, b, c, d, k0, k1, k2, k3;
 
@@ -175,24 +174,8 @@ static void cc20_block_next(cc20_context_t *ctx) {
   _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[12]), k3);
 
   // increment counter, make sure it is and stays little endian in memory
-  cnt = le32toh(counter[0]);
-  counter[0] = htole32(++cnt);
-  if(0 == counter[0]) {
-    // wrap around occured, increment higher 32 bits of counter
-    // unlikely with 1,500 byte sized packets
-    cnt = le32toh(counter[1]);
-    counter[1] = htole32(++cnt);
-    if(0 == counter[1]) {
-      // very unlikely
-      cnt = le32toh(counter[2]);
-      counter[2] = htole32(++cnt);
-      if(0 == counter[2]) {
-        // extremely unlikely
-        cnt = le32toh(counter[3]);
-        counter[3] = htole32(++cnt);
-      }
-    }
-  }
+  *counter = htole32(le32toh(*counter)+1);
+
 }
 
 
@@ -286,7 +269,6 @@ static void cc20_init_block(cc20_context_t *ctx, const uint8_t nonce[]) {
 static void cc20_block_next(cc20_context_t *ctx) {
 
   uint32_t *counter = ctx->state + 12;
-  uint32_t c;
 
   ctx->keystream32[ 0] = ctx->state[ 0];
   ctx->keystream32[ 1] = ctx->state[ 1];
@@ -335,24 +317,7 @@ static void cc20_block_next(cc20_context_t *ctx) {
   ctx->keystream32[15] += ctx->state[15];
 
   // increment counter, make sure it is and stays little endian in memory
-  c = le32toh(counter[0]);
-  counter[0] = htole32(++c);
-  if(0 == counter[0]) {
-    // wrap around occured, increment higher 32 bits of counter
-    // unlikely with 1,500 byte sized packets
-    c = le32toh(counter[1]);
-    counter[1] = htole32(++c);
-    if(0 == counter[1]) {
-      // very unlikely
-      c = le32toh(counter[2]);
-      counter[2] = htole32(++c);
-      if(0 == counter[2]) {
-        // extremely unlikely
-        c = le32toh(counter[3]);
-        counter[3] = htole32(++c);
-      }
-    }
-  }
+  *counter = htole32(le32toh(*counter)+1);
 }
 
 
