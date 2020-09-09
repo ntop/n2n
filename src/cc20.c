@@ -136,7 +136,7 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
                 const unsigned char *iv, cc20_context_t *ctx) {
 
-  __m128i a, b, c, d, k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11;
+  __m128i a, b, c, d, k0, k1, k2, k3, k4, k5, k6, k7;
 
   uint8_t   *keystream8 = (uint8_t*)ctx->keystream32;
 
