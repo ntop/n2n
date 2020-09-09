@@ -90,6 +90,7 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 #define ROL(X,r) (XOR(SL(X,r),SR(X,(32-r))))
 
 #define ONE _mm_setr_epi32(1, 0, 0, 0)
+#define TWO _mm_setr_epi32(2, 0, 0, 0)
 
 #if defined (__SSSE3__) // --- SSSE3
 #define L8  _mm_set_epi32(0x0e0d0c0fL, 0x0a09080bL, 0x06050407L, 0x02010003L)
@@ -130,7 +131,7 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
                 const unsigned char *iv, cc20_context_t *ctx) {
 
-  __m128i a, b, c, d, k0, k1, k2, k3;
+  __m128i a, b, c, d, k0, k1, k2, k3, k4, k5, k6, k7;
 
   uint8_t   *keystream8 = (uint8_t*)ctx->keystream32;
 
@@ -141,7 +142,59 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
   c = _mm_loadu_si128 ( (__m128i*)((ctx->key)+16));
   d = _mm_loadu_si128 ((__m128i*)iv);
 
-  while (in_len >= 64) {
+  while (in_len >= 128) {
+
+    k0 = a; k1 = b; k2 = c; k3 = d;
+    k4 = a; k5 = b; k6 = c; k7 = ADD(d, ONE);
+
+    // 10 double rounds -- in parallel to make better use of all 8 SSE registers
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+    CC20_DOUBLE_ROUND(k0, k1, k2, k3); CC20_DOUBLE_ROUND(k4, k5, k6, k7);
+
+    k0 = ADD(k0, a); k1 = ADD(k1, b); k2 = ADD(k2, c); k3 = ADD(k3, d);
+    k4 = ADD(k4, a); k5 = ADD(k5, b); k6 = ADD(k6, c); k7 = ADD(k7, d); k7 = ADD(k7, ONE);
+
+    _mm_storeu_si128 ((__m128i*)out,
+                      _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k0));
+    in += 16; out += 16;
+    _mm_storeu_si128 ((__m128i*)out,
+                      _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k1));
+    in += 16; out += 16;
+    _mm_storeu_si128 ((__m128i*)out,
+                       _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k2));
+    in += 16; out += 16;
+    _mm_storeu_si128 ((__m128i*)out,
+                       _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k3));
+    in += 16; out += 16;
+
+    _mm_storeu_si128 ((__m128i*)out,
+                       _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k4));
+    in += 16; out += 16;
+    _mm_storeu_si128 ((__m128i*)out,
+                       _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k5));
+    in += 16; out += 16;
+    _mm_storeu_si128 ((__m128i*)out,
+                       _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k6));
+    in += 16; out += 16;
+    _mm_storeu_si128 ((__m128i*)out,
+                       _mm_xor_si128 (_mm_loadu_si128((__m128i*)in), k7));
+    in += 16; out += 16;
+
+    // increment counter, make sure it is and stays little endian in memory
+    d = ADD(d, TWO);
+
+    in_len -= 128;
+  }
+
+  if (in_len >= 64) {
 
     k0 = a; k1 = b; k2 = c; k3 = d;
 
@@ -173,12 +226,13 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
     in += 16; out += 16;
 
     // increment counter, make sure it is and stays little endian in memory
-    d = _mm_add_epi32(d, ONE);
+    d = ADD(d, ONE);
 
     in_len -= 64;
   }
 
   if (in_len) {
+
     k0 = a; k1 = b; k2 = c; k3 = d;
 
     // 10 double rounds
