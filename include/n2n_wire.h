@@ -25,7 +25,7 @@
 #include <stdint.h>
 #endif
 
-#define N2N_PKT_VERSION                 2
+#define N2N_PKT_VERSION                 3
 #define N2N_DEFAULT_TTL                 2       /* can be forwarded twice at most */
 #define N2N_COMMUNITY_SIZE              16
 #define N2N_MAC_SIZE                    6
