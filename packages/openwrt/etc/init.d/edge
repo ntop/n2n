@@ -4,7 +4,7 @@ STOP=10
 
 USE_PROCD=1
 PROG=/usr/bin/edge
-CONFIGFILE=/etc/config/n2n-edge.conf
+CONFIGFILE=/etc/n2n/edge.conf
 
 start_service() {
 	procd_open_instance
