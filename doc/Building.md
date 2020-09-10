@@ -88,9 +88,51 @@ See `edge.exe --help` and `supernode.exe --help` for a list of supported options
 
 # General Building Options
 
-## Low Memory Footprint
+## Compiler Optimizations
 
-Some parts of the code (well, one for now: Pearson hashing) offer an optional low memory footprint if compiled using with the macro `LOW_MEM_FOOTPRINT`. GCC will make it happen with `-DLOW_MEM_FOOTPRINT` eventually specified along with other options of choice during configuration:
+The easiest way to boosting speed is by allowing the compiler to apply optimization to the code. To let the compiler know, the configuration process can take in the optionally specified compiler flag `-O3`:
 
-`./configure CFLAGS="-O3 -march=native -DLOW_MEM_FOOTPRINT"`
+`./configure CFLAGS="-O3"`
 
+The `tools/n2n-benchmark` tool reports speed-ups of 200% or more! There is no known risk in terms of instable code or so.
+
+## Hardware Features
+
+Some parts of the code can be compiled to benefit from available hardware acceleration. It needs to be decided at compile-time. So, if compiling for a specific platform with known features (maybe the local one), it should be specified to the compiler, for example through the `-march=sandybridge` (you name it) or just `-march=native` for local use.
+
+So far, the following portions of n2n's code benefit from hardware acceleration:
+
+```
+AES:               AES-NI
+ChaCha20:          SSE2, SSSE3
+SPECK:             SSE4.2, AVX2, NEON
+Pearson Hashing:   AES-NI
+```
+
+The compilations flags could easily be combined:
+
+`./configure CFLAGS="-O3 -march=native"`.
+
+## OpenSSL Support
+
+Some ciphers' speed can take advantage of OpenSSL support which is disabled by default as the built-in ciphers already prove reasonably fast in most cases. OpenSSL support can be configured using
+
+`./configure --with-openssl`
+
+which then will include OpenSSL 1.0 or 1.1 if found on the system. This can be combined with the hardware support and compiler optimizations such as
+
+`./configure --with-openssl CFLAGS="-O3 -march=native"`
+
+Please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
+
+## ZSTD Compression Support
+
+In addition to the built-in LZO1x for payload compression (`-z1` at the edge's commandline), n2n optionally supports [ZSTD](https://github.com/facebook/zstd). As of 2020, it is considered cutting edge and [praised](https://en.wikipedia.org/wiki/Zstandard) for reaching the currently technologically possible Pareto frontier in terms of CPU power versus compression ratio. ZSTD support can be configured using
+
+`./configure --with-zstd`
+
+which then will include ZSTD if found on the system. It will be available via `-z2` at the edges. Of course, it can be combined with the other features mentioned above:
+
+`./configure --with-zstd --with-openssl CFLAGS="-O3 -march=native"`
+
+Again, this cannot be reiterated often enough, please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
