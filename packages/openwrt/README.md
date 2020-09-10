@@ -33,7 +33,7 @@ copied to the target device, and installed with `opkg install`.
 ## Configuration
 
 The edge node can be started with `/etc/init.d/edge start`.
-Its configuration file is `/etc/config/n2n-edge.conf`.
+Its configuration file is `/etc/n2n/edge.conf`.
 
 The supernode can be started with `/etc/init.d/supernode start`.
-Its configuration file is `/etc/config/n2n-supernode.conf`.
+Its configuration file is `/etc/n2n/supernode.conf`.

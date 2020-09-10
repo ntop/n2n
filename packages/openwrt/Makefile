@@ -56,7 +56,7 @@ define Build/Configure
 endef
 
 define Package/n2n-edge/conffiles
-/etc/config/n2n-edge.conf
+/etc/n2n/edge.conf
 endef
 
 define Package/n2n-edge/install
@@ -64,12 +64,12 @@ define Package/n2n-edge/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/edge $(1)/usr/bin/
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/packages/openwrt/etc/init.d/edge $(1)/etc/init.d/edge
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(PKG_BUILD_DIR)/packages/etc/n2n/edge.conf.sample $(1)/etc/config/n2n-edge.conf
+	$(INSTALL_DIR) $(1)/etc/n2n
+	$(INSTALL_CONF) $(PKG_BUILD_DIR)/packages/etc/n2n/edge.conf.sample $(1)/etc/n2n/edge.conf
 endef
 
 define Package/n2n-supernode/conffiles
-/etc/config/n2n-supernode.conf
+/etc/n2n/supernode.conf
 endef
 
 define Package/n2n-supernode/install
@@ -77,8 +77,8 @@ define Package/n2n-supernode/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/supernode $(1)/usr/bin/
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/packages/openwrt/etc/init.d/supernode $(1)/etc/init.d/supernode
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(PKG_BUILD_DIR)/packages/etc/n2n/supernode.conf.sample $(1)/etc/config/n2n-supernode.conf
+	$(INSTALL_DIR) $(1)/etc/n2n
+	$(INSTALL_CONF) $(PKG_BUILD_DIR)/packages/etc/n2n/supernode.conf.sample $(1)/etc/n2n/supernode.conf
 endef
 
 $(eval $(call BuildPackage,n2n-edge))
