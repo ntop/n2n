@@ -124,3 +124,15 @@ which then will include OpenSSL 1.0 or 1.1 if found on the system. This can be c
 `./configure --with-openssl CFLAGS="-O3 -march=native"`
 
 Please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
+
+## ZSTD Compression Support
+
+In addition to the built-in LZO1x for payload compression (`-z1` at the edge's commandline), n2n optionally supports [ZSTD](https://github.com/facebook/zstd). As of 2020, it is considered cutting edge and [praised](https://en.wikipedia.org/wiki/Zstandard) for reaching the currently technologically possible Pareto frontier in terms of CPU power versus compression ratio. ZSTD support can be configured using
+
+`./configure -- with-zstd`
+
+which then will include ZSTD if found on the system. It will be available via `-z2` at the edges. Of course, it can be combined with the other features mentioned above:
+
+`./configure --with-openssl --with-zstd CFLAGS="-O3 -march=native"`
+
+Again, please do no forget to `make clean` after (re-)configuration and before building (again) using `make` – can't reiterate often enough.
