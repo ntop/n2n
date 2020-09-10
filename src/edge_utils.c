@@ -115,10 +115,7 @@ const char* compression_str(uint8_t cmpr) {
   switch(cmpr) {
   case N2N_COMPRESSION_ID_NONE:  return("none");
   case N2N_COMPRESSION_ID_LZO:   return("lzo1x");
-
-#ifdef HAVE_LIBZSTD
   case N2N_COMPRESSION_ID_ZSTD:  return("zstd");
-#endif
   default:                       return("invalid");
   };
 }
