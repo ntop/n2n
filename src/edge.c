@@ -215,7 +215,9 @@ static void setPayloadCompression(n2n_edge_conf_t *conf, int compression) {
   default:
     {
       conf->compression = N2N_COMPRESSION_ID_NONE;
-      traceEvent(TRACE_NORMAL, "the %s compression given by -z_ option is not supported in this version.", compression_str(compression));
+      // internal comrpession scheme numbering differs from cli counting by one, hence plus one
+      // (internal: 0 == invalid, 1 == none, 2 == lzo, 3 == zstd)
+      traceEvent(TRACE_NORMAL, "the %s compression given by -z_ option is not supported in this version.", compression_str(compression + 1));
       exit(1); // to make the user aware
     }
   }
