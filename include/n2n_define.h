@@ -58,10 +58,8 @@
 #define N2N_COMPRESSION_ID_INVALID	0
 #define N2N_COMPRESSION_ID_NONE		1	/* default, see edge_init_conf_defaults(...) in edge_utils.c */
 #define N2N_COMPRESSION_ID_LZO		2	/* set if '-z1' or '-z' cli option is present, see setOption(...) in edge.c */
-#ifdef N2N_HAVE_ZSTD
 #define N2N_COMPRESSION_ID_ZSTD		3	/* set if '-z2' cli option is present, available only if compiled with zstd lib */
 #define ZSTD_COMPRESSION_LEVEL		7	/* 1 (faster) ... 22 (more compression) */
-#endif
 
 /* (un)purgeable community indicator (supernode) */
 #define COMMUNITY_UNPURGEABLE		0
