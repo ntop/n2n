@@ -208,9 +208,9 @@ set_source_files_properties(${PROJECT_BINARY_DIR}/doc/edge.8.gz
                             PROPERTIES GENERATED 1)
 
 install(FILES ${PROJECT_BINARY_DIR}/doc/edge.8.gz
-        DESTINATION /usr/share/man8)
+        DESTINATION /usr/share/man/man8)
 install(FILES ${PROJECT_BINARY_DIR}/doc/supernode.1.gz
-        DESTINATION /usr/share/man1)
+        DESTINATION /usr/share/man/man1)
 install(FILES ${PROJECT_BINARY_DIR}/doc/n2n.7.gz
-        DESTINATION /usr/share/man7)
+        DESTINATION /usr/share/man/man7)
 endif(DEFINED UNIX)
