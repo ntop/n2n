@@ -114,7 +114,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
   ssize_t tdiff = 0; // microseconds
   size_t num_packets = 0;
 
-  printf("Run %s[%s] for %us (%u bytes):   ", perform_decryption ? "enc/dec" : "enc",
+  printf("Run %s[%s] for %us (%u bytes):", perform_decryption ? "enc/dec" : "enc",
 	 op_name, target_sec, (unsigned int)sizeof(PKT_CONTENT));
   fflush(stdout);
 
