@@ -44,6 +44,7 @@ if test "x$with_openssl" != xno; then
   LDFLAGS="${LDFLAGS} -L/usr/local/opt/openssl@1.1/lib/"
   AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset])
   if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_reset" != xyes; then
+     AC_MSG_RESULT(OpenSSL 1.1 not present)
      CFLAGS="${OLD_CFLAGS}"
      LDFLAGS="${OLD_LDFLAGS}"
   else
