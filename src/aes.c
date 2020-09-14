@@ -161,80 +161,6 @@ int aes_init (const unsigned char *key, size_t key_size, aes_context_t **ctx) {
 }
 
 
-#elif defined (HAVE_OPENSSL_1_0) // openSSL 1.0 -------------------------------------------
-
-
-int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     const unsigned char *iv, aes_context_t *ctx) {
-
-  uint8_t tmp_iv[AES_IV_SIZE];
-  memcpy (tmp_iv, iv, AES_IV_SIZE);
-  AES_cbc_encrypt(in,                // source
-                  out,               // destination
-                  in_len,            // enc size
-                  &(ctx->enc_key),
-                  tmp_iv,
-                  AES_ENCRYPT);
-
-  return 0;
-}
-
-
-int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
-                     const unsigned char *iv, aes_context_t *ctx) {
-
-  uint8_t tmp_iv[AES_IV_SIZE];
-  memcpy (tmp_iv, iv, AES_IV_SIZE);
-  AES_cbc_encrypt(in,                // source
-                  out,               // destination
-                  in_len,            // enc size
-                  &(ctx->dec_key),
-                  tmp_iv,
-                  AES_DECRYPT);
-
-  return 0;
-}
-
-
-int aes_ecb_decrypt (unsigned char *out, const unsigned char *in, aes_context_t *ctx) {
-
-  AES_ecb_encrypt(in, out, &(ctx->dec_key), AES_DECRYPT);
-
-  return 0;
-}
-
-
-int aes_init (const unsigned char *key, size_t key_size, aes_context_t **ctx) {
-
-  // allocate context...
-  *ctx = (aes_context_t*) calloc(1, sizeof(aes_context_t));
-  if (!(*ctx))
-    return -1;
-  // ...and fill her up
-
-  // initialize data structures
-
-  // check key size and make key size (given in bytes) dependant settings
-  switch(key_size) {
-    case AES128_KEY_BYTES:    // 128 bit key size
-      break;
-    case AES192_KEY_BYTES:    // 192 bit key size
-      break;
-    case AES256_KEY_BYTES:    // 256 bit key size
-      break;
-    default:
-       traceEvent(TRACE_ERROR, "aes_init invalid key size %u\n", key_size);
-       return -1;
-  }
-
-  // key materiel handling
-  AES_set_encrypt_key(key, key_size * 8, &((*ctx)->enc_key));
-  AES_set_decrypt_key(key, key_size * 8, &((*ctx)->dec_key));
-
-  return 0;
-}
-
-
 #elif defined (__AES__) && defined (__SSE2__) // Intel's AES-NI ---------------------------
 
 
@@ -1210,7 +1136,7 @@ int aes_init (const unsigned char *key, size_t key_size, aes_context_t **ctx) {
 }
 
 
-#endif // openSSL 1.1, openSSL 1.0, plain C -----------------------------------------------
+#endif // openSSL 1.1, AES-NI, plain C ----------------------------------------------------
 
 int aes_deinit (aes_context_t *ctx) {
 

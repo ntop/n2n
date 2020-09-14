@@ -124,7 +124,7 @@ typedef struct ether_hdr ether_hdr_t;
 #include <assert.h>
 #include <sys/stat.h>
 #include <stdint.h>
-#if defined (HAVE_OPENSSL_1_0) || defined (HAVE_OPENSSL_1_1)
+#if defined (HAVE_OPENSSL_1_1)
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif

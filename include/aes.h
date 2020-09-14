@@ -17,7 +17,7 @@
  */
 
 
-#include "n2n.h"               // HAVE_OPENSSL_1_1, HAVE_OPENSSL_1_0, traceEvent ...
+#include "n2n.h"               // HAVE_OPENSSL_1_1, traceEvent ...
 
 
 #ifndef AES_H
@@ -49,15 +49,6 @@ typedef struct aes_context_t {
   const EVP_CIPHER    *cipher;                 /* cipher to use: e.g. EVP_aes_128_cbc */
   uint8_t             key[AES256_KEY_BYTES];   /* the pure key data for payload encryption & decryption */
   AES_KEY             ecb_dec_key;             /* one step ecb decryption key */
-} aes_context_t;
-
-#elif defined (HAVE_OPENSSL_1_0) // openSSL 1.0 -------------------------------------------
-
-#include <openssl/aes.h>
-
-typedef struct aes_context_t {
-  AES_KEY             enc_key;                 /* tx key */
-  AES_KEY             dec_key;                 /* tx key */
 } aes_context_t;
 
 #elif defined (__AES__) && defined (__SSE2__) // Intel's AES-NI ---------------------------
