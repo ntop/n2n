@@ -664,8 +664,8 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 
 // this functions wraps the call to internal speck_ctr functions which have slightly different
 // signature -- ctx by value for SSE with SPECK_CTX_BYVAL defined in speck.h, by name otherwise
-inline int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
-                      const unsigned char *n, speck_context_t *ctx) {
+int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
+               const unsigned char *n, speck_context_t *ctx) {
 
   return internal_speck_ctr (out, in, inlen, n,
 #if defined (SPECK_CTX_BYVAL)
