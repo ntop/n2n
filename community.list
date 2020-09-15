@@ -13,22 +13,19 @@ netleo
 ntop[0-1][0-9]
 #
 #   *  Note that fixed-name communities may not contain one of the following characters
-#      . ^ $  * + ? [ ] \
+#      . * + ? [ ] \
 #      as otherwise, they are interpreted as regular expression
 #
 #   *  Only fixed-name communities are supported for header encryption (-H)
 #
 #   *  Regular expression support the following placeholders
-#      '.'        Dot, matches any character                           (meaningless, as full matches only)
-#      '^'        Start anchor, matches beginning of string            (meaningless, as full matches only)
-#      '$'        End anchor, matches end of string
+#      '.'        Dot, matches any character
 #      '*'        Asterisk, match zero or more (greedy)
 #      '+'        Plus, match one or more (greedy)
 #      '?'        Question, match zero or one (non-greedy)
 #      '[abc]'    Character class, match if one of {'a', 'b', 'c'}
 #      '[^abc]'   Inverted class, match if NOT one of {'a', 'b', 'c'}  (feature is currently broken)
 #      '[a-zA-Z]' Character ranges, the character set of the ranges { a-z | A-Z }
-#      '\s'       Whitespace, \t \f \r \n \v and spaces
 #      '\S'       Non-whitespace
 #      '\w'       Alphanumeric, [a-zA-Z0-9_]
 #      '\W'       Non-alphanumeric

@@ -76,7 +76,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
     has_net = ( sscanf (line, "%s %s", cmn_str, net_str) == 2 );
 
     // if it contains typical characters...
-    if(NULL != strpbrk(cmn_str, ".^$*+?[]\\")) {
+    if(NULL != strpbrk(cmn_str, ".*+?[]\\")) {
       // ...it is treated as regular expression
       re = (struct sn_community_regular_expression*)calloc(1,sizeof(struct sn_community_regular_expression));
       if (re) {
