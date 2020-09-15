@@ -38,23 +38,18 @@ AC_ARG_WITH([openssl],
  [],
  [with_openssl=no])
 if test "x$with_openssl" != xno; then
-  AC_CHECK_LIB([crypto], [AES_cbc_encrypt])
-  if test "x$ac_cv_lib_crypto_AES_cbc_encrypt" != xyes; then
-    AC_MSG_RESULT(OpenSSL not present)
-  else
-    AC_DEFINE([HAVE_OPENSSL_1_0], [], [OpenSSL 1.0 is present])
-    N2N_LIBS="-lcrypto ${N2N_LIBS}"
-  fi
   OLD_CFLAGS="${CFLAGS}"
   OLD_LDFLAGS="${LDFLAGS}"
   CFLAGS="${CFLAGS} -I/usr/local/opt/openssl@1.1/include"
   LDFLAGS="${LDFLAGS} -L/usr/local/opt/openssl@1.1/lib/"
   AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset])
   if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_reset" != xyes; then
+     AC_MSG_RESULT(OpenSSL 1.1 not present)
      CFLAGS="${OLD_CFLAGS}"
      LDFLAGS="${OLD_LDFLAGS}"
   else
     AC_DEFINE([HAVE_OPENSSL_1_1], [], [OpenSSL 1.1 is present])
+    N2N_LIBS="-lcrypto ${N2N_LIBS}"
   fi
 fi
 
