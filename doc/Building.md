@@ -100,13 +100,14 @@ The `tools/n2n-benchmark` tool reports speed-ups of 200% or more! There is no kn
 
 Some parts of the code can be compiled to benefit from available hardware acceleration. It needs to be decided at compile-time. So, if compiling for a specific platform with known features (maybe the local one), it should be specified to the compiler, for example through the `-march=sandybridge` (you name it) or just `-march=native` for local use.
 
-So far, the following portions of n2n's code benefit from hardware acceleration:
+So far, the following portions of n2n's code benefit from hardware features:
 
 ```
 AES:               AES-NI
 ChaCha20:          SSE2, SSSE3
 SPECK:             SSE4.2, AVX2, NEON
 Pearson Hashing:   AES-NI
+Random Numbers:    RDSEED, RDRND (not faster but more random seed)
 ```
 
 The compilations flags could easily be combined:
@@ -135,4 +136,4 @@ which then will include ZSTD if found on the system. It will be available via `-
 
 `./configure --with-zstd --with-openssl CFLAGS="-O3 -march=native"`
 
-Again, this cannot be reiterated often enough, please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
+Again, and this needs to be reiterated sufficiently often, please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.

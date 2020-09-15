@@ -38,13 +38,13 @@ On Intel CPUs, Twofish usually is the slowest of the ciphers present. However, o
 
 AES also prepends a random value to the plaintext. Its size is adjustable by changing the `AES_PREAMBLE_SIZE` definition found in `src/transform_aes.c`. It defaults to AES_BLOCK_SIZE (== 16). The AES scheme uses a CBC/CTS scheme which can send out plaintext-length ciphertexts as long as they are one block or more in length.
 
-Apart from n2n's plain C implementation, Intel's AES-NI is supported – again, please habe a look at the [Building document](./Building.md). In case of openSSL support its `evp_*` interface gets used which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
+Apart from n2n's plain C implementation, Intel's AES-NI is supported – again, please have a look at the [Building document](./Building.md). In case of openSSL support its `evp_*` interface gets used which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
 
 ### ChaCha20
 
 ChaCha20 was the first stream cipher supported by n2n.
 
-In addition to the basic C implementation, a SSE version is offered. If compiled with openSSL support, ChaCha20 is provided via the `evp_*` interface. It is not used together with the Poly1305 message tag from the same author though. Whole packet's checksum will be handled in the header (see below).
+In addition to the basic C implementation, an SSE version is offered. If compiled with openSSL support, ChaCha20 is provided via the `evp_*` interface. It is not used together with the Poly1305 message tag from the same author though. Whole packet's checksum will be handled in the header (see below).
 
 The random full 128-bit IV is transmitted in plain.
 
@@ -54,7 +54,7 @@ ChaCha20 usually performs faster than AES-CTS.
 
 SPECK is recommended by the NSA for offical use in case AES implementation is not feasible due to system constraints (performance, size, …). The block cipher is used in CTR mode making it a stream cipher. The random full 128-bit IV is transmitted in plain.
 
-On Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4 or AVX2 if available (compile using `-march=native`). On Raspberry's ARM CPU, it is second place behind ChaCha20 and before Twofish.
+On modern Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4 or AVX2 if available. On Raspberry's ARM CPU, it is second place behind ChaCha20 and before Twofish.
 
 ### Random Numbers
 
@@ -81,7 +81,7 @@ The COMMON section is built as follows:
 ```
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   ! Version=2     ! TTL           ! Flags                         !
+   ! Version=3     ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  4 ! Community                                                     :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -89,7 +89,7 @@ The COMMON section is built as follows:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 12 ! ... Community ...                                             :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-16 ! ... Community ...                                             !
+16 ! ... Community                                                 !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -131,7 +131,7 @@ The scheme applied tries to maintain compatibility with current packet format an
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 12 ! ... Community                                                 !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-16 ! Version=2     ! TTL           ! Flags                         !
+16 ! Version=3     ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 - To be able to identify a correctly decrpyted header later on, a magic number is stamped in fourth line starting at byte number 12. We use "n2n" string and add the header length to be able to stop header decryption right before an eventually following payload begins – in case of PACKET-type, header-length does not equal packet-length.
@@ -148,7 +148,7 @@ The scheme applied tries to maintain compatibility with current packet format an
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 12 ! 24-bit Magic Number, "n2n" = 0x6E326E         ! Header Length !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-16 ! Version=2     ! TTL           ! Flags                         !
+16 ! Version=3     ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -164,7 +164,7 @@ Thus, header encryption will only work with previously determined community name
 
 ### Checksum
 
-The whole packet including the eventually present payload is checksummed using a modified Person hashing. It might seem a little short compared to usual message tags of 96 up to 128 bit, especially when using a stream cipher which easily allows for bit-flips. So, the 16-bit checksum is filled up with 80 more bits to obtain a 96-bit pre-IV. This pre-IV gets encrypted using a single block-cipher step to get the pseudo-random looking IV. This way, the checksum resists targeted bit-flips (to header, payload, and IV) as any change to the whole 96-bit IV would render the header un-decryptable.
+The whole packet including the eventually present payload is checksummed using a modified Person hashing. It might seem a little short compared to usual message tags of 96 up to 128 bit, especially when using a stream cipher which easily allows for bit-flips. So, the 16-bit checksum is filled up with 80 more bits to obtain a 96-bit pre-IV. This pre-IV gets encrypted using a single block-cipher step to get the pseudo-random looking IV. This way, the checksum resists targeted bit-flips (to header, payload, and IV) as any change to the whole 96-bit IV would render the header un-decryptable. Also, as explained below, the checksum comes along with a time stamp minimizing opportunities for random attacks.
 
 The single block-cipher step employs SPECK because it is fast and it offers a 96-bit version. The key is derived from the header key – a hash of the hash.
 

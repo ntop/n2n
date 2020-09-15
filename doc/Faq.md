@@ -24,6 +24,15 @@ You can request the current status by just sending a new line, i.e. pressing [EN
 `netcat -u localhost 5645`
 
 
+### Is there support for multiple supernodes?
+
+
+As of now, one additional supernode is supported. The additional supernode is handled in a backup-fashion: A reserve-supernode can be started if one fails. The reserve-supernode just has to be known to the edges beforehand (simply by an additional `-l <ip:port>` at the edge).
+
+Actively using several in parallel will have your network fall apart (partitioned – some edges connected to one supernode, some to another).
+
+Considering these known limitations, current discussions however seem to move more towards a fully p2p-approach which then would require no supernode at all, every node might be equal highly increasing network resilience.
+
 
 ## Edge
 
