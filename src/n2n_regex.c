@@ -177,7 +177,7 @@ re_t re_compile(const char* pattern)
             case 'D': {    re_compiled[j].type = NOT_DIGIT;        } break;
             case 'w': {    re_compiled[j].type = ALPHA;            } break;
             case 'W': {    re_compiled[j].type = NOT_ALPHA;        } break;
-            case 's': {    re_compiled[j].type = WHITESPACE;       } break; <-- disabled (incompatible to optionally provided network delimited by SPACE)
+            case 's': {    re_compiled[j].type = WHITESPACE;       } break;
             case 'S': {    re_compiled[j].type = NOT_WHITESPACE;   } break;
 
             /* Escaped character, e.g. '.' */
