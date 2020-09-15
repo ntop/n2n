@@ -26,6 +26,7 @@ ntop[0-1][0-9]
 #      '[abc]'    Character class, match if one of {'a', 'b', 'c'}
 #      '[^abc]'   Inverted class, match if NOT one of {'a', 'b', 'c'}  (feature is currently broken)
 #      '[a-zA-Z]' Character ranges, the character set of the ranges { a-z | A-Z }
+#      '\s'       Whitespace, \t \f \r \n \v and spaces
 #      '\S'       Non-whitespace
 #      '\w'       Alphanumeric, [a-zA-Z0-9_]
 #      '\W'       Non-alphanumeric

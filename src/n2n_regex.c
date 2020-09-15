@@ -38,7 +38,7 @@
  *   '[abc]'    Character class, match if one of {'a', 'b', 'c'}
  *   '[^abc]'   Inverted class, match if NOT one of {'a', 'b', 'c'} -- NOTE: feature is currently broken!
  *   '[a-zA-Z]' Character ranges, the character set of the ranges { a-z | A-Z }
- *   '\s'       Whitespace, \t \f \r \n \v and spaces     -- NOTE: currently disabled (incompatible with optionally provided network delimited by SPACE)
+ *   '\s'       Whitespace, \t \f \r \n \v and spaces
  *   '\S'       Non-whitespace
  *   '\w'       Alphanumeric, [a-zA-Z0-9_]
  *   '\W'       Non-alphanumeric
@@ -58,7 +58,7 @@
 #define MAX_CHAR_CLASS_LEN      40    /* Max length of character-class buffer in.   */
 
 
-enum { UNUSED, DOT, BEGIN, END, QUESTIONMARK, STAR, PLUS, CHAR, CHAR_CLASS, INV_CHAR_CLASS, DIGIT, NOT_DIGIT, ALPHA, NOT_ALPHA, /* WHITESPACE,*/ NOT_WHITESPACE, /* BRANCH */ };
+enum { UNUSED, DOT, BEGIN, END, QUESTIONMARK, STAR, PLUS, CHAR, CHAR_CLASS, INV_CHAR_CLASS, DIGIT, NOT_DIGIT, ALPHA, NOT_ALPHA, WHITESPACE, NOT_WHITESPACE, /* BRANCH */ };
 
 typedef struct regex_t
 {
@@ -177,7 +177,7 @@ re_t re_compile(const char* pattern)
             case 'D': {    re_compiled[j].type = NOT_DIGIT;        } break;
             case 'w': {    re_compiled[j].type = ALPHA;            } break;
             case 'W': {    re_compiled[j].type = NOT_ALPHA;        } break;
-//          case 's': {    re_compiled[j].type = WHITESPACE;       } break; <-- disabled (incompatible to optionally provided network delimited by SPACE)
+            case 's': {    re_compiled[j].type = WHITESPACE;       } break; <-- disabled (incompatible to optionally provided network delimited by SPACE)
             case 'S': {    re_compiled[j].type = NOT_WHITESPACE;   } break;
 
             /* Escaped character, e.g. '.' */
@@ -266,7 +266,7 @@ re_t re_compile(const char* pattern)
 
 void re_print(regex_t* pattern)
 {
-  const char* types[] = { "UNUSED", "DOT", "BEGIN", "END", "QUESTIONMARK", "STAR", "PLUS", "CHAR", "CHAR_CLASS", "INV_CHAR_CLASS", "DIGIT", "NOT_DIGIT", "ALPHA", "NOT_ALPHA", /* "WHITESPACE" ,*/ "NOT_WHITESPACE", /* "BRANCH" */ };
+  const char* types[] = { "UNUSED", "DOT", "BEGIN", "END", "QUESTIONMARK", "STAR", "PLUS", "CHAR", "CHAR_CLASS", "INV_CHAR_CLASS", "DIGIT", "NOT_DIGIT", "ALPHA", "NOT_ALPHA", "WHITESPACE" , "NOT_WHITESPACE", /* "BRANCH" */ };
 
   int i;
   int j;
@@ -332,7 +332,7 @@ static int matchdot(char c)
 }
 static int ismetachar(char c)
 {
-  return (/*(c == 's') ||*/ (c == 'S') || (c == 'w') || (c == 'W') || (c == 'd') || (c == 'D'));
+  return ((c == 's') || (c == 'S') || (c == 'w') || (c == 'W') || (c == 'd') || (c == 'D'));
 }
 
 static int matchmetachar(char c, const char* str)
@@ -343,7 +343,7 @@ static int matchmetachar(char c, const char* str)
     case 'D': return !matchdigit(c);
     case 'w': return  matchalphanum(c);
     case 'W': return !matchalphanum(c);
-//  case 's': return  matchwhitespace(c);
+    case 's': return  matchwhitespace(c);
     case 'S': return !matchwhitespace(c);
     default:  return (c == str[0]);
   }
@@ -398,7 +398,7 @@ static int matchone(regex_t p, char c)
     case NOT_DIGIT:      return !matchdigit(c);
     case ALPHA:          return  matchalphanum(c);
     case NOT_ALPHA:      return !matchalphanum(c);
-//  case WHITESPACE:     return  matchwhitespace(c);
+    case WHITESPACE:     return  matchwhitespace(c);
     case NOT_WHITESPACE: return !matchwhitespace(c);
     default:             return  (p.ch == c);
   }
