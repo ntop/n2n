@@ -26,12 +26,20 @@ You can request the current status by just sending a new line, i.e. pressing [EN
 
 ### Is there support for multiple supernodes?
 
-
 As of now, one additional supernode is supported. The additional supernode is handled in a backup-fashion: A reserve-supernode can be started if one fails. The reserve-supernode just has to be known to the edges beforehand (simply by an additional `-l <ip:port>` at the edge).
 
-Actively using several in parallel will have your network fall apart (partitioned – some edges connected to one supernode, some to another).
+Actively using several supernodes in parallel will have the network fall apart (partitioned – some edges connected to one supernode, some to another).
 
-Considering these known limitations, current discussions however seem to move more towards a fully p2p-approach which then would require no supernode at all, every node might be equal highly increasing network resilience.
+Considering these known limitations, current discussions however seem to include thoughts on increasing supernode reliability as well as fall-back mechanisms and might even shift more towards a full p2p-approach which then would not require a supernode at all, every node could be equal highly increasing network resilience.
+
+
+### Can a supernode listen on multiple ports?
+
+The supernode itself can only listen on one port. However, your firewall might be able to map additional UDP ports to the supernode's regular port:
+
+`sudo iptables -t nat -A PREROUTING -i <network interface name> -d <supernode's ip address> -p udp --dport <additional port number> -j REDIRECT --to-ports <regular supernode port number>`
+
+This command line can be put down as additional `ExecStartPost=` line (without `sudo`) in the supernode's `.service` file which can hold several such lines if required.
 
 
 ## Edge
