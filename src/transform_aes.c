@@ -187,10 +187,11 @@ static int setup_aes_key(transop_aes_t *priv, const uint8_t *password, ssize_t p
   pearson_hash_256(key_mat, password, password_len);
 
   // the length-dependant scheme for key setup was discussed on github:
-  // https://github.com/ntop/n2n/issues/101
-  if(password_len >= 65) {
+  // https://github.com/ntop/n2n/issues/101 -- as no iv encryption required
+  //  anymore, the key-size trigger values were roughly halved
+  if(password_len >= 33) {
     key_size = AES256_KEY_BYTES;       // 256 bit
-  } else if(password_len >= 44) {
+  } else if(password_len >= 23) {
     key_size = AES192_KEY_BYTES;       // 192 bit
   } else {
     key_size = AES128_KEY_BYTES;       // 128 bit
