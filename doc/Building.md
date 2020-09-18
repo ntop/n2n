@@ -120,7 +120,7 @@ Some ciphers' speed can take advantage of OpenSSL support which is disabled by d
 
 `./configure --with-openssl`
 
-which then will include OpenSSL 1.0 or 1.1 if found on the system. This can be combined with the hardware support and compiler optimizations such as
+which then will include OpenSSL 1.1 if found on the system. This can be combined with the hardware support and compiler optimizations such as
 
 `./configure --with-openssl CFLAGS="-O3 -march=native"`
 
