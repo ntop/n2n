@@ -40,6 +40,8 @@ AES also prepends a random value to the plaintext. Its size is adjustable by cha
 
 Apart from n2n's plain C implementation, Intel's AES-NI is supported – again, please have a look at the [Building document](./Building.md). In case of openSSL support its `evp_*` interface gets used which also offers hardware acceleration where available (SSE, AES-NI, …). It however is slower than the following stream ciphers because the CBC mode cannot compete with the optimized stream ciphers.
 
+This cipher's different key-sizes are triggered by the length of the user-provided key: 22 characters or less make n2n use AES-128, between 23 and 32 characters lead to AES-192, and 33 or more characters trigger AES-256.
+
 ### ChaCha20
 
 ChaCha20 was the first stream cipher supported by n2n.
