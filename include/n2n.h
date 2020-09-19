@@ -459,7 +459,7 @@ int sock_equal( const n2n_sock_t * a,
 /* Header encryption */
 uint64_t time_stamp(void);
 uint64_t initial_time_stamp (void);
-int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp);
+int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp, int allow_jitter);
 
 /* Operations on peer_info lists. */
 size_t purge_peer_list( struct peer_info ** peer_list,

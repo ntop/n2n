@@ -468,7 +468,7 @@ uint64_t initial_time_stamp (void) {
 
 // checks if a provided time stamp is consistent with current time and previously valid time stamps
 // and, in case of validity, updates the "last valid time stamp"
-int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp) {
+int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp, int allow_jitter) {
 
   int64_t diff; // do not change to unsigned
 
@@ -483,12 +483,14 @@ int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp) {
 
   // if applicable: is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
   if(NULL != previous_stamp) {
-    // if no jitter allowed, reset lowest three (random) nybbles; the codnition shoudl already be evaluated by the compiler
-    if(TIME_STAMP_JITTER == 0) {
-      stamp = (stamp >> 12) << 12;
-      *previous_stamp = (*previous_stamp >> 12) << 12;
-    }
-    diff = stamp - *previous_stamp + TIME_STAMP_JITTER;
+    // always reset lowest three (random) nybbles -- important in case of no jitter, do not if() to avoid jumping
+    stamp = (stamp >> 12) << 12;
+    *previous_stamp = (*previous_stamp >> 12) << 12;
+
+    diff = stamp - *previous_stamp;
+    if (allow_jitter)
+      diff += TIME_STAMP_JITTER;
+
     if(diff <= 0) {
       traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp too old compared to previous.");
       return (0); // failure

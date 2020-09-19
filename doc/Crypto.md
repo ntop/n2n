@@ -191,6 +191,8 @@ Upon receival, the time stamp as well as the checksum can be extracted from the 
 
 - The (remote) time stamp is checked against the local clock. It may not deviate more than plus/minus 16 seconds. So, edges and supernode need to keep a somewhat current time. This limit can be adjusted by changing the `TIME_STAMP_FRAME` definition. It is time-zone indifferent as UTC is used.
 
+- However, the systemic packets such as REGISTER_SUPER are not allowed any time stamp jitter because n2n relies on the actual sender's socket. A replay from another IP within any allowed jitter time frame would deviate the traffic which shall be prevented (even if it remains undecryptable). Under absolutely rare (!) circumstances, this might cause a re-registration requirement which happens automatically but might cause a small delay – security (including network availability) first!
+
 - Valid (remote) time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit can be adjusted by changing the `TIME_STAMP_JITTER` definition.
 
 The way the IV is used for replay protection and for checksumming makes enabled header encryption a prerequisite for these features.

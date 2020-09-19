@@ -456,7 +456,7 @@ int assign_one_ip_subnet(n2n_sn_t *sss,
  */
 static int find_edge_time_stamp_and_verify (struct peer_info * edges,
 					    int from_supernode, n2n_mac_t mac,
-					    uint64_t stamp) {
+					    uint64_t stamp, int allow_jitter) {
 
   uint64_t * previous_stamp = NULL;
 
@@ -471,7 +471,7 @@ static int find_edge_time_stamp_and_verify (struct peer_info * edges,
   }
 
   // failure --> 0;  success --> 1
-  return ( time_stamp_verify_and_update (stamp, previous_stamp) );
+  return ( time_stamp_verify_and_update (stamp, previous_stamp, allow_jitter) );
 }
 
 static int purge_expired_communities(n2n_sn_t *sss,
@@ -784,7 +784,7 @@ static int process_udp(n2n_sn_t * sss,
 
       // already checked for valid comm
       if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-	if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, pkt.srcMac, stamp)) {
+	if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
 	  traceEvent(TRACE_DEBUG, "process_udp dropped PACKET due to time stamp error.");
 	  return -1;
 	}
@@ -865,7 +865,7 @@ static int process_udp(n2n_sn_t * sss,
 
       // already checked for valid comm
       if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-	if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.srcMac, stamp)) {
+	if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
 	  traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER due to time stamp error.");
 	  return -1;
 	}
@@ -936,7 +936,7 @@ static int process_udp(n2n_sn_t * sss,
 
       if (comm) {
 	if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-	  if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.edgeMac, stamp)) {
+	  if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, reg.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
 	    traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER due to time stamp error.");
 	    return -1;
 	  }
@@ -1054,7 +1054,7 @@ static int process_udp(n2n_sn_t * sss,
 
     // already checked for valid comm
     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, query.srcMac, stamp)) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
         traceEvent(TRACE_DEBUG, "process_udp dropped QUERY_PEER due to time stamp error.");
         return -1;
       }
