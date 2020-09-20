@@ -4,7 +4,7 @@ include(CheckFunctionExists)
 SET(CMAKE_VERBOSE_MAKEFILE ON)
 
 # N2n release information
-set(N2N_VERSION "2.7.0")
+set(N2N_VERSION "2.8.0")
 set(N2N_OSNAME ${CMAKE_SYSTEM})
 execute_process(
         COMMAND git --version

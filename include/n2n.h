@@ -38,7 +38,7 @@
 #ifdef WIN32
 #include "win32/n2n_win32.h"
 
-#ifdef _MSC_VER
+#ifndef CMAKE_BUILD
 #include "config.h" /* Visual C++ */
 #else
 #include "win32/winconfig.h"
