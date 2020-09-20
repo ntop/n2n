@@ -18,7 +18,9 @@ n2n supports several ways to assign an IPv4 address to the virtual ethernet devi
 
 ### Manually Assigned IP Address
 
-The command line parameter `-a <IP address>` assigns a static IP address, e.g. `-a 192.168.8.5` to the device. The netmask can optionally be provided using `-s <netmask>`, e.g. `-s 255.255.255.0` which also is the default should `-s` not be provided.
+The command line parameter `-a <static:IP address>` assigns a static IP address, e.g. `-a static:192.168.8.5` to the device. The optional `static` keyword (and the delimiting colon) can be omitted, so `-a 192.168.8.5` works as well.
+
+The netmask can optionally be provided using `-s <netmask>`, e.g. `-s 255.255.255.0` which also is the default should `-s` not be provided.
 
 ### Auto-IP Address
 
