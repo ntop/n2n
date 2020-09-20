@@ -6,7 +6,7 @@ For MacOS and Windows specific instructions, please see the [Building](./Buildin
 
 ## Device Name
 
-If the OS specific driver allows for naming the virtual Ethernet device, n2n's `-d <device>` command line options can be used to give a name, e.g. `-d n2n0`. This device name makes the virtual ethernet  device easily accessible to all `ip` command activity, `iptables`, `tcpdump` and any other of your preferred network tools. It defaults to `edge0` if not provided through `-d`.
+If the OS specific driver allows for naming the virtual Ethernet device, n2n's `-d <device>` command line options can be used to give a name, e.g. `-d n2n0`. This device name makes the virtual ethernet device easily accessible to all `ip` command activity, `iptables`, `tcpdump` and any other of your preferred network tools. It defaults to `edge0` if not provided through `-d`.
 
 ## MAC
 
@@ -22,7 +22,7 @@ The command line parameter `-a <IP address>` assigns a static IP address, e.g. `
 
 ### Auto-IP Address
 
-If `-a` is omitted, the supernode assigns an IP address to the node. This feature uses different IP address pools per community. So, all edges in the same community will find themselves in the same sub-network.
+If `-a` is omitted, the supernode assigns an IP address to the node. This feature uses different IP address pools on a per-community basis. So, all edges in the same community will find themselves in the same sub-network.
 
 By default, `/24`-sized IP address sub-network pools from the upper half of the `10.0.0.0` class A network will be used, that is from `10.128.0.0/24` … `10.255.255.0/24`. The supernode can be configured to assign addresses from a different network range: `-d 10.0.0.0-10.255.0.0/16` would the supernode make use of the complete `10.0.0.0` class A range but handle `/16`-sized sub-networks. Also, named communities could be pre-assigned certain sub-networks, please see the explanatory comments in the `community.list` file.
 
@@ -105,8 +105,8 @@ has been provided:
   silently dropping a oversize packet due to the DF flag, however it possibly increments fragmentation on the path.
 - As examplained above, a lower MTU is set on the VPN interface, thus removing excessive fragmentation on
   the sender.
-- 1400 B is used instead of 1500 B as the reference value for the internet interface MTU.
+- 1290 B is used instead of 1500 B as the reference value for the internet interface MTU.
   This essentially avoids fragmentation when the PMTU is >= 1400 B.
 
 This is a conservative solution which should make n2n work by default. The user can manually
-specify the MTU and re-enable PMTU discovery via the CLI options.
+specify the MTU (`-M <mtu>`) and re-enable PMTU discovery (`-D`) via the CLI options.
