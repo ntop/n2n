@@ -394,7 +394,7 @@ static const int definitely_from_supernode = 1;
  */
 static int find_peer_time_stamp_and_verify (n2n_edge_t * eee,
                                            int from_supernode, const n2n_mac_t mac,
-                                           uint64_t stamp) {
+                                           uint64_t stamp, int allow_jitter) {
 
   uint64_t * previous_stamp = NULL;
 
@@ -416,7 +416,7 @@ static int find_peer_time_stamp_and_verify (n2n_edge_t * eee,
   }
 
   // failure --> 0;  success --> 1
-  return ( time_stamp_verify_and_update (stamp, previous_stamp) );
+  return ( time_stamp_verify_and_update (stamp, previous_stamp, allow_jitter) );
 }
 
 /* ************************************** */
@@ -1787,7 +1787,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
           if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-            if(!find_peer_time_stamp_and_verify (eee, from_supernode, pkt.srcMac, stamp)) {
+            if(!find_peer_time_stamp_and_verify (eee, from_supernode, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
               traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET due to time stamp error.");
               return;
             }
@@ -1827,7 +1827,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
           if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-            if(!find_peer_time_stamp_and_verify (eee, from_supernode, reg.srcMac, stamp)) {
+            if(!find_peer_time_stamp_and_verify (eee, from_supernode, reg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
               traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER due to time stamp error.");
               return;
             }
@@ -1878,7 +1878,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	decode_REGISTER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
 
           if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-            if(!find_peer_time_stamp_and_verify (eee, !definitely_from_supernode, ra.srcMac, stamp)) {
+            if(!find_peer_time_stamp_and_verify (eee, !definitely_from_supernode, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
               traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_ACK due to time stamp error.");
               return;
             }
@@ -1918,7 +1918,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	      decode_REGISTER_SUPER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
 
               if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                if(!find_peer_time_stamp_and_verify (eee, definitely_from_supernode, null_mac, stamp)) {
+                if(!find_peer_time_stamp_and_verify (eee, definitely_from_supernode, null_mac, stamp, TIME_STAMP_NO_JITTER)) {
                   traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_SUPER_ACK due to time stamp error.");
                   return;
                 }
@@ -1988,7 +1988,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
         decode_PEER_INFO( &pi, &cmn, udp_buf, &rem, &idx );
 
         if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-          if(!find_peer_time_stamp_and_verify (eee, definitely_from_supernode, null_mac, stamp)) {
+          if(!find_peer_time_stamp_and_verify (eee, definitely_from_supernode, null_mac, stamp, TIME_STAMP_ALLOW_JITTER)) {
             traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PEER_INFO due to time stamp error.");
             return;
           }
