@@ -60,7 +60,7 @@ make install
 
 Some parts of the code significantly benefit from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, use `./configure CFLAGS="-O3 -march=native"` for configuration instead of `./configure`.
 
-For Windows, MacOS and general building options, please check out [Building.md](doc/Building.md) for compilation and running.
+For Windows, MacOS and general building options, please check out [Building documentation](doc/Building.md) for compilation and running.
 
 **IMPORTANT** It is generally recommended to use the [latest stable release](https://github.com/ntop/n2n/releases). Please note that the current _dev_ branch usually is not guaranteed to be backward compatible neither with the latest stable release nor with previous _dev_ states. On the other hand, if you dare to try the bleeding edge features, you are encouraged to compile from _dev_ – just keep track of sometimes rapidly occuring changes. Feedback in the _Issues_ section is appreciated.
 
@@ -81,7 +81,7 @@ When payload encryption is enabled (provide a key using `-k`), the supernode wil
 the traffic exchanged between two edge nodes but it will know that edge A is talking with edge B.
 
 The choice of encryption schemes that can be applied to payload has recently been enhanced. Please have
-a look at [Crypto.md](doc/Crypto.md) for a quick comparison chart to help make a choice. n2n edge nodes use 
+a look at [Crypto description](doc/Crypto.md) for a quick comparison chart to help make a choice. n2n edge nodes use 
 Twofish encryption by default for compatibility reasons with existing versions. Other ciphers can be chosen
 using the `-A_` option.
 
@@ -90,16 +90,13 @@ A benchmark of the encryption methods is available when compiled from source wit
 The header which contains some metadata like the virtual MAC address of the edge nodes, their IP address
 and the community name optionally can be encrypted applying `-H` on the edges.
 
+## Virtual Network Device Configuration
+
+The [TAP Configuration Guide](https://github.com/ntop/n2n/blob/dev/doc/TapConfiguration.md) contains hints on various settings that can be applied to the virtual network device, including IPv6 addresses as well as notes on MTU and the use of DHCP servers.
+
 ## Routing the Traffic
 
-Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`-n`). Details can be found in the [Routing.md](doc/Routing.md) document.
-
-## IPv6 Support
-
-n2n can tunnel IPv6 traffic into the virtual network but does not support
-IPv6 for edge-to-supernode communication yet.
-
-Have a look at [IPv6.md](https://github.com/ntop/n2n/blob/dev/doc/IPv6.md) for more information.
+Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`-n`). Details can be found in the [Routing document](doc/Routing.md).
 
 ## Contribution
 
