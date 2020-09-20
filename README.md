@@ -92,7 +92,7 @@ and the community name optionally can be encrypted applying `-H` on the edges.
 
 ## Virtual Network Device Configuration
 
-The [TAP Configuration Guide](https://github.com/ntop/n2n/blob/dev/doc/TapConfiguration.md) contains hints on various settings that can be applied to the virtual network device, including IPv6 addresses as well as notes on MTU and the use of DHCP servers.
+The [TAP Configuration Guide](https://github.com/ntop/n2n/blob/dev/doc/TapConfiguration.md) contains hints on various settings that can be applied to the virtual network device, including IPv6 addresses as well as notes on MTU and on how to draw IP addresses from DHCP servers.
 
 ## Routing the Traffic
 
