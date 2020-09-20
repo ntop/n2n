@@ -108,9 +108,9 @@ static void help() {
 	 );
   printf("edge "
 #if defined(N2N_CAN_NAME_IFACE)
-	 "-d <tun device> "
+	 "-d <tap device> "
 #endif /* #if defined(N2N_CAN_NAME_IFACE) */
-	 "-a [static:|dhcp:]<tun IP address> "
+	 "-a [static:|dhcp:]<tap IP address> "
 	 "-c <community> "
 	 "[-k <encrypt key>]\n"
 	 "    "
@@ -136,7 +136,7 @@ static void help() {
 	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
-  printf("-d <tun device>          | tun device name\n");
+  printf("-d <tap device>          | tap device name\n");
 #endif
 
   printf("-a <mode:address>        | Set interface address. For DHCP use '-r -a dhcp:0.0.0.0'\n");
@@ -518,7 +518,7 @@ static const struct option long_options[] =
   {
    { "community",       required_argument, NULL, 'c' },
    { "supernode-list",  required_argument, NULL, 'l' },
-   { "tun-device",      required_argument, NULL, 'd' },
+   { "tap-device",      required_argument, NULL, 'd' },
    { "euid",            required_argument, NULL, 'u' },
    { "egid",            required_argument, NULL, 'g' },
    { "help"   ,         no_argument,       NULL, 'h' },
@@ -901,7 +901,7 @@ int main(int argc, char* argv[]) {
 	if (tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
 	                eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
 	                eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0) exit(1);
-	traceEvent(TRACE_NORMAL, "Local tuntap IP: %s, Mask: %s",
+	traceEvent(TRACE_NORMAL, "Local tap IP: %s, Mask: %s",
 	           eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask);
 	memcpy(&eee->device, &tuntap, sizeof(tuntap));
 //	hexdump((unsigned char*)&tuntap,sizeof(tuntap_dev));
