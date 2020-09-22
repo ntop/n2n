@@ -63,6 +63,9 @@
 #define N2N_COMPRESSION_ID_ZSTD		3	/* set if '-z2' cli option is present, available only if compiled with zstd lib */
 #define ZSTD_COMPRESSION_LEVEL		7	/* 1 (faster) ... 22 (more compression) */
 
+/* Federation indicator */
+#define FEDERATION_ENABLED     1 
+
 /* (un)purgeable community indicator (supernode) */
 #define COMMUNITY_UNPURGEABLE		0
 #define COMMUNITY_PURGEABLE		1
