@@ -45,55 +45,66 @@ int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
 
 /** Find the address and IP mode for the tuntap device.
  *
- *  s is one of these forms:
+ *  s is of the form:
  *
- *  <host> := <hostname> | A.B.C.D
+ * ["static"|"dhcp",":"] (<host>|<ip>) [/<cidr subnet mask>]
  *
- *  <host> | static:<host> | dhcp:<host>
+ * for example    static:192.168.8.5/24
  *
- *  If the mode is present (colon required) then fill ip_mode with that value
- *  otherwise do not change ip_mode. Fill ip_mode with everything after the
- *  colon if it is present; or s if colon is not present.
- *
- *  ip_add and ip_mode are NULL terminated if modified.
+ * Fill the parts of the string into the fileds, ip_mode only if
+ * present. All strings are NULL terminated.
  *
  *  return 0 on success and -1 on error
  */
 static int scan_address(char * ip_addr, size_t addr_size,
+			char * netmask, size_t netmask_size,
 			char * ip_mode, size_t mode_size,
-			const char * s) {
-  int retval = -1;
-  char * p;
+			char * s) {
 
-  if((NULL == s) || (NULL == ip_addr))
-    {
-      return -1;
-    }
+  int retval = -1;
+  char * start;
+  char * end;
+  int bitlen = N2N_EDGE_DEFAULT_CIDR_NM;
+
+  if((NULL == s) || (NULL == ip_addr) || (NULL == netmask)) {
+    return -1;
+  }
 
   memset(ip_addr, 0, addr_size);
+  memset(netmask, 0, netmask_size);
 
-  p = strpbrk(s, ":");
+  start = s;
+  end = strpbrk(s, ":");
 
-  if(p)
-    {
-      /* colon is present */
-      if(ip_mode)
-        {
-	  size_t end=0;
-
-	  memset(ip_mode, 0, mode_size);
-	  end = MIN(p-s, (ssize_t)(mode_size-1)); /* ensure NULL term */
-	  strncpy(ip_mode, s, end);
-	  strncpy(ip_addr, p+1, addr_size-1); /* ensure NULL term */
-	  retval = 0;
-        }
+  if(end) {
+    // colon is present
+    if(ip_mode) {
+      memset(ip_mode, 0, mode_size);
+      strncpy(ip_mode, start, (size_t)MIN(end - start, mode_size - 1));
     }
-  else
-    {
-      /* colon is not present */
-      strncpy(ip_addr, s, addr_size-1);
-      ip_addr[addr_size-1] = '\0';
-    }
+    start = end + 1;
+  } else {
+    // colon is not present
+  }
+  // start now points to first address character
+  retval = 0; // we have got an address
+
+  end = strpbrk(start, "/");
+
+  if(!end)
+    // no slash present -- default end
+    end = s + strlen(s);
+
+  strncpy(ip_addr, start, (size_t)MIN(end - start, addr_size - 1)); // ensure NULL term
+
+  if(end) {
+    // slash is present
+
+    // now, handle the sub-network address
+    sscanf(end + 1, "%u", &bitlen);
+    bitlen = htobe32(bitlen2mask(bitlen));
+    inet_ntop(AF_INET, &bitlen, netmask, netmask_size);
+  }
 
   return retval;
 }
@@ -110,11 +121,10 @@ static void help() {
 #if defined(N2N_CAN_NAME_IFACE)
 	 "-d <tap device> "
 #endif /* #if defined(N2N_CAN_NAME_IFACE) */
-	 "-a [static:|dhcp:]<tap IP address> "
+	 "-a [static:|dhcp:]<tap IP address>[/nn] "
 	 "-c <community> "
 	 "[-k <encrypt key>]\n"
 	 "    "
-	 "[-s <netmask>] "
 #ifndef WIN32
 	 "[-u <uid> -g <gid>]"
 #endif /* #ifndef WIN32 */
@@ -139,10 +149,9 @@ static void help() {
   printf("-d <tap device>          | tap device name\n");
 #endif
 
-  printf("-a <mode:address>        | Set interface address. For DHCP use '-r -a dhcp:0.0.0.0'\n");
+  printf("-a [mode:]<address>[/nn] | Interface address and optional subnet (cidr, default /24). For DHCP use '-r -a dhcp:0.0.0.0'\n");
   printf("-c <community>           | n2n community name the edge belongs to.\n");
   printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>.\n");
-  printf("-s <netmask>             | Edge interface netmask in dotted decimal notation (255.255.255.0).\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
   printf("-L <reg_ttl>             | TTL for registration packet when UDP NAT hole punching through supernode (default 0 for not set )\n");
@@ -273,6 +282,7 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
   case 'a': /* IP address and mode of TUNTAP interface */
     {
       scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
+		   ec->netmask, N2N_NETMASK_STR_SIZE,
 		   ec->ip_mode, N2N_IF_MODE_SIZE,
 		   optargument);
       break;
@@ -472,17 +482,6 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
       conf->routes[conf->num_routes] = route;
       conf->num_routes++;
 
-      break;
-    }
-
-  case 's': /* Subnet Mask */
-    {
-      if(0 != ec->got_s) {
-        traceEvent(TRACE_WARNING, "Multiple subnet masks supplied");
-      }
-      strncpy(ec->netmask, optargument, N2N_NETMASK_STR_SIZE);
-      ec->netmask[N2N_NETMASK_STR_SIZE - 1] = '\0';
-      ec->got_s = 1;
       break;
     }
 
@@ -809,9 +808,9 @@ int main(int argc, char* argv[]) {
 #ifdef WIN32
   ec.tuntap_dev_name[0] = '\0';
 #else
-  snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), "edge0");
+  snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), N2N_EDGE_DEFAULT_DEV_NAME);
 #endif
-  snprintf(ec.netmask, sizeof(ec.netmask), "255.255.255.0");
+  snprintf(ec.netmask, sizeof(ec.netmask), N2N_EDGE_DEFAULT_NETMASK);
 
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &conf, &ec);
