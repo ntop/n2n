@@ -202,6 +202,16 @@ static int try_broadcast(n2n_sn_t * sss,
   return 0;
 }
 
+/** Initialise some fields of the community structure **/
+int comm_init(struct sn_community *comm, char* cmn){
+	memset(comm, 0, sizeof(struct sn_community));
+
+	strncpy((char*)comm->community, cmn, N2N_COMMUNITY_SIZE-1);
+	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
+	comm->is_federation = IS_NO_FEDERATION;
+
+	return 0; /* OK */
+}
 
 /** Initialise the supernode structure */
 int sn_init(n2n_sn_t *sss) {
