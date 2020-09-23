@@ -969,12 +969,9 @@ static int process_udp(n2n_sn_t * sss,
       }
 
       if(!comm && (!sss->lock_communities || (match == 1))) {
-	comm = calloc(1, sizeof(struct sn_community));
+	comm_init(comm,(char *)cmn.community);
 
 	if(comm) {
-	  strncpy(comm->community, (char*)cmn.community, N2N_COMMUNITY_SIZE-1);
-	  comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
-	  comm->is_federation = IS_NO_FEDERATION;
 	  /* new communities introduced by REGISTERs could not have had encrypted header... */
 	  comm->header_encryption = HEADER_ENCRYPTION_NONE;
 	  comm->header_encryption_ctx = NULL;
