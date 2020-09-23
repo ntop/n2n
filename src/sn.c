@@ -94,6 +94,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
     if(s != NULL) {
       strncpy((char*)s->community, cmn_str, N2N_COMMUNITY_SIZE-1);
       s->community[N2N_COMMUNITY_SIZE-1] = '\0';
+      s->is_federation = IS_NO_FEDERATION;
       /* loaded from file, this community is unpurgeable */
       s->purgeable = COMMUNITY_UNPURGEABLE;
       /* we do not know if header encryption is used in this community,
