@@ -64,8 +64,8 @@
 #define ZSTD_COMPRESSION_LEVEL		7	/* 1 (faster) ... 22 (more compression) */
 
 /* Federation indicators */
-#define IS_FEDERATION        1
-#define IS_NO_FEDERATION     0 
+enum federation{IS_FEDERATION = 1,IS_NO_FEDERATION = 0};
+
 
 /* (un)purgeable community indicator (supernode) */
 #define COMMUNITY_UNPURGEABLE		0
