@@ -493,6 +493,7 @@ int quick_edge_init(char *device_name, char *community_name,
 		    char *local_ip_address,
 		    char *supernode_ip_address_port,
 		    int *keep_on_running);
+int comm_init(struct sn_community *comm, char* cmn);
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
