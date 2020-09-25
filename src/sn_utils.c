@@ -204,9 +204,6 @@ static int try_broadcast(n2n_sn_t * sss,
 
 /** Initialise some fields of the community structure **/
 int comm_init(struct sn_community *comm, char *cmn){
-	
-	comm = (struct sn_community*)malloc(sizeof(struct sn_community));
-	memset(comm, 0, sizeof(struct sn_community));
 
 	strncpy((char*)comm->community, cmn, N2N_COMMUNITY_SIZE-1);
 	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
@@ -983,6 +980,7 @@ static int process_udp(n2n_sn_t * sss,
 
       if(!comm && (!sss->lock_communities || (match == 1))) {
 	      
+	comm = (struct sn_community*)calloc(1,sizeof(struct sn_community));
 	comm_init(comm,(char *)cmn.community);
 
 	if(comm) {
