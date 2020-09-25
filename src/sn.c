@@ -21,6 +21,8 @@
 #include "n2n.h"
 #include "header_encryption.h"
 
+#define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
+
 static n2n_sn_t sss_node;
 
 /** Load the list of allowed communities. Existing/previous ones will be removed
@@ -179,6 +181,8 @@ static void help() {
 #if defined(N2N_HAVE_DAEMON)
   printf("[-f] ");
 #endif
+  printf("[-F <federation_name>] ");
+  printf("[-m <mac_address>] ");
 #ifndef WIN32
   printf("[-u <uid> -g <gid>] ");
 #endif /* ifndef WIN32 */
@@ -192,6 +196,9 @@ static void help() {
 #if defined(N2N_HAVE_DAEMON)
   printf("-f                | Run in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
+  printf("-F <fed_name>     | Name of the supernodes federation (otherwise use '%s' by default)\n",(char *)FEDERATION_NAME);
+  printf("-m <mac_addr>     | Fix MAC address for the supernode (otherwise it may be random)\n"
+         "                  | eg. -m 01:02:03:04:05:06\n");
 #ifndef WIN32
   printf("-u <UID>          | User ID (numeric) to use when privileges are dropped.\n");
   printf("-g <GID>          | Group ID (numeric) to use when privileges are dropped.\n");
@@ -272,6 +279,24 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     break;
 #endif
 
+  case 'F': { /* federation name */
+    struct sn_community *fed;
+
+    HASH_FIND_COMMUNITY(sss->communities, FEDERATION_NAME, fed);
+
+    if(fed != NULL){
+      snprintf(fed->community,N2N_COMMUNITY_SIZE-1,"*%s",_optarg);
+      strncpy(sss->federation, fed->community, N2N_COMMUNITY_SIZE-1);
+      sss->federation[N2N_COMMUNITY_SIZE-1] = '\0';
+    }
+    break;
+  }
+
+  case 'm': {/* MAC address */
+    str2mac(sss->mac_addr,_optarg);
+    break;
+  }
+
   case 'c': /* community file */
     load_allowed_sn_community(sss, _optarg);
     break;
@@ -316,7 +341,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fl:u:g:t:a:c:vh",
+  while((c = getopt_long(argc, argv, "fl:u:g:t:a:c:F:m:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);
@@ -410,6 +435,35 @@ static int loadFromFile(const char *path, n2n_sn_t *sss) {
 
 /* *************************************************** */
 
+/* Add the federation to the communities list of a supernode */
+static int add_federation_to_communities(n2n_sn_t *sss){
+  struct sn_community *fed;
+  uint32_t  num_communities = 0;
+
+  fed = (struct sn_community *)calloc(1,sizeof(struct sn_community));
+  comm_init(fed,sss->federation);
+
+  if(fed != NULL) {
+    /* enable the flag for federation */
+    fed->is_federation = IS_FEDERATION;
+    fed->purgeable = COMMUNITY_UNPURGEABLE;
+    /* header encryption enabled by default */
+    fed->header_encryption = HEADER_ENCRYPTION_ENABLED;
+    /*setup the encryption key */
+    packet_header_setup_key(fed->community, &(fed->header_encryption_ctx), &(fed->header_iv_ctx));
+    HASH_ADD_STR(sss->communities, community, fed);
+
+    num_communities = HASH_COUNT(sss->communities);
+
+    traceEvent(TRACE_INFO, "Added federation '%s' to the list of communities [total: %u]",
+  		 (char*)fed->community, num_communities);
+  }
+
+  return 0;
+}
+
+/* *************************************************** */
+
 #ifdef __linux__
 static void dump_registrations(int signo) {
   struct sn_community *comm, *ctmp;
@@ -479,6 +533,7 @@ int main(int argc, char * const argv[]) {
 #endif
 
   sn_init(&sss_node);
+  add_federation_to_communities(&sss_node);
 
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &sss_node);

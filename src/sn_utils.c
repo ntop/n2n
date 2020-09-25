@@ -234,8 +234,17 @@ int sn_init(n2n_sn_t *sss) {
   sss->max_auto_ip_net.net_addr = inet_addr(N2N_SN_MAX_AUTO_IP_NET_DEFAULT);
   sss->max_auto_ip_net.net_addr = ntohl(sss->max_auto_ip_net.net_addr);
   sss->max_auto_ip_net.net_bitlen = N2N_SN_AUTO_IP_NET_BIT_DEFAULT;
+  strncpy(sss->federation, (char*)FEDERATION_NAME, N2N_COMMUNITY_SIZE-1);
+  sss->federation[N2N_COMMUNITY_SIZE-1] = '\0';
 
   n2n_srand (n2n_seed());
+
+  /* Random MAC address */
+  for(i=0; i<6; i++){
+	sss->mac_addr[i] = n2n_rand();
+  }
+  sss->mac_addr[0] &= ~0x01; /* Clear multicast bit */
+  sss->mac_addr[0] |= 0x02;  /* Set locally-assigned bit */
 
   return 0; /* OK */
 }
@@ -396,6 +405,7 @@ int subnet_available(n2n_sn_t *sss,
 
   HASH_ITER(hh, sss->communities, cmn, tmpCmn) {
     if (cmn == comm) continue;
+    if(cmn->is_federation == IS_FEDERATION) continue;
     if( (net_id <= (cmn->auto_ip_net.net_addr + ~bitlen2mask(cmn->auto_ip_net.net_bitlen)))
       &&(net_id + ~mask >= cmn->auto_ip_net.net_addr) ) {
         success = 0;
