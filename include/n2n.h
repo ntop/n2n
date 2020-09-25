@@ -358,6 +358,7 @@ typedef struct sn_stats
 struct sn_community
 {
   char community[N2N_COMMUNITY_SIZE];
+  uint8_t             is_federation;          /* if not-zero, then the current community is the federation of supernodes */
   uint8_t             purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
   uint8_t	      header_encryption;      /* Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /* Header encryption cipher context. */
@@ -491,6 +492,7 @@ int quick_edge_init(char *device_name, char *community_name,
 		    char *local_ip_address,
 		    char *supernode_ip_address_port,
 		    int *keep_on_running);
+int comm_init(struct sn_community *comm, char *cmn);
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
