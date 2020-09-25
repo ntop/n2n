@@ -90,6 +90,7 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
       }
     }
 
+    s = (struct sn_community*)calloc(1,sizeof(struct sn_community));
     comm_init(s,cmn_str);
 
     if(s != NULL) {
