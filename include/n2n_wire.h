@@ -94,12 +94,15 @@ typedef struct n2n_sock
 {
   uint8_t     family;         /* AF_INET or AF_INET6; or 0 if invalid */
   uint16_t    port;           /* host order */
-  union
+
+  union 
   {
     uint8_t     v6[IPV6_SIZE];  /* byte sequence */
     uint8_t     v4[IPV4_SIZE];  /* byte sequence */
   } addr;
+
 } n2n_sock_t;
+
 
 typedef struct n2n_auth
 {
@@ -108,16 +111,18 @@ typedef struct n2n_auth
   uint8_t     token[N2N_AUTH_TOKEN_SIZE];     /* Auth data interpreted based on scheme */
 } n2n_auth_t;
 
+
 typedef struct n2n_common
 {
   /* NOTE: wire representation is different! */
   /* int                 version; */
 
   uint8_t             ttl;
-  uint8_t             pc;
-  uint16_t            flags;
+  n2n_pc_t            pc;
+  n2n_flags_t         flags;
   n2n_community_t     community;
-} n2n_common_t;
+}n2n_common_t;
+
 
 typedef struct n2n_REGISTER
 {
@@ -135,6 +140,7 @@ typedef struct n2n_REGISTER_ACK
   n2n_mac_t            dstMac;         /**< Reflected MAC of registering edge from REGISTER */
   n2n_sock_t           sock;           /**< Supernode's view of edge socket (IP Addr, port) */
 } n2n_REGISTER_ACK_t;
+
 
 typedef struct n2n_PACKET
 {

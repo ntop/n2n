@@ -1,0 +1,6 @@
+gcc
+libc6-dev
+libssl-dev
+ca-certificates
+git
+make

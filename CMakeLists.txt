@@ -32,7 +32,6 @@ add_definitions(-DCMAKE_BUILD)
 add_definitions(-DGIT_RELEASE="${N2N_VERSION}" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${N2N_OSNAME}")
 add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 
-
 # Build information
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
 
@@ -75,6 +74,13 @@ endif(DEFINED UNIX)
 
 # Static target.
 #SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static")
+
+## DEBUG FOR CMAKE
+#message(${N2N_VERSION}) 
+#message(${N2N_OSNAME})
+##message(${CMAKE_BUILD_TYPE})
+#message(${N2N_OPTION_AES})
+## DEBUG FOR CMAKE
 
 
 INCLUDE_DIRECTORIES(.)
@@ -214,3 +220,4 @@ install(FILES ${PROJECT_BINARY_DIR}/doc/supernode.1.gz
 install(FILES ${PROJECT_BINARY_DIR}/doc/n2n.7.gz
         DESTINATION /usr/share/man/man7)
 endif(DEFINED UNIX)
+

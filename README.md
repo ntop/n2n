@@ -25,7 +25,6 @@ On host2 run:
 
 ```sh
 $ sudo edge -c mynetwork -k mysecretpass -a 192.168.100.2 -f -l supernode.ntop.org:7777
-```
 
 Now the two hosts can ping each other.
 
@@ -118,8 +117,8 @@ Here is a list of third-party projects connected to this repository:
 - Collection of pre-built binaries for Windows: [lucktu](https://github.com/lucktu/n2n)
 - n2n for Android: [hin2n](https://github.com/switch-iot/hin2n)
 - Docker images: [Docker Hub](https://hub.docker.com/r/supermock/supernode/)
-- Go bindings, management daemons and CLIs for n2n edges and supernodes, Docker, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n/)
-
----
+- Go bindings, management daemons and CLIs for n2n edges and supernodes, Docker, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n
 
 (C) 2007-2020 - ntop.org and contributors
+
+
