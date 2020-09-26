@@ -364,6 +364,7 @@ int encode_REGISTER_ACK(uint8_t *base,
    * socket is. */
   if (0 != reg->sock.family) {
     retval += encode_sock(base, idx, &(reg->sock));
+    retval += encode_mac(base, idx, reg->mac_addr);
   }
 
   return retval;
@@ -386,6 +387,7 @@ int decode_REGISTER_ACK(n2n_REGISTER_ACK_t *reg,
    * socket is. */
   if (cmn->flags & N2N_FLAGS_SOCKET) {
     retval += decode_sock(&(reg->sock), base, rem, idx);
+    retval += decode_mac(reg->mac_addr, base, rem, idx);
   }
 
   return retval;
