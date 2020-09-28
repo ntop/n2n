@@ -29,8 +29,18 @@
 #define MSG_TYPE_QUERY_PEER            10
 #define MSG_TYPE_MAX_TYPE	       10
 
+/* Max available space to add supernodes' informations (sockets and MACs) in REGISTER_SUPER_ACK
+ * Field sizes of REGISTER_SUPER_ACK as used in encode/decode fucntions in src/wire.c */
+#define MAX_AVAILABLE_SPACE_FOR_ENTRIES \
+	DEFAULT_MTU-(1+1+2+sizeof(n2n_common_t)+sizeof(n2n_cookie_t)+sizeof(n2n_mac_t)+1+2+4+1+sizeof(n2n_sock_t)+1) \
+
+/* Space needed to store socket and MAC address of a supernode */
+#define ENTRY_SIZE		sizeof(n2n_sock_t)+sizeof(n2n_mac_t)
+
 #define SOCKET_TIMEOUT_INTERVAL_SECS    10
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
+#define ALLOWED_TIME			20 /* sec, indicates supernodes that are proven to be alive */
+#define TEST_TIME		(SORT_COMMUNITIES_INTERVAL - ALLOWED_TIME)/2 /* sec, indicates supernodes with unsure status, must be tested to check if they are alive */
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL           (10) /* sec */
