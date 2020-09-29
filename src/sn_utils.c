@@ -215,6 +215,8 @@ int comm_init(struct sn_community *comm, char *cmn){
 
 /** Initialise the supernode structure */
 int sn_init(n2n_sn_t *sss) {
+  int i;
+
 #ifdef WIN32
   initWin32();
 #endif
@@ -241,7 +243,7 @@ int sn_init(n2n_sn_t *sss) {
 
   /* Random MAC address */
   for(i=0; i<6; i++){
-	sss->mac_addr[i] = n2n_rand();
+    sss->mac_addr[i] = n2n_rand();
   }
   sss->mac_addr[0] &= ~0x01; /* Clear multicast bit */
   sss->mac_addr[0] |= 0x02;  /* Set locally-assigned bit */
@@ -1044,11 +1046,12 @@ static int process_udp(n2n_sn_t * sss,
 	  p->last_seen = now;
 	  tmp_sock = &(ack.sn_bak);
 	  tmp_mac = &(ack.mac_addr);
-          HASH_ITER(hh, fed->edges, peer, tmp_peer){
+
+          HASH_ITER(hh, fed->edges, peer, tmp_peer) {
             if((now - peer->last_seen) >= ALLOWED_TIME) continue; /* skip long-time-not-seen supernodes */
             if(((++num)*ENTRY_SIZE) > MAX_AVAILABLE_SPACE_FOR_ENTRIES) break; /* no more space available in REGISTER_SUPER_ACK payload */
-            memcpy(tmp_sock, &(scan->sock), sizeof(n2n_sock_t));
-	    memcpy(tmp_mac, &(scan->mac_addr), sizeof(n2n_mac_t));
+            memcpy(tmp_sock, &(peer->sock), sizeof(n2n_sock_t));
+	    memcpy(tmp_mac, &(peer->mac_addr), sizeof(n2n_mac_t));
 	    tmp_sock += sizeof(n2n_mac_t);
 	    tmp_mac += sizeof(n2n_sock_t);
           }
