@@ -941,15 +941,25 @@ static int process_udp(n2n_sn_t * sss,
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
       size_t                          encx=0;
+      struct sn_community             *fed;
       struct sn_community_regular_expression *re, *tmp_re;
+      struct peer_info		      *peer, *tmp_peer, *p;
       int8_t                          allowed_match = -1;
       uint8_t                         match = 0;
-      int				    match_length = 0;
+      int			      match_length = 0;
       n2n_ip_subnet_t                 ipaddr;
+      int 			      num = 0;
+      n2n_sock_t 		      *tmp_sock;
+      n2n_mac_t 		      *tmp_mac;
 
+      if(from_supernode != comm->is_federation){
+        traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER: from_supernode value doesn't correspond to the internal federation marking");
+	return -1;
+      }
+      
       memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
-      /* Edge requesting registration with us.  */
+      /* Edge/supernode requesting registration with us.  */
       sss->stats.last_reg_super=now;
       ++(sss->stats.reg_super);
       decode_REGISTER_SUPER(&reg, &cmn, udp_buf, &rem, &idx);
@@ -1008,6 +1018,7 @@ static int process_udp(n2n_sn_t * sss,
       }
 
       if(comm) {
+        HASH_FIND_COMMUNITY(sss->communities, sss->federation, fed);
 	cmn2.ttl = N2N_DEFAULT_TTL;
 	cmn2.pc = n2n_register_super_ack;
 	cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
@@ -1028,9 +1039,23 @@ static int process_udp(n2n_sn_t * sss,
 	ack.sock.port = ntohs(sender_sock->sin_port);
 	memcpy(ack.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
 
-	ack.num_sn=0; /* No backup */
-
-	traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER for %s [%s]",
+	if(fed != NULL){
+          HASH_FIND_PEER(fed->edges, reg.edgeMac, p);
+	  p->last_seen = now;
+	  tmp_sock = &(ack.sn_bak);
+	  tmp_mac = &(ack.mac_addr);
+          HASH_ITER(hh, fed->edges, peer, tmp_peer){
+            if((now - peer->last_seen) >= ALLOWED_TIME) continue; /* skip long-time-not-seen supernodes */
+            if(((++num)*ENTRY_SIZE) > MAX_AVAILABLE_SPACE_FOR_ENTRIES) break; /* no more space available in REGISTER_SUPER_ACK payload */
+            memcpy(tmp_sock, &(scan->sock), sizeof(n2n_sock_t));
+	    memcpy(tmp_mac, &(scan->mac_addr), sizeof(n2n_mac_t));
+	    tmp_sock += sizeof(n2n_mac_t);
+	    tmp_mac += sizeof(n2n_sock_t);
+          }
+          ack.num_sn = num;
+        }
+	
+        traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER for %s [%s]",
 		   macaddr_str(mac_buf, reg.edgeMac),
 		   sock_to_cstr(sockbuf, &(ack.sock)));
 

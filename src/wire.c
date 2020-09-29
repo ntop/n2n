@@ -408,6 +408,7 @@ int encode_REGISTER_SUPER_ACK(uint8_t *base,
   if (reg->num_sn > 0) {
     /* We only support 0 or 1 at this stage */
     retval += encode_sock(base, idx, &(reg->sn_bak));
+    retval += encode_mac(base, idx, reg->mac_addr);
   }
 
   return retval;
@@ -436,7 +437,8 @@ int decode_REGISTER_SUPER_ACK(n2n_REGISTER_SUPER_ACK_t *reg,
   if (reg->num_sn > 0) {
     /* We only support 0 or 1 at this stage */
     retval += decode_sock(&(reg->sn_bak), base, rem, idx);
-  }
+    retval += decode_mac(reg->mac_addr, base, rem, idx); 
+ }
 
   return retval;
 }
