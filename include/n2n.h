@@ -382,6 +382,7 @@ typedef struct n2n_sn
   time_t start_time; /* Used to measure uptime. */
   sn_stats_t stats;
   int daemon;           /* If non-zero then daemonise. */
+  n2n_mac_t mac_addr;
   uint16_t lport;       /* Local UDP port to bind to. */
   uint16_t mport;       /* Management UDP port to bind to. */
   int sock;             /* Main socket for UDP traffic with edges. */
@@ -395,6 +396,7 @@ typedef struct n2n_sn
   int lock_communities; /* If true, only loaded and matching communities can be used. */
   struct sn_community *communities;
   struct sn_community_regular_expression *rules;
+  char federation[N2N_COMMUNITY_SIZE];
 } n2n_sn_t;
 
 /* ************************************** */
