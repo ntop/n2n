@@ -280,11 +280,11 @@ void print_n2n_version() {
 
 /* *********************************************** */ 
 
-size_t purge_expired_registrations(struct peer_info ** peer_list, time_t* p_last_purge) {
+size_t purge_expired_registrations(struct peer_info ** peer_list, time_t* p_last_purge, int timeout) {
   time_t now = time(NULL);
   size_t num_reg = 0;
 
-  if((now - (*p_last_purge)) < PURGE_REGISTRATION_FREQUENCY) return 0;
+  if((now - (*p_last_purge)) < timeout) return 0;
 
   traceEvent(TRACE_DEBUG, "Purging old registrations");
 

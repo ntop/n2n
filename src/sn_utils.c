@@ -496,6 +496,62 @@ static int find_edge_time_stamp_and_verify (struct peer_info * edges,
   return ( time_stamp_verify_and_update (stamp, previous_stamp, allow_jitter) );
 }
 
+
+static int re_register_and_purge_supernodes(n2n_sn_t *sss, struct sn_community *comm, time_t now){
+  time_t time;
+  struct peer_info *peer, *tmp;
+
+  if(comm != NULL){
+    HASH_ITER(hh,comm->edges,peer,tmp){
+    time = now - peer->last_seen;
+    if(time <= ALLOWED_TIME) continue;
+    if((time > ALLOWED_TIME) && (time < PURGE_FEDERATION_NODE_INTERVAL)){ /* re-regitser (send REGISTER_SUPER) */
+      uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
+      size_t idx;
+      /* ssize_t sent; */
+      n2n_common_t cmn;
+      n2n_cookie_t cookie;
+      n2n_REGISTER_SUPER_t reg;
+      n2n_sock_str_t sockbuf;
+
+      memset(&cmn, 0, sizeof(cmn));
+      memset(&reg, 0, sizeof(reg));
+
+      cmn.ttl = N2N_DEFAULT_TTL;
+      cmn.pc = n2n_register_super;
+      cmn.flags = 0;
+      memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
+
+      for (idx = 0; idx < N2N_COOKIE_SIZE; ++idx) /* aggiungi sn_idx */
+        cookie[idx] = n2n_rand() % 0xff;
+
+      memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
+      reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
+      reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
+      reg.auth.scheme = 0; /* No auth yet */
+
+      idx = 0;
+      encode_mac(reg.edgeMac, &idx, peer->mac_addr);
+
+      idx = 0;
+      encode_REGISTER_SUPER(pktbuf, &idx, &cmn, &reg);
+
+      traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
+	          sock_to_cstr(sockbuf, &(peer->sock)));
+
+      packet_header_encrypt(pktbuf, idx, comm->header_encryption_ctx,
+				         comm->header_iv_ctx,
+					 time_stamp(), pearson_hash_16(pktbuf, idx));
+
+      /* sent = */ sendto_sock(sss, &(peer->sock), pktbuf, N2N_PKT_BUF_SIZE);
+  }
+  if(time >= PURGE_FEDERATION_NODE_INTERVAL) purge_expired_registrations(&(comm->edges),&time,PURGE_FEDERATION_NODE_INTERVAL);/* purge not-seen-long-time supernodes*/
+  }
+}
+
+  return 0; /* OK */
+}
+
 static int purge_expired_communities(n2n_sn_t *sss,
                                      time_t* p_last_purge,
                                      time_t now)
@@ -658,6 +714,44 @@ static int sendto_mgmt(n2n_sn_t *sss,
   }
   return 0;
 }
+
+
+/** Iterate through REGISTER_SUPER_ACK payload and add new supernodes with a legal timestamp
+  * (half of the difference between the adjustable 20 seconds and 90 seconds limit) to the federation list
+  */
+static int add_sn_to_federation_from_register_super_ack(n2n_sn_t *sss, n2n_REGISTER_SUPER_ACK_t ack){
+  struct sn_community *fed;
+  struct peer_info *peer;
+  n2n_sock_t *tmp_sock;
+  n2n_mac_t *tmp_mac;
+  int i;
+
+  HASH_FIND_COMMUNITY(sss->communities, sss->federation, fed);
+
+  if(fed != NULL){
+    tmp_sock = &(ack.sn_bak);
+    tmp_mac = &(ack.mac_addr);
+    for(i=0; i<ack.num_sn; i++){
+      HASH_FIND_PEER(fed->edges, &tmp_mac, peer);
+      if(peer == NULL){
+        peer = (struct peer_info *)calloc(1,sizeof(struct peer_info));
+	memcpy(&(peer->sock),tmp_sock,sizeof(n2n_sock_t));
+	memcpy(&(peer->mac_addr), &tmp_mac, sizeof(n2n_mac_t));
+	peer->dev_addr.net_addr = ntohs(ack.dev_addr.net_addr);
+	peer->dev_addr.net_bitlen = mask2bitlen(ntohl(ack.dev_addr.net_bitlen));
+	peer->last_seen = TEST_TIME;
+	HASH_ADD_PEER(fed->edges, peer);
+      }
+      tmp_sock += sizeof(n2n_mac_t);
+      tmp_mac += sizeof(n2n_sock_t);
+    }
+  }
+
+  return 0; /* OK */
+
+}
+
+
 
 /** Examine a datagram and determine what to do with it.
  *
@@ -1086,6 +1180,59 @@ static int process_udp(n2n_sn_t * sss,
       }
       break;
     }
+  case MSG_TYPE_REGISTER_SUPER_ACK: {
+    n2n_REGISTER_SUPER_ACK_t        ack;
+    size_t                          encx=0;
+    struct sn_community             *fed;
+    struct peer_info		    *scan;
+    n2n_sock_str_t      	    sockbuf1;
+    n2n_sock_str_t      	    sockbuf2;
+    macstr_t           	 	    mac_buf1;
+    n2n_sock_t          	    sender;
+    n2n_sock_t        		    *orig_sender;
+
+    sender.family = AF_INET;
+    sender.port = ntohs(sender_sock->sin_port);
+    memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+    orig_sender = &sender;
+
+    memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
+
+    if(from_supernode != comm->is_federation){
+      traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK: from_supernode value doesn't correspond to the internal federation marking.");
+      return -1;
+    }
+
+    decode_REGISTER_SUPER_ACK(&ack,&cmn,udp_buf,&rem,&idx);
+    orig_sender = &(ack.sock);
+
+    if (comm) {
+      if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+        if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, ack.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
+	  traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to time stamp error.");
+	  return -1;
+	}
+      }
+    }
+
+    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s)",
+	        macaddr_str(mac_buf1, ack.mac_addr),
+	        sock_to_cstr(sockbuf1, &sender),
+		sock_to_cstr(sockbuf2, orig_sender));
+
+    HASH_FIND_COMMUNITY(sss->communities, sss->federation, fed);
+
+    if(fed != NULL) {
+      HASH_FIND_PEER(fed->edges, ack.edgeMac, scan);
+        if(scan != NULL){
+          scan->last_seen = now;
+        }
+     }
+
+     if(ack.num_sn > 0) add_sn_to_federation_from_register_super_ack(sss,ack);
+
+  break;
+}
   case MSG_TYPE_QUERY_PEER: {
     n2n_QUERY_PEER_t query;
     uint8_t encbuf[N2N_SN_PKTBUF_SIZE];
