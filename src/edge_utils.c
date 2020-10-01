@@ -2139,8 +2139,8 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     /* Finished processing select data. */
     update_supernode_reg(eee, nowTime);
 
-    numPurged =  purge_expired_registrations(&eee->known_peers, &last_purge_known);
-    numPurged += purge_expired_registrations(&eee->pending_peers, &last_purge_pending);
+    numPurged =  purge_expired_registrations(&eee->known_peers, &last_purge_known, PURGE_REGISTRATION_FREQUENCY);
+    numPurged += purge_expired_registrations(&eee->pending_peers, &last_purge_pending, PURGE_REGISTRATION_FREQUENCY);
 
     if(numPurged > 0) {
       traceEvent(TRACE_INFO, "%u peers removed. now: pending=%u, operational=%u",

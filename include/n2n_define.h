@@ -40,13 +40,14 @@
 #define SOCKET_TIMEOUT_INTERVAL_SECS    10
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
 #define ALLOWED_TIME			20 /* sec, indicates supernodes that are proven to be alive */
-#define TEST_TIME		(SORT_COMMUNITIES_INTERVAL - ALLOWED_TIME)/2 /* sec, indicates supernodes with unsure status, must be tested to check if they are alive */
+#define TEST_TIME		(PURGE_FEDERATION_NODE_INTERVAL - ALLOWED_TIME)/2 /* sec, indicates supernodes with unsure status, must be tested to check if they are alive */
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL           (10) /* sec */
 
 #define PURGE_REGISTRATION_FREQUENCY   30
 #define REGISTRATION_TIMEOUT           60
+#define PURGE_FEDERATION_NODE_INTERVAL 90
 
 #define SORT_COMMUNITIES_INTERVAL      90 /* sec. until supernode sorts communities' hash list again */
 

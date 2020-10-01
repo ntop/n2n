@@ -467,7 +467,7 @@ int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp, int
 size_t purge_peer_list( struct peer_info ** peer_list,
                         time_t purge_before );
 size_t clear_peer_list( struct peer_info ** peer_list );
-size_t purge_expired_registrations( struct peer_info ** peer_list, time_t* p_last_purge );
+size_t purge_expired_registrations( struct peer_info ** peer_list, time_t* p_last_purge, int timeout );
 
 /* Edge conf */
 void edge_init_conf_defaults(n2n_edge_conf_t *conf);
