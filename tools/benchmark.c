@@ -82,7 +82,7 @@ int main(int argc, char * argv[]) {
   n2n_transop_aes_init(&conf, &transop_aes);
   n2n_transop_cc20_init(&conf, &transop_cc20);
   n2n_transop_speck_init(&conf, &transop_speck);
-  
+
   /* Run the tests */
   run_transop_benchmark("transop_null", &transop_null, &conf, pktbuf);
   run_transop_benchmark("transop_tf", &transop_tf, &conf, pktbuf);
@@ -114,7 +114,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
   ssize_t tdiff = 0; // microseconds
   size_t num_packets = 0;
 
-  printf("Run %s[%s] for %us (%u bytes):", perform_decryption ? "enc/dec" : "enc",
+  printf("%s\t[%s]\tfor %us\t(%u bytes)", perform_decryption ? "enc/dec" : "enc",
 	 op_name, target_sec, (unsigned int)sizeof(PKT_CONTENT));
   fflush(stdout);
 
@@ -150,8 +150,8 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
 
   float mpps = num_packets / (tdiff / 1e6) / 1e6;
 
-  printf("\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
-	 (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
+  printf(" %s--> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n", perform_decryption ? "<" : "-",
+	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
 }
 
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
