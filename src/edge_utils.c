@@ -1059,20 +1059,20 @@ static int handle_PACKET(n2n_edge_t * eee,
 
       /* decompress if necessary */
       uint8_t * deflation_buffer = 0;
-      int32_t deflated_len;
+      lzo_uint deflated_len;
       switch (rx_compression_id) {
       case N2N_COMPRESSION_ID_NONE:
 	break; // continue afterwards
 
       case N2N_COMPRESSION_ID_LZO:
 	deflation_buffer = malloc (N2N_PKT_BUF_SIZE);
-	lzo1x_decompress (eth_payload, eth_size, deflation_buffer, (lzo_uint*)&deflated_len, NULL);
+	lzo1x_decompress (eth_payload, eth_size, deflation_buffer, &deflated_len, NULL);
 	break;
 #ifdef N2N_HAVE_ZSTD
       case N2N_COMPRESSION_ID_ZSTD:
 	deflated_len = N2N_PKT_BUF_SIZE;
 	deflation_buffer = malloc (deflated_len);
-	deflated_len = (int32_t)ZSTD_decompress (deflation_buffer, deflated_len, eth_payload, eth_size);
+	deflated_len = ZSTD_decompress (deflation_buffer, deflated_len, eth_payload, eth_size);
 	if(ZSTD_isError(deflated_len)) {
 	  traceEvent (TRACE_ERROR, "payload decompression failed with zstd error '%s'.",
 		      ZSTD_getErrorName(deflated_len));
