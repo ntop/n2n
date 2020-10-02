@@ -128,13 +128,13 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
 		     pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
 		     PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
 
-    idx=0;
-    rem=nw;
-
-    decode_common( &cmn, pktbuf, &rem, &idx);
-    decode_PACKET( &pkt, &cmn, pktbuf, &rem, &idx );
-
     if(perform_decryption) {
+      idx=0;
+      rem=nw;
+
+      decode_common( &cmn, pktbuf, &rem, &idx);
+      decode_PACKET( &pkt, &cmn, pktbuf, &rem, &idx );
+
       uint8_t decodebuf[N2N_PKT_BUF_SIZE];
 
       op_fn->rev(op_fn, decodebuf, N2N_PKT_BUF_SIZE, pktbuf+idx, rem, 0);
@@ -177,7 +177,6 @@ static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_com
   idx=0;
   encode_PACKET( pktbuf, &idx, &cmn, &pkt );
   traceEvent( TRACE_DEBUG, "encoded PACKET header of size=%u", (unsigned int)idx );
-    
+
   return idx;
 }
-
