@@ -18,6 +18,9 @@
 
 #include "n2n.h"
 
+#define DURATION     3   // test duration per algorithm
+
+
 /* heap allocation for compression as per lzo example doc */
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
 static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
@@ -47,6 +50,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
 static void init_compression_for_benchmark(void);
 static void deinit_compression_for_benchmark(void);
 static void run_compression_benchmark(void);
+static void run_hashing_benchmark(void);
 
 
 static int perform_decryption = 0;
@@ -86,6 +90,8 @@ int main(int argc, char * argv[]) {
   strncpy((char*)conf.community_name, "abc123def456", sizeof(conf.community_name));
   conf.encrypt_key = "SoMEVer!S$cUREPassWORD";
 
+  pearson_hash_init();
+
   /* Init transopts */
   n2n_transop_null_init(&conf, &transop_null);
   n2n_transop_tf_init(&conf, &transop_tf);
@@ -103,6 +109,8 @@ int main(int argc, char * argv[]) {
   /* Also for compression (init moved here for ciphers get run before in case of lzo init error) */
   init_compression_for_benchmark();
   run_compression_benchmark();
+
+  run_hashing_benchmark();
 
   /* Cleanup */
   transop_null.deinit(&transop_null);
@@ -143,7 +151,7 @@ static void deinit_compression_for_benchmark(void) {
 
 
 static void run_compression_benchmark() {
-  const int target_sec = 3;
+  const int target_sec = DURATION;
   struct timeval t1;
   struct timeval t2;
   ssize_t nw;
@@ -160,7 +168,7 @@ static void run_compression_benchmark() {
   num_packets = 0;
 
   printf("%s\t{%s}\tfor %us\t(%u bytes)", perform_decryption ? "decompr" : "compr",
-	 "LZO1x", target_sec, (unsigned int)sizeof(PKT_CONTENT));
+	 "lzo1x", target_sec, (unsigned int)sizeof(PKT_CONTENT));
   fflush(stdout);
 
   // always do compression once to determine compressed size
@@ -205,7 +213,7 @@ static void run_compression_benchmark() {
   num_packets = 0;
 
   printf("%s\t{%s}\tfor %us\t(%u bytes)", perform_decryption ? "decompr" : "compr",
-	 "ZSTD", target_sec, (unsigned int)sizeof(PKT_CONTENT));
+	 "zstd", target_sec, (unsigned int)sizeof(PKT_CONTENT));
   fflush(stdout);
 
   // always do compression once to determine compressed size
@@ -255,13 +263,49 @@ static void run_compression_benchmark() {
 #endif
 }
 
+// --- hashing benchmark ------------------------------------------------------------------
+
+static void run_hashing_benchmark(void) {
+  const int target_sec = DURATION;
+  struct timeval t1;
+  struct timeval t2;
+  ssize_t nw;
+  ssize_t target_usec = target_sec * 1e6;
+  ssize_t tdiff = 0; // microseconds
+  size_t num_packets = 0;
+
+  uint32_t hash;
+
+  printf("%s\t(%s)\tfor %us\t(%u bytes)", "hash",
+	 "prs32", target_sec, (unsigned int)sizeof(PKT_CONTENT));
+  fflush(stdout);
+
+  gettimeofday( &t1, NULL );
+  nw = 4;
+
+  while(tdiff < target_usec) {
+
+    hash = pearson_hash_32 (PKT_CONTENT, sizeof(PKT_CONTENT));
+    hash++; // clever compiler finds out that we do no use the variable
+
+    gettimeofday( &t2, NULL );
+    tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+    num_packets++;
+  }
+
+  float mpps = num_packets / (tdiff / 1e6) / 1e6;
+
+  printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
+	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
+}
+
 // --- cipher benchmark -------------------------------------------------------------------
 
 static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf) {
   n2n_common_t cmn;
   n2n_PACKET_t pkt;
   n2n_mac_t mac_buf;
-  const int target_sec = 3;
+  const int target_sec = DURATION;
   struct timeval t1;
   struct timeval t2;
   size_t idx;
@@ -310,6 +354,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
   printf(" %s--> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n", perform_decryption ? "<" : "-",
 	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
 }
+
 
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
 {
