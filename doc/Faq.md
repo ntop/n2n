@@ -42,6 +42,15 @@ The supernode itself can only listen on one port. However, your firewall might b
 This command line can be put down as additional `ExecStartPost=` line (without `sudo`) in the supernode's `.service` file which can hold several such lines if required.
 
 
+### How to handle the error message "process_udp dropped a packet with seemingly encrypted header for which no matching community which uses encrypted headers was found"?
+
+This error message means that the supernode is not able to identify a packet as unencrypted. It does check for a sane packet format. If it fails the header is assuemd encrypted (thus, "_seemingly_ encrypted header") and the supernode tries all communties that would make a key (some have already been ruled out as they definetly are unenecrypted). If no matching community is found, the error occurs.
+
+If all edges use the same `-H` setting (all edges either with it or without it) and restarting the supernode does not help, most probably one of the components (an edge or the supernode) is outdated, i.e. uses a different packet format – from time to time, a lot of changes happen to the packet format in a very short period of time, especially in _dev_ branch.
+
+So, please make sure that all edges **and** the supernode have the exact same built version, e.g. all from current _dev_.
+
+
 ## Edge
 
 ### How can I know if peer-to-peer connection has successfully been established?
