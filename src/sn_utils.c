@@ -52,6 +52,10 @@ static int update_edge(n2n_sn_t *sss,
                        const n2n_sock_t *sender_sock,
                        time_t now);
 
+static int re_register_and_purge_supernodes(n2n_sn_t *sss,
+					    struct sn_community *comm,
+					    time_t now);
+
 static int purge_expired_communities(n2n_sn_t *sss,
                                      time_t* p_last_purge,
                                      time_t now);
@@ -65,6 +69,10 @@ static int process_mgmt(n2n_sn_t *sss,
                         const uint8_t *mgmt_buf,
                         size_t mgmt_size,
                         time_t now);
+
+static int add_sn_to_federation_from_register_super_ack(n2n_sn_t *sss,
+							n2n_REGISTER_SUPER_ACK ack,
+							time_t now);
 
 static int process_udp(n2n_sn_t *sss,
                        const struct sockaddr_in *sender_sock,
@@ -719,7 +727,7 @@ static int sendto_mgmt(n2n_sn_t *sss,
 /** Iterate through REGISTER_SUPER_ACK payload and add new supernodes with a legal timestamp
   * (half of the difference between the adjustable 20 seconds and 90 seconds limit) to the federation list
   */
-static int add_sn_to_federation_from_register_super_ack(n2n_sn_t *sss, n2n_REGISTER_SUPER_ACK_t ack){
+static int add_sn_to_federation_from_register_super_ack(n2n_sn_t *sss, n2n_REGISTER_SUPER_ACK_t ack, time_t now){
   struct sn_community *fed;
   struct peer_info *peer;
   n2n_sock_t *tmp_sock;
@@ -739,7 +747,7 @@ static int add_sn_to_federation_from_register_super_ack(n2n_sn_t *sss, n2n_REGIS
 	memcpy(&(peer->mac_addr), &tmp_mac, sizeof(n2n_mac_t));
 	peer->dev_addr.net_addr = ntohs(ack.dev_addr.net_addr);
 	peer->dev_addr.net_bitlen = mask2bitlen(ntohl(ack.dev_addr.net_bitlen));
-	peer->last_seen = TEST_TIME;
+	peer->last_seen = now - TEST_TIME;
 	HASH_ADD_PEER(fed->edges, peer);
       }
       tmp_sock += sizeof(n2n_mac_t);
@@ -1097,9 +1105,9 @@ static int process_udp(n2n_sn_t * sss,
       if(!comm && (!sss->lock_communities || (match == 1))) {
 	      
 	comm = (struct sn_community*)calloc(1,sizeof(struct sn_community));
-	comm_init(comm,(char *)cmn.community);
-
+	
 	if(comm) {
+	  comm_init(comm,(char *)cmn.community);
 	  /* new communities introduced by REGISTERs could not have had encrypted header... */
 	  comm->header_encryption = HEADER_ENCRYPTION_NONE;
 	  comm->header_encryption_ctx = NULL;
@@ -1137,19 +1145,21 @@ static int process_udp(n2n_sn_t * sss,
 
 	if(fed != NULL){
           HASH_FIND_PEER(fed->edges, reg.edgeMac, p);
-	  p->last_seen = now;
-	  tmp_sock = &(ack.sn_bak);
-	  tmp_mac = &(ack.mac_addr);
+	  if(p != NULL){
+	    p->last_seen = now;
+	    tmp_sock = &(ack.sn_bak);
+	    tmp_mac = &(ack.mac_addr);
 
-          HASH_ITER(hh, fed->edges, peer, tmp_peer) {
-            if((now - peer->last_seen) >= ALLOWED_TIME) continue; /* skip long-time-not-seen supernodes */
-            if(((++num)*ENTRY_SIZE) > MAX_AVAILABLE_SPACE_FOR_ENTRIES) break; /* no more space available in REGISTER_SUPER_ACK payload */
-            memcpy(tmp_sock, &(peer->sock), sizeof(n2n_sock_t));
-	    memcpy(tmp_mac, &(peer->mac_addr), sizeof(n2n_mac_t));
-	    tmp_sock += sizeof(n2n_mac_t);
-	    tmp_mac += sizeof(n2n_sock_t);
-          }
-          ack.num_sn = num;
+            HASH_ITER(hh, fed->edges, peer, tmp_peer) {
+              if((now - peer->last_seen) >= ALLOWED_TIME) continue; /* skip long-time-not-seen supernodes */
+              if(((++num)*ENTRY_SIZE) > MAX_AVAILABLE_SPACE_FOR_ENTRIES) break; /* no more space available in REGISTER_SUPER_ACK payload */
+              memcpy(tmp_sock, &(peer->sock), sizeof(n2n_sock_t));
+	      memcpy(tmp_mac, &(peer->mac_addr), sizeof(n2n_mac_t));
+	      tmp_sock += sizeof(n2n_mac_t);
+	      tmp_mac += sizeof(n2n_sock_t);
+            }
+            ack.num_sn = num;
+	  }
         }
 	
         traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER for %s [%s]",
@@ -1229,7 +1239,7 @@ static int process_udp(n2n_sn_t * sss,
         }
      }
 
-     if(ack.num_sn > 0) add_sn_to_federation_from_register_super_ack(sss,ack);
+     if(ack.num_sn > 0) add_sn_to_federation_from_register_super_ack(sss,ack,now);
 
   break;
 }
