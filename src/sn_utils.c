@@ -71,7 +71,7 @@ static int process_mgmt(n2n_sn_t *sss,
                         time_t now);
 
 static int add_sn_to_federation_from_register_super_ack(n2n_sn_t *sss,
-							n2n_REGISTER_SUPER_ACK ack,
+							n2n_REGISTER_SUPER_ACK_t ack,
 							time_t now);
 
 static int process_udp(n2n_sn_t *sss,
