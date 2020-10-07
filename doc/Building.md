@@ -105,7 +105,7 @@ So far, the following portions of n2n's code benefit from hardware features:
 ```
 AES:               AES-NI
 ChaCha20:          SSE2, SSSE3
-SPECK:             SSE4.2, AVX2, NEON
+SPECK:             SSE2, SSSE3, AVX2, NEON
 Pearson Hashing:   AES-NI
 Random Numbers:    RDSEED, RDRND (not faster but more random seed)
 ```

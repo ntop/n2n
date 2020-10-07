@@ -226,7 +226,7 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 }
 
 
-#elif defined (__SSE4_2__) // SSE support -------------------------------------------------
+#elif defined (__SSE2__) // SSE support ------------------------------------------------------------
 
 
 #define LCS(x,r) (((x)<<r)|((x)>>(64-r)))
@@ -254,13 +254,19 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #define XOR_STORE(in,out,X,Y) (ST(out,XOR(LD(in),LOW(Y,X))), ST(out+16,XOR(LD(in+16),HIGH(Y,X))))
 #define XOR_STORE_ALT(in,out,X,Y) (ST(out,XOR(LD(in),LOW(X,Y))), ST(out+16,XOR(LD(in+16),HIGH(X,Y))))
 
+#define ROL(X,r) (XOR(SL(X,r),SR(X,(64-r))))
+#define ROR(X,r) (XOR(SR(X,r),SL(X,(64-r))))
+
+#if defined (__SSSE3__)  // even SSSE3 -------------------------------
 #define SHFL _mm_shuffle_epi8
 #define R8   _mm_set_epi64x(0x080f0e0d0c0b0a09LL,0x0007060504030201LL)
 #define L8   _mm_set_epi64x(0x0e0d0c0b0a09080fLL,0x0605040302010007LL)
 #define ROL8(X)  (SHFL(X,L8))
 #define ROR8(X)  (SHFL(X,R8))
-#define ROL(X,r) (XOR(SL(X,r),SR(X,(64-r))))
-#define ROR(X,r) (XOR(SR(X,r),SL(X,(64-r))))
+#else // regular SSE2 ------------------------------------------------
+#define ROL8(X)  (ROL(X,8))
+#define ROR8(X)  (ROR(X,8))
+#endif // SSS3 vs. SSE2 ----------------------------------------------
 
 #define numrounds   34
 #define numkeywords 4

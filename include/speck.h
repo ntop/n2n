@@ -46,7 +46,7 @@ typedef struct {
   u64 key[34];
 } speck_context_t;
 
-#elif defined (__SSE4_2__)
+#elif defined (__SSE2__)
 
 #include <immintrin.h>
 #define SPECK_ALIGNED_CTX	16
