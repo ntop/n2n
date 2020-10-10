@@ -734,32 +734,26 @@ static int sendto_mgmt(n2n_sn_t *sss,
   * Evaluate first the MAC parameter and if it's zero-MAC, then it can skip HASH_FIND_PEER by MAC and search by socket
 	*/
 struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss,n2n_sock_t *sock, n2n_mac_t *mac){
-	struct peer_info *scan, *tmp, *peer_tmp, *peer;
+	struct peer_info *scan, *tmp, *peer;
 	int found = 0;
 
 	if(sss->federation != NULL){
 		if(memcmp(mac,null_mac,sizeof(n2n_mac_t)) != 0){ /* not zero MAC */
- 		 HASH_FIND_PEER(sss->federation->edges, mac, peer_tmp);
+ 		 HASH_FIND_PEER(sss->federation->edges, mac, peer);
 
 		 //REVISIT: make this dependent from last_seen and update socket
-
-		 if(peer_tmp != NULL){
-			 peer = peer_tmp;
-		 }
-
  	 }
 
-	 if(peer_tmp == NULL){ /* zero MAC, search by socket */
+	 if(peer == NULL){ /* zero MAC, search by socket */
  		 HASH_ITER(hh,sss->federation->edges,scan,tmp){
  			 if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t))){
  			 	memcpy(&(scan->mac_addr), sock, sizeof(n2n_mac_t));
 				peer = scan;
- 				found = 1;
 				break;
  			}
  		 }
 
-		 if(found == 0){
+		 if(peer == NULL){
 			 peer = (struct peer_info*)calloc(1,sizeof(struct peer_info));
 			 if(peer){
 				 memcpy(&(peer->sock),sock,sizeof(n2n_sock_t));
@@ -1267,7 +1261,7 @@ static int process_udp(n2n_sn_t * sss,
 				}
      }
 
-		 tmp_sock = (void*)&(ack.num_sn) + sizeof(uint8_t);
+		 tmp_sock = (void*)&(ack.num_sn) + sizeof(ack.num_sn);
  		 tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
 
 		 for(i=0; i<ack.num_sn; i++){

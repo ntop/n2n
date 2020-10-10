@@ -236,11 +236,6 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     size_t length;
     int rv;
 
-    if(_optarg == NULL){
-      traceEvent(TRACE_WARNING, "<supernode:port> is missing. See -h.");
-      break;
-    }
-
     length = strlen(_optarg);
     if(length >= N2N_EDGE_SN_HOST_SIZE) {
       traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d",length,N2N_EDGE_SN_HOST_SIZE);
@@ -270,7 +265,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
         }
       }
     }
-
+    
     break;
   }
 
