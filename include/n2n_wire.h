@@ -169,8 +169,6 @@ typedef struct n2n_REGISTER_SUPER_ACK {
   uint8_t              num_sn;         /**< Number of supernodes that were send
 					* even if we cannot store them all. If
 					* non-zero then sn_bak is valid. */
-  n2n_sock_t           sn_bak;         /**< Socket of the first backup supernode */
-  n2n_mac_t	       mac_addr;
 } n2n_REGISTER_SUPER_ACK_t;
 
 

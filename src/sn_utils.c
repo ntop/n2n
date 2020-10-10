@@ -1253,7 +1253,7 @@ static int process_udp(n2n_sn_t * sss,
     }
 
     traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s)",
-	        macaddr_str(mac_buf1, ack.mac_addr),
+	        macaddr_str(mac_buf1, ack.edgeMac),
 	        sock_to_cstr(sockbuf1, &sender),
 		sock_to_cstr(sockbuf2, orig_sender));
 
@@ -1267,8 +1267,8 @@ static int process_udp(n2n_sn_t * sss,
 				}
      }
 
-		 tmp_sock = &(ack.sn_bak);
-		 tmp_mac = &(ack.mac_addr);
+		 tmp_sock = (void*)&(ack.num_sn) + sizeof(uint8_t);
+ 		 tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
 
 		 for(i=0; i<ack.num_sn; i++){
 			 tmp = add_sn_to_federation_by_mac_or_sock(sss,tmp_sock,tmp_mac);
@@ -1440,6 +1440,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
 	  traceEvent(TRACE_DEBUG, "timeout");
         }
 
+			re_register_and_purge_supernodes(sss, sss->federation, now);
       purge_expired_communities(sss, &last_purge_edges, now);
       sort_communities (sss, &last_sort_communities, now);
     } /* while */
