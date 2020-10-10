@@ -1168,8 +1168,8 @@ static int process_udp(n2n_sn_t * sss,
 	  if(p) p->last_seen = now;
 	}
 
-		tmp_sock = &(ack.sn_bak);
-		tmp_mac = &(ack.mac_addr);
+		tmp_sock = (void*)tmpbuf;
+		tmp_mac = (void*)tmpbuf + sizeof(n2n_sock_t);
 
 		// REVISIT: consider adding last_seen
 
