@@ -365,48 +365,92 @@ int aes_ecb_encrypt (unsigned char *out, const unsigned char *in, aes_context_t 
 }
 
 
-#define fix_xor(target, source) *(uint32_t*)&(target)[0] = *(uint32_t*)&(target)[0] ^ *(uint32_t*)&(source)[0]; *(uint32_t*)&(target)[4] = *(uint32_t*)&(target)[4] ^ *(uint32_t*)&(source)[4]; \
-                                *(uint32_t*)&(target)[8] = *(uint32_t*)&(target)[8] ^ *(uint32_t*)&(source)[8]; *(uint32_t*)&(target)[12] = *(uint32_t*)&(target)[12] ^ *(uint32_t*)&(source)[12];
 
 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                      const unsigned char *iv, aes_context_t *ctx) {
 
-  uint8_t tmp[AES_BLOCK_SIZE];
-  size_t i;
-  size_t n;
+  size_t n = in_len / 16; // number of blocks
+  in_len &= 15;           // remaining bytes
 
-  memcpy(tmp, iv, AES_BLOCK_SIZE);
+  __m128i ivec = _mm_loadu_si128((__m128i*)iv);
 
-  n = in_len / AES_BLOCK_SIZE;
-  for(i=0; i < n; i++) {
-    fix_xor(tmp, &in[i * AES_BLOCK_SIZE]);
-    aes_internal_encrypt(ctx, tmp, tmp);
-    memcpy(&out[i * AES_BLOCK_SIZE], tmp, AES_BLOCK_SIZE);
+  while(n) {
+    __m128i tmp = _mm_loadu_si128((__m128i*)in);
+    in += 16; n--;
+    tmp = _mm_xor_si128(tmp, ivec);
+
+    tmp = _mm_xor_si128       (tmp, ctx->rk_enc[ 0]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 1]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 2]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 3]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 4]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 5]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 6]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 7]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 8]);
+    tmp = _mm_aesenc_si128    (tmp, ctx->rk_enc[ 9]);
+    if(ctx->Nr > 10) {
+      tmp = _mm_aesenc_si128  (tmp, ctx->rk_enc[10]);
+      tmp = _mm_aesenc_si128  (tmp, ctx->rk_enc[11]);
+      if(ctx->Nr > 12) {
+        tmp = _mm_aesenc_si128(tmp, ctx->rk_enc[12]);
+        tmp = _mm_aesenc_si128(tmp, ctx->rk_enc[13]);
+      }
+    }
+    tmp = _mm_aesenclast_si128(tmp, ctx->rk_enc[ctx->Nr]);
+
+    ivec = tmp;
+
+    _mm_storeu_si128((__m128i*)out, tmp);
+    out += 16;
   }
-  return n * AES_BLOCK_SIZE;
+
+  return in_len;
 }
 
 
 int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                      const unsigned char *iv, aes_context_t *ctx) {
 
-  uint8_t tmp[AES_BLOCK_SIZE];
-  uint8_t old[AES_BLOCK_SIZE];
-  size_t i;
-  size_t n;
+  size_t n = in_len / 16; // number of blocks
+  in_len &= 15;           // remaining bytes
 
-  memcpy(tmp, iv, AES_BLOCK_SIZE);
+  __m128i ivec = _mm_loadu_si128((__m128i*)iv);
 
-  n = in_len / AES_BLOCK_SIZE;
-  for(i=0; i < n; i++) {
-    memcpy(old, &in[i * AES_BLOCK_SIZE], AES_BLOCK_SIZE);
-    aes_internal_decrypt(ctx, &in[i * AES_BLOCK_SIZE], &out[i * AES_BLOCK_SIZE]);
-    fix_xor(&out[i * AES_BLOCK_SIZE], tmp);
-    memcpy(tmp, old, AES_BLOCK_SIZE);
+  while(n) {
+    __m128i tmp = _mm_loadu_si128((__m128i*)in);
+    __m128i old_in = tmp;
+    in += 16; n--;
+
+    tmp = _mm_xor_si128       (tmp, ctx->rk_dec[ 0]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 1]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 2]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 3]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 4]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 5]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 6]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 7]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 8]);
+    tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 9]);
+    if(ctx->Nr > 10) {
+      tmp = _mm_aesdec_si128  (tmp, ctx->rk_dec[10]);
+      tmp = _mm_aesdec_si128  (tmp, ctx->rk_dec[11]);
+      if(ctx->Nr > 12) {
+        tmp = _mm_aesdec_si128(tmp, ctx->rk_dec[12]);
+        tmp = _mm_aesdec_si128(tmp, ctx->rk_dec[13]);
+      }
+    }
+    tmp = _mm_aesdeclast_si128(tmp, ctx->rk_enc[ 0]);
+
+    tmp = _mm_xor_si128 (tmp, ivec);
+    ivec = old_in;
+
+    _mm_storeu_si128((__m128i*) out, tmp);
+    out += 16;
   }
 
-  return n * AES_BLOCK_SIZE;
+  return in_len;
 }
 
 
