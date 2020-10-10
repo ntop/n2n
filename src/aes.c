@@ -368,14 +368,14 @@ int aes_ecb_encrypt (unsigned char *out, const unsigned char *in, aes_context_t 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                      const unsigned char *iv, aes_context_t *ctx) {
 
-  size_t n = in_len / 16; // number of blocks
-  in_len &= 15;           // remaining bytes
+  int n;                       // number of blocks
+  int ret = (int)in_len & 15;  // remainder
 
   __m128i ivec = _mm_loadu_si128((__m128i*)iv);
 
-  while(n) {
+  for(n = in_len / 16; n != 0; n--) {
     __m128i tmp = _mm_loadu_si128((__m128i*)in);
-    in += 16; n--;
+    in += 16;
     tmp = _mm_xor_si128(tmp, ivec);
 
     tmp = _mm_xor_si128       (tmp, ctx->rk_enc[ 0]);
@@ -404,27 +404,24 @@ int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
     out += 16;
   }
 
-  return in_len;
+  return ret;
 }
 
 
 int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                      const unsigned char *iv, aes_context_t *ctx) {
 
-  int n = in_len / 16; // number of blocks
-  in_len &= 15;        // remaining bytes
+  int n;                       // number of blocks
+  int ret = (int)in_len & 15;  // remainder
 
   __m128i ivec = _mm_loadu_si128((__m128i*)iv);
 
-  while(n >> 1) {      // equals: while(n > 1)
+  for(n = in_len / 16; n > 1; n -=2) {
     __m128i tmp1 = _mm_loadu_si128((__m128i*)in); in += 16;
     __m128i tmp2 = _mm_loadu_si128((__m128i*)in); in += 16;
 
-
     __m128i old_in1 = tmp1;
     __m128i old_in2 = tmp2;
-
-    n--; n--;
 
     tmp1 = _mm_xor_si128       (tmp1, ctx->rk_dec[ 0]); tmp2 = _mm_xor_si128       (tmp2, ctx->rk_dec[ 0]);
     tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 1]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 1]);
@@ -458,7 +455,6 @@ int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
   if(n) {
     __m128i tmp = _mm_loadu_si128((__m128i*)in);
     __m128i old_in = tmp;
-    in += 16; n--;
 
     tmp = _mm_xor_si128       (tmp, ctx->rk_dec[ 0]);
     tmp = _mm_aesdec_si128    (tmp, ctx->rk_dec[ 1]);
@@ -481,13 +477,11 @@ int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
     tmp = _mm_aesdeclast_si128(tmp, ctx->rk_enc[ 0]);
 
     tmp = _mm_xor_si128 (tmp, ivec);
-    ivec = old_in;
 
     _mm_storeu_si128((__m128i*) out, tmp);
-    out += 16;
   }
 
-  return in_len;
+  return ret;
 }
 
 
