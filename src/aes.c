@@ -365,8 +365,6 @@ int aes_ecb_encrypt (unsigned char *out, const unsigned char *in, aes_context_t 
 }
 
 
-
-
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                      const unsigned char *iv, aes_context_t *ctx) {
 
@@ -413,12 +411,51 @@ int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
 int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                      const unsigned char *iv, aes_context_t *ctx) {
 
-  size_t n = in_len / 16; // number of blocks
-  in_len &= 15;           // remaining bytes
+  int n = in_len / 16; // number of blocks
+  in_len &= 15;        // remaining bytes
 
   __m128i ivec = _mm_loadu_si128((__m128i*)iv);
 
-  while(n) {
+  while(n >> 1) {      // equals: while(n > 1)
+    __m128i tmp1 = _mm_loadu_si128((__m128i*)in); in += 16;
+    __m128i tmp2 = _mm_loadu_si128((__m128i*)in); in += 16;
+
+
+    __m128i old_in1 = tmp1;
+    __m128i old_in2 = tmp2;
+
+    n--; n--;
+
+    tmp1 = _mm_xor_si128       (tmp1, ctx->rk_dec[ 0]); tmp2 = _mm_xor_si128       (tmp2, ctx->rk_dec[ 0]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 1]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 1]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 2]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 2]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 3]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 3]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 4]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 4]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 5]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 5]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 6]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 6]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 7]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 7]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 8]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 8]);
+    tmp1 = _mm_aesdec_si128    (tmp1, ctx->rk_dec[ 9]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[ 9]);
+
+    if(ctx->Nr > 10) {
+      tmp1 = _mm_aesdec_si128  (tmp1, ctx->rk_dec[10]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[10]);
+      tmp1 = _mm_aesdec_si128  (tmp1, ctx->rk_dec[11]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[11]);
+      if(ctx->Nr > 12) {
+        tmp1 = _mm_aesdec_si128(tmp1, ctx->rk_dec[12]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[12]);
+        tmp1 = _mm_aesdec_si128(tmp1, ctx->rk_dec[13]); tmp2 = _mm_aesdec_si128    (tmp2, ctx->rk_dec[13]);
+      }
+    }
+    tmp1 = _mm_aesdeclast_si128(tmp1, ctx->rk_enc[ 0]); tmp2 = _mm_aesdeclast_si128(tmp2, ctx->rk_enc[ 0]);
+
+    tmp1 = _mm_xor_si128 (tmp1, ivec); tmp2 = _mm_xor_si128 (tmp2, old_in1);
+
+    ivec = old_in2;
+
+    _mm_storeu_si128((__m128i*) out, tmp1); out += 16;
+    _mm_storeu_si128((__m128i*) out, tmp2); out += 16;
+  }
+
+  if(n) {
     __m128i tmp = _mm_loadu_si128((__m128i*)in);
     __m128i old_in = tmp;
     in += 16; n--;
