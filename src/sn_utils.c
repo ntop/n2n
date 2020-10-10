@@ -743,18 +743,13 @@ struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss,n2n_sock_t *
 
 		 //REVISIT: make this dependent from last_seen and update socket
 
-		 if(peer_tmp == NULL){
-			 peer = (struct peer_info*)calloc(1,sizeof(struct peer_info));
-			 if(peer){
-				 memcpy(&(peer->sock),sock,sizeof(n2n_sock_t));
-		 		 memcpy(&(peer->mac_addr),mac,sizeof(n2n_mac_t));
-				 HASH_ADD_PEER(sss->federation->edges,peer);
-			 }
-		 } else {
+		 if(peer_tmp != NULL){
 			 peer = peer_tmp;
 		 }
 
- 	 } else { /* zero MAC, search by socket */
+ 	 }
+
+	 if(peer_tmp == NULL){ /* zero MAC, search by socket */
  		 HASH_ITER(hh,sss->federation->edges,scan,tmp){
  			 if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t))){
  			 	memcpy(&(scan->mac_addr), sock, sizeof(n2n_mac_t));
@@ -1179,8 +1174,8 @@ static int process_udp(n2n_sn_t * sss,
       if(((++num)*ENTRY_SIZE) > MAX_AVAILABLE_SPACE_FOR_ENTRIES) break; /* no more space available in REGISTER_SUPER_ACK payload */
 			memcpy((void*)tmpbuf, (void*)&(peer->sock), sizeof(n2n_sock_t));
 	    memcpy((void*)tmpbuf, (void*)&(peer->mac_addr), sizeof(n2n_mac_t));
-	    tmp_sock += sizeof(n2n_mac_t);
-	    tmp_mac += sizeof(n2n_sock_t);
+	    tmp_sock += ENTRY_SIZE;
+	    tmp_mac += ENTRY_SIZE;
     }
     ack.num_sn = num;
 
@@ -1194,7 +1189,7 @@ static int process_udp(n2n_sn_t * sss,
 	}
 
 	encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
-	encode_buf(ackbuf,&encx,tmpbuf,MAX_AVAILABLE_SPACE_FOR_ENTRIES);
+	encode_buf(ackbuf,&encx,tmpbuf,(num*ENTRY_SIZE));
 
 	if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
 	  packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
@@ -1235,15 +1230,15 @@ static int process_udp(n2n_sn_t * sss,
 
     memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
-    if(from_supernode != comm->is_federation){
-      traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK: from_supernode value doesn't correspond to the internal federation marking.");
-      return -1;
-    }
-
 		if(!comm) {
 			traceEvent(TRACE_DEBUG, "process_udp REGISTER_SUPER_ACK with unknown community %s", cmn.community);
 			return -1;
 		}
+
+    if(from_supernode != comm->is_federation){
+      traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK: from_supernode value doesn't correspond to the internal federation marking.");
+      return -1;
+    }
 
     decode_REGISTER_SUPER_ACK(&ack,&cmn,udp_buf,&rem,&idx);
     orig_sender = &(ack.sock);
@@ -1282,8 +1277,8 @@ static int process_udp(n2n_sn_t * sss,
 	 			 tmp->last_seen = now - TEST_TIME;
 			 }
 
-       tmp_sock += sizeof(n2n_mac_t);
-       tmp_mac += sizeof(n2n_sock_t);
+       tmp_sock += ENTRY_SIZE;
+       tmp_mac += ENTRY_SIZE;
 		 }
 
   break;

@@ -234,36 +234,41 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     n2n_sock_t *socket;
   	struct peer_info *anchor_sn;
     size_t length;
+    int rv;
 
     if(_optarg == NULL){
       traceEvent(TRACE_WARNING, "<supernode:port> is missing. See -h.");
       break;
     }
 
+    length = strlen(_optarg);
+    if(length >= N2N_EDGE_SN_HOST_SIZE) {
+      traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d",length,N2N_EDGE_SN_HOST_SIZE);
+      break;
+    }
+
     if(sss->federation != NULL) {
   		socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
 
-        anchor_sn = add_sn_to_federation_by_mac_or_sock(sss,socket, (n2n_mac_t*) null_mac);
+      anchor_sn = add_sn_to_federation_by_mac_or_sock(sss,socket, (n2n_mac_t*) null_mac);
 
-        if(anchor_sn != NULL){
-          length = strlen(_optarg);
+      if(anchor_sn != NULL){
+        anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
+        if(anchor_sn->ip_addr){
+          strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
+          rv = supernode2sock(socket,_optarg);
 
-          if(length >= N2N_EDGE_SN_HOST_SIZE) {
-            traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d",length,N2N_EDGE_SN_HOST_SIZE);
+          if(rv != 0){
+            traceEvent(TRACE_WARNING, "Invalid socket");
             break;
           }
 
-          anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
-          if(anchor_sn->ip_addr){
-            strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
-            anchor_sn->ip_addr[N2N_EDGE_SN_HOST_SIZE-1] = '\0';
-            supernode2sock(socket,_optarg);
-        		memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
-            memcpy(&(anchor_sn->mac_addr),null_mac,sizeof(n2n_mac_t));
-            anchor_sn->purgeable = SN_UNPURGEABLE;
-            anchor_sn->last_valid_time_stamp = initial_time_stamp();
-          }
+        	memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+          memcpy(&(anchor_sn->mac_addr),null_mac,sizeof(n2n_mac_t));
+          anchor_sn->purgeable = SN_UNPURGEABLE;
+          anchor_sn->last_valid_time_stamp = initial_time_stamp();
         }
+      }
     }
 
     break;
