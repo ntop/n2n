@@ -113,20 +113,20 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
       if(has_net) {
         if(sscanf(net_str, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
           traceEvent(TRACE_WARNING, "Bad net/bit format '%s' for community '%c', ignoring. See comments inside community.list file.",
-                                     net_str, cmn_str);
+		     net_str, cmn_str);
           has_net = 0;
         }
         net = inet_addr(ip_str);
         mask = bitlen2mask(bitlen);
         if((net == (in_addr_t)(-1)) || (net == INADDR_NONE) || (net == INADDR_ANY)
-          || ((ntohl(net) & ~mask) != 0) ) {
+	   || ((ntohl(net) & ~mask) != 0) ) {
           traceEvent(TRACE_WARNING, "Bad network '%s/%u' in '%s' for community '%s', ignoring.",
-                                    ip_str, bitlen, net_str, cmn_str);
+		     ip_str, bitlen, net_str, cmn_str);
           has_net = 0;
         }
         if ((bitlen > 30) || (bitlen == 0)) {
           traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s' for community '%s', ignoring.",
-                                    bitlen, net_str, cmn_str);
+		     bitlen, net_str, cmn_str);
           has_net = 0;
         }
       }
@@ -134,9 +134,9 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
         s->auto_ip_net.net_addr = ntohl(net);
         s->auto_ip_net.net_bitlen = bitlen;
         traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
-                                inet_ntoa(*(struct in_addr *) &net),
-                                s->auto_ip_net.net_bitlen,
-                                s->community);
+		   inet_ntoa(*(struct in_addr *) &net),
+		   s->auto_ip_net.net_bitlen,
+		   s->community);
       } else {
         assign_one_ip_subnet(sss, s);
       }
@@ -232,7 +232,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 
   case 'l': { /* supernode:port */
     n2n_sock_t *socket;
-  	struct peer_info *anchor_sn;
+    struct peer_info *anchor_sn;
     size_t length;
     int rv;
 
@@ -243,7 +243,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     }
 
     if(sss->federation != NULL) {
-  		socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
+      socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
 
       anchor_sn = add_sn_to_federation_by_mac_or_sock(sss,socket, (n2n_mac_t*) null_mac);
 
@@ -251,14 +251,19 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
         anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
         if(anchor_sn->ip_addr){
           strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
-          rv = supernode2sock(socket,_optarg);
 
+#if 1
+	  rv = -1;
+#else
+	  rv = supernode2sock(socket,_optarg); /* FIX fcarli3 */
+#endif
+	  
           if(rv != 0){
             traceEvent(TRACE_WARNING, "Invalid socket");
             break;
           }
 
-        	memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+	  memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
           memcpy(&(anchor_sn->mac_addr),null_mac,sizeof(n2n_mac_t));
           anchor_sn->purgeable = SN_UNPURGEABLE;
           anchor_sn->last_valid_time_stamp = initial_time_stamp();
@@ -285,9 +290,9 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     net_max = inet_addr(ip_max_str);
     mask = bitlen2mask(bitlen);
     if ((net_min == (in_addr_t)(-1)) || (net_min == INADDR_NONE) || (net_min == INADDR_ANY)
-     || (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
-     || (ntohl(net_min) >  ntohl(net_max))
-     || ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0) ) {
+	|| (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
+	|| (ntohl(net_min) >  ntohl(net_max))
+	|| ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0) ) {
       traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
 		 ip_min_str, ip_max_str, bitlen, _optarg,
 		 N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
@@ -364,14 +369,14 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 /* *********************************************** */
 
 static const struct option long_options[] = {
-					     {"communities", required_argument, NULL, 'c'},
-					     {"foreground",  no_argument,       NULL, 'f'},
-					     {"local-port",  required_argument, NULL, 'p'},
-					     {"mgmt-port",   required_argument, NULL, 't'},
-					     {"autoip",      required_argument, NULL, 'a'},
-					     {"help",        no_argument,       NULL, 'h'},
-					     {"verbose",     no_argument,       NULL, 'v'},
-					     {NULL, 0,                          NULL, 0}
+  {"communities", required_argument, NULL, 'c'},
+  {"foreground",  no_argument,       NULL, 'f'},
+  {"local-port",  required_argument, NULL, 'p'},
+  {"mgmt-port",   required_argument, NULL, 't'},
+  {"autoip",      required_argument, NULL, 'a'},
+  {"help",        no_argument,       NULL, 'h'},
+  {"verbose",     no_argument,       NULL, 'v'},
+  {NULL, 0,                          NULL, 0}
 };
 
 /* *************************************************** */
@@ -484,7 +489,7 @@ static int add_federation_to_communities(n2n_sn_t *sss){
     num_communities = HASH_COUNT(sss->communities);
 
     traceEvent(TRACE_INFO, "Added federation '%s' to the list of communities [total: %u]",
-  		 (char*)sss->federation->community, num_communities);
+	       (char*)sss->federation->community, num_communities);
   }
 
   return 0;

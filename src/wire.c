@@ -405,12 +405,15 @@ int encode_REGISTER_SUPER_ACK(uint8_t *base,
   retval += encode_uint16(base, idx, reg->lifetime);
   retval += encode_sock(base, idx, &(reg->sock));
   retval += encode_uint8(base, idx, reg->num_sn);
+
+#if 0 /* FIX fcarli3 */
   if (reg->num_sn > 0) {
     /* We only support 0 or 1 at this stage */
     retval += encode_sock(base, idx, &(reg->sn_bak));
     retval += encode_mac(base, idx, reg->mac_addr);
   }
-
+#endif
+  
   return retval;
 }
 
@@ -434,12 +437,15 @@ int decode_REGISTER_SUPER_ACK(n2n_REGISTER_SUPER_ACK_t *reg,
 
   /* Following the edge socket are an array of backup supernodes. */
   retval += decode_uint8(&(reg->num_sn), base, rem, idx);
+
+#if 0  /* FIX fcarli3 */
   if (reg->num_sn > 0) {
     /* We only support 0 or 1 at this stage */
     retval += decode_sock(&(reg->sn_bak), base, rem, idx);
     retval += decode_mac(reg->mac_addr, base, rem, idx); 
  }
-
+#endif
+  
   return retval;
 }
 

@@ -205,13 +205,13 @@ static int try_broadcast(n2n_sn_t * sss,
 }
 
 /** Initialise some fields of the community structure **/
-int comm_init(struct sn_community *comm, char *cmn){
+int comm_init(struct sn_community *comm, char *cmn) {
 
-	strncpy((char*)comm->community, cmn, N2N_COMMUNITY_SIZE-1);
-	comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
-	comm->is_federation = IS_NO_FEDERATION;
+  strncpy((char*)comm->community, cmn, N2N_COMMUNITY_SIZE-1);
+  comm->community[N2N_COMMUNITY_SIZE-1] = '\0';
+  comm->is_federation = IS_NO_FEDERATION;
 
-	return 0; /* OK */
+  return 0; /* OK */
 }
 
 
@@ -238,25 +238,25 @@ int sn_init(n2n_sn_t *sss) {
   sss->max_auto_ip_net.net_addr = inet_addr(N2N_SN_MAX_AUTO_IP_NET_DEFAULT);
   sss->max_auto_ip_net.net_addr = ntohl(sss->max_auto_ip_net.net_addr);
   sss->max_auto_ip_net.net_bitlen = N2N_SN_AUTO_IP_NET_BIT_DEFAULT;
-	sss->federation = (struct sn_community *)calloc(1,sizeof(struct sn_community));
+  sss->federation = (struct sn_community *)calloc(1,sizeof(struct sn_community));
 
-	/* Initialize the federation */
-	if(sss->federation){
-		strncpy(sss->federation->community, (char*)FEDERATION_NAME, N2N_COMMUNITY_SIZE-1);
-	  sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
-		/* enable the flag for federation */
+  /* Initialize the federation */
+  if(sss->federation) {
+    strncpy(sss->federation->community, (char*)FEDERATION_NAME, N2N_COMMUNITY_SIZE-1);
+    sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
+    /* enable the flag for federation */
     sss->federation->is_federation = IS_FEDERATION;
     sss->federation->purgeable = COMMUNITY_UNPURGEABLE;
     /* header encryption enabled by default */
     sss->federation->header_encryption = HEADER_ENCRYPTION_ENABLED;
     /*setup the encryption key */
     packet_header_setup_key(sss->federation->community, &(sss->federation->header_encryption_ctx), &(sss->federation->header_iv_ctx));
-	}
+  }
 
   n2n_srand (n2n_seed());
 
   /* Random MAC address */
-  for(i=0; i<6; i++){
+  for(i=0; i<6; i++) {
     sss->mac_addr[i] = n2n_rand();
   }
   sss->mac_addr[0] &= ~0x01; /* Clear multicast bit */
@@ -423,9 +423,9 @@ int subnet_available(n2n_sn_t *sss,
     if (cmn == comm) continue;
     if(cmn->is_federation == IS_FEDERATION) continue;
     if( (net_id <= (cmn->auto_ip_net.net_addr + ~bitlen2mask(cmn->auto_ip_net.net_bitlen)))
-      &&(net_id + ~mask >= cmn->auto_ip_net.net_addr) ) {
-        success = 0;
-        break;
+	&&(net_id + ~mask >= cmn->auto_ip_net.net_addr) ) {
+      success = 0;
+      break;
     }
   }
 
@@ -471,15 +471,15 @@ int assign_one_ip_subnet(n2n_sn_t *sss,
     comm->auto_ip_net.net_bitlen = sss->min_auto_ip_net.net_bitlen;
     net = htonl(comm->auto_ip_net.net_addr);
     traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
-                           inet_ntoa(*(struct in_addr *) &net),
-                           comm->auto_ip_net.net_bitlen,
-                           comm->community);
+	       inet_ntoa(*(struct in_addr *) &net),
+	       comm->auto_ip_net.net_bitlen,
+	       comm->community);
     return 0;
   } else {
     comm->auto_ip_net.net_addr = 0;
     comm->auto_ip_net.net_bitlen = 0;
     traceEvent(TRACE_WARNING, "No assignable sub-network left for community '%s'.",
-                               comm->community);
+	       comm->community);
     return -1;
   }
 }
@@ -510,58 +510,61 @@ static int find_edge_time_stamp_and_verify (struct peer_info * edges,
   return ( time_stamp_verify_and_update (stamp, previous_stamp, allow_jitter) );
 }
 
-
-static int re_register_and_purge_supernodes(n2n_sn_t *sss, struct sn_community *comm, time_t now){
+static int re_register_and_purge_supernodes(n2n_sn_t *sss, struct sn_community *comm, time_t now) {
   time_t time;
   struct peer_info *peer, *tmp;
 
-  if(comm != NULL){
-    HASH_ITER(hh,comm->edges,peer,tmp){
-    time = now - peer->last_seen;
-    if(time <= ALLOWED_TIME) continue;
-    if((time < PURGE_FEDERATION_NODE_INTERVAL) || (peer->purgeable == SN_UNPURGEABLE)){ /* re-regitser (send REGISTER_SUPER) */
-      uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
-      size_t idx;
-      /* ssize_t sent; */
-      n2n_common_t cmn;
-      n2n_cookie_t cookie;
-      n2n_REGISTER_SUPER_t reg;
-      n2n_sock_str_t sockbuf;
+  if(comm != NULL) {
+    HASH_ITER(hh,comm->edges,peer,tmp) {
+      time = now - peer->last_seen;
+      if(time <= ALLOWED_TIME) continue;
 
-      memset(&cmn, 0, sizeof(cmn));
-      memset(&reg, 0, sizeof(reg));
+      if((time < PURGE_FEDERATION_NODE_INTERVAL)
+	 || (peer->purgeable == SN_UNPURGEABLE)  /* FIX fcarli3 */
+	 ) {
+	/* re-regitser (send REGISTER_SUPER) */
+	uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
+	size_t idx;
+	/* ssize_t sent; */
+	n2n_common_t cmn;
+	n2n_cookie_t cookie;
+	n2n_REGISTER_SUPER_t reg;
+	n2n_sock_str_t sockbuf;
 
-      cmn.ttl = N2N_DEFAULT_TTL;
-      cmn.pc = n2n_register_super;
-      cmn.flags = 0;
-      memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
+	memset(&cmn, 0, sizeof(cmn));
+	memset(&reg, 0, sizeof(reg));
 
-      for (idx = 0; idx < N2N_COOKIE_SIZE; ++idx) /* aggiungi sn_idx */
-        cookie[idx] = n2n_rand() % 0xff;
+	cmn.ttl = N2N_DEFAULT_TTL;
+	cmn.pc = n2n_register_super;
+	cmn.flags = 0;
+	memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
 
-      memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
-      reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
-      reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
-      reg.auth.scheme = 0; /* No auth yet */
+	for (idx = 0; idx < N2N_COOKIE_SIZE; ++idx) /* aggiungi sn_idx */
+	  cookie[idx] = n2n_rand() % 0xff;
 
-      idx = 0;
-      encode_mac(reg.edgeMac, &idx, peer->mac_addr);
+	memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
+	reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
+	reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
+	reg.auth.scheme = 0; /* No auth yet */
 
-      idx = 0;
-      encode_REGISTER_SUPER(pktbuf, &idx, &cmn, &reg);
+	idx = 0;
+	encode_mac(reg.edgeMac, &idx, peer->mac_addr);
 
-      traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
-	          sock_to_cstr(sockbuf, &(peer->sock)));
+	idx = 0;
+	encode_REGISTER_SUPER(pktbuf, &idx, &cmn, &reg);
 
-      packet_header_encrypt(pktbuf, idx, comm->header_encryption_ctx,
-				         comm->header_iv_ctx,
-					 time_stamp(), pearson_hash_16(pktbuf, idx));
+	traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
+		   sock_to_cstr(sockbuf, &(peer->sock)));
 
-      /* sent = */ sendto_sock(sss, &(peer->sock), pktbuf, N2N_PKT_BUF_SIZE);
+	packet_header_encrypt(pktbuf, idx, comm->header_encryption_ctx,
+			      comm->header_iv_ctx,
+			      time_stamp(), pearson_hash_16(pktbuf, idx));
+
+	/* sent = */ sendto_sock(sss, &(peer->sock), pktbuf, N2N_PKT_BUF_SIZE);
+      }
+      if(time >= PURGE_FEDERATION_NODE_INTERVAL) purge_expired_registrations(&(comm->edges),&time,PURGE_FEDERATION_NODE_INTERVAL);/* purge not-seen-long-time supernodes*/
+    }
   }
-  if(time >= PURGE_FEDERATION_NODE_INTERVAL) purge_expired_registrations(&(comm->edges),&time,PURGE_FEDERATION_NODE_INTERVAL);/* purge not-seen-long-time supernodes*/
-  }
-}
 
   return 0; /* OK */
 }
@@ -731,40 +734,40 @@ static int sendto_mgmt(n2n_sn_t *sss,
 
 
 /** Search for a node in the federation list. If it has to add a new node, it creates a new peer_info and initializes it
-  * Evaluate first the MAC parameter and if it's zero-MAC, then it can skip HASH_FIND_PEER by MAC and search by socket
-	*/
-struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss,n2n_sock_t *sock, n2n_mac_t *mac){
-	struct peer_info *scan, *tmp, *peer;
-	int found = 0;
+ * Evaluate first the MAC parameter and if it's zero-MAC, then it can skip HASH_FIND_PEER by MAC and search by socket
+ */
+struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss,n2n_sock_t *sock, n2n_mac_t *mac) {
+  struct peer_info *scan, *tmp, *peer;
+  int found = 0;
 
-	if(sss->federation != NULL){
-		if(memcmp(mac,null_mac,sizeof(n2n_mac_t)) != 0){ /* not zero MAC */
- 		 HASH_FIND_PEER(sss->federation->edges, mac, peer);
+  if(sss->federation != NULL) {
+    if(memcmp(mac,null_mac,sizeof(n2n_mac_t)) != 0) { /* not zero MAC */
+      HASH_FIND_PEER(sss->federation->edges, mac, peer);
 
-		 //REVISIT: make this dependent from last_seen and update socket
- 	 }
+      //REVISIT: make this dependent from last_seen and update socket
+    }
 
-	 if(peer == NULL){ /* zero MAC, search by socket */
- 		 HASH_ITER(hh,sss->federation->edges,scan,tmp){
- 			 if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t))){
- 			 	memcpy(&(scan->mac_addr), sock, sizeof(n2n_mac_t));
-				peer = scan;
-				break;
- 			}
- 		 }
-
-		 if(peer == NULL){
-			 peer = (struct peer_info*)calloc(1,sizeof(struct peer_info));
-			 if(peer){
-				 memcpy(&(peer->sock),sock,sizeof(n2n_sock_t));
-		 		 memcpy(&(peer->mac_addr),mac, sizeof(n2n_mac_t));
-				 HASH_ADD_PEER(sss->federation->edges,peer);
-			 }
-		 }
- 	 }
+    if(peer == NULL) { /* zero MAC, search by socket */
+      HASH_ITER(hh,sss->federation->edges,scan,tmp) {
+	if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t))) {
+	  memcpy(&(scan->mac_addr), sock, sizeof(n2n_mac_t));
+	  peer = scan;
+	  break;
 	}
+      }
 
-	return peer;
+      if(peer == NULL) {
+	peer = (struct peer_info*)calloc(1,sizeof(struct peer_info));
+	if(peer) {
+	  memcpy(&(peer->sock),sock,sizeof(n2n_sock_t));
+	  memcpy(&(peer->mac_addr),mac, sizeof(n2n_mac_t));
+	  HASH_ADD_PEER(sss->federation->edges,peer);
+	}
+      }
+    }
+  }
+
+  return peer;
 
 }
 
@@ -1021,8 +1024,8 @@ static int process_udp(n2n_sn_t * sss,
 	  reg.sock.port = ntohs(sender_sock->sin_port);
 	  memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
 
-		/* Re-encode the header. */
-		encode_REGISTER(encbuf, &encx, &cmn2, &reg);
+	  /* Re-encode the header. */
+	  encode_REGISTER(encbuf, &encx, &cmn2, &reg);
 
 	  rec_buf = encbuf;
 	} else {
@@ -1052,7 +1055,7 @@ static int process_udp(n2n_sn_t * sss,
       n2n_REGISTER_SUPER_ACK_t        ack;
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-			uint8_t													tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
+      uint8_t													tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
       size_t                          encx=0;
       struct sn_community             *fed;
       struct sn_community_regular_expression *re, *tmp_re;
@@ -1065,7 +1068,7 @@ static int process_udp(n2n_sn_t * sss,
       n2n_sock_t 		                  *tmp_sock;
       n2n_mac_t 		                  *tmp_mac;
 
-      if(from_supernode != comm->is_federation){
+      if(from_supernode != comm->is_federation) {
         traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER: from_supernode value doesn't correspond to the internal federation marking");
 	return -1;
       }
@@ -1116,7 +1119,7 @@ static int process_udp(n2n_sn_t * sss,
 	comm = (struct sn_community*)calloc(1,sizeof(struct sn_community));
 
 	if(comm) {
-		comm_init(comm,(char *)cmn.community);
+	  comm_init(comm,(char *)cmn.community);
 	  /* new communities introduced by REGISTERs could not have had encrypted header... */
 	  comm->header_encryption = HEADER_ENCRYPTION_NONE;
 	  comm->header_encryption_ctx = NULL;
@@ -1151,34 +1154,34 @@ static int process_udp(n2n_sn_t * sss,
 	ack.sock.port = ntohs(sender_sock->sin_port);
 	memcpy(ack.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
 
-  /* Add sender's data to federation (or update it) */
-	if(comm->is_federation == IS_FEDERATION){
-		p = add_sn_to_federation_by_mac_or_sock(sss,&(ack.sock),&(reg.edgeMac));
+	/* Add sender's data to federation (or update it) */
+	if(comm->is_federation == IS_FEDERATION) {
+	  p = add_sn_to_federation_by_mac_or_sock(sss,&(ack.sock),&(reg.edgeMac));
 	  if(p) p->last_seen = now;
 	}
 
-		tmp_sock = (void*)tmpbuf;
-		tmp_mac = (void*)tmpbuf + sizeof(n2n_sock_t);
+	tmp_sock = (void*)tmpbuf;
+	tmp_mac = (void*)tmpbuf + sizeof(n2n_sock_t);
 
-		// REVISIT: consider adding last_seen
+	// REVISIT: consider adding last_seen
 
-    /* Assembling supernode list for REGISTER_SUPER_ACK payload */
-    HASH_ITER(hh, sss->federation->edges, peer, tmp_peer) {
-      if((now - peer->last_seen) >= ALLOWED_TIME) continue; /* skip long-time-not-seen supernodes */
-      if(((++num)*ENTRY_SIZE) > MAX_AVAILABLE_SPACE_FOR_ENTRIES) break; /* no more space available in REGISTER_SUPER_ACK payload */
-			memcpy((void*)tmpbuf, (void*)&(peer->sock), sizeof(n2n_sock_t));
-	    memcpy((void*)tmpbuf, (void*)&(peer->mac_addr), sizeof(n2n_mac_t));
-	    tmp_sock += ENTRY_SIZE;
-	    tmp_mac += ENTRY_SIZE;
-    }
-    ack.num_sn = num;
+	/* Assembling supernode list for REGISTER_SUPER_ACK payload */
+	HASH_ITER(hh, sss->federation->edges, peer, tmp_peer) {
+	  if((now - peer->last_seen) >= ALLOWED_TIME) continue; /* skip long-time-not-seen supernodes */
+	  if(((++num)*ENTRY_SIZE) > MAX_AVAILABLE_SPACE_FOR_ENTRIES) break; /* no more space available in REGISTER_SUPER_ACK payload */
+	  memcpy((void*)tmpbuf, (void*)&(peer->sock), sizeof(n2n_sock_t));
+	  memcpy((void*)tmpbuf, (void*)&(peer->mac_addr), sizeof(n2n_mac_t));
+	  tmp_sock += ENTRY_SIZE;
+	  tmp_mac += ENTRY_SIZE;
+	}
+	ack.num_sn = num;
 
 
         traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER for %s [%s]",
 		   macaddr_str(mac_buf, reg.edgeMac),
 		   sock_to_cstr(sockbuf, &(ack.sock)));
 
-	if(memcmp(reg.edgeMac, &null_mac, N2N_MAC_SIZE) != 0){
+	if(memcmp(reg.edgeMac, &null_mac, N2N_MAC_SIZE) != 0) {
 	  update_edge(sss, &reg, comm, &(ack.sock), now);
 	}
 
@@ -1213,9 +1216,9 @@ static int process_udp(n2n_sn_t * sss,
     macstr_t           	 	   			  mac_buf1;
     n2n_sock_t          	    			sender;
     n2n_sock_t        		   			  *orig_sender;
-		n2n_sock_t											*tmp_sock;
-		n2n_mac_t												*tmp_mac;
-		int															i;
+    n2n_sock_t											*tmp_sock;
+    n2n_mac_t												*tmp_mac;
+    int															i;
 
     sender.family = AF_INET;
     sender.port = ntohs(sender_sock->sin_port);
@@ -1224,12 +1227,12 @@ static int process_udp(n2n_sn_t * sss,
 
     memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
-		if(!comm) {
-			traceEvent(TRACE_DEBUG, "process_udp REGISTER_SUPER_ACK with unknown community %s", cmn.community);
-			return -1;
-		}
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp REGISTER_SUPER_ACK with unknown community %s", cmn.community);
+      return -1;
+    }
 
-    if(from_supernode != comm->is_federation){
+    if(from_supernode != comm->is_federation) {
       traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK: from_supernode value doesn't correspond to the internal federation marking.");
       return -1;
     }
@@ -1247,36 +1250,36 @@ static int process_udp(n2n_sn_t * sss,
     }
 
     traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s)",
-	        macaddr_str(mac_buf1, ack.edgeMac),
-	        sock_to_cstr(sockbuf1, &sender),
-		sock_to_cstr(sockbuf2, orig_sender));
+	       macaddr_str(mac_buf1, ack.edgeMac),
+	       sock_to_cstr(sockbuf1, &sender),
+	       sock_to_cstr(sockbuf2, orig_sender));
 
     if(comm->is_federation == IS_FEDERATION) {
       HASH_FIND_PEER(sss->federation->edges, ack.edgeMac, scan);
-        if(scan != NULL){
-          scan->last_seen = now;
-        } else {
-					traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to an unknown supernode.");
-					break;
-				}
-     }
+      if(scan != NULL) {
+	scan->last_seen = now;
+      } else {
+	traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to an unknown supernode.");
+	break;
+      }
+    }
 
-		 tmp_sock = (void*)&(ack.num_sn) + sizeof(ack.num_sn);
- 		 tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
+    tmp_sock = (void*)&(ack.num_sn) + sizeof(ack.num_sn);
+    tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
 
-		 for(i=0; i<ack.num_sn; i++){
-			 tmp = add_sn_to_federation_by_mac_or_sock(sss,tmp_sock,tmp_mac);
+    for(i=0; i<ack.num_sn; i++) {
+      tmp = add_sn_to_federation_by_mac_or_sock(sss,tmp_sock,tmp_mac);
 
-			 if(tmp){
-	 			 tmp->last_seen = now - TEST_TIME;
-			 }
+      if(tmp) {
+	tmp->last_seen = now - TEST_TIME;
+      }
 
-       tmp_sock += ENTRY_SIZE;
-       tmp_mac += ENTRY_SIZE;
-		 }
+      tmp_sock += ENTRY_SIZE;
+      tmp_mac += ENTRY_SIZE;
+    }
 
-  break;
-}
+    break;
+  }
   case MSG_TYPE_QUERY_PEER: {
     n2n_QUERY_PEER_t query;
     uint8_t encbuf[N2N_SN_PKTBUF_SIZE];
@@ -1376,7 +1379,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
 
       if (rc > 0)
         {
-	  			if (FD_ISSET(sss->sock, &socket_mask))
+	  if (FD_ISSET(sss->sock, &socket_mask))
             {
 	      struct sockaddr_in sender_sock;
 	      socklen_t i;
@@ -1434,7 +1437,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
 	  traceEvent(TRACE_DEBUG, "timeout");
         }
 
-			re_register_and_purge_supernodes(sss, sss->federation, now);
+      re_register_and_purge_supernodes(sss, sss->federation, now);
       purge_expired_communities(sss, &last_purge_edges, now);
       sort_communities (sss, &last_sort_communities, now);
     } /* while */

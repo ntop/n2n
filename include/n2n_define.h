@@ -82,6 +82,9 @@ enum federation{IS_NO_FEDERATION = 0,IS_FEDERATION = 1};
 #define COMMUNITY_UNPURGEABLE		0
 #define COMMUNITY_PURGEABLE		1
 
+#define SN_UNPURGEABLE		        0  /* FIX fcarli3 */
+#define SN_PURGEABLE		        1  /* FIX fcarli3 */
+
 /* Header encryption indicators */
 #define HEADER_ENCRYPTION_UNKNOWN       0
 #define HEADER_ENCRYPTION_NONE          1
