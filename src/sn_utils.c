@@ -1185,8 +1185,7 @@ static int process_udp(n2n_sn_t * sss,
 	  update_edge(sss, &reg, comm, &(ack.sock), now);
 	}
 
-	encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack);
-	encode_buf(ackbuf,&encx,tmpbuf,(num*ENTRY_SIZE));
+	encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
 
 	if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
 	  packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
@@ -1219,6 +1218,7 @@ static int process_udp(n2n_sn_t * sss,
     n2n_sock_t											*tmp_sock;
     n2n_mac_t												*tmp_mac;
     int															i;
+		uint8_t													dec_tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
 
     sender.family = AF_INET;
     sender.port = ntohs(sender_sock->sin_port);
@@ -1237,7 +1237,7 @@ static int process_udp(n2n_sn_t * sss,
       return -1;
     }
 
-    decode_REGISTER_SUPER_ACK(&ack,&cmn,udp_buf,&rem,&idx);
+    decode_REGISTER_SUPER_ACK(&ack,&cmn,udp_buf,&rem,&idx,dec_tmpbuf);
     orig_sender = &(ack.sock);
 
     if (comm) {

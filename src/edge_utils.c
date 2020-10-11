@@ -37,7 +37,6 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos);
 static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
 static void edge_cleanup_routes(n2n_edge_t *eee);
-static int supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
 
 static void check_known_peer_sock_change(n2n_edge_t *eee,
                                          uint8_t from_supernode,
@@ -211,7 +210,7 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
     traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (eee->conf.sn_ip_array[i]));
 
   /* Set the active supernode */
-  supernode2addr(&(eee->supernode), eee->conf.sn_ip_array[eee->sn_idx]);
+  supernode2sock(&(eee->supernode), eee->conf.sn_ip_array[eee->sn_idx]);
 
   /* Set active transop */
   switch(transop_id) {
@@ -318,72 +317,6 @@ static int is_valid_peer_sock(const n2n_sock_t *sock) {
 }
 
 /* ***************************************************** */
-
-/** Resolve the supernode IP address.
- *
- *  REVISIT: This is a really bad idea. The edge will block completely while the
- *           hostname resolution is performed. This could take 15 seconds.
- */
-static int supernode2addr(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
-  n2n_sn_name_t addr;
-  const char *supernode_host;
-  int rv = 0;
-
-  memcpy(addr, addrIn, N2N_EDGE_SN_HOST_SIZE);
-
-  supernode_host = strtok(addr, ":");
-
-  if(supernode_host) {
-    in_addr_t sn_addr;
-    char *supernode_port = strtok(NULL, ":");
-    const struct addrinfo aihints = {0, PF_INET, 0, 0, 0, NULL, NULL, NULL};
-    struct addrinfo * ainfo = NULL;
-    int nameerr;
-
-    if(supernode_port)
-      sn->port = atoi(supernode_port);
-    else
-      traceEvent(TRACE_WARNING, "Bad supernode parameter (-l <host:port>) %s %s:%s",
-		 addr, supernode_host, supernode_port);
-
-    nameerr = getaddrinfo(supernode_host, NULL, &aihints, &ainfo);
-
-    if(0 == nameerr)
-      {
-	struct sockaddr_in * saddr;
-
-	/* ainfo s the head of a linked list if non-NULL. */
-	if(ainfo && (PF_INET == ainfo->ai_family))
-	  {
-	    /* It is definitely and IPv4 address -> sockaddr_in */
-	    saddr = (struct sockaddr_in *)ainfo->ai_addr;
-
-	    memcpy(sn->addr.v4, &(saddr->sin_addr.s_addr), IPV4_SIZE);
-	    sn->family=AF_INET;
-	  }
-	else
-	  {
-	    /* Should only return IPv4 addresses due to aihints. */
-	    traceEvent(TRACE_WARNING, "Failed to resolve supernode IPv4 address for %s", supernode_host);
-	    rv = -1;
-	  }
-
-	freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
-	ainfo = NULL;
-      } else {
-      traceEvent(TRACE_WARNING, "Failed to resolve supernode host %s", supernode_host);
-      rv = -2;
-    }
-
-  } else {
-    traceEvent(TRACE_WARNING, "Wrong supernode parameter (-l <host:port>)");
-    rv = -3;
-  }
-
-  return(rv);
-}
-
-/* ************************************** */
 
 static const int definitely_from_supernode = 1;
 
@@ -961,7 +894,7 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
     --(eee->sup_attempts);
 
   for(sn_idx=0; sn_idx<eee->conf.sn_num; sn_idx++) {
-    if(supernode2addr(&(eee->supernode), eee->conf.sn_ip_array[sn_idx]) == 0) {
+    if(supernode2sock(&(eee->supernode), eee->conf.sn_ip_array[sn_idx]) == 0) {
       traceEvent(TRACE_INFO, "Registering with supernode [id: %u/%u][%s][attempts left %u]",
 		 sn_idx+1, eee->conf.sn_num,
 		 supernode_ip(eee), (unsigned int)eee->sup_attempts);
@@ -1901,6 +1834,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	in_addr_t net;
 	char * ip_str = NULL;
 	n2n_REGISTER_SUPER_ACK_t ra;
+  uint8_t tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
 
 	memset(&ra, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
@@ -1915,7 +1849,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	if(eee->sn_wait)
 	  {
-	    decode_REGISTER_SUPER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
+	    decode_REGISTER_SUPER_ACK(&ra, &cmn, udp_buf, &rem, &idx, tmpbuf);
 
 	    if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
 	      if(!find_peer_time_stamp_and_verify (eee, definitely_from_supernode, null_mac, stamp, TIME_STAMP_NO_JITTER)) {
@@ -1940,13 +1874,10 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	    if(0 == memcmp(ra.cookie, eee->last_cookie, N2N_COOKIE_SIZE))
 	      {
-#if 0
-		if(ra.num_sn > 0)  /* FIX fcarli3 */
+		if(ra.num_sn > 0)
 		  {
-		    traceEvent(TRACE_NORMAL, "Rx REGISTER_SUPER_ACK backup supernode at %s",
-			       sock_to_cstr(sockbuf1, &(ra.sn_bak)));
+		    traceEvent(TRACE_NORMAL, "Rx REGISTER_SUPER_ACK payload contains sockets and MACs of supernodes in the federation.");
 		  }
-#endif
 		eee->last_sup = now;
 		eee->sn_wait=0;
 		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
@@ -2548,7 +2479,7 @@ static int edge_init_routes_linux(n2n_edge_t *eee, n2n_route_t *routes, uint16_t
 	return(-1);
       }
 
-      if (supernode2addr(&sn, eee->conf.sn_ip_array[0]) < 0)
+      if (supernode2sock(&sn, eee->conf.sn_ip_array[0]) < 0)
 	return(-1);
 
       if (sn.family != AF_INET) {

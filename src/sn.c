@@ -234,7 +234,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     n2n_sock_t *socket;
     struct peer_info *anchor_sn;
     size_t length;
-    int rv;
+    int rv = -1;
 
     length = strlen(_optarg);
     if(length >= N2N_EDGE_SN_HOST_SIZE) {
@@ -251,13 +251,8 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
         anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
         if(anchor_sn->ip_addr){
           strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
+	        rv = supernode2sock(socket,_optarg);
 
-#if 1
-	  rv = -1;
-#else
-	  rv = supernode2sock(socket,_optarg); /* FIX fcarli3 */
-#endif
-	  
           if(rv != 0){
             traceEvent(TRACE_WARNING, "Invalid socket");
             break;
@@ -270,7 +265,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
         }
       }
     }
-    
+
     break;
   }
 

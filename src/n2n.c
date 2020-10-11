@@ -221,6 +221,72 @@ char * macaddr_str(macstr_t buf,
 
 /* *********************************************** */
 
+/** Resolve the supernode IP address.
+ *
+ *  REVISIT: This is a really bad idea. The edge will block completely while the
+ *           hostname resolution is performed. This could take 15 seconds.
+ */
+int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
+  n2n_sn_name_t addr;
+  const char *supernode_host;
+  int rv = 0;
+
+  memcpy(addr, addrIn, N2N_EDGE_SN_HOST_SIZE);
+
+  supernode_host = strtok(addr, ":");
+
+  if(supernode_host) {
+    in_addr_t sn_addr;
+    char *supernode_port = strtok(NULL, ":");
+    const struct addrinfo aihints = {0, PF_INET, 0, 0, 0, NULL, NULL, NULL};
+    struct addrinfo * ainfo = NULL;
+    int nameerr;
+
+    if(supernode_port)
+      sn->port = atoi(supernode_port);
+    else
+      traceEvent(TRACE_WARNING, "Bad supernode parameter (-l <host:port>) %s %s:%s",
+		 addr, supernode_host, supernode_port);
+
+    nameerr = getaddrinfo(supernode_host, NULL, &aihints, &ainfo);
+
+    if(0 == nameerr)
+      {
+	struct sockaddr_in * saddr;
+
+	/* ainfo s the head of a linked list if non-NULL. */
+	if(ainfo && (PF_INET == ainfo->ai_family))
+	  {
+	    /* It is definitely and IPv4 address -> sockaddr_in */
+	    saddr = (struct sockaddr_in *)ainfo->ai_addr;
+
+	    memcpy(sn->addr.v4, &(saddr->sin_addr.s_addr), IPV4_SIZE);
+	    sn->family=AF_INET;
+	  }
+	else
+	  {
+	    /* Should only return IPv4 addresses due to aihints. */
+	    traceEvent(TRACE_WARNING, "Failed to resolve supernode IPv4 address for %s", supernode_host);
+	    rv = -1;
+	  }
+
+	freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
+	ainfo = NULL;
+      } else {
+      traceEvent(TRACE_WARNING, "Failed to resolve supernode host %s", supernode_host);
+      rv = -2;
+    }
+
+  } else {
+    traceEvent(TRACE_WARNING, "Wrong supernode parameter (-l <host:port>)");
+    rv = -3;
+  }
+
+  return(rv);
+}
+
+/* ************************************** */
+
 uint8_t is_multi_broadcast(const uint8_t * dest_mac) {
 
   int is_broadcast =(memcmp(broadcast_addr, dest_mac, 6) == 0);
@@ -278,7 +344,7 @@ void print_n2n_version() {
          GIT_RELEASE, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
 }
 
-/* *********************************************** */ 
+/* *********************************************** */
 
 size_t purge_expired_registrations(struct peer_info ** peer_list, time_t* p_last_purge, int timeout) {
   time_t now = time(NULL);
@@ -373,7 +439,7 @@ extern char * sock_to_cstr(n2n_sock_str_t out,
   } else {
     const uint8_t * a = sock->addr.v4;
 
-    snprintf(out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu", 
+    snprintf(out, N2N_SOCKBUF_SIZE, "%hu.%hu.%hu.%hu:%hu",
 	     (unsigned short)(a[0] & 0xff),
 	     (unsigned short)(a[1] & 0xff),
 	     (unsigned short)(a[2] & 0xff),
