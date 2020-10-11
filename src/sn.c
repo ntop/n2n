@@ -24,6 +24,7 @@
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
 static n2n_sn_t sss_node;
+static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /** Load the list of allowed communities. Existing/previous ones will be removed
  *
@@ -176,8 +177,9 @@ static void help() {
 	 "or\n"
 	 );
   printf("supernode ");
-  printf("-l <local port> ");
+  printf("-p <local port> ");
   printf("-c <path> ");
+  printf("-l <supernode:port> ");
 #if defined(N2N_HAVE_DAEMON)
   printf("[-f] ");
 #endif
@@ -191,8 +193,9 @@ static void help() {
   printf("[-v] ");
   printf("\n\n");
 
-  printf("-l <port>         | Set UDP main listen port to <port>\n");
+  printf("-p <port>         | Set UDP main listen port to <port>\n");
   printf("-c <path>         | File containing the allowed communities.\n");
+  printf("-l <sn:port>      | Supernode IP:port.\n");
 #if defined(N2N_HAVE_DAEMON)
   printf("-f                | Run in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
@@ -219,13 +222,52 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
   //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
 
   switch (optkey) {
-  case 'l': /* local-port */
+  case 'p': /* local-port */
     sss->lport = atoi(_optarg);
     break;
 
   case 't': /* mgmt-port */
     sss->mport = atoi(_optarg);
     break;
+
+  case 'l': { /* supernode:port */
+    n2n_sock_t *socket;
+  	struct peer_info *anchor_sn;
+    size_t length;
+    int rv;
+
+    length = strlen(_optarg);
+    if(length >= N2N_EDGE_SN_HOST_SIZE) {
+      traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d",length,N2N_EDGE_SN_HOST_SIZE);
+      break;
+    }
+
+    if(sss->federation != NULL) {
+  		socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
+
+      anchor_sn = add_sn_to_federation_by_mac_or_sock(sss,socket, (n2n_mac_t*) null_mac);
+
+      if(anchor_sn != NULL){
+        anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
+        if(anchor_sn->ip_addr){
+          strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
+          rv = supernode2sock(socket,_optarg);
+
+          if(rv != 0){
+            traceEvent(TRACE_WARNING, "Invalid socket");
+            break;
+          }
+
+        	memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+          memcpy(&(anchor_sn->mac_addr),null_mac,sizeof(n2n_mac_t));
+          anchor_sn->purgeable = SN_UNPURGEABLE;
+          anchor_sn->last_valid_time_stamp = initial_time_stamp();
+        }
+      }
+    }
+    
+    break;
+  }
 
   case 'a': {
     dec_ip_str_t ip_min_str = {'\0'};
@@ -280,15 +322,12 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 #endif
 
   case 'F': { /* federation name */
-    struct sn_community *fed;
 
-    HASH_FIND_COMMUNITY(sss->communities, FEDERATION_NAME, fed);
-
-    if(fed != NULL){
-      snprintf(fed->community,N2N_COMMUNITY_SIZE-1,"*%s",_optarg);
-      strncpy(sss->federation, fed->community, N2N_COMMUNITY_SIZE-1);
-      sss->federation[N2N_COMMUNITY_SIZE-1] = '\0';
+    if(sss->federation->community != NULL){
+      snprintf(sss->federation->community,N2N_COMMUNITY_SIZE-1,"*%s",_optarg);
+      sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
     }
+
     break;
   }
 
@@ -327,7 +366,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 static const struct option long_options[] = {
 					     {"communities", required_argument, NULL, 'c'},
 					     {"foreground",  no_argument,       NULL, 'f'},
-					     {"local-port",  required_argument, NULL, 'l'},
+					     {"local-port",  required_argument, NULL, 'p'},
 					     {"mgmt-port",   required_argument, NULL, 't'},
 					     {"autoip",      required_argument, NULL, 'a'},
 					     {"help",        no_argument,       NULL, 'h'},
@@ -341,7 +380,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fl:u:g:t:a:c:F:m:vh",
+  while((c = getopt_long(argc, argv, "fp:l:u:g:t:a:c:F:m:vh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);
@@ -437,26 +476,15 @@ static int loadFromFile(const char *path, n2n_sn_t *sss) {
 
 /* Add the federation to the communities list of a supernode */
 static int add_federation_to_communities(n2n_sn_t *sss){
-  struct sn_community *fed;
   uint32_t  num_communities = 0;
 
-  fed = (struct sn_community *)calloc(1,sizeof(struct sn_community));
-  comm_init(fed,sss->federation);
-
-  if(fed != NULL) {
-    /* enable the flag for federation */
-    fed->is_federation = IS_FEDERATION;
-    fed->purgeable = COMMUNITY_UNPURGEABLE;
-    /* header encryption enabled by default */
-    fed->header_encryption = HEADER_ENCRYPTION_ENABLED;
-    /*setup the encryption key */
-    packet_header_setup_key(fed->community, &(fed->header_encryption_ctx), &(fed->header_iv_ctx));
-    HASH_ADD_STR(sss->communities, community, fed);
+  if(sss->federation != NULL) {
+    HASH_ADD_STR(sss->communities, community, sss->federation);
 
     num_communities = HASH_COUNT(sss->communities);
 
     traceEvent(TRACE_INFO, "Added federation '%s' to the list of communities [total: %u]",
-  		 (char*)fed->community, num_communities);
+  		 (char*)sss->federation->community, num_communities);
   }
 
   return 0;
@@ -615,5 +643,3 @@ int main(int argc, char * const argv[]) {
   keep_running = 1;
   return run_sn_loop(&sss_node, &keep_running);
 }
-
-

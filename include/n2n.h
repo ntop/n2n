@@ -190,23 +190,25 @@ typedef char macstr_t[N2N_MACSTR_SIZE];
 typedef char dec_ip_str_t[N2N_NETMASK_STR_SIZE];
 typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
 
+typedef struct speck_context_t he_context_t;
+typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
+
 
 struct peer_info {
   n2n_mac_t        mac_addr;
   n2n_ip_subnet_t  dev_addr;
   n2n_sock_t       sock;
   int              timeout;
+  uint8_t          purgeable;
   time_t           last_seen;
   time_t           last_p2p;
   time_t           last_sent_query;
   uint64_t         last_valid_time_stamp;
+  char             *ip_addr;
 
   UT_hash_handle   hh; /* makes this structure hashable */
 };
 
-
-typedef struct speck_context_t he_context_t;
-typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 
 typedef struct n2n_route {
   in_addr_t        net_addr;
@@ -396,7 +398,7 @@ typedef struct n2n_sn
   int lock_communities; /* If true, only loaded and matching communities can be used. */
   struct sn_community *communities;
   struct sn_community_regular_expression *rules;
-  char federation[N2N_COMMUNITY_SIZE];
+  struct sn_community *federation;
 } n2n_sn_t;
 
 /* ************************************** */
@@ -443,6 +445,7 @@ uint32_t bitlen2mask(uint8_t bitlen);
 uint8_t mask2bitlen(uint32_t mask);
 char* macaddr_str(macstr_t buf, const n2n_mac_t mac);
 int str2mac( uint8_t * outmac /* 6 bytes */, const char * s );
+int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
 uint8_t is_multi_broadcast(const uint8_t * dest_mac);
 char* msg_type2str(uint16_t msg_type);
 void hexdump(const uint8_t * buf, size_t len);
@@ -497,6 +500,7 @@ int quick_edge_init(char *device_name, char *community_name,
 int comm_init(struct sn_community *comm, char *cmn);
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
+struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss, n2n_sock_t *sock, n2n_mac_t *mac);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
 int assign_one_ip_subnet(n2n_sn_t *sss, struct sn_community *comm);
 const char* compression_str(uint8_t cmpr);
