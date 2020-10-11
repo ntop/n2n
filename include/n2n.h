@@ -500,6 +500,7 @@ int quick_edge_init(char *device_name, char *community_name,
 int comm_init(struct sn_community *comm, char *cmn);
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
+int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
 struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss, n2n_sock_t *sock, n2n_mac_t *mac);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
 int assign_one_ip_subnet(n2n_sn_t *sss, struct sn_community *comm);

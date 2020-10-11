@@ -304,13 +304,15 @@ int decode_REGISTER_ACK( n2n_REGISTER_ACK_t * pkt,
 int encode_REGISTER_SUPER_ACK( uint8_t * base,
                                size_t * idx,
                                const n2n_common_t * cmn,
-                               const n2n_REGISTER_SUPER_ACK_t * reg );
+                               const n2n_REGISTER_SUPER_ACK_t * reg,
+                               uint8_t * tmpbuf);
 
 int decode_REGISTER_SUPER_ACK( n2n_REGISTER_SUPER_ACK_t * reg,
                                const n2n_common_t * cmn, /* info on how to interpret it */
                                const uint8_t * base,
                                size_t * rem,
-                               size_t * idx );
+                               size_t * idx,
+                               uint8_t * tmpbuf);
 
 int fill_sockaddr( struct sockaddr * addr,
                    size_t addrlen,

@@ -395,7 +395,8 @@ int decode_REGISTER_ACK(n2n_REGISTER_ACK_t *reg,
 int encode_REGISTER_SUPER_ACK(uint8_t *base,
                               size_t *idx,
                               const n2n_common_t *common,
-                              const n2n_REGISTER_SUPER_ACK_t *reg) {
+                              const n2n_REGISTER_SUPER_ACK_t *reg,
+                              uint8_t *tmpbuf) {
   int retval = 0;
   retval += encode_common(base, idx, common);
   retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
@@ -405,15 +406,8 @@ int encode_REGISTER_SUPER_ACK(uint8_t *base,
   retval += encode_uint16(base, idx, reg->lifetime);
   retval += encode_sock(base, idx, &(reg->sock));
   retval += encode_uint8(base, idx, reg->num_sn);
+  retval += encode_buf(base, idx, tmpbuf, (reg->num_sn*ENTRY_SIZE));
 
-#if 0 /* FIX fcarli3 */
-  if (reg->num_sn > 0) {
-    /* We only support 0 or 1 at this stage */
-    retval += encode_sock(base, idx, &(reg->sn_bak));
-    retval += encode_mac(base, idx, reg->mac_addr);
-  }
-#endif
-  
   return retval;
 }
 
@@ -422,7 +416,8 @@ int decode_REGISTER_SUPER_ACK(n2n_REGISTER_SUPER_ACK_t *reg,
                               const n2n_common_t *cmn, /* info on how to interpret it */
                               const uint8_t *base,
                               size_t *rem,
-                              size_t *idx) {
+                              size_t *idx,
+                              uint8_t *tmpbuf) {
   size_t retval = 0;
 
   memset(reg, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
@@ -437,15 +432,8 @@ int decode_REGISTER_SUPER_ACK(n2n_REGISTER_SUPER_ACK_t *reg,
 
   /* Following the edge socket are an array of backup supernodes. */
   retval += decode_uint8(&(reg->num_sn), base, rem, idx);
+  retval += decode_buf(tmpbuf, (reg->num_sn*ENTRY_SIZE), base, rem, idx);
 
-#if 0  /* FIX fcarli3 */
-  if (reg->num_sn > 0) {
-    /* We only support 0 or 1 at this stage */
-    retval += decode_sock(&(reg->sn_bak), base, rem, idx);
-    retval += decode_mac(reg->mac_addr, base, rem, idx); 
- }
-#endif
-  
   return retval;
 }
 
