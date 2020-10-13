@@ -1055,23 +1055,18 @@ static int process_udp(n2n_sn_t * sss,
       n2n_REGISTER_SUPER_ACK_t        ack;
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-      uint8_t													tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
+      uint8_t			      tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
       size_t                          encx=0;
       struct sn_community             *fed;
       struct sn_community_regular_expression *re, *tmp_re;
-      struct peer_info		            *peer, *tmp_peer, *p;
+      struct peer_info		      *peer, *tmp_peer, *p;
       int8_t                          allowed_match = -1;
       uint8_t                         match = 0;
-      int			                        match_length = 0;
+      int			      match_length = 0;
       n2n_ip_subnet_t                 ipaddr;
-      int 			                      num = 0;
-      n2n_sock_t 		                  *tmp_sock;
-      n2n_mac_t 		                  *tmp_mac;
-
-      if(from_supernode != comm->is_federation) {
-        traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER: from_supernode value doesn't correspond to the internal federation marking");
-	return -1;
-      }
+      int 			      num = 0;
+      n2n_sock_t 		      *tmp_sock;
+      n2n_mac_t 		      *tmp_mac;
 
       memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
@@ -1153,6 +1148,11 @@ static int process_udp(n2n_sn_t * sss,
 	ack.sock.family = AF_INET;
 	ack.sock.port = ntohs(sender_sock->sin_port);
 	memcpy(ack.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+	      
+        if(from_supernode != comm->is_federation) {
+          traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER: from_supernode value doesn't correspond to the internal federation marking");
+	  return -1;
+        }
 
 	/* Add sender's data to federation (or update it) */
 	if(comm->is_federation == IS_FEDERATION) {
