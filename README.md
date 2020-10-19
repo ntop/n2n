@@ -82,8 +82,7 @@ the traffic exchanged between two edge nodes but it will know that edge A is tal
 
 The choice of encryption schemes that can be applied to payload has recently been enhanced. Please have
 a look at [Crypto description](doc/Crypto.md) for a quick comparison chart to help make a choice. n2n edge nodes use 
-Twofish encryption by default for compatibility reasons with existing versions. Other ciphers can be chosen
-using the `-A_` option.
+AES encryption by default. Other ciphers can be chosen using the `-A_` option.
 
 A benchmark of the encryption methods is available when compiled from source with `tools/n2n-benchmark`.
 

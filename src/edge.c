@@ -171,11 +171,9 @@ static void help() {
          "                         | causes connections stall when not properly supported.\n");
 #endif
   printf("-r                       | Enable packet forwarding through n2n community.\n");
-  printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
-  printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
-  printf("                         | -A3 or -A (deprecated) = AES, "
-  "-A4 = ChaCha20, "
-  "-A5 = Speck-CTR.\n");
+  printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to AES then).\n");
+  printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish,\n");
+  printf("                         | -A3 or -A (deprecated) = AES (default), -A4 = ChaCha20, -A5 = Speck-CTR.\n");
   printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
   printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
 #ifdef N2N_HAVE_ZSTD
@@ -828,9 +826,9 @@ int main(int argc, char* argv[]) {
 
   if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
     if(conf.encrypt_key) {
-      /* make sure that Twofish is default cipher if key only (and no cipher) is specified */
-      traceEvent(TRACE_WARNING, "Switching to Twofish as key was provided.");
-      conf.transop_id = N2N_TRANSFORM_ID_TWOFISH;
+      /* make sure that AES is default cipher if key only (and no cipher) is specified */
+      traceEvent(TRACE_WARNING, "Switching to AES as key was provided.");
+      conf.transop_id = N2N_TRANSFORM_ID_AES;
     }
   }
 
