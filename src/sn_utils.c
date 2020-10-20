@@ -737,7 +737,7 @@ static int sendto_mgmt(n2n_sn_t *sss,
  * Evaluate first the MAC parameter and if it's zero-MAC, then it can skip HASH_FIND_PEER by MAC and search by socket
  */
 struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss,n2n_sock_t *sock, n2n_mac_t *mac) {
-  struct peer_info *scan, *tmp, *peer;
+  struct peer_info *scan, *tmp, *peer = NULL;
   int found = 0;
 
   if(sss->federation != NULL) {

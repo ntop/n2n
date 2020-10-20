@@ -235,13 +235,20 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     struct peer_info *anchor_sn;
     size_t length;
     int rv = -1;
-
+    char *double_column = strchr(_optarg, ':');
+    
     length = strlen(_optarg);
     if(length >= N2N_EDGE_SN_HOST_SIZE) {
       traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d",length,N2N_EDGE_SN_HOST_SIZE);
       break;
     }
 
+    /* Need to check the format IP:port */
+    if(!double_column) {
+      traceEvent(TRACE_WARNING, "Invalid -l format: ignored");
+      return(-1);
+    }
+    
     if(sss->federation != NULL) {
       socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
 
