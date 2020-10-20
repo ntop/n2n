@@ -150,7 +150,7 @@ static void run_compression_benchmark() {
   gettimeofday( &t1, NULL );
   while(tdiff < target_usec) {
     compression_len = N2N_PKT_BUF_SIZE;
-    if(!lzo1x_1_compress(PKT_CONTENT, sizeof(PKT_CONTENT), compression_buffer, &compression_len, wrkmem) == LZO_E_OK) {
+    if(lzo1x_1_compress(PKT_CONTENT, sizeof(PKT_CONTENT), compression_buffer, &compression_len, wrkmem) != LZO_E_OK) {
       printf("\n\t compression error\n");
       exit(1);
     }

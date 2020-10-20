@@ -329,12 +329,8 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 #endif
 
   case 'F': { /* federation name */
-
-    if(sss->federation->community != NULL){
-      snprintf(sss->federation->community,N2N_COMMUNITY_SIZE-1,"*%s",_optarg);
-      sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
-    }
-
+    snprintf(sss->federation->community, N2N_COMMUNITY_SIZE-1, "*%s" ,_optarg);
+    sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
     break;
   }
 
