@@ -285,7 +285,7 @@ void fullKey(uint32_t L[4], int k, uint32_t QF[4][256]) {
 // -------------------------------------------------------------------------------------
 
 /* fully keyed h (aka g) function */
-#define fkh(X) (S[0][b0(X)]^S[1][b1(X)]^S[2][b2(X)]^S[3][b3(X)])
+#define fkh(X) (ctx->QF[0][b0(X)]^ctx->QF[1][b1(X)]^ctx->QF[2][b2(X)]^ctx->QF[3][b3(X)])
 
 // -------------------------------------------------------------------------------------
 
@@ -293,20 +293,20 @@ void fullKey(uint32_t L[4], int k, uint32_t QF[4][256]) {
 #define ENC_ROUND(R0, R1, R2, R3, round) \
   T0 = fkh(R0); \
   T1 = fkh(ROL(R1, 8)); \
-  R2 = ROR(R2 ^ (T1 + T0 + K[2*round+8]), 1); \
-  R3 = ROL(R3, 1) ^ (2*T1 + T0 + K[2*round+9]);
+  R2 = ROR(R2 ^ (T1 + T0 + ctx->K[2*round+8]), 1); \
+  R3 = ROL(R3, 1) ^ (2*T1 + T0 + ctx->K[2*round+9]);
 
 
-void twofish_internal_encrypt(uint32_t K[40], uint32_t S[4][256], uint8_t PT[16]) {
+void twofish_internal_encrypt(uint8_t PT[16], tf_context_t *ctx) {
 
   uint32_t R0, R1, R2, R3;
   uint32_t T0, T1;
 
   /* load/byteswap/whiten input */
-  R3 = K[3] ^ le32toh(((uint32_t*)PT)[3]);
-  R2 = K[2] ^ le32toh(((uint32_t*)PT)[2]);
-  R1 = K[1] ^ le32toh(((uint32_t*)PT)[1]);
-  R0 = K[0] ^ le32toh(((uint32_t*)PT)[0]);
+  R3 = ctx->K[3] ^ le32toh(((uint32_t*)PT)[3]);
+  R2 = ctx->K[2] ^ le32toh(((uint32_t*)PT)[2]);
+  R1 = ctx->K[1] ^ le32toh(((uint32_t*)PT)[1]);
+  R0 = ctx->K[0] ^ le32toh(((uint32_t*)PT)[0]);
 
   ENC_ROUND(R0, R1, R2, R3, 0);
   ENC_ROUND(R2, R3, R0, R1, 1);
@@ -326,10 +326,10 @@ void twofish_internal_encrypt(uint32_t K[40], uint32_t S[4][256], uint8_t PT[16]
   ENC_ROUND(R2, R3, R0, R1, 15);
 
   /* load/byteswap/whiten output */
-  ((uint32_t*)PT)[3] = htole32(R1 ^ K[7]);
-  ((uint32_t*)PT)[2] = htole32(R0 ^ K[6]);
-  ((uint32_t*)PT)[1] = htole32(R3 ^ K[5]);
-  ((uint32_t*)PT)[0] = htole32(R2 ^ K[4]);
+  ((uint32_t*)PT)[3] = htole32(R1 ^ ctx->K[7]);
+  ((uint32_t*)PT)[2] = htole32(R0 ^ ctx->K[6]);
+  ((uint32_t*)PT)[1] = htole32(R3 ^ ctx->K[5]);
+  ((uint32_t*)PT)[0] = htole32(R2 ^ ctx->K[4]);
 }
 
 // -------------------------------------------------------------------------------------
@@ -338,20 +338,20 @@ void twofish_internal_encrypt(uint32_t K[40], uint32_t S[4][256], uint8_t PT[16]
 #define DEC_ROUND(R0, R1, R2, R3, round) \
   T0 = fkh(R0); \
   T1 = fkh(ROL(R1, 8)); \
-  R2 = ROL(R2, 1) ^ (T0 + T1 + K[2*round+8]); \
-  R3 = ROR(R3 ^ (T0 + 2*T1 + K[2*round+9]), 1);
+  R2 = ROL(R2, 1) ^ (T0 + T1 + ctx->K[2*round+8]); \
+  R3 = ROR(R3 ^ (T0 + 2*T1 + ctx->K[2*round+9]), 1);
 
 
-void twofish_internal_decrypt(uint32_t K[40], uint32_t S[4][256], uint8_t PT[16], const uint8_t CT[16]) {
+void twofish_internal_decrypt(uint8_t PT[16], const uint8_t CT[16], tf_context_t *ctx) {
 
   uint32_t T0, T1;
   uint32_t R0, R1, R2, R3;
 
   /* load/byteswap/whiten input */
-  R3 = K[7] ^ le32toh(((uint32_t*)CT)[3]);
-  R2 = K[6] ^ le32toh(((uint32_t*)CT)[2]);
-  R1 = K[5] ^ le32toh(((uint32_t*)CT)[1]);
-  R0 = K[4] ^ le32toh(((uint32_t*)CT)[0]);
+  R3 = ctx->K[7] ^ le32toh(((uint32_t*)CT)[3]);
+  R2 = ctx->K[6] ^ le32toh(((uint32_t*)CT)[2]);
+  R1 = ctx->K[5] ^ le32toh(((uint32_t*)CT)[1]);
+  R0 = ctx->K[4] ^ le32toh(((uint32_t*)CT)[0]);
 
   DEC_ROUND(R0, R1, R2, R3, 15);
   DEC_ROUND(R2, R3, R0, R1, 14);
@@ -371,10 +371,10 @@ void twofish_internal_decrypt(uint32_t K[40], uint32_t S[4][256], uint8_t PT[16]
   DEC_ROUND(R2, R3, R0, R1, 0);
 
   /* load/byteswap/whiten output */
-  ((uint32_t*)PT)[3] = htole32(R1 ^ K[3]);
-  ((uint32_t*)PT)[2] = htole32(R0 ^ K[2]);
-  ((uint32_t*)PT)[1] = htole32(R3 ^ K[1]);
-  ((uint32_t*)PT)[0] = htole32(R2 ^ K[0]);
+  ((uint32_t*)PT)[3] = htole32(R1 ^ ctx->K[3]);
+  ((uint32_t*)PT)[2] = htole32(R0 ^ ctx->K[2]);
+  ((uint32_t*)PT)[1] = htole32(R3 ^ ctx->K[1]);
+  ((uint32_t*)PT)[0] = htole32(R2 ^ ctx->K[0]);
 }
 
 // -------------------------------------------------------------------------------------
@@ -412,14 +412,8 @@ void keySched(const uint8_t M[], int N, uint32_t **S, uint32_t K[40], int *k) {
 
 // -------------------------------------------------------------------------------------
 
-// test field
-//#define fix_xor(target, source) for (int _i = 0; _i < 16; _i++) { (target)[_i] = (target)[_i] ^ (source)[_i]; }
-//#define fix_xor(target, source) for (int _i = 0; _i < 16; _i+=4) { *(uint32_t*)&(target)[_i] = *(uint32_t*)&(target)[_i] ^ *(uint32_t*)&(source)[_i]; }
 #define fix_xor(target, source) *(uint32_t*)&(target)[0] = *(uint32_t*)&(target)[0] ^ *(uint32_t*)&(source)[0]; *(uint32_t*)&(target)[4] = *(uint32_t*)&(target)[4] ^ *(uint32_t*)&(source)[4]; \
                                 *(uint32_t*)&(target)[8] = *(uint32_t*)&(target)[8] ^ *(uint32_t*)&(source)[8]; *(uint32_t*)&(target)[12] = *(uint32_t*)&(target)[12] ^ *(uint32_t*)&(source)[12];
-//#define fix_xor(target, source) *(uint64_t*)&(target)[0] = *(uint64_t*)&(target)[0] ^ *(uint64_t*)&(source)[0]; *(uint64_t*)&(target)[8] = *(uint64_t*)&(target)[8] ^ *(uint64_t*)&(source)[8];
-//#include <immintrin.h>
-//#define fix_xor(target, source) __m128i target128 = _mm_loadu_si128((__m128i*)target); __m128i source128 = _mm_loadu_si128((__m128i*)source); target128 = _mm_xor_si128(target128, source128); _mm_storeu_si128((__m128i*)(target), target128);
 
 // -------------------------------------------------------------------------------------
 
@@ -429,7 +423,7 @@ void keySched(const uint8_t M[], int N, uint32_t **S, uint32_t K[40], int *k) {
 
 int tf_ecb_decrypt (unsigned char *out, const unsigned char *in, tf_context_t *ctx) {
 
-  twofish_internal_decrypt(ctx->K, ctx->QF, out, in);
+  twofish_internal_decrypt(out, in, ctx);
   return TF_BLOCK_SIZE;
 }
 
@@ -437,7 +431,7 @@ int tf_ecb_decrypt (unsigned char *out, const unsigned char *in, tf_context_t *c
 int tf_ecb_encrypt (unsigned char *out, const unsigned char *in, tf_context_t *ctx) {
 
   memcpy (out, in, TF_BLOCK_SIZE);
-  twofish_internal_encrypt(ctx->K, ctx->QF, out);
+  twofish_internal_encrypt(out, ctx);
   return TF_BLOCK_SIZE;
 }
 
@@ -454,7 +448,7 @@ int tf_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
   n = in_len / TF_BLOCK_SIZE;
   for(i=0; i < n; i++) {
     fix_xor(tmp, &in[i * TF_BLOCK_SIZE]);
-    twofish_internal_encrypt(ctx->K, ctx->QF, tmp);
+    twofish_internal_encrypt(tmp, ctx);
     memcpy(&out[i * TF_BLOCK_SIZE], tmp, TF_BLOCK_SIZE);
   }
   return n * TF_BLOCK_SIZE;
@@ -464,19 +458,114 @@ int tf_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
 int tf_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                     const unsigned char *iv, tf_context_t *ctx) {
 
-  uint8_t tmp[TF_BLOCK_SIZE];
-  uint8_t old[TF_BLOCK_SIZE];
-  size_t i;
-  size_t n;
+  int n;                       // number of blocks
+  int ret = (int)in_len & 15;  // remainder
 
-  memcpy(tmp, iv, TF_BLOCK_SIZE);
+  uint8_t ivec[TF_BLOCK_SIZE]; // the ivec/old handling might be optimized if we
+  uint8_t old[TF_BLOCK_SIZE];  // can be sure that in != out
 
-  n = in_len / TF_BLOCK_SIZE;
-  for(i=0; i < n; i++) {
-    memcpy(old, &in[i * TF_BLOCK_SIZE], TF_BLOCK_SIZE);
-    twofish_internal_decrypt(ctx->K, ctx->QF, &out[i * TF_BLOCK_SIZE], &in[i * TF_BLOCK_SIZE]);
-    fix_xor(&out[i * TF_BLOCK_SIZE], tmp);
-    memcpy(tmp, old, TF_BLOCK_SIZE);
+  memcpy(ivec, iv, TF_BLOCK_SIZE);
+
+  for(n = in_len / TF_BLOCK_SIZE; n > 2; n -=3) {
+
+    memcpy(old, in + 2 * TF_BLOCK_SIZE, TF_BLOCK_SIZE);
+
+    uint32_t T0, T1;
+    uint32_t Q0, Q1, Q2, Q3, R0, R1, R2, R3, S0, S1, S2, S3;
+
+    /* load/byteswap/whiten input/iv */
+    Q3 = ctx->K[7] ^ le32toh(((uint32_t*)in)[3]);
+    Q2 = ctx->K[6] ^ le32toh(((uint32_t*)in)[2]);
+    Q1 = ctx->K[5] ^ le32toh(((uint32_t*)in)[1]);
+    Q0 = ctx->K[4] ^ le32toh(((uint32_t*)in)[0]);
+
+    R3 = ctx->K[7] ^ le32toh(((uint32_t*)in)[7]);
+    R2 = ctx->K[6] ^ le32toh(((uint32_t*)in)[6]);
+    R1 = ctx->K[5] ^ le32toh(((uint32_t*)in)[5]);
+    R0 = ctx->K[4] ^ le32toh(((uint32_t*)in)[4]);
+
+    S3 = ctx->K[7] ^ le32toh(((uint32_t*)in)[11]);
+    S2 = ctx->K[6] ^ le32toh(((uint32_t*)in)[10]);
+    S1 = ctx->K[5] ^ le32toh(((uint32_t*)in)[9]);
+    S0 = ctx->K[4] ^ le32toh(((uint32_t*)in)[8]);
+
+    DEC_ROUND(Q0, Q1, Q2, Q3, 15); DEC_ROUND(R0, R1, R2, R3, 15); DEC_ROUND(S0, S1, S2, S3, 15);
+    DEC_ROUND(Q2, Q3, Q0, Q1, 14); DEC_ROUND(R2, R3, R0, R1, 14); DEC_ROUND(S2, S3, S0, S1, 14);
+    DEC_ROUND(Q0, Q1, Q2, Q3, 13); DEC_ROUND(R0, R1, R2, R3, 13); DEC_ROUND(S0, S1, S2, S3, 13);
+    DEC_ROUND(Q2, Q3, Q0, Q1, 12); DEC_ROUND(R2, R3, R0, R1, 12); DEC_ROUND(S2, S3, S0, S1, 12);
+    DEC_ROUND(Q0, Q1, Q2, Q3, 11); DEC_ROUND(R0, R1, R2, R3, 11); DEC_ROUND(S0, S1, S2, S3, 11);
+    DEC_ROUND(Q2, Q3, Q0, Q1, 10); DEC_ROUND(R2, R3, R0, R1, 10); DEC_ROUND(S2, S3, S0, S1, 10);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  9); DEC_ROUND(R0, R1, R2, R3,  9); DEC_ROUND(S0, S1, S2, S3,  9);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  8); DEC_ROUND(R2, R3, R0, R1,  8); DEC_ROUND(S2, S3, S0, S1,  8);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  7); DEC_ROUND(R0, R1, R2, R3,  7); DEC_ROUND(S0, S1, S2, S3,  7);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  6); DEC_ROUND(R2, R3, R0, R1,  6); DEC_ROUND(S2, S3, S0, S1,  6);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  5); DEC_ROUND(R0, R1, R2, R3,  5); DEC_ROUND(S0, S1, S2, S3,  5);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  4); DEC_ROUND(R2, R3, R0, R1,  4); DEC_ROUND(S2, S3, S0, S1,  4);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  3); DEC_ROUND(R0, R1, R2, R3,  3); DEC_ROUND(S0, S1, S2, S3,  3);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  2); DEC_ROUND(R2, R3, R0, R1,  2); DEC_ROUND(S2, S3, S0, S1,  2);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  1); DEC_ROUND(R0, R1, R2, R3,  1); DEC_ROUND(S0, S1, S2, S3,  1);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  0); DEC_ROUND(R2, R3, R0, R1,  0); DEC_ROUND(S2, S3, S0, S1,  0);
+
+    /* load/byteswap/whiten output/iv */
+
+    ((uint32_t*)out)[11] = htole32(S1 ^ ctx->K[3] ^ ((uint32_t*)in)[7]);
+    ((uint32_t*)out)[10] = htole32(S0 ^ ctx->K[2] ^ ((uint32_t*)in)[6]);
+    ((uint32_t*)out)[9]  = htole32(S3 ^ ctx->K[1] ^ ((uint32_t*)in)[5]);
+    ((uint32_t*)out)[8]  = htole32(S2 ^ ctx->K[0] ^ ((uint32_t*)in)[4]);
+
+    ((uint32_t*)out)[7]  = htole32(R1 ^ ctx->K[3] ^ ((uint32_t*)in)[3]);
+    ((uint32_t*)out)[6]  = htole32(R0 ^ ctx->K[2] ^ ((uint32_t*)in)[2]);
+    ((uint32_t*)out)[5]  = htole32(R3 ^ ctx->K[1] ^ ((uint32_t*)in)[1]);
+    ((uint32_t*)out)[4]  = htole32(R2 ^ ctx->K[0] ^ ((uint32_t*)in)[0]);
+
+    ((uint32_t*)out)[3]  = htole32(Q1 ^ ctx->K[3] ^ ((uint32_t*)ivec)[3]);
+    ((uint32_t*)out)[2]  = htole32(Q0 ^ ctx->K[2] ^ ((uint32_t*)ivec)[2]);
+    ((uint32_t*)out)[1]  = htole32(Q3 ^ ctx->K[1] ^ ((uint32_t*)ivec)[1]);
+    ((uint32_t*)out)[0]  = htole32(Q2 ^ ctx->K[0] ^ ((uint32_t*)ivec)[0]);
+
+    in += 3 * TF_BLOCK_SIZE; out += 3 * TF_BLOCK_SIZE;
+
+    memcpy(ivec, old, TF_BLOCK_SIZE);
+  }
+
+  for(; n != 0; n--) {
+    uint32_t T0, T1;
+    uint32_t Q0, Q1, Q2, Q3;
+
+    memcpy (old, in, TF_BLOCK_SIZE);
+
+    /* load/byteswap/whiten input */
+    Q3 = ctx->K[7] ^ le32toh(((uint32_t*)in)[3]);
+    Q2 = ctx->K[6] ^ le32toh(((uint32_t*)in)[2]);
+    Q1 = ctx->K[5] ^ le32toh(((uint32_t*)in)[1]);
+    Q0 = ctx->K[4] ^ le32toh(((uint32_t*)in)[0]);
+
+    DEC_ROUND(Q0, Q1, Q2, Q3, 15);
+    DEC_ROUND(Q2, Q3, Q0, Q1, 14);
+    DEC_ROUND(Q0, Q1, Q2, Q3, 13);
+    DEC_ROUND(Q2, Q3, Q0, Q1, 12);
+    DEC_ROUND(Q0, Q1, Q2, Q3, 11);
+    DEC_ROUND(Q2, Q3, Q0, Q1, 10);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  9);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  8);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  7);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  6);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  5);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  4);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  3);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  2);
+    DEC_ROUND(Q0, Q1, Q2, Q3,  1);
+    DEC_ROUND(Q2, Q3, Q0, Q1,  0);
+
+    /* load/byteswap/whiten output/iv */
+    ((uint32_t*)out)[3] = htole32(Q1 ^ ctx->K[3] ^ ((uint32_t*)ivec)[3]);
+    ((uint32_t*)out)[2] = htole32(Q0 ^ ctx->K[2] ^ ((uint32_t*)ivec)[2]);
+    ((uint32_t*)out)[1] = htole32(Q3 ^ ctx->K[1] ^ ((uint32_t*)ivec)[1]);
+    ((uint32_t*)out)[0] = htole32(Q2 ^ ctx->K[0] ^ ((uint32_t*)ivec)[0]);
+
+    in += TF_BLOCK_SIZE; out+= TF_BLOCK_SIZE;
+
+    memcpy (ivec, old, TF_BLOCK_SIZE);
   }
 
   return n * TF_BLOCK_SIZE;
