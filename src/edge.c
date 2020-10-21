@@ -647,59 +647,6 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv
 
 /* ************************************** */
 
-#if defined(DUMMY_ID_00001) /* Disabled waiting for config option to enable it */
-
-static char gratuitous_arp[] = {
-				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* Dest mac */
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-				0x08, 0x06, /* ARP */
-				0x00, 0x01, /* Ethernet */
-				0x08, 0x00, /* IP */
-				0x06, /* Hw Size */
-				0x04, /* Protocol Size */
-				0x00, 0x01, /* ARP Request */
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-				0x00, 0x00, 0x00, 0x00, /* Src IP */
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Target mac */
-				0x00, 0x00, 0x00, 0x00 /* Target IP */
-};
-
-/* ************************************** */
-
-/** Build a gratuitous ARP packet for a /24 layer 3 (IP) network. */
-static int build_gratuitous_arp(char *buffer, uint16_t buffer_len) {
-  if(buffer_len < sizeof(gratuitous_arp)) return(-1);
-
-  memcpy(buffer, gratuitous_arp, sizeof(gratuitous_arp));
-  memcpy(&buffer[6], device.mac_addr, 6);
-  memcpy(&buffer[22], device.mac_addr, 6);
-  memcpy(&buffer[28], &device.ip_addr, 4);
-
-  /* REVISIT: BbMaj7 - use a real netmask here. This is valid only by accident
-   * for /24 IPv4 networks. */
-  buffer[31] = 0xFF; /* Use a faked broadcast address */
-  memcpy(&buffer[38], &device.ip_addr, 4);
-  return(sizeof(gratuitous_arp));
-}
-
-/* ************************************** */
-
-/** Called from update_supernode_reg to periodically send gratuitous ARP
- *  broadcasts. */
-static void send_grat_arps(n2n_edge_t * eee,) {
-  char buffer[48];
-  size_t len;
-
-  traceEvent(TRACE_NORMAL, "Sending gratuitous ARP...");
-  len = build_gratuitous_arp(buffer, sizeof(buffer));
-  send_packet2net(eee, buffer, len);
-  send_packet2net(eee, buffer, len); /* Two is better than one :-) */
-}
-
-#endif /* #if defined(DUMMY_ID_00001) */
-
-/* ************************************** */
-
 static void daemonize() {
 #ifndef WIN32
   int childpid;

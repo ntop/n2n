@@ -322,13 +322,26 @@ static int update_edge(n2n_sn_t *sss,
                        time_t now) {
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
-  struct peer_info *scan;
+  struct peer_info *scan, *iter, *tmp;
 
   traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
 	     macaddr_str(mac_buf, reg->edgeMac),
 	     sock_to_cstr(sockbuf, sender_sock));
 
   HASH_FIND_PEER(comm->edges, reg->edgeMac, scan);
+
+ // if unknown, make sure it is also not known by IP address
+  if (NULL == scan) {
+    HASH_ITER(hh,comm->edges,iter,tmp) {
+      if(iter->dev_addr.net_addr == reg->dev_addr.net_addr) {
+        scan = iter;
+        HASH_DEL(comm->edges, scan);
+        memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
+        HASH_ADD_PEER(comm->edges, scan);
+        break;
+      }
+    }
+  }
 
   if (NULL == scan) {
     /* Not known */
