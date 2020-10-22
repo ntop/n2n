@@ -61,6 +61,9 @@ int edge_verify_conf(const n2n_edge_conf_t *conf) {
      ((conf->encrypt_key != NULL) && (conf->transop_id == N2N_TRANSFORM_ID_NULL)))
     return(-4);
 
+  if (conf->dev_desc[0] == 0)
+    return (-5);
+
   return(0);
 }
 
@@ -701,6 +704,7 @@ static void send_register_super(n2n_edge_t *eee, const n2n_sock_t *supernode, in
   memcpy(reg.cookie, eee->last_cookie, N2N_COOKIE_SIZE);
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
+  memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
   reg.auth.scheme = 0; /* No auth yet */
 
   idx = 0;
@@ -1220,9 +1224,9 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
 		      "community: %s\n",
 		      eee->conf.community_name);
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-		      "    id    tun_tap          MAC                edge                   last_seen\n");
+		      "    id    tun_tap          MAC                edge                   hint             last_seen\n");
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-		      "------------------------------------------------------------------------------\n");
+		      "-----------------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
 		      "supernode_forward:\n");
@@ -1232,10 +1236,12 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
     if(peer->dev_addr.net_addr == 0) continue;
     net = htonl(peer->dev_addr.net_addr);
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-			"    %-4u  %-15s  %-17s  %-21s  %lu\n",
+			"    %-4u  %-15s  %-17s  %-21s  %-15s  %lu\n",
 			++num, inet_ntoa(*(struct in_addr *) &net),
 			macaddr_str(mac_buf, peer->mac_addr),
-			sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+			sock_to_cstr(sockbuf, &(peer->sock)),
+      peer->dev_desc,
+      now - peer->last_seen);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 	   (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1250,10 +1256,12 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
     if(peer->dev_addr.net_addr == 0) continue;
     net = htonl(peer->dev_addr.net_addr);
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-			"    %-4u  %-15s  %-17s  %-21s  %lu\n",
+			"    %-4u  %-15s  %-17s  %-21s  %-15s  %lu\n",
 			++num, inet_ntoa(*(struct in_addr *) &net),
 			macaddr_str(mac_buf, peer->mac_addr),
-			sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+			sock_to_cstr(sockbuf, &(peer->sock)),
+      peer->dev_desc,
+      now - peer->last_seen);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 	   (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -2615,6 +2623,8 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->disable_pmtu_discovery = 1;
   conf->register_interval = REGISTER_SUPER_INTERVAL_DFL;
   conf->tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
+  /* reserve possible last char as null terminator. */
+  gethostname((char*)conf->dev_desc, N2N_DESC_SIZE-1); 
 
   if (getenv("N2N_KEY")) {
     conf->encrypt_key = strdup(getenv("N2N_KEY"));

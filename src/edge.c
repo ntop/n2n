@@ -422,6 +422,14 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     }
 #endif
 
+  case 'I': /* Device Description (hint) */
+    {
+      memset(conf->dev_desc, 0, N2N_DESC_SIZE);
+      /* reserve possible last char as null terminator. */
+      strncpy((char *)conf->dev_desc, optargument, N2N_DESC_SIZE-1);
+      break;
+    }
+
   case 'p':
     {
       conf->local_port = atoi(optargument);
@@ -530,7 +538,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap
   u_char c;
 
   while ((c = getopt_long(argc, argv,
-                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::Hn:"
+                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:"
 #ifdef __linux__
                           "T:"
 #endif
