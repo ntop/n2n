@@ -129,6 +129,7 @@ typedef struct n2n_REGISTER
   n2n_mac_t            dstMac;         /**< MAC of target edge */
   n2n_sock_t           sock;           /**< REVISIT: unused? */
   n2n_ip_subnet_t      dev_addr;       /**< IP address of the tuntap adapter. */
+  n2n_desc_t           dev_desc;       /**< Hint description correlated with the edge */
 } n2n_REGISTER_t;
 
 typedef struct n2n_REGISTER_ACK
@@ -152,8 +153,8 @@ typedef struct n2n_PACKET
 typedef struct n2n_REGISTER_SUPER {
   n2n_cookie_t        cookie;         /**< Link REGISTER_SUPER and REGISTER_SUPER_ACK */
   n2n_mac_t           edgeMac;        /**< MAC to register with edge sending socket */
-  n2n_desc_t          dev_desc;       /**< Hint description correlated with the edge */
   n2n_ip_subnet_t     dev_addr;       /**< IP address of the tuntap adapter. */
+  n2n_desc_t          dev_desc;       /**< Hint description correlated with the edge */
   n2n_auth_t          auth;           /**< Authentication scheme and tokens */
 } n2n_REGISTER_SUPER_t;
 

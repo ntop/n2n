@@ -288,6 +288,7 @@ int encode_REGISTER(uint8_t *base,
   }
   retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
   retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
+  retval += encode_buf(base, idx, reg->dev_desc, N2N_DESC_SIZE);
 
   return retval;
 }
@@ -309,6 +310,7 @@ int decode_REGISTER(n2n_REGISTER_t *reg,
   }
   retval += decode_uint32(&(reg->dev_addr.net_addr), base, rem, idx);
   retval += decode_uint8(&(reg->dev_addr.net_bitlen), base, rem, idx);
+  retval += decode_buf(reg->dev_desc, N2N_DESC_SIZE, base, rem, idx);
 
   return retval;
 }
@@ -322,9 +324,9 @@ int encode_REGISTER_SUPER(uint8_t *base,
   retval += encode_common(base, idx, common);
   retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
   retval += encode_mac(base, idx, reg->edgeMac);
-  retval += encode_buf(base, idx, reg->dev_desc, N2N_DESC_SIZE);
   retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
   retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
+  retval += encode_buf(base, idx, reg->dev_desc, N2N_DESC_SIZE);
   retval += encode_uint16(base, idx, 0); /* NULL auth scheme */
   retval += encode_uint16(base, idx, 0); /* No auth data */
 
@@ -341,9 +343,9 @@ int decode_REGISTER_SUPER(n2n_REGISTER_SUPER_t *reg,
   memset(reg, 0, sizeof(n2n_REGISTER_SUPER_t));
   retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
   retval += decode_mac(reg->edgeMac, base, rem, idx);
-  retval += decode_buf(reg->dev_desc, N2N_DESC_SIZE, base, rem, idx);
   retval += decode_uint32(&(reg->dev_addr.net_addr), base, rem, idx);
   retval += decode_uint8(&(reg->dev_addr.net_bitlen), base, rem, idx);
+  retval += decode_buf(reg->dev_desc, N2N_DESC_SIZE, base, rem, idx);
   retval += decode_uint16(&(reg->auth.scheme), base, rem, idx);
   retval += decode_uint16(&(reg->auth.toksize), base, rem, idx);
   retval += decode_buf(reg->auth.token, reg->auth.toksize, base, rem, idx);

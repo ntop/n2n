@@ -792,6 +792,7 @@ static void send_register(n2n_edge_t * eee,
   }
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
+  memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
 
 
   idx=0;
