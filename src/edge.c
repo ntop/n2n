@@ -154,6 +154,7 @@ static void help() {
   printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>.\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
+  printf("-I <device description>  | Annotate the edge's description (hint), identified in the manage port\n");
   printf("-L <reg_ttl>             | TTL for registration packet when UDP NAT hole punching through supernode (default 0 for not set )\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
 #ifndef WIN32
