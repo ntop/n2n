@@ -198,11 +198,13 @@ struct peer_info {
   n2n_mac_t        mac_addr;
   n2n_ip_subnet_t  dev_addr;
   n2n_sock_t       sock;
+  n2n_cookie_t     last_cookie;
   int              timeout;
   uint8_t          purgeable;
   time_t           last_seen;
   time_t           last_p2p;
   time_t           last_sent_query;
+  time_t           ping_time;
   uint64_t         last_valid_time_stamp;
   char             *ip_addr;
 
@@ -270,7 +272,7 @@ typedef struct n2n_tuntap_priv_config {
 
 
 typedef struct n2n_edge_conf {
-  n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
+  struct peer_info    *supernodes;            /**< List of supernodes */
   n2n_route_t         *routes;                /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   uint8_t	            header_encryption;      /**< Header encryption indicator. */
@@ -307,12 +309,11 @@ struct n2n_edge {
   n2n_edge_conf_t     conf;
 
   /* Status */
-  uint8_t             sn_idx;                  /**< Currently active supernode. */
+  struct peer_info    *curr_sn;                /**< Currently active supernode. */
   uint8_t             sn_wait;                 /**< Whether we are waiting for a supernode response. */
   size_t              sup_attempts;            /**< Number of remaining attempts to this supernode. */
   tuntap_dev          device;                  /**< All about the TUNTAP device */
   n2n_trans_op_t      transop;                 /**< The transop to use when encoding */
-  n2n_cookie_t        last_cookie;             /**< Cookie sent in last REGISTER_SUPER. */
   n2n_route_t         *sn_route_to_clean;      /**< Supernode route to clean */
   n2n_edge_callbacks_t cb;                     /**< API callbacks */
   void 	            *user_data;              /**< Can hold user data */
@@ -337,6 +338,7 @@ struct n2n_edge {
   time_t              last_register_req;       /**< Check if time to re-register with super*/
   time_t              last_p2p;                /**< Last time p2p traffic was received. */
   time_t              last_sup;                /**< Last time a packet arrived from supernode. */
+  time_t              last_sweep;              /**< Last time a sweep was performed. */
   time_t              start_time;              /**< For calculating uptime */
 
 
@@ -501,7 +503,7 @@ int comm_init(struct sn_community *comm, char *cmn);
 int sn_init(n2n_sn_t *sss);
 void sn_term(n2n_sn_t *sss);
 int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
-struct peer_info* add_sn_to_federation_by_mac_or_sock(n2n_sn_t *sss, n2n_sock_t *sock, n2n_mac_t *mac);
+struct peer_info* add_sn_to_list_by_mac_or_sock(struct peer_info **sn_list, n2n_sock_t *sock, n2n_mac_t *mac, int *skip_add);
 int run_sn_loop(n2n_sn_t *sss, int *keep_running);
 int assign_one_ip_subnet(n2n_sn_t *sss, struct sn_community *comm);
 const char* compression_str(uint8_t cmpr);

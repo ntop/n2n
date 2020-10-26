@@ -26,6 +26,7 @@
 static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
 static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
+static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /* ************************************** */
 
@@ -242,8 +243,9 @@ int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
     struct addrinfo * ainfo = NULL;
     int nameerr;
 
-    if(supernode_port)
+    if(supernode_port){
       sn->port = atoi(supernode_port);
+    }
     else
       traceEvent(TRACE_WARNING, "Bad supernode parameter (-l <host:port>) %s %s:%s",
 		 addr, supernode_host, supernode_port);
@@ -286,6 +288,42 @@ int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
 }
 
 /* ************************************** */
+
+struct peer_info* add_sn_to_list_by_mac_or_sock(struct peer_info **sn_list, n2n_sock_t *sock, n2n_mac_t *mac, int *skip_add){
+  struct peer_info *scan, *tmp, *peer = NULL;
+
+    if(memcmp(mac,null_mac,sizeof(n2n_mac_t)) != 0) { /* not zero MAC */
+      HASH_FIND_PEER(*sn_list, mac, peer);
+
+      //REVISIT: make this dependent from last_seen and update socket
+    }
+
+    if(peer == NULL) { /* zero MAC, search by socket */
+      HASH_ITER(hh,*sn_list,scan,tmp) {
+	       if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t)) == 0) {
+           HASH_DEL(*sn_list, scan);
+	         memcpy(&(scan->mac_addr), mac, sizeof(n2n_mac_t));
+           HASH_ADD_PEER(*sn_list, scan);
+	         peer = scan;
+	         break;
+	      }
+      }
+
+      if((peer == NULL) && (*skip_add == NO_SKIP)) {
+	       peer = (struct peer_info*)calloc(1,sizeof(struct peer_info));
+	        if(peer) {
+	           memcpy(&(peer->sock),sock,sizeof(n2n_sock_t));
+	           memcpy(&(peer->mac_addr),mac, sizeof(n2n_mac_t));
+	           HASH_ADD_PEER(*sn_list, peer);
+             *skip_add = ADDED;
+	        }
+      }
+    }
+
+  return peer;
+}
+
+/* ************************************************ */
 
 uint8_t is_multi_broadcast(const uint8_t * dest_mac) {
 
@@ -370,7 +408,7 @@ size_t purge_peer_list(struct peer_info ** peer_list,
   size_t retval=0;
 
   HASH_ITER(hh, *peer_list, scan, tmp) {
-    if(scan->last_seen < purge_before) {
+    if(scan->purgeable == SN_PURGEABLE && scan->last_seen < purge_before) {
       HASH_DEL(*peer_list, scan);
       retval++;
       free(scan);
