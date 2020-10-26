@@ -197,6 +197,7 @@ typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 struct peer_info {
   n2n_mac_t        mac_addr;
   n2n_ip_subnet_t  dev_addr;
+  n2n_desc_t       dev_desc;
   n2n_sock_t       sock;
   int              timeout;
   uint8_t          purgeable;
@@ -273,6 +274,7 @@ typedef struct n2n_edge_conf {
   n2n_sn_name_t       sn_ip_array[N2N_EDGE_NUM_SUPERNODES];
   n2n_route_t         *routes;                /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
+  n2n_desc_t          dev_desc;               /**< The device description (hint) */
   uint8_t	            header_encryption;      /**< Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /**< Header encryption cipher context. */
   he_context_t        *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */

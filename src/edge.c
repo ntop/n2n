@@ -154,6 +154,7 @@ static void help() {
   printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>.\n");
   printf("-l <supernode host:port> | Supernode IP:port\n");
   printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
+  printf("-I <device description>  | Annotate the edge's description (hint), identified in the manage port\n");
   printf("-L <reg_ttl>             | TTL for registration packet when UDP NAT hole punching through supernode (default 0 for not set )\n");
   printf("-p <local port>          | Fixed local UDP port.\n");
 #ifndef WIN32
@@ -422,6 +423,14 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     }
 #endif
 
+  case 'I': /* Device Description (hint) */
+    {
+      memset(conf->dev_desc, 0, N2N_DESC_SIZE);
+      /* reserve possible last char as null terminator. */
+      strncpy((char *)conf->dev_desc, optargument, N2N_DESC_SIZE-1);
+      break;
+    }
+
   case 'p':
     {
       conf->local_port = atoi(optargument);
@@ -530,7 +539,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap
   u_char c;
 
   while ((c = getopt_long(argc, argv,
-                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:SDL:z::A::Hn:"
+                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:"
 #ifdef __linux__
                           "T:"
 #endif
