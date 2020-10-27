@@ -195,7 +195,7 @@ static void help() {
 
   printf("-p <port>         | Set UDP main listen port to <port>\n");
   printf("-c <path>         | File containing the allowed communities.\n");
-  printf("-l <sn:port>      | Supernode IP:port.\n");
+  printf("-l <sn host:port> | Name/IP of a known supernode:port.\n");
 #if defined(N2N_HAVE_DAEMON)
   printf("-f                | Run in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
@@ -224,10 +224,22 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
   switch (optkey) {
   case 'p': /* local-port */
     sss->lport = atoi(_optarg);
+
+    if(sss->lport == 0){
+      traceEvent(TRACE_WARNING, "Bad local port format");
+      break;
+    }
+
     break;
 
   case 't': /* mgmt-port */
     sss->mport = atoi(_optarg);
+
+    if(sss->mport == 0){
+      traceEvent(TRACE_WARNING, "Bad management port format");
+      break;
+    }
+
     break;
 
   case 'l': { /* supernode:port */
@@ -235,44 +247,48 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     struct peer_info *anchor_sn;
     size_t length;
     int rv = -1;
+    int skip_add;
     char *double_column = strchr(_optarg, ':');
-    
+
     length = strlen(_optarg);
     if(length >= N2N_EDGE_SN_HOST_SIZE) {
-      traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d",length,N2N_EDGE_SN_HOST_SIZE);
+      traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d", length, N2N_EDGE_SN_HOST_SIZE);
       break;
     }
 
-    /* Need to check the format IP:port */
-    if(!double_column) {
+    if(!double_column){
       traceEvent(TRACE_WARNING, "Invalid -l format: ignored");
-      return(-1);
+      return (-1);
     }
-    
-    if(sss->federation != NULL) {
-      socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
 
-      anchor_sn = add_sn_to_federation_by_mac_or_sock(sss,socket, (n2n_mac_t*) null_mac);
+    socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
+    rv = supernode2sock(socket, _optarg);
+
+    if(rv != 0){
+      traceEvent(TRACE_WARNING, "Invalid socket");
+      free(socket);
+      break;
+    }
+
+    if(sss->federation != NULL) {
+
+      skip_add = NO_SKIP;
+      anchor_sn = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), socket, (n2n_mac_t*) null_mac, &skip_add);
 
       if(anchor_sn != NULL){
         anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
         if(anchor_sn->ip_addr){
           strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
-	        rv = supernode2sock(socket,_optarg);
-
-          if(rv != 0){
-            traceEvent(TRACE_WARNING, "Invalid socket");
-            break;
-          }
-
-	  memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+	        memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
           memcpy(&(anchor_sn->mac_addr),null_mac,sizeof(n2n_mac_t));
           anchor_sn->purgeable = SN_UNPURGEABLE;
           anchor_sn->last_valid_time_stamp = initial_time_stamp();
+
         }
       }
     }
 
+    free(socket);
     break;
   }
 
@@ -329,8 +345,10 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 #endif
 
   case 'F': { /* federation name */
-    snprintf(sss->federation->community, N2N_COMMUNITY_SIZE-1, "*%s" ,_optarg);
-    sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
+
+      snprintf(sss->federation->community,N2N_COMMUNITY_SIZE-1,"*%s",_optarg);
+      sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
+
     break;
   }
 
