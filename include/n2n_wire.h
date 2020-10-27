@@ -30,6 +30,7 @@
 #define N2N_COMMUNITY_SIZE              16
 #define N2N_MAC_SIZE                    6
 #define N2N_COOKIE_SIZE                 4
+#define N2N_DESC_SIZE                   16
 #define N2N_PKT_BUF_SIZE                2048
 #define N2N_SOCKBUF_SIZE                64      /* string representation of INET or INET6 sockets */
 
@@ -39,6 +40,8 @@
 typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
 typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
 typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
+
+typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
 
 typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer */
 
@@ -126,6 +129,7 @@ typedef struct n2n_REGISTER
   n2n_mac_t            dstMac;         /**< MAC of target edge */
   n2n_sock_t           sock;           /**< REVISIT: unused? */
   n2n_ip_subnet_t      dev_addr;       /**< IP address of the tuntap adapter. */
+  n2n_desc_t           dev_desc;       /**< Hint description correlated with the edge */
 } n2n_REGISTER_t;
 
 typedef struct n2n_REGISTER_ACK
@@ -150,6 +154,7 @@ typedef struct n2n_REGISTER_SUPER {
   n2n_cookie_t        cookie;         /**< Link REGISTER_SUPER and REGISTER_SUPER_ACK */
   n2n_mac_t           edgeMac;        /**< MAC to register with edge sending socket */
   n2n_ip_subnet_t     dev_addr;       /**< IP address of the tuntap adapter. */
+  n2n_desc_t          dev_desc;       /**< Hint description correlated with the edge */
   n2n_auth_t          auth;           /**< Authentication scheme and tokens */
 } n2n_REGISTER_SUPER_t;
 

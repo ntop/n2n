@@ -340,6 +340,7 @@ static int update_edge(n2n_sn_t *sss,
     memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
     scan->dev_addr.net_addr = reg->dev_addr.net_addr;
     scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
+    memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
     memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
     scan->last_valid_time_stamp = initial_time_stamp();
 
@@ -652,9 +653,9 @@ static int process_mgmt(n2n_sn_t *sss,
   traceEvent(TRACE_DEBUG, "process_mgmt");
 
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "    id    tun_tap             MAC                edge                   last_seen\n");
+		      "    id    tun_tap             MAC                edge                   hint             last_seen\n");
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "---------------------------------------------------------------------------------\n");
+		      "-------------------------------------------------------------------------------------------------\n");
   HASH_ITER(hh, sss->communities, community, tmp) {
     num_edges += HASH_COUNT(community->edges);
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -665,17 +666,19 @@ static int process_mgmt(n2n_sn_t *sss,
     num = 0;
     HASH_ITER(hh, community->edges, peer, tmpPeer) {
       ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-			  "    %-4u  %-18s  %-17s  %-21s  %lu\n",
+			  "    %-4u  %-18s  %-17s  %-21s  %-15s  %lu\n",
 			  ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
 			  macaddr_str(mac_buf, peer->mac_addr),
-			  sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+			  sock_to_cstr(sockbuf, &(peer->sock)),
+        peer->dev_desc,
+        now - peer->last_seen);
 
       sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
       ressize = 0;
     }
   }
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "---------------------------------------------------------------------------------\n");
+		      "-------------------------------------------------------------------------------------------------\n");
 
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "uptime %lu | ", (now - sss->start_time));

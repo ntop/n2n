@@ -375,6 +375,8 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
       in_len--;
     }
   }
+
+  return(0);
 }
 
 
