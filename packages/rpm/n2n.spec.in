@@ -11,6 +11,9 @@ Packager: Luca Deri <deri@ntop.org>
 BuildRoot:  %{_tmppath}/%{name}-%{version}-root
 Requires: libzstd
 
+# Make sure .build-id is not part of the package
+%define _build_id_links none
+
 %description
 n2n peer-to-peer VPN
 
