@@ -32,6 +32,7 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
                                            uint8_t from_supernode,
                                            const n2n_mac_t mac,
                                            const n2n_ip_subnet_t *dev_addr,
+                                           const n2n_desc_t *dev_desc,
                                            const n2n_sock_t *peer);
 
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos);
@@ -42,6 +43,7 @@ static void check_known_peer_sock_change(n2n_edge_t *eee,
                                          uint8_t from_supernode,
                                          const n2n_mac_t mac,
                                          const n2n_ip_subnet_t *dev_addr,
+                                         const n2n_desc_t *dev_desc,
                                          const n2n_sock_t *peer,
                                          time_t when);
 
@@ -396,6 +398,7 @@ static void register_with_new_peer(n2n_edge_t *eee,
                                    uint8_t from_supernode,
                                    const n2n_mac_t mac,
                                    const n2n_ip_subnet_t *dev_addr,
+                                   const n2n_desc_t *dev_desc,
                                    const n2n_sock_t *peer) {
   /* REVISIT: purge of pending_peers not yet done. */
   struct peer_info *scan;
@@ -469,6 +472,7 @@ static void register_with_new_peer(n2n_edge_t *eee,
   if(dev_addr != NULL){
     memcpy(&(scan->dev_addr), dev_addr, sizeof(n2n_ip_subnet_t));
   }
+  if (dev_desc) memcpy(scan->dev_desc, dev_desc, N2N_DESC_SIZE);
 }
 
 
@@ -479,6 +483,7 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
                                            uint8_t from_supernode,
                                            const n2n_mac_t mac,
                                            const n2n_ip_subnet_t *dev_addr,
+                                           const n2n_desc_t *dev_desc,
                                            const n2n_sock_t *peer) {
   struct peer_info *scan;
 
@@ -486,7 +491,7 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
 
   if (scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
-    register_with_new_peer(eee, from_supernode, mac, dev_addr, peer);
+    register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
   } else {
     /* Already in known_peers. */
     time_t now = time(NULL);
@@ -496,7 +501,7 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
 
     if ((now - scan->last_seen) > 0 /* >= 1 sec */) {
       /* Don't register too often */
-      check_known_peer_sock_change(eee, from_supernode, mac, dev_addr, peer, now);
+      check_known_peer_sock_change(eee, from_supernode, mac, dev_addr, dev_desc, peer, now);
     }
   }
 }
@@ -586,6 +591,7 @@ static void check_known_peer_sock_change(n2n_edge_t *eee,
                                          uint8_t from_supernode,
                                          const n2n_mac_t mac,
                                          const n2n_ip_subnet_t *dev_addr,
+                                         const n2n_desc_t *dev_desc,
                                          const n2n_sock_t *peer,
                                          time_t when) {
   struct peer_info *scan;
@@ -617,7 +623,7 @@ static void check_known_peer_sock_change(n2n_edge_t *eee,
       HASH_DEL(eee->known_peers, scan);
       free(scan);
 
-      register_with_new_peer(eee, from_supernode, mac, dev_addr, peer);
+      register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
     } else {
       /* Don't worry about what the supernode reports, it could be seeing a different socket. */
     }
@@ -772,7 +778,8 @@ static void send_register_super(n2n_edge_t *eee) {
   memcpy(reg.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
-  reg.auth.scheme = 0; /* No auth yet */
+  memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
+  reg.aut.scheme = 0; /* No auth yet */
 
   idx = 0;
   encode_mac(reg.edgeMac, &idx, eee->device.mac_addr);
@@ -860,6 +867,7 @@ static void send_register(n2n_edge_t * eee,
   }
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
+  memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
 
 
   idx=0;
@@ -1288,9 +1296,9 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
 		      "community: %s\n",
 		      eee->conf.community_name);
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-		      "    id    tun_tap          MAC                edge                   last_seen\n");
+  	      "    id    tun_tap          MAC                edge                   hint             last_seen\n");
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-		      "------------------------------------------------------------------------------\n");
+  	      "-----------------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
 		      "supernode_forward:\n");
@@ -1300,10 +1308,12 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
     if(peer->dev_addr.net_addr == 0) continue;
     net = htonl(peer->dev_addr.net_addr);
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-			"    %-4u  %-15s  %-17s  %-21s  %lu\n",
+			"    %-4u  %-15s  %-17s  %-21s  %-15s %lu\n",
 			++num, inet_ntoa(*(struct in_addr *) &net),
 			macaddr_str(mac_buf, peer->mac_addr),
-			sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+      sock_to_cstr(sockbuf, &(peer->sock)),
+      peer->dev_desc,
+      now - peer->last_seen);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 	   (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1318,10 +1328,12 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
     if(peer->dev_addr.net_addr == 0) continue;
     net = htonl(peer->dev_addr.net_addr);
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-			"    %-4u  %-15s  %-17s  %-21s  %lu\n",
+			"    %-4u  %-15s  %-17s  %-21s  %-15s %lu\n",
 			++num, inet_ntoa(*(struct in_addr *) &net),
 			macaddr_str(mac_buf, peer->mac_addr),
-			sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+      sock_to_cstr(sockbuf, &(peer->sock)),
+      peer->dev_desc,
+      now - peer->last_seen);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 	   (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1814,7 +1826,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	}
 
 	/* Update the sender in peer table entry */
-	check_peer_registration_needed(eee, from_supernode, pkt.srcMac, NULL, orig_sender);
+	check_peer_registration_needed(eee, from_supernode, pkt.srcMac, NULL, NULL, orig_sender);
 
 	handle_PACKET(eee, from_supernode, &pkt, orig_sender, udp_buf+idx, recvlen-idx);
 	break;
@@ -1868,7 +1880,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf1, &sender), sock_to_cstr(sockbuf2, orig_sender));
 	}
 
-	check_peer_registration_needed(eee, from_supernode, reg.srcMac, &reg.dev_addr, orig_sender);
+	check_peer_registration_needed(eee, from_supernode, reg.srcMac, &reg.dev_addr, &reg.dev_desc, orig_sender);
 	break;
       }
     case MSG_TYPE_REGISTER_ACK:
@@ -2725,6 +2737,8 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
   conf->disable_pmtu_discovery = 1;
   conf->register_interval = REGISTER_SUPER_INTERVAL_DFL;
   conf->tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
+  /* reserve possible last char as null terminator. */
+  gethostname((char*)conf->dev_desc, N2N_DESC_SIZE-1);
 
   if (getenv("N2N_KEY")) {
     conf->encrypt_key = strdup(getenv("N2N_KEY"));

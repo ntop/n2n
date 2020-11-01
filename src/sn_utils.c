@@ -340,6 +340,7 @@ static int update_edge(n2n_sn_t *sss,
     memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
     scan->dev_addr.net_addr = reg->dev_addr.net_addr;
     scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
+		memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
     memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
     scan->last_valid_time_stamp = initial_time_stamp();
 
@@ -651,10 +652,10 @@ static int process_mgmt(n2n_sn_t *sss,
 
   traceEvent(TRACE_DEBUG, "process_mgmt");
 
+	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+ 		      "    id    tun_tap             MAC                edge                   hint             last_seen\n");
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "    id    tun_tap             MAC                edge                   last_seen\n");
-  ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "---------------------------------------------------------------------------------\n");
+ 		      "-------------------------------------------------------------------------------------------------\n");
   HASH_ITER(hh, sss->communities, community, tmp) {
     num_edges += HASH_COUNT(community->edges);
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -664,11 +665,13 @@ static int process_mgmt(n2n_sn_t *sss,
 
     num = 0;
     HASH_ITER(hh, community->edges, peer, tmpPeer) {
-      ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-			  "    %-4u  %-18s  %-17s  %-21s  %lu\n",
+			ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+			  "    %-4u  %-18s  %-17s  %-21s  %-15s  %lu\n",
 			  ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
 			  macaddr_str(mac_buf, peer->mac_addr),
-			  sock_to_cstr(sockbuf, &(peer->sock)), now - peer->last_seen);
+				sock_to_cstr(sockbuf, &(peer->sock)),
+        peer->dev_desc,
+        now - peer->last_seen);
 
       sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
       ressize = 0;
@@ -1265,12 +1268,12 @@ static int process_udp(n2n_sn_t * sss,
     int8_t                           allowed_match = -1;
     uint8_t                          match = 0;
     int			             match_length = 0;
- 
-    if(!comm && sss->lock_communities) { 
+
+    if(!comm && sss->lock_communities) {
       HASH_ITER(hh, sss->rules, re, tmp_re) {
         allowed_match = re_matchp(re->rule, (const char *)cmn.community, &match_length);
 
-	if( (allowed_match != -1) 
+	if( (allowed_match != -1)
          && (match_length == strlen((const char *)cmn.community)) // --- only full match…
 	 && (allowed_match == 0)) {                 // --- only full matches allowed (re…
 	  match = 1;
@@ -1300,7 +1303,7 @@ static int process_udp(n2n_sn_t * sss,
       }
     }
 
-    if(memcmp(query.targetMac, null_mac, sizeof(n2n_mac_t)) == 0){ 
+    if(memcmp(query.targetMac, null_mac, sizeof(n2n_mac_t)) == 0){
       traceEvent( TRACE_DEBUG, "Rx PING from %s. Requested data: %d",
 		  macaddr_str( mac_buf,  query.srcMac ),
 		  query.req_data );
@@ -1313,7 +1316,7 @@ static int process_udp(n2n_sn_t * sss,
       pi.aflags = 0;
       memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
       memcpy( pi.srcMac, sss->mac_addr, sizeof(n2n_mac_t) );
-  
+
       encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
 
       if(comm){
