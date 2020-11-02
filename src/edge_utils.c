@@ -779,7 +779,7 @@ static void send_register_super(n2n_edge_t *eee) {
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
   memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
-  reg.aut.scheme = 0; /* No auth yet */
+  reg.auth.scheme = 0; /* No auth yet */
 
   idx = 0;
   encode_mac(reg.edgeMac, &idx, eee->device.mac_addr);
