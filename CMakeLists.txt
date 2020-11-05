@@ -65,7 +65,7 @@ endif(NOT DEFINED CMAKE_BUILD_TYPE)
 
 if (DEFINED UNIX)
 # None
-set(CMAKE_C_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 # Debug 
 set(CMAKE_C_FLAGS_DEBUG "-g")
