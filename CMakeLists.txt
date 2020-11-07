@@ -115,7 +115,7 @@ add_library(n2n STATIC
         src/tuntap_linux.c
         src/tuntap_osx.c
         src/n2n_regex.c
-        )
+        src/network_traffic_filter.c)
 
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
@@ -129,7 +129,7 @@ if(N2N_OPTION_AES)
 endif(N2N_OPTION_AES)
 
 
-add_executable(edge src/edge.c)
+add_executable(edge src/edge.c include/network_traffic_filter.h)
 target_link_libraries(edge n2n)
 
 add_executable(supernode src/sn.c)

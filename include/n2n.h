@@ -255,6 +255,25 @@ typedef struct n2n_edge_callbacks {
 
 /* ***************************************************** */
 
+/*
+ * network traffic filter interface
+ */
+typedef struct network_traffic_filter
+{
+/* A packet has been received from a peer. N2N_DROP can be returned to
+ * drop the packet. The packet payload can be modified. This only allows
+ * the packet size to be reduced */
+    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t *payload_size);
+
+/* A packet has been received from the TAP interface. N2N_DROP can be
+ * returned to drop the packet. The packet payload can be modified.
+ * This only allows the packet size to be reduced */
+    n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t *payload_size);
+
+} network_traffic_filter_t;
+
+/* *************************************************** */
+
 typedef struct n2n_tuntap_priv_config {
   char                tuntap_dev_name[N2N_IFNAMSIZ];
   char                ip_mode[N2N_IF_MODE_SIZE];

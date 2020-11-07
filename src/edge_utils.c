@@ -1134,7 +1134,6 @@ static int handle_PACKET(n2n_edge_t * eee,
 	uint16_t tmp_eth_size = eth_size;
 	if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, &tmp_eth_size) == N2N_DROP) {
 	  traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)eth_size);
-
 	  return(0);
 	}
 	eth_size = tmp_eth_size;
