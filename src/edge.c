@@ -32,6 +32,7 @@
 
 #include <sys/capability.h>
 #include <sys/prctl.h>
+#include "network_traffic_filter.h"
 
 static cap_value_t cap_values[] = {
 				   //CAP_NET_RAW,      /* Use RAW and PACKET sockets */
@@ -516,6 +517,21 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     setTraceLevel(getTraceLevel() + 1);
     break;
 
+  case 'F': /* network traffic filter */
+  {
+    filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
+    memset(new_rule, 0, sizeof(filter_rule_t));
+    if(process_traffic_filter_rule_str(optargument, new_rule) )
+    {
+        HASH_ADD(hh, conf->network_traffic_filter_rules, key, sizeof(filter_rule_key_t), new_rule);
+    }else{
+        free(new_rule);
+        traceEvent(TRACE_WARNING, "Invalid filter rule: %s", optargument);
+        return(-1);
+    }
+  break;
+  }
+
   default:
     {
       traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
@@ -547,7 +563,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap
   u_char c;
 
   while ((c = getopt_long(argc, argv,
-                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:"
+                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:F:"
 #ifdef __linux__
                           "T:"
 #endif

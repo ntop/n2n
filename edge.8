@@ -131,6 +131,23 @@ traceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets
 
 But this method does not always work due to various local network device policy.
 .TP
+\-F rule_str
+add rule to drop or accept specific packet transmit over edge network interface.
+
+rule_str format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/-
+
+ip/len indicate a cidr block, len can be ignore, means single ip (not cidr block) will be use in filter rule.
+
+'+','-' after proto type indicate allow or drop packet of that proto. if any of above three proto missed, it will be dropped.
+
+[s_port,e_port] can be instead by single port number, if not specify, 0-65535 ports will be used. ports range include start_port and end_port.
+
+-F rule_str flag can use multiple times, to add multiple rules. Each -F rule_str flags add one rule.
+examples:
+192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+
+192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+
+192.168.1.5,192.168.0.7 // packets by all proto of all ports from 192.158.1.5 to any ports of 192.168.0.7 will be disallow(dropped).
+
 \-v
 more verbose logging (may be specified several times for more verbosity).
 .SH ENVIRONMENT
