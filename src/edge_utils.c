@@ -1718,11 +1718,11 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   time_t              now=0;
   uint64_t 	      stamp = 0;
 
-  size_t              i;
+  size_t              length;
 
-  i = sizeof(sender_sock);
+  length = sizeof(sender_sock);
   recvlen = recvfrom(in_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
-		     (struct sockaddr *)&sender_sock, (socklen_t*)&i);
+		     (struct sockaddr *)&sender_sock, (socklen_t*)&length);
 
   if(recvlen < 0) {
 #ifdef WIN32

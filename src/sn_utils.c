@@ -72,7 +72,7 @@ static int process_udp(n2n_sn_t *sss,
                        size_t udp_size,
                        time_t now);
 
-static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
+static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
 /* ************************************** */
 
@@ -760,7 +760,6 @@ static int process_udp(n2n_sn_t * sss,
   char                buf[32];
   struct sn_community *comm, *tmp;
   uint64_t	      stamp;
-  const n2n_mac_t               null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -1182,7 +1181,7 @@ if(comm) {
     n2n_REGISTER_SUPER_ACK_t        ack;
     size_t                          encx=0;
     struct sn_community             *fed;
-    struct peer_info		    				*scan, *tmp;
+    struct peer_info		    				*scan, *tmp_peer;
     n2n_sock_str_t      	    			sockbuf1;
     n2n_sock_str_t      	    			sockbuf2;
     macstr_t           	 	   			  mac_buf1;
@@ -1245,10 +1244,10 @@ if(comm) {
 
     for(i=0; i<ack.num_sn; i++) {
 			skip_add = NO_SKIP;
-      tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), tmp_sock, tmp_mac, &skip_add);
+      tmp_peer = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), tmp_sock, tmp_mac, &skip_add);
 
       if(skip_add == ADDED) {
-				tmp->last_seen = now - TEST_TIME;
+        tmp_peer->last_seen = now - TEST_TIME;
       }
 
 			/* REVISIT: find a more elegant expression to increase following pointers. */
