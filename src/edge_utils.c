@@ -1297,7 +1297,7 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
 		      "    id    tun_tap          MAC                edge                   hint             last_seen\n");
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-		      "-----------------------------------------------------------------------------------------------\n");
+          "-----------------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
 		      "supernode_forward:\n");
@@ -1340,7 +1340,7 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
   }
 
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-		      "------------------------------------------------------------------------------\n");
+          "-----------------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
 		      "uptime %lu | ",

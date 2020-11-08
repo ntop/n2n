@@ -655,7 +655,7 @@ static int process_mgmt(n2n_sn_t *sss,
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "    id    tun_tap             MAC                edge                   hint             last_seen\n");
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "-------------------------------------------------------------------------------------------------\n");
+          "--------------------------------------------------------------------------------------------------\n");
   HASH_ITER(hh, sss->communities, community, tmp) {
     num_edges += HASH_COUNT(community->edges);
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -678,7 +678,7 @@ static int process_mgmt(n2n_sn_t *sss,
     }
   }
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-		      "-------------------------------------------------------------------------------------------------\n");
+          "--------------------------------------------------------------------------------------------------\n");
 
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "uptime %lu | ", (now - sss->start_time));
