@@ -184,7 +184,9 @@ static void help() {
   printf("[-f] ");
 #endif
   printf("[-F <federation_name>] ");
+#if 0
   printf("[-m <mac_address>] ");
+#endif /* #if 0 */
 #ifndef WIN32
   printf("[-u <uid> -g <gid>] ");
 #endif /* ifndef WIN32 */
@@ -200,8 +202,10 @@ static void help() {
   printf("-f                | Run in foreground.\n");
 #endif /* #if defined(N2N_HAVE_DAEMON) */
   printf("-F <fed_name>     | Name of the supernodes federation (otherwise use '%s' by default)\n",(char *)FEDERATION_NAME);
+#if 0
   printf("-m <mac_addr>     | Fix MAC address for the supernode (otherwise it may be random)\n"
          "                  | eg. -m 01:02:03:04:05:06\n");
+#endif /* #if 0 */
 #ifndef WIN32
   printf("-u <UID>          | User ID (numeric) to use when privileges are dropped.\n");
   printf("-g <GID>          | Group ID (numeric) to use when privileges are dropped.\n");
@@ -279,7 +283,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
         anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
         if(anchor_sn->ip_addr){
           strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
-	        memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+	  memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
           memcpy(&(anchor_sn->mac_addr),null_mac,sizeof(n2n_mac_t));
           anchor_sn->purgeable = SN_UNPURGEABLE;
           anchor_sn->last_valid_time_stamp = initial_time_stamp();
@@ -352,10 +356,12 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     break;
   }
 
+#if 0
   case 'm': {/* MAC address */
     str2mac(sss->mac_addr,_optarg);
     break;
   }
+#endif /* #if 0 */
 
   case 'c': /* community file */
     load_allowed_sn_community(sss, _optarg);
