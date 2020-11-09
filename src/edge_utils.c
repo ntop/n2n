@@ -929,6 +929,49 @@ static void send_register_ack(n2n_edge_t * eee,
 
 /* ************************************** */
 
+static char gratuitous_arp[] = {
+  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* dest MAC */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* src MAC */
+  0x08, 0x06, /* ARP */
+  0x00, 0x01, /* ethernet */
+  0x08, 0x00, /* IP */
+  0x06, /* hw Size */
+  0x04, /* protocol Size */
+  0x00, 0x02, /* ARP reply */
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* src MAC */
+  0x00, 0x00, 0x00, 0x00, /* src IP */
+  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* target MAC */
+  0x00, 0x00, 0x00, 0x00 /* target IP */
+};
+
+// build a gratuitous ARP packet */
+static int build_gratuitous_arp(n2n_edge_t * eee, char *buffer, uint16_t buffer_len) {
+  if(buffer_len < sizeof(gratuitous_arp)) return(-1);
+
+  memcpy(buffer, gratuitous_arp, sizeof(gratuitous_arp));
+  memcpy(&buffer[6], eee->device.mac_addr, 6);
+  memcpy(&buffer[22], eee->device.mac_addr, 6);
+  memcpy(&buffer[28], &(eee->device.ip_addr), 4);
+
+  memcpy(&buffer[38], &(eee->device.ip_addr), 4);
+  return(sizeof(gratuitous_arp));
+}
+
+/** Called from update_supernode_reg to periodically send gratuitous ARP
+ *  broadcasts. */
+static void send_grat_arps(n2n_edge_t * eee) {
+  char buffer[48];
+  size_t len;
+
+  traceEvent(TRACE_DEBUG, "Sending gratuitous ARP...");
+  len = build_gratuitous_arp(eee, buffer, sizeof(buffer));
+
+  edge_send_packet2net(eee, buffer, len);
+  edge_send_packet2net(eee, buffer, len); /* Two is better than one :-) */
+}
+
+/* ************************************** */
+
 /** @brief Check to see if we should re-register with the supernode.
  *
  *  This is frequently called by the main loop.
@@ -982,8 +1025,7 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
   eee->sn_wait=1;
 
-  /* REVISIT: turn-on gratuitous ARP with config option. */
-  /* send_grat_arps(sock_fd, is_udp_sock); */
+  send_grat_arps(eee);
 
   eee->last_register_req = nowTime;
 }
