@@ -363,13 +363,26 @@ static int update_edge(n2n_sn_t *sss,
                        time_t now) {
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
-  struct peer_info *scan;
+  struct peer_info *scan, *iter, *tmp;
 
   traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
 	     macaddr_str(mac_buf, reg->edgeMac),
 	     sock_to_cstr(sockbuf, sender_sock));
 
   HASH_FIND_PEER(comm->edges, reg->edgeMac, scan);
+
+ // if unknown, make sure it is also not known by IP address
+  if (NULL == scan) {
+    HASH_ITER(hh,comm->edges,iter,tmp) {
+      if(iter->dev_addr.net_addr == reg->dev_addr.net_addr) {
+        scan = iter;
+        HASH_DEL(comm->edges, scan);
+        memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
+        HASH_ADD_PEER(comm->edges, scan);
+        break;
+      }
+    }
+  }
 
   if (NULL == scan) {
     /* Not known */
@@ -380,7 +393,7 @@ static int update_edge(n2n_sn_t *sss,
     memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
     scan->dev_addr.net_addr = reg->dev_addr.net_addr;
     scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
-    memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
+		memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
     memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
     scan->last_valid_time_stamp = initial_time_stamp();
 
@@ -719,7 +732,7 @@ static int process_mgmt(n2n_sn_t *sss,
   }
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "----------------------------------------------------------------------------------------------------\n");
-
+  
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "uptime %lu | ", (now - sss->start_time));
 
@@ -1063,17 +1076,17 @@ static int process_udp(n2n_sn_t * sss,
       n2n_REGISTER_SUPER_ACK_t        ack;
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-      uint8_t	                      tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+      uint8_t	                        tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
       uint8_t                         *tmp_dst;
       size_t                          encx=0;
       struct sn_community             *fed;
       struct sn_community_regular_expression *re, *tmp_re;
-      struct peer_info		      *peer, *tmp_peer, *p;
+      struct peer_info		            *peer, *tmp_peer, *p;
       int8_t                          allowed_match = -1;
       uint8_t                         match = 0;
-      int			      match_length = 0;
+      int			                        match_length = 0;
       n2n_ip_subnet_t                 ipaddr;
-      int 			      num = 0;
+      int 			                      num = 0;
       int                             skip_add;
 
       memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
@@ -1221,16 +1234,16 @@ static int process_udp(n2n_sn_t * sss,
     n2n_REGISTER_SUPER_ACK_t        ack;
     size_t                          encx=0;
     struct sn_community             *fed;
-    struct peer_info		    *scan, *tmp;
-    n2n_sock_str_t      	    sockbuf1;
-    n2n_sock_str_t      	    sockbuf2;
-    macstr_t           	 	    mac_buf1;
-    n2n_sock_t          	    sender;
-    n2n_sock_t        		    *orig_sender;
-    n2n_sock_t			    *tmp_sock;
-    n2n_mac_t			    *tmp_mac;
-    int				    i;
-    uint8_t			    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+    struct peer_info		            *scan, *tmp;
+    n2n_sock_str_t      	          sockbuf1;
+    n2n_sock_str_t      	          sockbuf2;
+    macstr_t           	 	          mac_buf1;
+    n2n_sock_t          	          sender;
+    n2n_sock_t        		          *orig_sender;
+    n2n_sock_t			                *tmp_sock;
+    n2n_mac_t			                  *tmp_mac;
+    int				                      i;
+    uint8_t			                    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
     int                             skip_add;
 
     memset(&sender, 0, sizeof(n2n_sock_t));
@@ -1304,10 +1317,10 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                     cmn2;
     n2n_PEER_INFO_t                  pi;
     struct sn_community_regular_expression *re, *tmp_re;
-    struct peer_info		     *peer, *tmp_peer, *p;
+    struct peer_info		             *peer, *tmp_peer, *p;
     int8_t                           allowed_match = -1;
     uint8_t                          match = 0;
-    int			             match_length = 0;
+    int			                         match_length = 0;
     uint8_t                          *rec_buf; /* either udp_buf or encbuf */
 
     if(!comm && sss->lock_communities) {

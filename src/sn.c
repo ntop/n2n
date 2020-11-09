@@ -186,7 +186,7 @@ static void help() {
   printf("[-F <federation_name>] ");
 #if 0
   printf("[-m <mac_address>] ");
-#endif
+#endif /* #if 0 */
 #ifndef WIN32
   printf("[-u <uid> -g <gid>] ");
 #endif /* ifndef WIN32 */
