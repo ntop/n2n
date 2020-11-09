@@ -74,7 +74,7 @@ static int process_udp(n2n_sn_t *sss,
                        size_t udp_size,
                        time_t now);
 
-static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
+static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
 /* ************************************** */
 
@@ -709,6 +709,7 @@ static int process_mgmt(n2n_sn_t *sss,
  		      "    id    tun_tap             MAC                edge                   hint             last_seen\n");
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
  		      "-------------------------------------------------------------------------------------------------\n");
+
   HASH_ITER(hh, sss->communities, community, tmp) {
     num_edges += HASH_COUNT(community->edges);
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -813,7 +814,6 @@ static int process_udp(n2n_sn_t * sss,
   char                buf[32];
   struct sn_community *comm, *tmp;
   uint64_t	      stamp;
-  const n2n_mac_t               null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -1247,6 +1247,7 @@ static int process_udp(n2n_sn_t * sss,
     int                             skip_add;
 
     memset(&sender, 0, sizeof(n2n_sock_t));
+
     sender.family = AF_INET;
     sender.port = ntohs(sender_sock->sin_port);
     memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
