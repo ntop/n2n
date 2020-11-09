@@ -144,7 +144,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-R <rule_str>] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tap device>          | tap device name\n");
@@ -191,6 +191,8 @@ static void help() {
 #endif
   printf("-n <cidr:gateway>        | Route an IPv4 network via the gw. Use 0.0.0.0/0 for the default gw. Can be set multiple times.\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
+  printf("-R <rule_str>            | Drop or accept packets by rules. Can be set multiple times. \n");
+  printf("                         | Rule format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/- \n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
   printf("\nEnvironment variables:\n");
