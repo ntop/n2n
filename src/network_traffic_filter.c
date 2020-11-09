@@ -158,15 +158,22 @@ void collect_packet_info(packet_address_proto_info_t* out_info, unsigned char *b
 const char* get_filter_rule_info_log_string(filter_rule_t* rule)
 {
     static char buf[1024] = {0};
+    char* print_start = buf;
     char src_net[64] = {0};  char dst_net[64] = {0};
     struct in_addr src, dst;
     src.s_addr = rule->key.src_net_cidr;
     dst.s_addr = rule->key.dst_net_cidr;
     strcpy(src_net, inet_ntoa(src)); strcpy(dst_net, inet_ntoa(dst));
-    sprintf(buf, "%s/%d:[%d,%d],%s/%d:[%d,%d],TCP%c,UDP%c,ICMP%c",
+    print_start += sprintf(print_start, "%s/%d:[%d,%d],%s/%d:[%d,%d]",
             src_net, rule->key.src_net_bit_len, rule->key.src_port_range.start_port, rule->key.src_port_range.end_port,
             dst_net, rule->key.dst_net_bit_len, rule->key.dst_port_range.start_port, rule->key.dst_port_range.end_port,
-            rule->bTCP?'+':'-', rule->bUDP?'+':'-', rule->bICMP?'+':'-');
+            rule->bool_accept_tcp ? '+' : '-', rule->bool_accept_udp ? '+' : '-', rule->bool_accept_icmp ? '+' : '-');
+    if(rule->key.bool_tcp_configured)
+        print_start += sprintf(print_start, ",TCP%c", rule->bool_accept_tcp ? '+' : '-');
+    if(rule->key.bool_udp_configured)
+        print_start += sprintf(print_start, ",UDP%c", rule->bool_accept_udp ? '+' : '-');
+    if(rule->key.bool_icmp_configured)
+        print_start += sprintf(print_start, ",ICMP%c", rule->bool_accept_icmp ? '+' : '-');
     return buf;
 }
 
@@ -174,9 +181,7 @@ typedef struct filter_rule_pair_cache
 {
     packet_address_proto_info_t key;
 
-    uint8_t             bICMP;
-    uint8_t             bUDP;
-    uint8_t             bTCP;
+    uint8_t             bool_allow_traffic;
 
     uint32_t         active_count;
 
@@ -187,7 +192,8 @@ uint8_t march_cidr_and_address(in_addr_t network, uint8_t net_bitlen, in_addr_t 
 {
     in_addr_t mask = 0, ip_addr_network = 0;
     network = ntohl(network), ip_addr = ntohl(ip_addr);
-    ip_addr_network = ip_addr & ((~mask) << (32u-net_bitlen));
+    uint32_t mask1 = net_bitlen != 0 ? ((~mask) << (32u-net_bitlen)) : 0;
+    ip_addr_network = ip_addr & mask1;
     if( network == ip_addr_network )
         return net_bitlen + 1; // march 0.0.0.0/0 still march success, that case return 1
     else
@@ -197,7 +203,23 @@ uint8_t march_cidr_and_address(in_addr_t network, uint8_t net_bitlen, in_addr_t 
 // if ports march, compare cidr. if cidr ok, return sum of src&dst cidr net_bitlen. means always select larger net_bitlen record when multi record is marched.
 uint8_t march_rule_and_cache_key(filter_rule_key_t *rule_key, packet_address_proto_info_t *pkt_addr_info)
 {
-    // ignore ports while ICMP proto.
+    // march failed if proto is not configured at the rule.
+    switch (pkt_addr_info->proto)
+    {
+        case FPP_ICMP:
+            if(!rule_key->bool_icmp_configured) return 0;
+            break;
+        case FPP_UDP:
+            if(!rule_key->bool_udp_configured) return 0;
+            break;
+        case FPP_TCP:
+            if(!rule_key->bool_tcp_configured) return 0;
+            break;
+        default:
+            return 0;
+    }
+
+    // ignore ports for ICMP proto.
     if( pkt_addr_info->proto == FPP_ICMP || (rule_key->src_port_range.start_port <= pkt_addr_info->src_port
         && pkt_addr_info->src_port <= rule_key->src_port_range.end_port
         && rule_key->dst_port_range.start_port <= pkt_addr_info->dst_port
@@ -275,9 +297,21 @@ filter_rule_pair_cache_t* get_or_create_filter_rule_cache(network_traffic_filter
         rule_cache_find_result = malloc(sizeof(filter_rule_pair_cache_t));
         memset(rule_cache_find_result, 0, sizeof(filter_rule_pair_cache_t));
         rule_cache_find_result->key = *pkt_addr_info;
-        rule_cache_find_result->bICMP = rule->bICMP;
-        rule_cache_find_result->bTCP = rule->bTCP;
-        rule_cache_find_result->bUDP = rule->bUDP;
+        switch(rule_cache_find_result->key.proto)
+        {
+            case FPP_ICMP:
+                rule_cache_find_result->bool_allow_traffic = rule->bool_accept_icmp;
+                break;
+            case FPP_UDP:
+                rule_cache_find_result->bool_allow_traffic = rule->bool_accept_udp;
+                break;
+            case FPP_TCP:
+                rule_cache_find_result->bool_allow_traffic = rule->bool_accept_tcp;
+                break;
+            default:
+                traceEvent(TRACE_WARNING, "### Generate filter rule cache failed!");
+                return NULL;
+        }
         traceEvent(TRACE_DEBUG, "### ADD filter cache %s", get_filter_packet_info_log_string(&rule_cache_find_result->key));
         HASH_ADD(hh, filter->connections_rule_cache, key, sizeof(packet_address_proto_info_t), rule_cache_find_result);
     }
@@ -293,14 +327,10 @@ n2n_verdict filter_packet_from_peer(network_traffic_filter_impl_t *filter, n2n_e
     packet_address_proto_info_t pkt_info;
     collect_packet_info(&pkt_info, payload, payload_size);
     cur_pkt_rule = get_or_create_filter_rule_cache(filter, &pkt_info);
-    if( cur_pkt_rule )
+    if( cur_pkt_rule && !cur_pkt_rule->bool_allow_traffic)
     {
-        if( (!cur_pkt_rule->bUDP && pkt_info.proto == FPP_UDP) || (!cur_pkt_rule->bTCP && pkt_info.proto == FPP_TCP)
-                                                                  || (!cur_pkt_rule->bICMP && pkt_info.proto == FPP_ICMP))
-        {
-            traceEvent(TRACE_DEBUG, "### DROP %s", get_filter_packet_info_log_string(&pkt_info));
-            return N2N_DROP;
-        }
+        traceEvent(TRACE_DEBUG, "### DROP %s", get_filter_packet_info_log_string(&pkt_info));
+        return N2N_DROP;
     }
     return N2N_ACCEPT;
 }
@@ -312,14 +342,10 @@ n2n_verdict filter_packet_from_tap(network_traffic_filter_impl_t *filter, n2n_ed
     packet_address_proto_info_t pkt_info;
     collect_packet_info(&pkt_info, payload, payload_size);
     cur_pkt_rule = get_or_create_filter_rule_cache(filter, &pkt_info);
-    if( cur_pkt_rule )
+    if( cur_pkt_rule && !cur_pkt_rule->bool_allow_traffic)
     {
-        if( (!cur_pkt_rule->bUDP && pkt_info.proto == FPP_UDP) || (!cur_pkt_rule->bTCP && pkt_info.proto == FPP_TCP)
-            || (!cur_pkt_rule->bICMP && pkt_info.proto == FPP_ICMP))
-        {
-            traceEvent(TRACE_DEBUG, "### DROP %s", get_filter_packet_info_log_string(&pkt_info));
-            return N2N_DROP;
-        }
+        traceEvent(TRACE_DEBUG, "### DROP %s", get_filter_packet_info_log_string(&pkt_info));
+        return N2N_DROP;
     }
     return N2N_ACCEPT;
 }
@@ -403,12 +429,19 @@ void process_traffic_filter_proto(const char* begin, const char* next_pos_of_las
     }
     memcpy(buf, begin, next_pos_of_last_char - begin);
 
-    if(strstr(buf, "TCP"))
-        rule_struct->bTCP = buf[3] == '+';
-    else if(strstr(buf, "UDP"))
-        rule_struct->bUDP = buf[3] == '+';
+    if(strstr(buf, "TCP")){
+        rule_struct->key.bool_tcp_configured = 1;
+        rule_struct->bool_accept_tcp = buf[3] == '+';
+    }
+    else if(strstr(buf, "UDP")){
+        rule_struct->key.bool_udp_configured = 1;
+        rule_struct->bool_accept_udp = buf[3] == '+';
+    }
     else if(strstr(buf, "ICMP"))
-        rule_struct->bICMP = buf[4] == '+';
+    {
+        rule_struct->key.bool_icmp_configured = 1;
+        rule_struct->bool_accept_icmp = buf[4] == '+';
+    }
     else
         traceEvent(TRACE_WARNING, "Invalid Proto : %s", buf);
 }

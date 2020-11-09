@@ -269,15 +269,18 @@ typedef struct filter_rule_key
     in_addr_t        dst_net_cidr;
     uint8_t          dst_net_bit_len;
     port_range_t     dst_port_range;
+    uint8_t          bool_tcp_configured;
+    uint8_t          bool_udp_configured;
+    uint8_t          bool_icmp_configured;
 } filter_rule_key_t;
 
 typedef struct filter_rule
 {
     filter_rule_key_t key;
 
-    uint8_t             bICMP;
-    uint8_t             bUDP;
-    uint8_t             bTCP;
+    uint8_t             bool_accept_icmp;
+    uint8_t             bool_accept_udp;
+    uint8_t             bool_accept_tcp;
 
     UT_hash_handle hh;         /* makes this structure hashable */
 } filter_rule_t;
