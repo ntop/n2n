@@ -517,7 +517,7 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     setTraceLevel(getTraceLevel() + 1);
     break;
 
-  case 'F': /* network traffic filter */
+  case 'R': /* network traffic filter */
   {
     filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
     memset(new_rule, 0, sizeof(filter_rule_t));
@@ -563,7 +563,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap
   u_char c;
 
   while ((c = getopt_long(argc, argv,
-                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:F:"
+                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:R:"
 #ifdef __linux__
                           "T:"
 #endif

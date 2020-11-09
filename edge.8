@@ -131,7 +131,7 @@ traceroute to 8.8.8.8 (8.8.8.8), 30 hops max, 60 byte packets
 
 But this method does not always work due to various local network device policy.
 .TP
-\-F rule_str
+\-R rule_str
 add rule to drop or accept specific packet transmit over edge network interface.
 
 rule_str format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/-
@@ -142,17 +142,17 @@ ip/len indicate a cidr block, len can be ignore, means single ip (not cidr block
 
 [s_port,e_port] can be instead by single port number, if not specify, 0-65535 ports will be used. ports range include start_port and end_port.
 
--F rule_str flag can use multiple times, to add multiple rules. Each -F rule_str flags add one rule.
+-R rule_str flag can use multiple times, to add multiple rules. Each -R rule_str flags add one rule.
 examples:
 192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+
 192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+
 192.168.1.5,192.168.0.7,TCP-,UDP-,ICMP- // packets by all proto of all ports from 192.158.1.5 to any ports of 192.168.0.7 will be dropped.
 
--F rule_str flag can use multiple times to add multiple rules. Each -F rule_str flags add one rule. for example:
-`edge -c xxxx -k xxxx -a 192.168.100.5 -l xxx.xxx.xxx.xxx:1234 -r -F 192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+ -F 192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+ -F 192.168.1.5,192.168.0.7,TCP-`
+-R rule_str flag can use multiple times to add multiple rules. Each -R rule_str flags add one rule. for example:
+`edge -c xxxx -k xxxx -a 192.168.100.5 -l xxx.xxx.xxx.xxx:1234 -r -R 192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+ -R 192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+ -R 192.168.1.5,192.168.0.7,TCP-`
 
 Packets that cannot match any rule will be accepted by default. Users can add rules to block traffics.
-This behavior can be change by add a rule : `0.0.0.0/0:[0,65535],0.0.0.0/0:[0,65535],TCP-,UDP-,ICMP-`. Then all traffic will be dropped, users need add rules to allow traffics. for example : `-F 0.0.0.0/0,0.0.0.0/0,TCP-,UDP-,ICMP- -F 192.168.100.0/24,192.168.100.0/24,ICMP+`
+This behavior can be change by add a rule : `0.0.0.0/0:[0,65535],0.0.0.0/0:[0,65535],TCP-,UDP-,ICMP-`. Then all traffic will be dropped, users need add rules to allow traffics. for example : `-R 0.0.0.0/0,0.0.0.0/0,TCP-,UDP-,ICMP- -R 192.168.100.0/24,192.168.100.0/24,ICMP+`
 
 \-v
 more verbose logging (may be specified several times for more verbosity).

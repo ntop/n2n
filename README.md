@@ -99,7 +99,7 @@ Reaching a remote network or tunneling all the internet traffic via n2n are two 
 
 ## Traffic Restrictions
 
-It is possible to drop or accept specific packet transmit over edge network interface by rules. Rules can be specify by (`-F rule_str`) multiple times. Details can be found in the [Traffic Restrictions](doc/TrafficRestrictions.md).
+It is possible to drop or accept specific packet transmit over edge network interface by rules. Rules can be specify by (`-R rule_str`) multiple times. Details can be found in the [Traffic Restrictions](doc/TrafficRestrictions.md).
 
 ## Contribution
 

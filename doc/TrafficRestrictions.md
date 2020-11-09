@@ -1,6 +1,6 @@
 # Traffic Restrictions
 
-It is possible to drop or accept specific packet transmit over edge network interface by rules. Rules can be specify by (`-F rule_str`) multiple times.
+It is possible to drop or accept specific packet transmit over edge network interface by rules. Rules can be specify by (`-R rule_str`) multiple times.
 
 ## Rule String Format
 
@@ -19,9 +19,9 @@ examples:
 
 ## Multiple Rules
 
--F rule_str flag can use multiple times to add multiple rules. Each -F rule_str flags add one rule. for example:
+-R rule_str flag can use multiple times to add multiple rules. Each -R rule_str flags add one rule. for example:
 
-`edge -c xxxx -k xxxx -a 192.168.100.5 -l xxx.xxx.xxx.xxx:1234 -r -F 192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+ -F 192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+ -F 192.168.1.5,192.168.0.7,TCP-`
+`edge -c xxxx -k xxxx -a 192.168.100.5 -l xxx.xxx.xxx.xxx:1234 -r -R 192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+ -R 192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+ -R 192.168.1.5,192.168.0.7,TCP-`
 
 ## Matching Rules Priority
 
@@ -33,7 +33,7 @@ Actually, current implementation will add the `len` of src cidr and dst cidr of 
 
 Packets that cannot match any rule will be accepted by default. Users can add rules to block traffics.
 
-This behavior can be change by add a rule : `0.0.0.0/0:[0,65535],0.0.0.0/0:[0,65535],TCP-,UDP-,ICMP-`. Then all traffic will be dropped, users need add rules to allow traffics. for example : `-F 0.0.0.0/0,0.0.0.0/0,TCP-,UDP-,ICMP- -F 192.168.100.0/24,192.168.100.0/24,ICMP+`
+This behavior can be change by add a rule : `0.0.0.0/0:[0,65535],0.0.0.0/0:[0,65535],TCP-,UDP-,ICMP-`. Then all traffic will be dropped, users need add rules to allow traffics. for example : `-R 0.0.0.0/0,0.0.0.0/0,TCP-,UDP-,ICMP- -R 192.168.100.0/24,192.168.100.0/24,ICMP+`
 
 More complex behavior can be set with the feature of `Matching Rules Priority`.
 
