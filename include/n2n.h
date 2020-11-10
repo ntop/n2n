@@ -254,6 +254,72 @@ typedef struct n2n_edge_callbacks {
 } n2n_edge_callbacks_t;
 
 /* ***************************************************** */
+// network traffic filter
+
+typedef struct port_range{
+    uint16_t start_port; // range contain 'start_port' self
+    uint16_t end_port; // range contain 'end_port' self
+} port_range_t;
+
+typedef struct filter_rule_key
+{
+    in_addr_t        src_net_cidr;
+    uint8_t          src_net_bit_len;
+    port_range_t     src_port_range;
+    in_addr_t        dst_net_cidr;
+    uint8_t          dst_net_bit_len;
+    port_range_t     dst_port_range;
+    uint8_t          bool_tcp_configured;
+    uint8_t          bool_udp_configured;
+    uint8_t          bool_icmp_configured;
+} filter_rule_key_t;
+
+typedef struct filter_rule
+{
+    filter_rule_key_t key;
+
+    uint8_t             bool_accept_icmp;
+    uint8_t             bool_accept_udp;
+    uint8_t             bool_accept_tcp;
+
+    UT_hash_handle hh;         /* makes this structure hashable */
+} filter_rule_t;
+
+
+//rule_str format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/-
+//
+//ip/len indicate a cidr block, len can be ignore, means single ip (not cidr block) will be use in filter rule.
+//
+//'+','-' after proto type indicate allow or disallow that proto transmit packet. if any of above three proto missed, it will be disallow.
+//
+//[s_port,e_port] can be instead by single port number, if not specify, 0-65535 ports will be used. ports range include start_port and end_port.
+//
+//examples:
+//192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+
+//192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+
+//192.168.1.5,192.168.0.7 // packets by all proto of all ports from 192.158.1.5 to any ports of 192.168.0.7 will be disallow(dropped).
+//
+// for impl, see: network_traffic_filter.c
+uint8_t process_traffic_filter_rule_str(const char* rule_str, filter_rule_t* rule_struct);
+
+/*
+ * network traffic filter interface
+ */
+typedef struct network_traffic_filter
+{
+/* A packet has been received from a peer. N2N_DROP can be returned to
+ * drop the packet. The packet payload can be modified. This only allows
+ * the packet size to be reduced */
+    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
+
+/* A packet has been received from the TAP interface. N2N_DROP can be
+ * returned to drop the packet. The packet payload can be modified.
+ * This only allows the packet size to be reduced */
+    n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
+
+} network_traffic_filter_t;
+
+/* *************************************************** */
 
 typedef struct n2n_tuntap_priv_config {
   char                tuntap_dev_name[N2N_IFNAMSIZ];
@@ -295,6 +361,7 @@ typedef struct n2n_edge_conf {
   int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
   int                 local_port;
   int                 mgmt_port;
+  filter_rule_t       *network_traffic_filter_rules;
 } n2n_edge_conf_t;
 
 
@@ -348,6 +415,8 @@ struct n2n_edge {
   struct n2n_edge_stats stats;                 /**< Statistics */
 
   n2n_tuntap_priv_config_t tuntap_priv_conf;   /**< Tuntap config */
+
+  network_traffic_filter_t *network_traffic_filter;
 };
 
 

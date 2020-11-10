@@ -32,6 +32,7 @@
 
 #include <sys/capability.h>
 #include <sys/prctl.h>
+#include "network_traffic_filter.h"
 
 static cap_value_t cap_values[] = {
 				   //CAP_NET_RAW,      /* Use RAW and PACKET sockets */
@@ -143,7 +144,7 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-R <rule_str>] [-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tap device>          | tap device name\n");
@@ -190,6 +191,8 @@ static void help() {
 #endif
   printf("-n <cidr:gateway>        | Route an IPv4 network via the gw. Use 0.0.0.0/0 for the default gw. Can be set multiple times.\n");
   printf("-v                       | Make more verbose. Repeat as required.\n");
+  printf("-R <rule_str>            | Drop or accept packets by rules. Can be set multiple times. \n");
+  printf("                         | Rule format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/- \n");
   printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
 
   printf("\nEnvironment variables:\n");
@@ -516,6 +519,21 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     setTraceLevel(getTraceLevel() + 1);
     break;
 
+  case 'R': /* network traffic filter */
+  {
+    filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
+    memset(new_rule, 0, sizeof(filter_rule_t));
+    if(process_traffic_filter_rule_str(optargument, new_rule) )
+    {
+        HASH_ADD(hh, conf->network_traffic_filter_rules, key, sizeof(filter_rule_key_t), new_rule);
+    }else{
+        free(new_rule);
+        traceEvent(TRACE_WARNING, "Invalid filter rule: %s", optargument);
+        return(-1);
+    }
+  break;
+  }
+
   default:
     {
       traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
@@ -547,7 +565,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap
   u_char c;
 
   while ((c = getopt_long(argc, argv,
-                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:"
+                          "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:R:"
 #ifdef __linux__
                           "T:"
 #endif
