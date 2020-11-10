@@ -737,16 +737,13 @@ static void send_query_peer( n2n_edge_t * eee,
   } else {
     traceEvent( TRACE_DEBUG, "send PING to supernodes" );
 
-     memcpy(tmp_pkt, pktbuf, idx);
+    if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED){
+      packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
+                             eee->conf.header_iv_ctx,
+                             time_stamp (), pearson_hash_16 (pktbuf, idx));
+    }
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmp){
-      if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED){
-        /* Re-encrypt the orginal message again for non-repeating IV. */
-        memcpy(pktbuf, tmp_pkt, idx);
-        packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-    			                     eee->conf.header_iv_ctx,
-    			                     time_stamp (), pearson_hash_16 (pktbuf, idx));
-      }
       sendto_sock( eee->udp_sock, pktbuf, idx, &(peer->sock));
     }
   }
