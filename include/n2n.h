@@ -109,6 +109,51 @@ struct ether_hdr
 
 typedef struct ether_hdr ether_hdr_t;
 
+struct n2n_iphdr {
+#if defined(__LITTLE_ENDIAN__)
+  u_int8_t ihl:4, version:4;
+#elif defined(__BIG_ENDIAN__)
+  u_int8_t version:4, ihl:4;
+#else
+# error "Byte order must be defined"
+#endif
+  u_int8_t tos;
+  u_int16_t tot_len;
+  u_int16_t id;
+  u_int16_t frag_off;
+  u_int8_t ttl;
+  u_int8_t protocol;
+  u_int16_t check;
+  u_int32_t saddr;
+  u_int32_t daddr;
+} __attribute__ ((__packed__));
+
+struct n2n_tcphdr
+{
+  u_int16_t source;
+  u_int16_t dest;
+  u_int32_t seq;
+  u_int32_t ack_seq;
+#if defined(__LITTLE_ENDIAN__)
+  u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
+#elif defined(__BIG_ENDIAN__)
+  u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
+#else
+# error "Byte order must be defined"
+#endif
+  u_int16_t window;
+  u_int16_t check;
+  u_int16_t urg_ptr;
+} __attribute__ ((__packed__));
+
+struct n2n_udphdr
+{
+  u_int16_t source;
+  u_int16_t dest;
+  u_int16_t len;
+  u_int16_t check;
+} __attribute__ ((__packed__));
+
 #ifdef HAVE_LIBZSTD
 #include <zstd.h>
 #endif
@@ -310,7 +355,8 @@ typedef struct network_traffic_filter
 /* A packet has been received from a peer. N2N_DROP can be returned to
  * drop the packet. The packet payload can be modified. This only allows
  * the packet size to be reduced */
-    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
+    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee,
+					   const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
 
 /* A packet has been received from the TAP interface. N2N_DROP can be
  * returned to drop the packet. The packet payload can be modified.
@@ -361,7 +407,9 @@ typedef struct n2n_edge_conf {
   int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
   int                 local_port;
   int                 mgmt_port;
+#ifdef FILTER_TRAFFIC
   filter_rule_t       *network_traffic_filter_rules;
+#endif
 } n2n_edge_conf_t;
 
 
