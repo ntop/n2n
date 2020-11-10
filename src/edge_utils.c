@@ -202,6 +202,7 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   eee->pending_peers  = NULL;
   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
   eee->sn_last_valid_time_stamp = initial_time_stamp ();
+  sn_selection_criterion_common_data_default(eee);
 
   pearson_hash_init();
 
@@ -700,7 +701,7 @@ static void send_query_peer( n2n_edge_t * eee,
   struct peer_info *peer, *tmp;
   uint8_t tmp_pkt[N2N_PKT_BUF_SIZE];
 
-  cmn.ttl=N2N_DEFAULT_TTL;
+  cmn.ttl = N2N_DEFAULT_TTL;
   cmn.pc = n2n_query_peer;
   cmn.flags = 0;
   memcpy( cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE );
@@ -710,7 +711,6 @@ static void send_query_peer( n2n_edge_t * eee,
 
   idx=0;
   encode_mac( query.targetMac, &idx, dstMac );
-  query.req_data = 0;
 
   idx=0;
 
@@ -731,29 +731,19 @@ static void send_query_peer( n2n_edge_t * eee,
   } else {
     traceEvent( TRACE_DEBUG, "send PING to supernodes" );
 
-    memcpy(tmp_pkt, pktbuf, idx);
+      if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED){
+        packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
+                           eee->conf.header_iv_ctx,
+                           time_stamp (), pearson_hash_16 (pktbuf, idx));
+      }
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmp){
-      if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED){
-        /* Re-encrypt the orginal message again for non-repeating IV. */
-        memcpy(pktbuf, tmp_pkt, idx);
-        packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-    			   eee->conf.header_iv_ctx,
-    			   time_stamp (), pearson_hash_16 (pktbuf, idx));
-      }
       sendto_sock( eee->udp_sock, pktbuf, idx, &(peer->sock));
     }
   }
 }
 
 /* ******************************************************** */
-
-static int ping_time_sort(struct peer_info *a, struct peer_info *b){
-  // comparison function for sorting supernodes in ascending order of their
-  // ping_time-fields
-  return (a->ping_time - b->ping_time);
-}
-
 
 /** Send a REGISTER_SUPER packet to the current supernode. */
 static void send_register_super(n2n_edge_t *eee) {
@@ -817,13 +807,14 @@ static int sort_supernodes(n2n_edge_t *eee, time_t now){
  if(now - eee->last_sweep > SWEEP_TIME){
     if(eee->sn_wait == 0){
       // this routine gets periodically called
-      // it sorts supernodes in ascending order of their ping_time-fields
-        HASH_SORT(eee->conf.supernodes, ping_time_sort);
+      // it sorts supernodes in ascending order of their selection_criterion fields
+      sn_selection_sort(&(eee->conf.supernodes));
     }
 
     HASH_ITER(hh, eee->conf.supernodes, scan, tmp){
-      scan->ping_time = MAX_PING_TIME;
+      sn_selection_criterion_default(&(scan->selection_criterion));
     }
+    sn_selection_criterion_common_data_default(eee);
 
     send_query_peer(eee, null_mac);
     eee->last_sweep = now;
@@ -930,49 +921,6 @@ static void send_register_ack(n2n_edge_t * eee,
 
 /* ************************************** */
 
-static char gratuitous_arp[] = {
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* dest MAC */
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* src MAC */
-  0x08, 0x06, /* ARP */
-  0x00, 0x01, /* ethernet */
-  0x08, 0x00, /* IP */
-  0x06, /* hw Size */
-  0x04, /* protocol Size */
-  0x00, 0x02, /* ARP reply */
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* src MAC */
-  0x00, 0x00, 0x00, 0x00, /* src IP */
-  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* target MAC */
-  0x00, 0x00, 0x00, 0x00 /* target IP */
-};
-
-// build a gratuitous ARP packet */
-static int build_gratuitous_arp(n2n_edge_t * eee, char *buffer, uint16_t buffer_len) {
-  if(buffer_len < sizeof(gratuitous_arp)) return(-1);
-
-  memcpy(buffer, gratuitous_arp, sizeof(gratuitous_arp));
-  memcpy(&buffer[6], eee->device.mac_addr, 6);
-  memcpy(&buffer[22], eee->device.mac_addr, 6);
-  memcpy(&buffer[28], &(eee->device.ip_addr), 4);
-
-  memcpy(&buffer[38], &(eee->device.ip_addr), 4);
-  return(sizeof(gratuitous_arp));
-}
-
-/** Called from update_supernode_reg to periodically send gratuitous ARP
- *  broadcasts. */
-static void send_grat_arps(n2n_edge_t * eee) {
-  char buffer[48];
-  size_t len;
-
-  traceEvent(TRACE_DEBUG, "Sending gratuitous ARP...");
-  len = build_gratuitous_arp(eee, buffer, sizeof(buffer));
-
-  edge_send_packet2net(eee, buffer, len);
-  edge_send_packet2net(eee, buffer, len); /* Two is better than one :-) */
-}
-
-/* ************************************** */
-
 /** @brief Check to see if we should re-register with the supernode.
  *
  *  This is frequently called by the main loop.
@@ -990,8 +938,8 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
   if(0 == eee->sup_attempts) {
     /* Give up on that supernode and try the next one. */
-    eee->curr_sn->ping_time = MAX_PING_TIME;
-    HASH_SORT(eee->conf.supernodes, ping_time_sort);
+    sn_selection_criterion_default(&(eee->curr_sn->selection_criterion));
+    sn_selection_sort(&(eee->conf.supernodes));
     eee->curr_sn = eee->conf.supernodes;
     memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
 
@@ -1026,7 +974,8 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
   eee->sn_wait=1;
 
-  send_grat_arps(eee);
+  /* REVISIT: turn-on gratuitous ARP with config option. */
+  /* send_grat_arps(sock_fd, is_udp_sock); */
 
   eee->last_register_req = nowTime;
 }
@@ -1263,6 +1212,7 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
   uint32_t num_pending_peers = 0;
   uint32_t num_known_peers = 0;
   uint32_t num = 0;
+  selection_criterion_str_t sel_buf;
 
 
   now = time(NULL);
@@ -1382,8 +1332,32 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
     msg_len = 0;
   }
 
+  // dump supernodes
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-          "-----------------------------------------------------------------------------------------------\n");
+               "-----------------------------------------------------------------------------------------------\n");
+
+  msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+                      "supernodes:\n");
+
+  HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
+    net = htonl(peer->dev_addr.net_addr);
+    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+                        "    %-4u  %-15s  %-17s  %-21s  %-14s   %lu\n",
+                        ++num,
+                        (peer->purgeable == SN_UNPURGEABLE)?"-l ":"   ",
+                        macaddr_str(mac_buf, peer->mac_addr),
+                        sock_to_cstr(sockbuf, &(peer->sock)),
+                        sn_selection_criterion_str(sel_buf, peer),
+                        now - peer->last_seen);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    msg_len = 0;
+  }
+// end dump supernodes
+
+  msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+		       "-----------------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
 		      "uptime %lu | ",
@@ -1761,11 +1735,11 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   time_t              now=0;
   uint64_t 	      stamp = 0;
 
-  size_t              length;
+  size_t              i;
 
-  length = sizeof(sender_sock);
+  i = sizeof(sender_sock);
   recvlen = recvfrom(in_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
-		     (struct sockaddr *)&sender_sock, (socklen_t*)&length);
+		     (struct sockaddr *)&sender_sock, (socklen_t*)&i);
 
   if(recvlen < 0) {
 #ifdef WIN32
@@ -1784,8 +1758,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   /* REVISIT: when UDP/IPv6 is supported we will need a flag to indicate which
    * IP transport version the packet arrived on. May need to UDP sockets. */
 
-  /* REVISIT: do not endprse use with several supernodes
-  memset(&sender, 0, sizeof(n2n_sock_t)); */
+  memset(&sender, 0, sizeof(n2n_sock_t));
 
   sender.family = AF_INET; /* UDP socket was opened PF_INET v4 */
   sender.port = ntohs(sender_sock.sin_port);
@@ -1816,8 +1789,6 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       return;
     }
   }
-
-  /* hexdump(udp_buf, recvlen); */
 
   rem = recvlen; /* Counts down bytes of packet to protect against buffer overruns. */
   idx = 0; /* marches through packet header as parts are decoded. */
@@ -1956,7 +1927,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	in_addr_t net;
 	char * ip_str = NULL;
 	n2n_REGISTER_SUPER_ACK_t ra;
-        uint8_t tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
+        uint8_t tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
         n2n_sock_t *tmp_sock;
         n2n_mac_t *tmp_mac;
         int i;
@@ -2005,23 +1976,25 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                 tmp_mac = (void*)&tmpbuf[sizeof(n2n_sock_t)];
 
                 for(i=0; i<ra.num_sn; i++){
-                  skip_add = NO_SKIP;
+                  skip_add = SN_ADD;
                   sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), tmp_sock, tmp_mac, &skip_add);
 
-                  if(skip_add == ADDED){
+                  if(skip_add == SN_ADD_ADDED){
                     sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
                     if(sn->ip_addr != NULL){
                       inet_ntop(tmp_sock->family,
                                 (tmp_sock->family == AF_INET)?(void*)&tmp_sock->addr.v4:(void*)&tmp_sock->addr.v6,
                                 sn->ip_addr, N2N_EDGE_SN_HOST_SIZE-1);
                       sprintf (sn->ip_addr, "%s:%u", sn->ip_addr, (uint16_t)tmp_sock->port);
+                      //sock_to_cstr(sn->ip_addr, tmp_sock);
                     }
+                    sn_selection_criterion_default(&(sn->selection_criterion));
+                    sn->last_seen = now - LAST_SEEN_SN_NEW;
                     sn->last_valid_time_stamp = initial_time_stamp();
                     traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
                   }
 
-                  /* REVISIT: find a more elegant expression to increase following pointers. */
-                  tmp_sock = (void*)tmp_sock + ENTRY_SIZE;
+                  tmp_sock = (void*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
                   tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
                }
 
@@ -2050,7 +2023,6 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		 * based on its NAT configuration. */
 		//eee->conf.register_interval = ra.lifetime;
 
-                eee->curr_sn->ping_time = (now - eee->last_register_req)*1000;
 	      }
 	    else
 	      {
@@ -2067,6 +2039,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       n2n_PEER_INFO_t pi;
       struct peer_info *  scan;
       int skip_add;
+      SN_SELECTION_CRITERION_DATA_TYPE data;
 
       decode_PEER_INFO( &pi, &cmn, udp_buf, &rem, &idx );
 
@@ -2085,10 +2058,12 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       }
 
       if(memcmp(pi.mac, null_mac, sizeof(n2n_mac_t)) == 0){
-        skip_add = SKIP;
+        skip_add = SN_ADD_SKIP;
         scan = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &sender, &pi.srcMac, &skip_add);
         if(scan != NULL){
-          scan->ping_time = (now - eee->last_sweep)*1000;
+          scan->last_seen = now;
+          /* The data type depends on the actual selection strategy that has been chosen. */
+          sn_selection_criterion_calculate(eee, scan, &pi.data);
           break;
         }
       } else {
@@ -2181,10 +2156,11 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     max_sock = max(max_sock, eee->device.fd);
 #endif
 
-    wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS; wait_time.tv_usec = 0;
+    wait_time.tv_sec = (eee->sn_wait)?(SOCKET_TIMEOUT_INTERVAL_SECS / 10 + 1):(SOCKET_TIMEOUT_INTERVAL_SECS);
+    wait_time.tv_usec = 0;
 
     rc = select(max_sock+1, &socket_mask, NULL, NULL, &wait_time);
-    nowTime=time(NULL);
+    nowTime = time(NULL);
 
     /* Make sure ciphers are updated before the packet is treated. */
     if((nowTime - lastTransop) > TRANSOP_TICK_INTERVAL) {
@@ -2818,7 +2794,7 @@ int edge_conf_add_supernode(n2n_edge_conf_t *conf, const char *ip_and_port) {
     return(1);
   }
 
-  skip_add = NO_SKIP;
+  skip_add = SN_ADD;
   sn = add_sn_to_list_by_mac_or_sock(&(conf->supernodes), sock, (n2n_mac_t *)null_mac, &skip_add);
 
   if(sn != NULL){

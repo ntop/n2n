@@ -18,6 +18,8 @@
 
 #include "n2n.h"
 
+#include "sn_selection.h"
+
 #include "minilzo.h"
 
 #include <assert.h>
@@ -301,21 +303,22 @@ struct peer_info* add_sn_to_list_by_mac_or_sock(struct peer_info **sn_list, n2n_
     if(peer == NULL) { /* zero MAC, search by socket */
       HASH_ITER(hh,*sn_list,scan,tmp) {
 	       if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t)) == 0) {
-           HASH_DEL(*sn_list, scan);
+                 HASH_DEL(*sn_list, scan);
 	         memcpy(&(scan->mac_addr), mac, sizeof(n2n_mac_t));
-           HASH_ADD_PEER(*sn_list, scan);
+                 HASH_ADD_PEER(*sn_list, scan);
 	         peer = scan;
 	         break;
 	      }
       }
 
-      if((peer == NULL) && (*skip_add == NO_SKIP)) {
+      if((peer == NULL) && (*skip_add == SN_ADD)) {
 	       peer = (struct peer_info*)calloc(1,sizeof(struct peer_info));
 	        if(peer) {
+             sn_selection_criterion_default(&(peer->selection_criterion));
 	           memcpy(&(peer->sock),sock,sizeof(n2n_sock_t));
 	           memcpy(&(peer->mac_addr),mac, sizeof(n2n_mac_t));
 	           HASH_ADD_PEER(*sn_list, peer);
-             *skip_add = ADDED;
+                   *skip_add = SN_ADD_ADDED;
 	        }
       }
     }

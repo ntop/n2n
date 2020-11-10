@@ -52,6 +52,8 @@ typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer
 #include <sys/socket.h> /* AF_INET and AF_INET6 */
 #endif /* #if defined(WIN32) */
 
+#include "sn_selection.h"
+
 typedef enum n2n_pc
   {
    n2n_ping=0,                 /* Not used */
@@ -66,6 +68,13 @@ typedef enum n2n_pc
    n2n_peer_info=9,            /* Send info on a peer from sn to edge */
    n2n_query_peer=10           /* ask supernode for info on a peer */
   } n2n_pc_t;
+/*
+typedef enum req_data_type
+  {
+    SN_DATA_PING = 0, //No data requested, RTT measurement.
+    SN_DATA_LOAD = 1  // load-based data from supernode.
+  } n2n_req_data_type_t;
+  */
 
 #define N2N_FLAGS_OPTIONS               0x0080
 #define N2N_FLAGS_SOCKET                0x0040
@@ -189,14 +198,16 @@ typedef struct n2n_PEER_INFO {
   n2n_mac_t            srcMac;
   n2n_mac_t            mac;
   n2n_sock_t           sock;
+  SN_SELECTION_CRITERION_DATA_TYPE data;
 } n2n_PEER_INFO_t;
 
 
 typedef struct n2n_QUERY_PEER
 {
   n2n_mac_t           srcMac;
+  n2n_sock_t          sock;
   n2n_mac_t           targetMac;
-  uint8_t             req_data; /* data we want the supernode to send back in the answer's payload (e.g. 0 = no payload, 1 = number of connected nodes ...) */
+  //uint8_t             req_data; /* data we want the supernode to send back in the answer's payload (e.g. 0 = no payload, 1 = number of connected nodes ...) */
 } n2n_QUERY_PEER_t;
 
 typedef struct n2n_buf n2n_buf_t;
@@ -339,7 +350,7 @@ int decode_PACKET( n2n_PACKET_t * pkt,
 int encode_PEER_INFO( uint8_t * base,
 		      size_t * idx,
 		      const n2n_common_t * common,
-		      const n2n_PEER_INFO_t * pkt );
+		      const n2n_PEER_INFO_t * pkt);
 
 int decode_PEER_INFO( n2n_PEER_INFO_t * pkt,
 		      const n2n_common_t * cmn, /* info on how to interpret it */
