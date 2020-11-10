@@ -117,17 +117,17 @@ add_library(n2n STATIC
         src/n2n_regex.c
         src/network_traffic_filter.c)
 
-if(DEFINED WIN32)
-  add_library(edge_utils_win32 src/edge_utils_win32.c)
-  add_subdirectory(win32)
-  target_link_libraries(n2n edge_utils_win32 n2n_win32 )
-endif(DEFINED WIN32)
 
 if(N2N_OPTION_AES)
 #  target_link_libraries(n2n crypto)
   target_link_libraries(n2n ${OPENSSL_LIBRARIES})
 endif(N2N_OPTION_AES)
 
+if(DEFINED WIN32)
+  add_library(edge_utils_win32 src/edge_utils_win32.c)
+  add_subdirectory(win32)
+  target_link_libraries(n2n edge_utils_win32 n2n_win32 )
+endif(DEFINED WIN32)
 
 add_executable(edge src/edge.c)
 target_link_libraries(edge n2n)
