@@ -97,6 +97,10 @@ The [TAP Configuration Guide](https://github.com/ntop/n2n/blob/dev/doc/TapConfig
 
 Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`-n`). Details can be found in the [Routing document](doc/Routing.md).
 
+## Traffic Restrictions
+
+It is possible to drop or accept specific packet transmit over edge network interface by rules. Rules can be specify by (`-R rule_str`) multiple times. Details can be found in the [Traffic Restrictions](doc/TrafficRestrictions.md).
+
 ## Contribution
 
 You can contribute to n2n in various ways:

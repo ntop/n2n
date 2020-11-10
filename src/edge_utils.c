@@ -16,6 +16,7 @@
  *
  */
 
+#include "network_traffic_filter.h"
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
@@ -269,6 +270,9 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
     traceEvent(TRACE_ERROR, "routes setup failed");
     goto edge_init_error;
   }
+
+  eee->network_traffic_filter = create_network_traffic_filter();
+  network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
 
   //edge_init_success:
   *rv = 0;
@@ -1173,11 +1177,16 @@ static int handle_PACKET(n2n_edge_t * eee,
 	}
       }
 
+      if( eee->network_traffic_filter->filter_packet_from_peer( eee->network_traffic_filter, eee, orig_sender,
+              eth_payload, eth_size ) == N2N_DROP){
+        traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)eth_size);
+        return(0);
+      }
+
       if(eee->cb.packet_from_peer) {
 	uint16_t tmp_eth_size = eth_size;
 	if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, &tmp_eth_size) == N2N_DROP) {
 	  traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)eth_size);
-
 	  return(0);
 	}
 	eth_size = tmp_eth_size;
@@ -1724,6 +1733,11 @@ void edge_read_from_tap(n2n_edge_t * eee) {
         }
       else
         {
+          if( eee->network_traffic_filter->filter_packet_from_tap( eee->network_traffic_filter, eee, eth_pkt,
+                  len) == N2N_DROP){
+              traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)len);
+              return;
+          }
 	  if(eee->cb.packet_from_tap) {
 	    uint16_t tmp_len = len;
 	    if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
@@ -2295,6 +2309,8 @@ void edge_term(n2n_edge_t * eee) {
 
   edge_cleanup_routes(eee);
 
+  destroy_network_traffic_filter(eee->network_traffic_filter);
+
   closeTraceFile();
 
   free(eee);
@@ -2793,6 +2809,17 @@ void edge_init_conf_defaults(n2n_edge_conf_t *conf) {
 void edge_term_conf(n2n_edge_conf_t *conf) {
   if (conf->routes) free(conf->routes);
   if (conf->encrypt_key) free(conf->encrypt_key);
+
+  if(conf->network_traffic_filter_rules)
+  {
+    filter_rule_t *el = 0, *tmp = 0;
+    HASH_ITER(hh, conf->network_traffic_filter_rules, el, tmp)
+    {
+        HASH_DEL(conf->network_traffic_filter_rules, el);
+        free(el);
+    }
+  }
+
 }
 
 /* ************************************** */

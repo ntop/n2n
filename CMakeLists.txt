@@ -115,7 +115,7 @@ add_library(n2n STATIC
         src/tuntap_linux.c
         src/tuntap_osx.c
         src/n2n_regex.c
-        )
+        src/network_traffic_filter.c)
 
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
