@@ -296,8 +296,6 @@ struct peer_info* add_sn_to_list_by_mac_or_sock(struct peer_info **sn_list, n2n_
 
     if(memcmp(mac,null_mac,sizeof(n2n_mac_t)) != 0) { /* not zero MAC */
       HASH_FIND_PEER(*sn_list, mac, peer);
-
-      //REVISIT: make this dependent from last_seen and update socket
     }
 
     if(peer == NULL) { /* zero MAC, search by socket */
@@ -314,7 +312,7 @@ struct peer_info* add_sn_to_list_by_mac_or_sock(struct peer_info **sn_list, n2n_
       if((peer == NULL) && (*skip_add == SN_ADD)) {
 	       peer = (struct peer_info*)calloc(1,sizeof(struct peer_info));
 	        if(peer) {
-             sn_selection_criterion_default(&(peer->selection_criterion));
+                   sn_selection_criterion_default(&(peer->selection_criterion));
 	           memcpy(&(peer->sock),sock,sizeof(n2n_sock_t));
 	           memcpy(&(peer->mac_addr),mac, sizeof(n2n_mac_t));
 	           HASH_ADD_PEER(*sn_list, peer);
