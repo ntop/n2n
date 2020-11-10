@@ -1970,7 +1970,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	in_addr_t net;
 	char * ip_str = NULL;
 	n2n_REGISTER_SUPER_ACK_t ra;
-  uint8_t tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
+  uint8_t tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
   n2n_sock_t *tmp_sock;
   n2n_mac_t *tmp_mac;
   int i;
@@ -2035,7 +2035,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                   }
 
                   /* REVISIT: find a more elegant expression to increase following pointers. */
-                  tmp_sock = (void*)tmp_sock + ENTRY_SIZE;
+                  tmp_sock = (void*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
                   tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
                }
 
