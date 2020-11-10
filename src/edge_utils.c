@@ -272,9 +272,11 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
     goto edge_init_error;
   }
 
-  eee->network_traffic_filter = create_network_traffic_filter();
+#ifdef FILTER_TRAFFIC
+  eee->network_traffic_filter = create_network_traffic_filter();  
   network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
-
+#endif
+  
   //edge_init_success:
   *rv = 0;
   return(eee);
@@ -726,8 +728,8 @@ static void send_query_peer( n2n_edge_t * eee,
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED){
       packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-  			   eee->conf.header_iv_ctx,
-  			   time_stamp (), pearson_hash_16 (pktbuf, idx));
+			     eee->conf.header_iv_ctx,
+			     time_stamp (), pearson_hash_16 (pktbuf, idx));
     }
 
     sendto_sock( eee->udp_sock, pktbuf, idx, &(eee->supernode) );
@@ -742,8 +744,8 @@ static void send_query_peer( n2n_edge_t * eee,
         /* Re-encrypt the orginal message again for non-repeating IV. */
         memcpy(pktbuf, tmp_pkt, idx);
         packet_header_encrypt (pktbuf, idx, eee->conf.header_encryption_ctx,
-    			       eee->conf.header_iv_ctx,
-    			       time_stamp (), pearson_hash_16 (pktbuf, idx));
+    			                     eee->conf.header_iv_ctx,
+    			                     time_stamp (), pearson_hash_16 (pktbuf, idx));
       }
       sendto_sock( eee->udp_sock, pktbuf, idx, &(peer->sock));
     }
@@ -799,23 +801,24 @@ static void send_register_super(n2n_edge_t *eee) {
 static int sort_supernodes(n2n_edge_t *eee, time_t now){
   struct peer_info *scan, *tmp;
 
- if(eee->curr_sn != eee->conf.supernodes){
-   eee->curr_sn = eee->conf.supernodes;
-   memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
-   eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
+  if(eee->curr_sn != eee->conf.supernodes){
+    eee->curr_sn = eee->conf.supernodes;
+    memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
+    eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
-   traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
-              supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
+    traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
+	       supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
-   send_register_super(eee);
-   eee->sn_wait = 1;
- }
+    send_register_super(eee);
+    eee->sn_wait = 1;
+  }
 
- if(now - eee->last_sweep > SWEEP_TIME){
+  if(now - eee->last_sweep > SWEEP_TIME){
     if(eee->sn_wait == 0){
       // this routine gets periodically called
       // it sorts supernodes in ascending order of their selection_criterion fields
       sn_selection_sort(&(eee->conf.supernodes));
+
     }
 
     HASH_ITER(hh, eee->conf.supernodes, scan, tmp){
@@ -959,11 +962,11 @@ static int build_gratuitous_arp(n2n_edge_t * eee, char *buffer, uint16_t buffer_
 /** Called from update_supernode_reg to periodically send gratuitous ARP
  *  broadcasts. */
 static void send_grat_arps(n2n_edge_t * eee) {
-  char buffer[48];
+  uint8_t buffer[48];
   size_t len;
 
   traceEvent(TRACE_DEBUG, "Sending gratuitous ARP...");
-  len = build_gratuitous_arp(eee, buffer, sizeof(buffer));
+  len = build_gratuitous_arp(eee, (char*)buffer, sizeof(buffer));
 
   edge_send_packet2net(eee, buffer, len);
   edge_send_packet2net(eee, buffer, len); /* Two is better than one :-) */
@@ -1014,7 +1017,7 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
   if(supernode2sock(&(eee->supernode), eee->curr_sn->ip_addr) == 0) {
     traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
-		 supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
+	       supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
     send_register_super(eee);
   }
@@ -1151,6 +1154,7 @@ static int handle_PACKET(n2n_edge_t * eee,
 	return(-1);
       } else if((!eee->conf.allow_routing) && (!is_multicast)) {
 	/* Check if it is a routed packet */
+
 	if((ntohs(eh->type) == 0x0800) && (eth_size >= ETH_FRAMESIZE + IP4_MIN_SIZE)) {
 	  uint32_t *dst = (uint32_t*)&eth_payload[ETH_FRAMESIZE + IP4_DSTOFFSET];
 	  uint8_t *dst_mac = (uint8_t*)eth_payload;
@@ -1172,7 +1176,7 @@ static int handle_PACKET(n2n_edge_t * eee,
       }
 
       if( eee->network_traffic_filter->filter_packet_from_peer( eee->network_traffic_filter, eee, orig_sender,
-              eth_payload, eth_size ) == N2N_DROP){
+								eth_payload, eth_size ) == N2N_DROP){
         traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)eth_size);
         return(0);
       }
@@ -1342,9 +1346,9 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
 		      "community: %s\n",
 		      eee->conf.community_name);
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-  	      "    id    tun_tap          MAC                edge                   hint             last_seen\n");
+		      "    id    tun_tap          MAC                edge                   hint             last_seen\n");
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-  	      "-----------------------------------------------------------------------------------------------\n");
+		      "-----------------------------------------------------------------------------------------------\n");
 
   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
 		      "supernode_forward:\n");
@@ -1357,9 +1361,9 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
 			"    %-4u  %-15s  %-17s  %-21s  %-15s %lu\n",
 			++num, inet_ntoa(*(struct in_addr *) &net),
 			macaddr_str(mac_buf, peer->mac_addr),
-      sock_to_cstr(sockbuf, &(peer->sock)),
-      peer->dev_desc,
-      now - peer->last_seen);
+			sock_to_cstr(sockbuf, &(peer->sock)),
+			peer->dev_desc,
+			now - peer->last_seen);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 	   (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1377,9 +1381,9 @@ static void readFromMgmtSocket(n2n_edge_t *eee, int *keep_running) {
 			"    %-4u  %-15s  %-17s  %-21s  %-15s %lu\n",
 			++num, inet_ntoa(*(struct in_addr *) &net),
 			macaddr_str(mac_buf, peer->mac_addr),
-      sock_to_cstr(sockbuf, &(peer->sock)),
-      peer->dev_desc,
-      now - peer->last_seen);
+			sock_to_cstr(sockbuf, &(peer->sock)),
+			peer->dev_desc,
+			now - peer->last_seen);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
 	   (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1752,11 +1756,14 @@ void edge_read_from_tap(n2n_edge_t * eee) {
         }
       else
         {
-          if( eee->network_traffic_filter->filter_packet_from_tap( eee->network_traffic_filter, eee, eth_pkt,
-                  len) == N2N_DROP){
+	  if(eee->network_traffic_filter) {
+	    if( eee->network_traffic_filter->filter_packet_from_tap( eee->network_traffic_filter, eee, eth_pkt,
+								     len) == N2N_DROP){
               traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)len);
               return;
-          }
+	    }
+	  }
+	  
 	  if(eee->cb.packet_from_tap) {
 	    uint16_t tmp_len = len;
 	    if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
@@ -1986,12 +1993,12 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	in_addr_t net;
 	char * ip_str = NULL;
 	n2n_REGISTER_SUPER_ACK_t ra;
-  uint8_t tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
-  n2n_sock_t *tmp_sock;
-  n2n_mac_t *tmp_mac;
-  int i;
-  int skip_add;
-  struct peer_info *sn;
+	uint8_t tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+	n2n_sock_t *tmp_sock;
+	n2n_mac_t *tmp_mac;
+	int i;
+	int skip_add;
+	struct peer_info *sn;
 
 	memset(&ra, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
@@ -2055,7 +2062,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
                   tmp_sock = (void*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
                   tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
-               }
+		}
 
 		eee->last_sup = now;
 		eee->sn_wait=0;
@@ -2330,8 +2337,10 @@ void edge_term(n2n_edge_t * eee) {
 
   edge_cleanup_routes(eee);
 
+#ifdef FILTER_TRAFFIC
   destroy_network_traffic_filter(eee->network_traffic_filter);
-
+#endif
+  
   closeTraceFile();
 
   free(eee);
@@ -2831,16 +2840,17 @@ void edge_term_conf(n2n_edge_conf_t *conf) {
   if (conf->routes) free(conf->routes);
   if (conf->encrypt_key) free(conf->encrypt_key);
 
+#ifdef FILTER_TRAFFIC
   if(conf->network_traffic_filter_rules)
-  {
-    filter_rule_t *el = 0, *tmp = 0;
-    HASH_ITER(hh, conf->network_traffic_filter_rules, el, tmp)
     {
-        HASH_DEL(conf->network_traffic_filter_rules, el);
-        free(el);
+      filter_rule_t *el = 0, *tmp = 0;
+      HASH_ITER(hh, conf->network_traffic_filter_rules, el, tmp)
+	{
+	  HASH_DEL(conf->network_traffic_filter_rules, el);
+	  free(el);
+	}
     }
-  }
-
+#endif
 }
 
 /* ************************************** */
