@@ -276,7 +276,7 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
 
     if(sss->federation != NULL) {
 
-      skip_add = NO_SKIP;
+      skip_add = SN_ADD;
       anchor_sn = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), socket, (n2n_mac_t*) null_mac, &skip_add);
 
       if(anchor_sn != NULL){

@@ -1956,12 +1956,12 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	in_addr_t net;
 	char * ip_str = NULL;
 	n2n_REGISTER_SUPER_ACK_t ra;
-        uint8_t tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
-        n2n_sock_t *tmp_sock;
-        n2n_mac_t *tmp_mac;
-        int i;
-        int skip_add;
-        struct peer_info *sn;
+  uint8_t tmpbuf[MAX_AVAILABLE_SPACE_FOR_ENTRIES];
+  n2n_sock_t *tmp_sock;
+  n2n_mac_t *tmp_mac;
+  int i;
+  int skip_add;
+  struct peer_info *sn;
 
 	memset(&ra, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
@@ -2005,10 +2005,10 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                 tmp_mac = (void*)&tmpbuf[sizeof(n2n_sock_t)];
 
                 for(i=0; i<ra.num_sn; i++){
-                  skip_add = NO_SKIP;
+                  skip_add = SN_ADD;
                   sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), tmp_sock, tmp_mac, &skip_add);
 
-                  if(skip_add == ADDED){
+                  if(skip_add == SN_ADD_ADDED){
                     sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
                     if(sn->ip_addr != NULL){
                       inet_ntop(tmp_sock->family,
@@ -2085,7 +2085,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       }
 
       if(memcmp(pi.mac, null_mac, sizeof(n2n_mac_t)) == 0){
-        skip_add = SKIP;
+        skip_add = SN_ADD_SKIP;
         scan = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &sender, &pi.srcMac, &skip_add);
         if(scan != NULL){
           scan->ping_time = (now - eee->last_sweep)*1000;
@@ -2818,7 +2818,7 @@ int edge_conf_add_supernode(n2n_edge_conf_t *conf, const char *ip_and_port) {
     return(1);
   }
 
-  skip_add = NO_SKIP;
+  skip_add = SN_ADD;
   sn = add_sn_to_list_by_mac_or_sock(&(conf->supernodes), sock, (n2n_mac_t *)null_mac, &skip_add);
 
   if(sn != NULL){
