@@ -25,6 +25,7 @@
 
 #include "n2n.h"
 
+#ifdef FILTER_TRAFFIC
 /*
  * add feature to drop or accept specific packet transmit over edge network interface by rules.
  *
@@ -40,6 +41,6 @@ network_traffic_filter_t* create_network_traffic_filter();
 void destroy_network_traffic_filter(network_traffic_filter_t* filter);
 
 void network_traffic_filter_add_rule(network_traffic_filter_t* filter, filter_rule_t* rules);
-
+#endif
 
 #endif //N2N_NETWORK_TRAFFIC_FILTER_H

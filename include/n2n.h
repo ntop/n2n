@@ -400,6 +400,7 @@ typedef struct filter_rule
 // for impl, see: network_traffic_filter.c
 uint8_t process_traffic_filter_rule_str(const char* rule_str, filter_rule_t* rule_struct);
 
+#ifdef FILTER_TRAFFIC
 /*
  * network traffic filter interface
  */
@@ -417,6 +418,7 @@ typedef struct network_traffic_filter
     n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
 
 } network_traffic_filter_t;
+#endif
 
 /* *************************************************** */
 
@@ -516,7 +518,9 @@ struct n2n_edge {
 
   n2n_tuntap_priv_config_t tuntap_priv_conf;   /**< Tuntap config */
 
+#ifdef FILTER_TRAFFIC
   network_traffic_filter_t *network_traffic_filter;
+#endif
 };
 
 

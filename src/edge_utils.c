@@ -1180,12 +1180,14 @@ static int handle_PACKET(n2n_edge_t * eee,
 	}
       }
 
-      if( eee->network_traffic_filter->filter_packet_from_peer( eee->network_traffic_filter, eee, orig_sender,
+#ifdef FILTER_TRAFFIC
+      if(eee->network_traffic_filter->filter_packet_from_peer( eee->network_traffic_filter, eee, orig_sender,
 								eth_payload, eth_size ) == N2N_DROP){
         traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)eth_size);
         return(0);
       }
-
+#endif
+      
       if(eee->cb.packet_from_peer) {
 	uint16_t tmp_eth_size = eth_size;
 	if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, &tmp_eth_size) == N2N_DROP) {
@@ -1736,6 +1738,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
         }
       else
         {
+#ifdef FILTER_TRAFFIC
 	  if(eee->network_traffic_filter) {
 	    if( eee->network_traffic_filter->filter_packet_from_tap( eee->network_traffic_filter, eee, eth_pkt,
 								     len) == N2N_DROP){
@@ -1743,6 +1746,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
               return;
 	    }
 	  }
+#endif
 	  
 	  if(eee->cb.packet_from_tap) {
 	    uint16_t tmp_len = len;
