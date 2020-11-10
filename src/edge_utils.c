@@ -1942,7 +1942,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf1, &sender), sock_to_cstr(sockbuf2, orig_sender));
 	}
 
-	check_peer_registration_needed(eee, from_supernode, reg.srcMac, &reg.dev_addr, &reg.dev_desc, orig_sender);
+	check_peer_registration_needed(eee, from_supernode, reg.srcMac, &reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender);
 	break;
       }
     case MSG_TYPE_REGISTER_ACK:
