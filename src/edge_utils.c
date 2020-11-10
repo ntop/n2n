@@ -965,11 +965,11 @@ static int build_gratuitous_arp(n2n_edge_t * eee, char *buffer, uint16_t buffer_
 /** Called from update_supernode_reg to periodically send gratuitous ARP
  *  broadcasts. */
 static void send_grat_arps(n2n_edge_t * eee) {
-  char buffer[48];
+  uint8_t buffer[48];
   size_t len;
 
   traceEvent(TRACE_DEBUG, "Sending gratuitous ARP...");
-  len = build_gratuitous_arp(eee, buffer, sizeof(buffer));
+  len = build_gratuitous_arp(eee, (char*)buffer, sizeof(buffer));
 
   edge_send_packet2net(eee, buffer, len);
   edge_send_packet2net(eee, buffer, len); /* Two is better than one :-) */
