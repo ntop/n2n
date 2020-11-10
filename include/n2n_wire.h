@@ -68,13 +68,6 @@ typedef enum n2n_pc
    n2n_peer_info=9,            /* Send info on a peer from sn to edge */
    n2n_query_peer=10           /* ask supernode for info on a peer */
   } n2n_pc_t;
-/*
-typedef enum req_data_type
-  {
-    SN_DATA_PING = 0, //No data requested, RTT measurement.
-    SN_DATA_LOAD = 1  // load-based data from supernode.
-  } n2n_req_data_type_t;
-  */
 
 #define N2N_FLAGS_OPTIONS               0x0080
 #define N2N_FLAGS_SOCKET                0x0040
@@ -155,7 +148,7 @@ typedef struct n2n_PACKET
   n2n_mac_t           dstMac;
   n2n_sock_t          sock;
   uint8_t             transform;
-  uint8_t		compression;
+  uint8_t	      compression;
 } n2n_PACKET_t;
 
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */
@@ -207,7 +200,6 @@ typedef struct n2n_QUERY_PEER
   n2n_mac_t           srcMac;
   n2n_sock_t          sock;
   n2n_mac_t           targetMac;
-  //uint8_t             req_data; /* data we want the supernode to send back in the answer's payload (e.g. 0 = no payload, 1 = number of connected nodes ...) */
 } n2n_QUERY_PEER_t;
 
 typedef struct n2n_buf n2n_buf_t;
