@@ -254,7 +254,7 @@ struct n2n_udphdr
 #include "cc20.h"
 #include "speck.h"
 #include "n2n_regex.h"
-
+#include "sn_selection.h"
 #ifdef WIN32
 #define N2N_IFNAMSIZ            64
 #else
@@ -303,7 +303,7 @@ struct peer_info {
   time_t           last_seen;
   time_t           last_p2p;
   time_t           last_sent_query;
-  time_t           ping_time;
+  SN_SELECTION_CRITERION_DATA_TYPE selection_criterion;
   uint64_t         last_valid_time_stamp;
   char             *ip_addr;
 
@@ -444,7 +444,7 @@ typedef struct n2n_edge_conf {
   n2n_route_t         *routes;                /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   n2n_desc_t          dev_desc;               /**< The device description (hint) */
-  uint8_t	            header_encryption;      /**< Header encryption indicator. */
+  uint8_t	      header_encryption;      /**< Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /**< Header encryption cipher context. */
   he_context_t        *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
   n2n_transform_t     transop_id;             /**< The transop to use. */
@@ -488,8 +488,9 @@ struct n2n_edge {
   n2n_trans_op_t      transop;                 /**< The transop to use when encoding */
   n2n_route_t         *sn_route_to_clean;      /**< Supernode route to clean */
   n2n_edge_callbacks_t cb;                     /**< API callbacks */
-  void 	            *user_data;              /**< Can hold user data */
+  void 	              *user_data;              /**< Can hold user data */
   uint64_t            sn_last_valid_time_stamp;/**< last valid time stamp from supernode */
+  SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_data;
 
   /* Sockets */
   n2n_sock_t          supernode;
@@ -543,7 +544,7 @@ struct sn_community
   uint8_t	      header_encryption;      /* Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /* Header encryption cipher context. */
   he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
-  struct peer_info *edges; 		      /* Link list of registered edges. */
+  struct              peer_info *edges;       /* Link list of registered edges. */
   int64_t	      number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
   n2n_ip_subnet_t     auto_ip_net;            /* Address range of auto ip address service. */
 

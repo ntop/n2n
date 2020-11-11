@@ -706,7 +706,7 @@ static int process_mgmt(n2n_sn_t *sss,
 
 	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
  		      "    id    tun_tap             MAC                edge                   hint             last_seen\n");
-  ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+        ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
  		      "-------------------------------------------------------------------------------------------------\n");
   HASH_ITER(hh, sss->communities, community, tmp) {
     num_edges += HASH_COUNT(community->edges);
@@ -811,8 +811,8 @@ static int process_udp(n2n_sn_t * sss,
   n2n_sock_str_t      sockbuf;
   char                buf[32];
   struct sn_community *comm, *tmp;
-  uint64_t	      stamp;
-  const n2n_mac_t               null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
+  uint64_t	          stamp;
+  const n2n_mac_t     null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -994,9 +994,9 @@ static int process_udp(n2n_sn_t * sss,
 
       /* Common section to forward the final product. */
       if(unicast)
-	try_forward(sss, comm, &cmn, pkt.dstMac, from_supernode, rec_buf, encx);
+	      try_forward(sss, comm, &cmn, pkt.dstMac, from_supernode, rec_buf, encx);
       else
-	try_broadcast(sss, comm, &cmn, pkt.srcMac, from_supernode, rec_buf, encx);
+	      try_broadcast(sss, comm, &cmn, pkt.srcMac, from_supernode, rec_buf, encx);
       break;
     }
   case MSG_TYPE_REGISTER:
@@ -1060,7 +1060,6 @@ static int process_udp(n2n_sn_t * sss,
 	  packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx,
 				 comm->header_iv_ctx,
 				 time_stamp (), pearson_hash_16 (rec_buf, encx));
-
 	try_forward(sss, comm, &cmn, reg.dstMac, from_supernode, rec_buf, encx); /* unicast only */
       } else
 	traceEvent(TRACE_ERROR, "Rx REGISTER with multicast destination");
@@ -1075,17 +1074,17 @@ static int process_udp(n2n_sn_t * sss,
       n2n_REGISTER_SUPER_ACK_t        ack;
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-      uint8_t	                      tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+      uint8_t	                        tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
       uint8_t                         *tmp_dst;
       size_t                          encx=0;
       struct sn_community             *fed;
       struct sn_community_regular_expression *re, *tmp_re;
-      struct peer_info		      *peer, *tmp_peer, *p;
+      struct peer_info		            *peer, *tmp_peer, *p;
       int8_t                          allowed_match = -1;
       uint8_t                         match = 0;
-      int			      match_length = 0;
+      int			                        match_length = 0;
       n2n_ip_subnet_t                 ipaddr;
-      int 			      num = 0;
+      int 			                      num = 0;
       int                             skip_add;
       int                             skip;
 
@@ -1247,16 +1246,16 @@ static int process_udp(n2n_sn_t * sss,
     n2n_REGISTER_SUPER_ACK_t        ack;
     size_t                          encx=0;
     struct sn_community             *fed;
-    struct peer_info		    *scan, *tmp;
-    n2n_sock_str_t      	    sockbuf1;
-    n2n_sock_str_t      	    sockbuf2;
-    macstr_t           	 	    mac_buf1;
-    n2n_sock_t          	    sender;
-    n2n_sock_t        		    *orig_sender;
-    n2n_sock_t			    *tmp_sock;
-    n2n_mac_t			    *tmp_mac;
-    int				    i;
-    uint8_t			    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+    struct peer_info		            *scan, *tmp;
+    n2n_sock_str_t      	          sockbuf1;
+    n2n_sock_str_t      	          sockbuf2;
+    macstr_t           	 	          mac_buf1;
+    n2n_sock_t          	          sender;
+    n2n_sock_t        		          *orig_sender;
+    n2n_sock_t			                *tmp_sock;
+    n2n_mac_t			                  *tmp_mac;
+    int				                      i;
+    uint8_t			                    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
     int                             skip_add;
 
     memset(&sender, 0, sizeof(n2n_sock_t));
@@ -1305,8 +1304,8 @@ static int process_udp(n2n_sn_t * sss,
       }
     }
 
-    tmp_sock = (void *)dec_tmpbuf;
-    tmp_mac = (void*)dec_tmpbuf + sizeof(n2n_sock_t);
+    tmp_sock = (n2n_sock_t *)dec_tmpbuf;
+    tmp_mac = (n2n_sock_t *)dec_tmpbuf + sizeof(n2n_sock_t);
 
     for(i=0; i<ack.num_sn; i++) {
       skip_add = SN_ADD;
@@ -1317,8 +1316,8 @@ static int process_udp(n2n_sn_t * sss,
       }
 
       /* REVISIT: find a more elegant expression to increase following pointers. */
-      tmp_sock = (void*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
-      tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
+      tmp_sock = tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
+      tmp_mac = tmp_sock + sizeof(n2n_sock_t);
     }
 
     break;
@@ -1330,10 +1329,10 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                     cmn2;
     n2n_PEER_INFO_t                  pi;
     struct sn_community_regular_expression *re, *tmp_re;
-    struct peer_info		     *peer, *tmp_peer, *p;
+    struct peer_info		             *peer, *tmp_peer, *p;
     int8_t                           allowed_match = -1;
     uint8_t                          match = 0;
-    int			             match_length = 0;
+    int			                         match_length = 0;
     uint8_t                          *rec_buf; /* either udp_buf or encbuf */
 
     if(!comm && sss->lock_communities) {
