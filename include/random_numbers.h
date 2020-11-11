@@ -64,5 +64,7 @@ uint64_t n2n_rand ();
 
 uint64_t n2n_seed ();
 
+uint32_t n2n_rnd_sqr (uint32_t max_n);
+
 
 #endif // RND_H
