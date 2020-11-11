@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ntop/n2n.png?branch=dev)](https://travis-ci.org/ntop/n2n)
+
 # n2n
 
 n2n is a light VPN software which makes it easy to create virtual networks bypassing intermediate firewalls.

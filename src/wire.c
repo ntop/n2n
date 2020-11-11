@@ -517,6 +517,7 @@ int encode_PEER_INFO(uint8_t *base,
   retval += encode_mac(base, idx, pkt->srcMac);
   retval += encode_mac(base, idx, pkt->mac);
   retval += encode_sock(base, idx, &pkt->sock);
+  retval += encode_buf(base, idx, &pkt->data, sizeof(SN_SELECTION_CRITERION_DATA_TYPE));
 
   return retval;
 }
@@ -533,6 +534,7 @@ int decode_PEER_INFO(n2n_PEER_INFO_t *pkt,
   retval += decode_mac(pkt->srcMac, base, rem, idx);
   retval += decode_mac(pkt->mac, base, rem, idx);
   retval += decode_sock(&pkt->sock, base, rem, idx);
+  retval += decode_buf((uint8_t*)&pkt->data, sizeof(SN_SELECTION_CRITERION_DATA_TYPE), base, rem, idx);
 
   return retval;
 }
@@ -547,7 +549,6 @@ int encode_QUERY_PEER( uint8_t * base,
   retval += encode_common( base, idx, common );
   retval += encode_mac( base, idx, pkt->srcMac );
   retval += encode_mac( base, idx, pkt->targetMac );
-  retval += encode_uint8( base, idx, pkt->req_data);
 
   return retval;
 }
@@ -562,7 +563,6 @@ int decode_QUERY_PEER( n2n_QUERY_PEER_t * pkt,
   memset( pkt, 0, sizeof(n2n_QUERY_PEER_t) );
   retval += decode_mac( pkt->srcMac, base, rem, idx );
   retval += decode_mac( pkt->targetMac, base, rem, idx );
-  retval += decode_uint8( &pkt->req_data, base, rem, idx);
 
   return retval;
 }

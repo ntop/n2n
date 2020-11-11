@@ -44,9 +44,11 @@
 
 #define SOCKET_TIMEOUT_INTERVAL_SECS    10
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
-#define MAX_PING_TIME                   3000  /* millisec, indicates default value for ping_time field in peer_info structure */
-#define SWEEP_TIME                      30 /* sec, indicates the value after which we have to sort the hash list of supernodes in edges */
+#define SWEEP_TIME                      30 /* sec, indicates the value after which we have to sort the hash list of supernodes in edges
+                                            * and when we send out packets to query selection-relevant informations from supernodes. */
 
+/* Timeouts used in re_register_and_purge_supernodes. LAST_SEEN_SN_ACTIVE and LAST_SEEN_SN_INACTIVE
+ * values should be at least 3*SOCKET_TIMEOUT_INTERVAL_SECS apart. */
 #define LAST_SEEN_SN_ACTIVE      20 /* sec, indicates supernodes that are proven to be active */
 #define LAST_SEEN_SN_INACTIVE    90 /* sec, indicates supernodes that are proven to be inactive: they will be purged */
 #define LAST_SEEN_SN_NEW         (LAST_SEEN_SN_INACTIVE - LAST_SEEN_SN_ACTIVE)/2 /* sec, indicates supernodes with unsure status, must be tested to check if they are active */
