@@ -24,6 +24,7 @@ static int try_forward(n2n_sn_t * sss,
 		       const struct sn_community *comm,
 		       const n2n_common_t * cmn,
 		       const n2n_mac_t dstMac,
+		       uint8_t from_supernode,
 		       const uint8_t * pktbuf,
 		       size_t pktsize,
 		       uint8_t from_supernode);
@@ -42,6 +43,7 @@ static int try_broadcast(n2n_sn_t * sss,
 		         const struct sn_community *comm,
 			 const n2n_common_t * cmn,
 			 const n2n_mac_t srcMac,
+			 uint8_t from_supernode,
 			 const uint8_t * pktbuf,
 			 size_t pktsize,
 		         uint8_t from_supernode);
@@ -74,7 +76,7 @@ static int process_udp(n2n_sn_t *sss,
                        size_t udp_size,
                        time_t now);
 
-static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
+static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /* ************************************** */
 
@@ -82,6 +84,7 @@ static int try_forward(n2n_sn_t * sss,
 		       const struct sn_community *comm,
 		       const n2n_common_t * cmn,
 		       const n2n_mac_t dstMac,
+		       uint8_t from_supernode,
 		       const uint8_t * pktbuf,
 		       size_t pktsize,
 		       uint8_t from_supernode)
@@ -120,7 +123,9 @@ static int try_forward(n2n_sn_t * sss,
       if(!from_supernode){
         /* Forwarding packet to all federated supernodes. */
 	traceEvent(TRACE_DEBUG, "Unknown MAC. Broadcasting packet to all federated supernodes.");
-	try_broadcast(sss, NULL, cmn, sss->mac_addr, pktbuf, pktsize, from_supernode);
+
+	try_broadcast(sss, NULL, cmn, sss->mac_addr, from_supernode, pktbuf, pktsize);
+        
       } else {
 	traceEvent(TRACE_DEBUG, "try_forward unknown MAC. Dropping the packet.");
 	/* Not a known MAC so drop. */
@@ -174,6 +179,7 @@ static int try_broadcast(n2n_sn_t * sss,
                          const struct sn_community *comm,
 			 const n2n_common_t * cmn,
 			 const n2n_mac_t srcMac,
+			 uint8_t from_supernode,
 			 const uint8_t * pktbuf,
 			 size_t pktsize,
 		         uint8_t from_supernode)
@@ -370,8 +376,8 @@ static int update_edge(n2n_sn_t *sss,
 	     sock_to_cstr(sockbuf, sender_sock));
 
   HASH_FIND_PEER(comm->edges, reg->edgeMac, scan);
-
- // if unknown, make sure it is also not known by IP address
+	
+  // if unknown, make sure it is also not known by IP address
   if (NULL == scan) {
     HASH_ITER(hh,comm->edges,iter,tmp) {
       if(iter->dev_addr.net_addr == reg->dev_addr.net_addr) {
@@ -393,7 +399,7 @@ static int update_edge(n2n_sn_t *sss,
     memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
     scan->dev_addr.net_addr = reg->dev_addr.net_addr;
     scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
-		memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
+    memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
     memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
     scan->last_valid_time_stamp = initial_time_stamp();
 
@@ -707,9 +713,8 @@ static int process_mgmt(n2n_sn_t *sss,
 
 	ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
  		      "    id    tun_tap             MAC                edge                   hint             last_seen\n");
-  ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+        ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
  		      "-------------------------------------------------------------------------------------------------\n");
-
   HASH_ITER(hh, sss->communities, community, tmp) {
     num_edges += HASH_COUNT(community->edges);
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -814,6 +819,7 @@ static int process_udp(n2n_sn_t * sss,
   char                buf[32];
   struct sn_community *comm, *tmp;
   uint64_t	      stamp;
+  const n2n_mac_t     null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
 	     udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -995,9 +1001,9 @@ static int process_udp(n2n_sn_t * sss,
 
       /* Common section to forward the final product. */
       if(unicast)
-	try_forward(sss, comm, &cmn, pkt.dstMac, rec_buf, encx, from_supernode);
+	      try_forward(sss, comm, &cmn, pkt.dstMac, from_supernode, rec_buf, encx);
       else
-	try_broadcast(sss, comm, &cmn, pkt.srcMac, rec_buf, encx, from_supernode);
+	      try_broadcast(sss, comm, &cmn, pkt.srcMac, from_supernode, rec_buf, encx);
       break;
     }
   case MSG_TYPE_REGISTER:
@@ -1061,8 +1067,7 @@ static int process_udp(n2n_sn_t * sss,
 	  packet_header_encrypt (rec_buf, encx, comm->header_encryption_ctx,
 				 comm->header_iv_ctx,
 				 time_stamp (), pearson_hash_16 (rec_buf, encx));
-
-	try_forward(sss, comm, &cmn, reg.dstMac, rec_buf, encx, from_supernode); /* unicast only */
+	try_forward(sss, comm, &cmn, reg.dstMac, from_supernode, rec_buf, encx); /* unicast only */
       } else
 	traceEvent(TRACE_ERROR, "Rx REGISTER with multicast destination");
       break;
@@ -1088,6 +1093,7 @@ static int process_udp(n2n_sn_t * sss,
       n2n_ip_subnet_t                 ipaddr;
       int 			                      num = 0;
       int                             skip_add;
+      int                             skip;
 
       memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
@@ -1188,11 +1194,24 @@ static int process_udp(n2n_sn_t * sss,
 
 	// REVISIT: consider adding last_seen
 
+	/* Skip random numbers of supernodes before payload assembling, calculating an appropriate random_number.
+	 * That way, all supernodes have a chance to be propagated with REGISTER_SUPER_ACK. */
+	skip = HASH_COUNT(sss->federation->edges) - (int)(REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE / REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE);
+        skip = (skip < 0) ? 0 : n2n_rand() % (skip +1);
+
 	/* Assembling supernode list for REGISTER_SUPER_ACK payload */
 	tmp_dst = tmpbuf;
 	HASH_ITER(hh, sss->federation->edges, peer, tmp_peer) {
+          if(skip){
+	    skip--;
+	    continue;
+	  }
 	  if(memcmp(&(peer->sock), &(ack.sock), sizeof(n2n_sock_t)) == 0) continue; /* a supernode doesn't add itself to the payload */
-	  if((now - peer->last_seen) >= LAST_SEEN_SN_ACTIVE) continue; /* skip long-time-not-seen supernodes */
+
+	  if((now - peer->last_seen) >= (2*LAST_SEEN_SN_ACTIVE)) continue; /* skip long-time-not-seen supernodes.
+									    * We need to allow for a little extra time because supernodes sometimes exceed
+                                                                            * their SN_ACTIVE time before they get re-registred to. */
+
 	  if(((++num)*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE) > REG_SUPER_ACK_PAYLOAD_SPACE) break; /* no more space available in REGISTER_SUPER_ACK payload */
 	  memcpy((void*)tmp_dst, (void*)&(peer->sock), sizeof(n2n_sock_t));
 	  tmp_dst += sizeof(n2n_sock_t);
@@ -1359,9 +1378,8 @@ static int process_udp(n2n_sn_t * sss,
     }
 
     if(memcmp(query.targetMac, null_mac, sizeof(n2n_mac_t)) == 0){
-      traceEvent( TRACE_DEBUG, "Rx PING from %s. Requested data: %d",
-		  macaddr_str( mac_buf,  query.srcMac ),
-		  query.req_data );
+      traceEvent( TRACE_DEBUG, "Rx PING from %s.",
+		  macaddr_str( mac_buf,  query.srcMac ));
 
       cmn2.ttl = N2N_DEFAULT_TTL;
       cmn2.pc = n2n_peer_info;
@@ -1371,8 +1389,12 @@ static int process_udp(n2n_sn_t * sss,
       pi.aflags = 0;
       memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
       memcpy( pi.srcMac, sss->mac_addr, sizeof(n2n_mac_t) );
+      pi.sock.family = AF_INET;
+      pi.sock.port = ntohs(sender_sock->sin_port);
+      memcpy(pi.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+      pi.data = sn_selection_criterion_gather_data(sss);
 
-      encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+      encode_PEER_INFO( encbuf, &encx, &cmn2, &pi);
 
       if(comm){
         if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
@@ -1384,7 +1406,7 @@ static int process_udp(n2n_sn_t * sss,
       sendto( sss->sock, encbuf, encx, 0,
 	      (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in) );
 
-      traceEvent( TRACE_DEBUG, "Tx PING to %s",
+      traceEvent( TRACE_DEBUG, "Tx PONG to %s",
 		  macaddr_str( mac_buf, query.srcMac ) );
 
     } else {
@@ -1404,7 +1426,7 @@ static int process_udp(n2n_sn_t * sss,
 	  memcpy( pi.mac, query.targetMac, sizeof(n2n_mac_t) );
 	  pi.sock = scan->sock;
 
-	  encode_PEER_INFO( encbuf, &encx, &cmn2, &pi );
+	  encode_PEER_INFO( encbuf, &encx, &cmn2, &pi);
 
 	  if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
 	    packet_header_encrypt (encbuf, encx, comm->header_encryption_ctx,
@@ -1444,7 +1466,7 @@ static int process_udp(n2n_sn_t * sss,
 				                       comm->header_iv_ctx,
 				                       time_stamp (), pearson_hash_16 (encbuf, encx));
 
-	    try_broadcast(sss, NULL, &cmn, query.srcMac, encbuf, encx, from_supernode);
+	    try_broadcast(sss, NULL, &cmn, query.srcMac, from_supernode, encbuf, encx);
 	  }
 	}
      }
@@ -1466,7 +1488,7 @@ int run_sn_loop(n2n_sn_t *sss, int *keep_running)
   uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
   time_t last_purge_edges = 0;
   time_t last_sort_communities = 0;
-	time_t last_re_reg_and_purge = 0;
+  time_t last_re_reg_and_purge = 0;
 
   sss->start_time = time(NULL);
 
