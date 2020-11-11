@@ -16,12 +16,122 @@
  *
  */
 
-#ifdef FILTER_TRAFFIC
 #include "network_traffic_filter.h"
 #include "uthash.h"
-
-#include "netinet/tcp.h"
 #include <inttypes.h>
+
+
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#include <machine/endian.h>
+#endif
+
+#ifdef __OpenBSD__
+#include <endian.h>
+#define __BYTE_ORDER BYTE_ORDER
+#if BYTE_ORDER == LITTLE_ENDIAN
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif /* __LITTLE_ENDIAN__ */
+#else
+#define __BIG_ENDIAN__
+#endif/* BYTE_ORDER */
+#endif/* __OPENBSD__ */
+
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif
+#else
+#ifndef __BIG_ENDIAN__
+#define __BIG_ENDIAN__
+#endif
+#endif
+
+#ifdef WIN32
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__ 1
+#endif
+#endif
+
+#if !(defined(__LITTLE_ENDIAN__) || defined(__BIG_ENDIAN__))
+#if defined(__mips__)
+#undef __LITTLE_ENDIAN__
+#undef __LITTLE_ENDIAN
+#define __BIG_ENDIAN__
+#endif
+
+/* Everything else */
+#if (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__))
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#else
+#define __BIG_ENDIAN__
+#endif
+#endif
+
+#endif
+
+/* *************************************** */
+
+#ifdef __GNUC__
+#define PACK __attribute__((__packed__))
+#else
+#define PACK
+#endif
+
+#ifdef _MSC_VER
+#pragma pack(push,1)
+#endif
+
+struct n2n_iphdr {
+#if defined(__LITTLE_ENDIAN__)
+    u_int8_t ihl:4, version:4;
+#elif defined(__BIG_ENDIAN__)
+    u_int8_t version:4, ihl:4;
+#else
+# error "Byte order must be defined"
+#endif
+    u_int8_t tos;
+    u_int16_t tot_len;
+    u_int16_t id;
+    u_int16_t frag_off;
+    u_int8_t ttl;
+    u_int8_t protocol;
+    u_int16_t check;
+    u_int32_t saddr;
+    u_int32_t daddr;
+} PACK;
+
+struct n2n_tcphdr
+{
+    u_int16_t source;
+    u_int16_t dest;
+    u_int32_t seq;
+    u_int32_t ack_seq;
+#if defined(__LITTLE_ENDIAN__)
+    u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
+#elif defined(__BIG_ENDIAN__)
+    u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
+#else
+# error "Byte order must be defined"
+#endif
+    u_int16_t window;
+    u_int16_t check;
+    u_int16_t urg_ptr;
+} PACK;
+
+struct n2n_udphdr
+{
+    u_int16_t source;
+    u_int16_t dest;
+    u_int16_t len;
+    u_int16_t check;
+} PACK;
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 // cache that hit less than 10 while 10000 package processed will be delete;
 #define CLEAR_CACHE_EVERY_X_COUNT 10000
@@ -92,14 +202,16 @@ const char* get_filter_packet_info_log_string(packet_address_proto_info_t* info)
 void collect_packet_info(packet_address_proto_info_t* out_info, unsigned char *buffer, int size) {
   ether_hdr_t *hdr_ether = (ether_hdr_t*)buffer;
   uint16_t ether_type = ntohs(hdr_ether->type);
-
+  struct n2n_iphdr *hdr_ip = NULL;
+  struct n2n_tcphdr *hdr_tcp = NULL;
+  struct n2n_udphdr *udp_hdr = NULL;
   memset(out_info, 0, sizeof(packet_address_proto_info_t));
 
   switch (ether_type) {
   case 0x0800:
     {
       buffer += sizeof(ether_hdr_t); size -= sizeof(ether_hdr_t); if(size <= 0) return;
-      struct n2n_iphdr *hdr_ip = (struct n2n_iphdr*)buffer;
+      hdr_ip = (struct n2n_iphdr*)buffer;
 
       switch (hdr_ip->version)
 	{
@@ -118,7 +230,7 @@ void collect_packet_info(packet_address_proto_info_t* out_info, unsigned char *b
 	      {
 		out_info->proto = FPP_TCP;
 		buffer += hdr_ip->ihl * 4; size -= hdr_ip->ihl * 4; if(size <= 0) return;
-		struct n2n_tcphdr *hdr_tcp = (struct n2n_tcphdr*)buffer;
+		hdr_tcp = (struct n2n_tcphdr*)buffer;
 		out_info->src_port = ntohs(hdr_tcp->source);
 		out_info->dst_port = ntohs(hdr_tcp->dest);
 		break;
@@ -127,7 +239,7 @@ void collect_packet_info(packet_address_proto_info_t* out_info, unsigned char *b
 	      {
 		out_info->proto = FPP_UDP;
 		buffer += hdr_ip->ihl * 4; size -= hdr_ip->ihl * 4; if(size <= 0) return;
-		struct n2n_udphdr *udp_hdr  = (struct n2n_udphdr*)buffer;
+		udp_hdr  = (struct n2n_udphdr*)buffer;
 		out_info->src_port = ntohs(udp_hdr->source);
 		out_info->dst_port = ntohs(udp_hdr->dest);
 		break;
@@ -377,6 +489,7 @@ network_traffic_filter_t *create_network_traffic_filter() {
 void destroy_network_traffic_filter(network_traffic_filter_t *filter) {
   network_traffic_filter_impl_t *_filter = filter;
   filter_rule_t *el = 0, *tmp = 0;
+  filter_rule_pair_cache_t* el1 = 0, * tmp1 = 0;
 
   HASH_ITER(hh, _filter->rules, el, tmp)
     {
@@ -384,9 +497,9 @@ void destroy_network_traffic_filter(network_traffic_filter_t *filter) {
       free(el);
     }
 
-  HASH_ITER(hh, _filter->connections_rule_cache, el, tmp)
+  HASH_ITER(hh, _filter->connections_rule_cache, el1, tmp1)
     {
-      HASH_DEL(_filter->connections_rule_cache, el);
+      HASH_DEL(_filter->connections_rule_cache, el1);
       free(el);
     }
 
@@ -408,19 +521,12 @@ void network_traffic_filter_add_rule(network_traffic_filter_t* filter, filter_ru
 in_addr_t get_int32_addr_from_ip_string(const char* begin, const char* next_pos_of_last_char)
 {
   char buf[16] = {0};
-  struct in_addr addr;
-
   if( next_pos_of_last_char - begin > 15 ) {
     traceEvent(TRACE_WARNING, "Internal Error");
     return -1;
   }
-
   memcpy(buf, begin, next_pos_of_last_char - begin);
-
-  if(1 == inet_aton(buf, &addr) )
-    return addr.s_addr;
-  else
-    return -1;
+  return inet_addr(buf);
 }
 
 int get_int32_from_number_string(const char* begin, const char* next_pos_of_last_char)
@@ -761,5 +867,3 @@ uint8_t process_traffic_filter_rule_str(const char *rule_str, filter_rule_t *rul
 
   return 1;
 }
-
-#endif

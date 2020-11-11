@@ -1,0 +1,8 @@
+language: c
+os: linux
+dist: xenial
+script:
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make

@@ -1294,7 +1294,7 @@ static int process_udp(n2n_sn_t * sss,
     }
 
     tmp_sock = (void *)dec_tmpbuf;
-    tmp_mac = (void*)dec_tmpbuf + sizeof(n2n_sock_t);
+    tmp_mac = (char*)dec_tmpbuf + sizeof(n2n_sock_t);
 
     for(i=0; i<ack.num_sn; i++) {
       skip_add = SN_ADD;
@@ -1305,8 +1305,8 @@ static int process_udp(n2n_sn_t * sss,
       }
 
       /* REVISIT: find a more elegant expression to increase following pointers. */
-      tmp_sock = (void*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
-      tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
+      tmp_sock = (char*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
+      tmp_mac = (char*)tmp_sock + sizeof(n2n_sock_t);
     }
 
     break;

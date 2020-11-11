@@ -145,9 +145,7 @@ static void help() {
 	 "[-D] "
 #endif
 	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] "
-#ifdef FILTER_TRAFFIC
 	 "[-R <rule_str>] "
-#endif
 	 "[-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
@@ -523,7 +521,6 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     setTraceLevel(getTraceLevel() + 1);
     break;
 
-#ifdef FILTER_TRAFFIC
   case 'R': /* network traffic filter */
     {
       filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
@@ -538,8 +535,6 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
       }
       break;
     }
-#endif
-
   default:
     {
       traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
