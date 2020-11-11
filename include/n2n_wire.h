@@ -195,6 +195,7 @@ typedef struct n2n_PEER_INFO {
 typedef struct n2n_QUERY_PEER
 {
   n2n_mac_t           srcMac;
+  n2n_sock_t          sock;
   n2n_mac_t           targetMac;
   uint8_t             req_data; /* data we want the supernode to send back in the answer's payload (e.g. 0 = no payload, 1 = number of connected nodes ...) */
 } n2n_QUERY_PEER_t;

@@ -32,23 +32,25 @@
 /* Max available space to add supernodes' informations (sockets and MACs) in REGISTER_SUPER_ACK
  * Field sizes of REGISTER_SUPER_ACK as used in encode/decode fucntions in src/wire.c
  * REVISIT: replace 255 by DEFAULT_MTU as soon as header encryption allows for longer packets to be encrypted. */
-#define MAX_AVAILABLE_SPACE_FOR_ENTRIES \
+#define REG_SUPER_ACK_PAYLOAD_SPACE \
 	(255-(1+1+2+sizeof(n2n_common_t)+sizeof(n2n_cookie_t)+sizeof(n2n_mac_t)+1+2+4+1+sizeof(n2n_sock_t)+1)) \
 
 /* Space needed to store socket and MAC address of a supernode */
-#define ENTRY_SIZE		(sizeof(n2n_sock_t)+sizeof(n2n_mac_t))
+#define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE		(sizeof(n2n_sock_t)+sizeof(n2n_mac_t))
 
 #define PURGE_REGISTRATION_FREQUENCY   30
 #define RE_REG_AND_PURGE_FREQUENCY     10
 #define REGISTRATION_TIMEOUT           60
-#define PURGE_FEDERATION_NODE_INTERVAL 90
 
 #define SOCKET_TIMEOUT_INTERVAL_SECS    10
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
-#define ALLOWED_TIME			20 /* sec, indicates supernodes that are proven to be alive */
-#define TEST_TIME		(PURGE_FEDERATION_NODE_INTERVAL - ALLOWED_TIME)/2 /* sec, indicates supernodes with unsure status, must be tested to check if they are alive */
-#define MAX_PING_TIME    3000  /* millisec, indicates default value for ping_time field in peer_info structure */
-#define SWEEP_TIME       30 /* sec, indicates the value after which we have to sort the hash list of supernodes in edges */
+#define MAX_PING_TIME                   3000  /* millisec, indicates default value for ping_time field in peer_info structure */
+#define SWEEP_TIME                      30 /* sec, indicates the value after which we have to sort the hash list of supernodes in edges */
+
+#define LAST_SEEN_SN_ACTIVE      20 /* sec, indicates supernodes that are proven to be active */
+#define LAST_SEEN_SN_INACTIVE    90 /* sec, indicates supernodes that are proven to be inactive: they will be purged */
+#define LAST_SEEN_SN_NEW         (LAST_SEEN_SN_INACTIVE - LAST_SEEN_SN_ACTIVE)/2 /* sec, indicates supernodes with unsure status, must be tested to check if they are active */
+
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL           (10) /* sec */
@@ -108,7 +110,7 @@ enum sn_purge{SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 #define N2N_SN_MGMT_PORT        5645
 
 /* flag used in add_sn_to_list_by_mac_or_sock */
-enum skip_add{NO_SKIP = 0, SKIP = 1, ADDED = 2};
+enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
 #define N2N_NETMASK_STR_SIZE    16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ           18 /* AA:BB:CC:DD:EE:FF + NULL*/

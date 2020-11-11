@@ -35,8 +35,8 @@
 #include "network_traffic_filter.h"
 
 static cap_value_t cap_values[] = {
-				   //CAP_NET_RAW,      /* Use RAW and PACKET sockets */
-				   CAP_NET_ADMIN     /* Needed to performs routes cleanup at exit */
+  //CAP_NET_RAW,      /* Use RAW and PACKET sockets */
+  CAP_NET_ADMIN     /* Needed to performs routes cleanup at exit */
 };
 
 int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
@@ -144,7 +144,11 @@ static void help() {
 #ifndef __APPLE__
 	 "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] [-R <rule_str>] [-h]\n\n");
+	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] "
+#ifdef FILTER_TRAFFIC
+	 "[-R <rule_str>] "
+#endif
+	 "[-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tap device>          | tap device name\n");
@@ -176,14 +180,14 @@ static void help() {
   printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
   printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
   printf("                         | -A3 or -A (deprecated) = AES, "
-  "-A4 = ChaCha20, "
-  "-A5 = Speck-CTR.\n");
+	 "-A4 = ChaCha20, "
+	 "-A5 = Speck-CTR.\n");
   printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
   printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
 #ifdef N2N_HAVE_ZSTD
-  ", -z2 = zstd"
+	 ", -z2 = zstd"
 #endif
-  " (default=disabled).\n");
+	 " (default=disabled).\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
@@ -383,10 +387,10 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
 
   case 'H': /* indicate header encryption */
     {
-	/* we cannot be sure if this gets parsed before the community name is set.
-	 * so, only an indicator is set, action is taken later*/
-	conf->header_encryption = HEADER_ENCRYPTION_ENABLED;
-	break;
+      /* we cannot be sure if this gets parsed before the community name is set.
+       * so, only an indicator is set, action is taken later*/
+      conf->header_encryption = HEADER_ENCRYPTION_ENABLED;
+      break;
     }
 
   case 'z':
@@ -440,10 +444,10 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     {
       conf->local_port = atoi(optargument);
 
-			if(conf->local_port == 0){
-	      traceEvent(TRACE_WARNING, "Bad local port format");
-	      break;
-	    }
+      if(conf->local_port == 0){
+	traceEvent(TRACE_WARNING, "Bad local port format");
+	break;
+      }
 
       break;
     }
@@ -519,20 +523,22 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     setTraceLevel(getTraceLevel() + 1);
     break;
 
+#ifdef FILTER_TRAFFIC
   case 'R': /* network traffic filter */
-  {
-    filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
-    memset(new_rule, 0, sizeof(filter_rule_t));
-    if(process_traffic_filter_rule_str(optargument, new_rule) )
     {
-        HASH_ADD(hh, conf->network_traffic_filter_rules, key, sizeof(filter_rule_key_t), new_rule);
-    }else{
+      filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
+      memset(new_rule, 0, sizeof(filter_rule_t));
+      if(process_traffic_filter_rule_str(optargument, new_rule) )
+	{
+	  HASH_ADD(hh, conf->network_traffic_filter_rules, key, sizeof(filter_rule_key_t), new_rule);
+	}else{
         free(new_rule);
         traceEvent(TRACE_WARNING, "Invalid filter rule: %s", optargument);
         return(-1);
+      }
+      break;
     }
-  break;
-  }
+#endif
 
   default:
     {
@@ -548,15 +554,15 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
 
 static const struct option long_options[] =
   {
-   { "community",       required_argument, NULL, 'c' },
-   { "supernode-list",  required_argument, NULL, 'l' },
-   { "tap-device",      required_argument, NULL, 'd' },
-   { "euid",            required_argument, NULL, 'u' },
-   { "egid",            required_argument, NULL, 'g' },
-   { "help"   ,         no_argument,       NULL, 'h' },
-   { "verbose",         no_argument,       NULL, 'v' },
-   { NULL,              0,                 NULL,  0  }
-};
+    { "community",       required_argument, NULL, 'c' },
+    { "supernode-list",  required_argument, NULL, 'l' },
+    { "tap-device",      required_argument, NULL, 'd' },
+    { "euid",            required_argument, NULL, 'u' },
+    { "egid",            required_argument, NULL, 'g' },
+    { "help"   ,         no_argument,       NULL, 'h' },
+    { "verbose",         no_argument,       NULL, 'v' },
+    { NULL,              0,                 NULL,  0  }
+  };
 
 /* *************************************************** */
 
@@ -679,59 +685,6 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv
 
   return 0;
 }
-
-/* ************************************** */
-
-#if defined(DUMMY_ID_00001) /* Disabled waiting for config option to enable it */
-
-static char gratuitous_arp[] = {
-				0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* Dest mac */
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-				0x08, 0x06, /* ARP */
-				0x00, 0x01, /* Ethernet */
-				0x08, 0x00, /* IP */
-				0x06, /* Hw Size */
-				0x04, /* Protocol Size */
-				0x00, 0x01, /* ARP Request */
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Src mac */
-				0x00, 0x00, 0x00, 0x00, /* Src IP */
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* Target mac */
-				0x00, 0x00, 0x00, 0x00 /* Target IP */
-};
-
-/* ************************************** */
-
-/** Build a gratuitous ARP packet for a /24 layer 3 (IP) network. */
-static int build_gratuitous_arp(char *buffer, uint16_t buffer_len) {
-  if(buffer_len < sizeof(gratuitous_arp)) return(-1);
-
-  memcpy(buffer, gratuitous_arp, sizeof(gratuitous_arp));
-  memcpy(&buffer[6], device.mac_addr, 6);
-  memcpy(&buffer[22], device.mac_addr, 6);
-  memcpy(&buffer[28], &device.ip_addr, 4);
-
-  /* REVISIT: BbMaj7 - use a real netmask here. This is valid only by accident
-   * for /24 IPv4 networks. */
-  buffer[31] = 0xFF; /* Use a faked broadcast address */
-  memcpy(&buffer[38], &device.ip_addr, 4);
-  return(sizeof(gratuitous_arp));
-}
-
-/* ************************************** */
-
-/** Called from update_supernode_reg to periodically send gratuitous ARP
- *  broadcasts. */
-static void send_grat_arps(n2n_edge_t * eee,) {
-  char buffer[48];
-  size_t len;
-
-  traceEvent(TRACE_NORMAL, "Sending gratuitous ARP...");
-  len = build_gratuitous_arp(buffer, sizeof(buffer));
-  send_packet2net(eee, buffer, len);
-  send_packet2net(eee, buffer, len); /* Two is better than one :-) */
-}
-
-#endif /* #if defined(DUMMY_ID_00001) */
 
 /* ************************************** */
 
@@ -895,48 +848,48 @@ int main(int argc, char* argv[]) {
   if(conf.encrypt_key && !strcmp((char*)conf.community_name, conf.encrypt_key))
     traceEvent(TRACE_WARNING, "Community and encryption key must differ, otherwise security will be compromised");
 
-	if((eee = edge_init(&conf, &rc)) == NULL) {
-		traceEvent(TRACE_ERROR, "Failed in edge_init");
-		exit(1);
+  if((eee = edge_init(&conf, &rc)) == NULL) {
+    traceEvent(TRACE_ERROR, "Failed in edge_init");
+    exit(1);
+  }
+  memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
+
+  if ((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
+      ((eee->tuntap_priv_conf.ip_mode[0] == '\0') && (eee->tuntap_priv_conf.ip_addr[0] != '\0'))) {
+    traceEvent(TRACE_NORMAL, "Use manually set IP address.");
+    eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_STATIC;
+  } else if (0 == strcmp("dhcp", eee->tuntap_priv_conf.ip_mode)) {
+    traceEvent(TRACE_NORMAL, "Obtain IP from other edge DHCP services.");
+    eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_DHCP;
+  } else {
+    traceEvent(TRACE_NORMAL, "Automatically assign IP address by supernode.");
+    eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
+    do {
+      fd_set socket_mask;
+      struct timeval wait_time;
+
+      update_supernode_reg(eee, time(NULL));
+      FD_ZERO(&socket_mask);
+      FD_SET(eee->udp_sock, &socket_mask);
+      wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS;
+      wait_time.tv_usec = 0;
+
+      if (select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
+	if (FD_ISSET(eee->udp_sock, &socket_mask)) {
+	  readFromIPSocket(eee, eee->udp_sock);
 	}
-	memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
+      }
+    } while (eee->sn_wait);
+    eee->last_register_req = 0;
+  }
 
-	if ((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
-	    ((eee->tuntap_priv_conf.ip_mode[0] == '\0') && (eee->tuntap_priv_conf.ip_addr[0] != '\0'))) {
-		traceEvent(TRACE_NORMAL, "Use manually set IP address.");
-		eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_STATIC;
-	} else if (0 == strcmp("dhcp", eee->tuntap_priv_conf.ip_mode)) {
-		traceEvent(TRACE_NORMAL, "Obtain IP from other edge DHCP services.");
-		eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_DHCP;
-	} else {
-		traceEvent(TRACE_NORMAL, "Automatically assign IP address by supernode.");
-		eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
-		do {
-			fd_set socket_mask;
-			struct timeval wait_time;
-
-			update_supernode_reg(eee, time(NULL));
-			FD_ZERO(&socket_mask);
-			FD_SET(eee->udp_sock, &socket_mask);
-			wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS;
-			wait_time.tv_usec = 0;
-
-			if (select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
-				if (FD_ISSET(eee->udp_sock, &socket_mask)) {
-					readFromIPSocket(eee, eee->udp_sock);
-				}
-			}
-		} while (eee->sn_wait);
-		eee->last_register_req = 0;
-	}
-
-	if (tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
-	                eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
-	                eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0) exit(1);
-	traceEvent(TRACE_NORMAL, "Local tap IP: %s, Mask: %s",
-	           eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask);
-	memcpy(&eee->device, &tuntap, sizeof(tuntap));
-//	hexdump((unsigned char*)&tuntap,sizeof(tuntap_dev));
+  if (tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
+		  eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
+		  eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0) exit(1);
+  traceEvent(TRACE_NORMAL, "Local tap IP: %s, Mask: %s",
+	     eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask);
+  memcpy(&eee->device, &tuntap, sizeof(tuntap));
+  //	hexdump((unsigned char*)&tuntap,sizeof(tuntap_dev));
 
 #ifndef WIN32
   if(eee->tuntap_priv_conf.daemon) {
