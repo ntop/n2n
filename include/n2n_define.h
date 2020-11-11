@@ -32,7 +32,7 @@
 /* Max available space to add supernodes' informations (sockets and MACs) in REGISTER_SUPER_ACK
  * Field sizes of REGISTER_SUPER_ACK as used in encode/decode fucntions in src/wire.c
  * REVISIT: replace 255 by DEFAULT_MTU as soon as header encryption allows for longer packets to be encrypted. */
-#define REG_SUPER_ACK_PAYLOAD_SPACE   (255-(1+1+2+sizeof(n2n_common_t)+sizeof(n2n_REGISTER_SUPER_ACK_t)))
+#define REG_SUPER_ACK_PAYLOAD_SPACE   (255-(sizeof(n2n_common_t)+sizeof(n2n_REGISTER_SUPER_ACK_t)))
 
 /* Space needed to store socket and MAC address of a supernode */
 #define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE		(sizeof(n2n_REGISTER_SUPER_ACK_payload_t))
