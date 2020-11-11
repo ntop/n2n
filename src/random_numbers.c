@@ -210,7 +210,7 @@ static int32_t int_sqrt(int val) {
 
 
 // returns a random number from [0, max_n] with higher probability towards the borders
-uint32_t n2n_rnd_sqr (uint32_t max_n) {
+uint32_t n2n_rand_sqr (uint32_t max_n) {
 
   uint32_t raw_max = 0;
   uint32_t raw_rnd = 0;
