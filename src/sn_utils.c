@@ -1190,7 +1190,7 @@ static int process_udp(n2n_sn_t * sss,
 	/* Skip random numbers of supernodes before payload assembling, calculating an appropriate random_number.
 	 * That way, all supernodes have a chance to be propagated with REGISTER_SUPER_ACK. */
 	skip = HASH_COUNT(sss->federation->edges)  - (int)(REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE / REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE);
-    skip = (skip < 0) ? 0 : n2n_rnd_sqr(skip);
+    skip = (skip < 0) ? 0 : n2n_rand_sqr(skip);
 
 	/* Assembling supernode list for REGISTER_SUPER_ACK payload */
 	tmp_dst = tmpbuf;
