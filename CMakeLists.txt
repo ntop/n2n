@@ -115,7 +115,8 @@ add_library(n2n STATIC
         src/tuntap_linux.c
         src/tuntap_osx.c
         src/n2n_regex.c
-        src/network_traffic_filter.c)
+        src/network_traffic_filter.c
+        src/sn_selection.c)
 
 
 if(N2N_OPTION_AES)
