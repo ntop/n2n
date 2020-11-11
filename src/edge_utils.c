@@ -2055,8 +2055,8 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                     traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
                   }
 
-                  tmp_sock = (void*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
-                  tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
+                  tmp_sock = (char*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
+                  tmp_mac = (char*)tmp_sock + sizeof(n2n_sock_t);
 		}
 
 		eee->last_sup = now;
