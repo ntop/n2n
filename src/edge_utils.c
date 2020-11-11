@@ -2045,8 +2045,8 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                   }
 
                   /* REVISIT: find a more elegant expression to increase following pointers. */
-                  tmp_sock = (void*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
-                  tmp_mac = (void*)tmp_sock + sizeof(n2n_sock_t);
+                  tmp_sock = tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
+                  tmp_mac = tmp_sock + sizeof(n2n_sock_t);
 		}
 
 		eee->last_sup = now;
