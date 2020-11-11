@@ -179,6 +179,14 @@ typedef struct n2n_REGISTER_SUPER_ACK {
 } n2n_REGISTER_SUPER_ACK_t;
 
 
+/* REGISTER_SUPER_ACK may contain extra payload (their number given by num_sn)
+ * of following type describing a(nother) supernode */
+typedef struct n2n_REGISTER_SUPER_ACK_payload {
+  n2n_sock_t           sock;          /**< socket of supernode */
+  n2n_mac_t            mac;           /**< MAC of supernode */
+} n2n_REGISTER_SUPER_ACK_payload_t;
+
+
 /* Linked with n2n_register_super_ack in n2n_pc_t. Only from supernode to edge. */
 typedef struct n2n_REGISTER_SUPER_NAK
 {
