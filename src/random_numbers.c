@@ -172,3 +172,59 @@ uint64_t n2n_seed (void) {
 
   return ret;
 }
+
+/* an integer squrare root approximation
+ * from https://stackoverflow.com/a/1100591. */
+static int ftbl [33] = {0,1,1,2,2,4,5,8,11,16,22,32,45,64,90,128,181,256,362,512,724,1024,1448,2048,2896,4096,5792,8192,11585,16384,23170,32768,46340};
+static int ftbl2[32] = { 32768,33276,33776,34269,34755,35235,35708,36174,36635,37090,37540,37984,38423,38858,39287,39712,40132,40548,40960,41367,41771,42170,42566,42959,43347,43733,44115,44493,44869,45241,45611,45977};
+
+
+static int i_sqrt(int val) {
+
+  int cnt = 0;
+  int t = val;
+
+  while(t) {
+    cnt++;
+    t>>=1;
+  }
+
+  if(6 >= cnt)
+    t = (val << (6-cnt));
+  else
+    t = (val >> (cnt-6));
+
+  return (ftbl[cnt] * ftbl2[t & 31]) >> 15;
+}
+
+
+static int32_t int_sqrt(int val) {
+
+  int ret;
+
+  ret  = i_sqrt (val);
+  ret += i_sqrt (val - ret * ret) / 16;
+
+  return ret;
+}
+
+
+// returns a random number from [0, max_n] with higher probability towards the borders
+uint32_t n2n_rand_sqr (uint32_t max_n) {
+
+  uint32_t raw_max = 0;
+  uint32_t raw_rnd = 0;
+  int32_t  ret     = 0;
+
+  raw_max = (max_n+2) * (max_n+2);
+  raw_rnd = n2n_rand() % (raw_max);
+
+  ret = int_sqrt(raw_rnd) / 2;
+  ret = (raw_rnd & 1) ? ret : -ret;
+  ret = max_n / 2 + ret;
+
+  if (ret < 0)     ret = 0;
+  if (ret > max_n) ret = max_n;
+
+  return ret;
+}

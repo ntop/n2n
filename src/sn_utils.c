@@ -120,9 +120,7 @@ static int try_forward(n2n_sn_t * sss,
       if(!from_supernode){
         /* Forwarding packet to all federated supernodes. */
 	traceEvent(TRACE_DEBUG, "Unknown MAC. Broadcasting packet to all federated supernodes.");
-
 	try_broadcast(sss, NULL, cmn, sss->mac_addr, from_supernode, pktbuf, pktsize);
-        
       } else {
 	traceEvent(TRACE_DEBUG, "try_forward unknown MAC. Dropping the packet.");
 	/* Not a known MAC so drop. */
@@ -385,7 +383,7 @@ static int update_edge(n2n_sn_t *sss,
       }
     }
   }
-
+  
   if (NULL == scan) {
     /* Not known */
 
@@ -734,7 +732,7 @@ static int process_mgmt(n2n_sn_t *sss,
   }
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "----------------------------------------------------------------------------------------------------\n");
-  
+
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "uptime %lu | ", (now - sss->start_time));
 
@@ -814,7 +812,7 @@ static int process_udp(n2n_sn_t * sss,
   n2n_sock_str_t      sockbuf;
   char                buf[32];
   struct sn_community *comm, *tmp;
-  uint64_t	      stamp;
+  uint64_t	          stamp;
   const n2n_mac_t     null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
@@ -1192,8 +1190,8 @@ static int process_udp(n2n_sn_t * sss,
 
 	/* Skip random numbers of supernodes before payload assembling, calculating an appropriate random_number.
 	 * That way, all supernodes have a chance to be propagated with REGISTER_SUPER_ACK. */
-	skip = HASH_COUNT(sss->federation->edges) - (int)(REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE / REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE);
-        skip = (skip < 0) ? 0 : n2n_rand() % (skip +1);
+	skip = HASH_COUNT(sss->federation->edges)  - (int)(REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE / REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE);
+    skip = (skip < 0) ? 0 : n2n_rand_sqr(skip);
 
 	/* Assembling supernode list for REGISTER_SUPER_ACK payload */
 	tmp_dst = tmpbuf;
@@ -1249,19 +1247,19 @@ static int process_udp(n2n_sn_t * sss,
     n2n_REGISTER_SUPER_ACK_t        ack;
     size_t                          encx=0;
     struct sn_community             *fed;
-    struct peer_info		    *scan, *tmp;
-    n2n_sock_str_t      	    sockbuf1;
-    n2n_sock_str_t      	    sockbuf2;
-    macstr_t           	 	    mac_buf1;
-    n2n_sock_t          	    sender;
-    n2n_sock_t        		    *orig_sender;
-    n2n_REGISTER_SUPER_ACK_payload_t  *payload;
-    int				    i;
-    uint8_t			    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+    struct peer_info		            *scan, *tmp;
+    n2n_sock_str_t      	          sockbuf1;
+    n2n_sock_str_t      	          sockbuf2;
+    macstr_t           	 	          mac_buf1;
+    n2n_sock_t          	          sender;
+    n2n_sock_t        		          *orig_sender;
+    n2n_sock_t			                *tmp_sock;
+    n2n_mac_t			                  *tmp_mac;
+    int				                      i;
+    uint8_t			                    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
     int                             skip_add;
 
     memset(&sender, 0, sizeof(n2n_sock_t));
-
     sender.family = AF_INET;
     sender.port = ntohs(sender_sock->sin_port);
     memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
