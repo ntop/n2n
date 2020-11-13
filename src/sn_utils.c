@@ -1247,18 +1247,19 @@ static int process_udp(n2n_sn_t * sss,
     n2n_REGISTER_SUPER_ACK_t        ack;
     size_t                          encx=0;
     struct sn_community             *fed;
-    struct peer_info		            *scan, *tmp;
-    n2n_sock_str_t      	          sockbuf1;
-    n2n_sock_str_t      	          sockbuf2;
-    macstr_t           	 	          mac_buf1;
-    n2n_sock_t          	          sender;
-    n2n_sock_t        		          *orig_sender;
-    n2n_sock_t			                *tmp_sock;
-    n2n_mac_t			                  *tmp_mac;
-    int				                      i;
-    uint8_t			                    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+    struct peer_info		    *scan, *tmp;
+    n2n_sock_str_t      	    sockbuf1;
+    n2n_sock_str_t      	    sockbuf2;
+    macstr_t           	 	    mac_buf1;
+    n2n_sock_t          	    sender;
+    n2n_sock_t        		    *orig_sender;
+    n2n_sock_t			    *tmp_sock;
+    n2n_mac_t			    *tmp_mac;
+    int				    i;
+    uint8_t			    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
     int                             skip_add;
-
+    n2n_REGISTER_SUPER_ACK_payload_t *payload;
+    
     memset(&sender, 0, sizeof(n2n_sock_t));
     sender.family = AF_INET;
     sender.port = ntohs(sender_sock->sin_port);
