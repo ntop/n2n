@@ -35,14 +35,6 @@
 #include "sn_selection.h"
 
 
-/* REGISTER_SUPER_ACK may contain extra payload (their number given by num_sn)
- * of following type describing a(nother) supernode */
-typedef struct n2n_REGISTER_SUPER_ACK_payload {
-  n2n_sock_t           sock;          /**< socket of supernode */
-  n2n_mac_t            mac;           /**< MAC of supernode */
-} n2n_REGISTER_SUPER_ACK_payload_t;
-
-
 int encode_uint8( uint8_t * base,
                   size_t * idx,
                   const uint8_t v );

@@ -243,6 +243,14 @@ typedef struct n2n_REGISTER_SUPER_NAK
 } n2n_REGISTER_SUPER_NAK_t;
 
 
+/* REGISTER_SUPER_ACK may contain extra payload (their number given by num_sn)
+ * of following type describing a(nother) supernode */
+typedef struct n2n_REGISTER_SUPER_ACK_payload {
+  n2n_sock_t           sock;          /**< socket of supernode */
+  n2n_mac_t            mac;           /**< MAC of supernode */
+} n2n_REGISTER_SUPER_ACK_payload_t;
+
+
 typedef struct n2n_PEER_INFO {
   uint16_t             aflags;
   n2n_mac_t            srcMac;
