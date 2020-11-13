@@ -1024,8 +1024,6 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
   eee->sn_wait=1;
 
-  send_grat_arps(eee);
-
   eee->last_register_req = nowTime;
 }
 
@@ -1775,6 +1773,12 @@ void edge_read_from_tap(n2n_edge_t * eee) {
 	    len = tmp_len;
 	  }
 
+          if (!eee->last_sup) {
+            // drop packets before first registration with supernode
+            traceEvent(TRACE_DEBUG, "DROP packet before first registration with supernode");
+            return;
+          }
+
 	  edge_send_packet2net(eee, eth_pkt, len);
         }
     }
@@ -1885,6 +1889,12 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	    return;
 	  }
 	}
+
+        if (!eee->last_sup) {
+          // drop packets received before first registration with supernode
+          traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET recevied before first registration with supernode.");
+          return;
+        }
 
 	if(is_valid_peer_sock(&pkt.sock))
 	  orig_sender = &(pkt.sock);
@@ -2062,9 +2072,6 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                   payload++;
 		}
 
-		eee->last_sup = now;
-		eee->sn_wait=0;
-		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 		if (eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
 		  if ((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
 		    net = htonl(ra.dev_addr.net_addr);
@@ -2079,6 +2086,13 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		    }
 		  }
 		}
+
+                if (!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
+                  send_grat_arps(eee);
+
+		eee->last_sup = now;
+		eee->sn_wait=0;
+		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
 		if(eee->cb.sn_registration_updated)
 		  eee->cb.sn_registration_updated(eee, now, &sender);
