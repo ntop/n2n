@@ -16,8 +16,8 @@
  *
  */
 
-#include "network_traffic_filter.h"
 #include "n2n.h"
+#include "network_traffic_filter.h"
 #include "edge_utils_win32.h"
 
 /* heap allocation for compression as per lzo example doc */
@@ -1989,8 +1989,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	char * ip_str = NULL;
 	n2n_REGISTER_SUPER_ACK_t ra;
 	uint8_t tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
-	n2n_sock_t *tmp_sock;
-	n2n_mac_t *tmp_mac;
+	n2n_REGISTER_SUPER_ACK_payload_t *payload;
 	int i;
 	int skip_add;
 	struct peer_info *sn;
@@ -2033,30 +2032,28 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 
 	    if(0 == memcmp(ra.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE))
 	      {
-                tmp_sock = (void*)&tmpbuf;
-                tmp_mac = (void*)&tmpbuf[sizeof(n2n_sock_t)];
+		payload = (n2n_REGISTER_SUPER_ACK_payload_t*)tmpbuf;
 
                 for(i=0; i<ra.num_sn; i++){
                   skip_add = SN_ADD;
-                  sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), tmp_sock, tmp_mac, &skip_add);
+                  sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), &(payload->mac), &skip_add);
 
                   if(skip_add == SN_ADD_ADDED){
                     sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
                     if(sn->ip_addr != NULL){
-                      inet_ntop(tmp_sock->family,
-                                (tmp_sock->family == AF_INET)?(void*)&tmp_sock->addr.v4:(void*)&tmp_sock->addr.v6,
+                      inet_ntop(payload->sock.family,
+                                (payload->sock.family == AF_INET)?(void*)&(payload->sock.addr.v4):(void*)&(payload->sock.addr.v6),
                                 sn->ip_addr, N2N_EDGE_SN_HOST_SIZE-1);
-                      sprintf (sn->ip_addr, "%s:%u", sn->ip_addr, (uint16_t)tmp_sock->port);
-                      //sock_to_cstr(sn->ip_addr, tmp_sock);
+                      sprintf (sn->ip_addr, "%s:%u", sn->ip_addr, (uint16_t)(payload->sock.port));
+                      //sock_to_cstr(sn->ip_addr, payload->sock);
                     }
                     sn_selection_criterion_default(&(sn->selection_criterion));
                     sn->last_seen = now - LAST_SEEN_SN_NEW;
                     sn->last_valid_time_stamp = initial_time_stamp();
                     traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
                   }
-
-                  tmp_sock = (char*)tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
-                  tmp_mac = (char*)tmp_sock + sizeof(n2n_sock_t);
+                  // shfiting to the next payload entry
+                  payload++;
 		}
 
 		eee->last_sup = now;

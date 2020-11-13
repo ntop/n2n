@@ -57,10 +57,6 @@ extern "C"{
 
 #include <stdio.h>
 
-/* Typedef'd pointer to get abstract datatype. */
-typedef struct regex_t* re_t;
-
-
 /* Compile regex string pattern to a regex_t-array. */
 re_t re_compile(const char* pattern);
 

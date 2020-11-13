@@ -17,12 +17,11 @@
  */
 
 #include "n2n.h"
-#include "n2n_transforms.h"
 
 static int transop_deinit_null( n2n_trans_op_t * arg )
 {
-    /* nothing to deallocate, nothing to release. */
-    return 0;
+  /* nothing to deallocate, nothing to release. */
+  return 0;
 }
 
 static int transop_encode_null( n2n_trans_op_t * arg,
@@ -32,20 +31,20 @@ static int transop_encode_null( n2n_trans_op_t * arg,
                                 size_t in_len,
                                 const uint8_t * peer_mac)
 {
-    int retval = -1;
+  int retval = -1;
 
-    traceEvent( TRACE_DEBUG, "encode_null %lu", in_len );
-    if ( out_len >= in_len )
+  traceEvent( TRACE_DEBUG, "encode_null %lu", in_len );
+  if ( out_len >= in_len )
     {
-        memcpy( outbuf, inbuf, in_len );
-        retval = in_len;
+      memcpy( outbuf, inbuf, in_len );
+      retval = in_len;
     }
-    else
+  else
     {
-        traceEvent( TRACE_DEBUG, "encode_null %lu too big for packet buffer", in_len );        
+      traceEvent( TRACE_DEBUG, "encode_null %lu too big for packet buffer", in_len );        
     }
 
-    return retval;
+  return retval;
 }
 
 static int transop_decode_null( n2n_trans_op_t * arg,
@@ -55,33 +54,33 @@ static int transop_decode_null( n2n_trans_op_t * arg,
                                 size_t in_len,
                                 const uint8_t * peer_mac)
 {
-    int retval = -1;
+  int retval = -1;
 
-    traceEvent( TRACE_DEBUG, "decode_null %lu", in_len );
-    if ( out_len >= in_len )
+  traceEvent( TRACE_DEBUG, "decode_null %lu", in_len );
+  if ( out_len >= in_len )
     {
-        memcpy( outbuf, inbuf, in_len );
-        retval = in_len;
+      memcpy( outbuf, inbuf, in_len );
+      retval = in_len;
     }
-    else
+  else
     {
-        traceEvent( TRACE_DEBUG, "decode_null %lu too big for packet buffer", in_len );        
+      traceEvent( TRACE_DEBUG, "decode_null %lu too big for packet buffer", in_len );        
     }
 
-    return retval;
+  return retval;
 }
 
 static void transop_tick_null(n2n_trans_op_t * arg, time_t now) {}
 
 int n2n_transop_null_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt) {
-    memset(ttt, 0, sizeof(n2n_trans_op_t) );
+  memset(ttt, 0, sizeof(n2n_trans_op_t) );
 
-    ttt->transform_id = N2N_TRANSFORM_ID_NULL;
-    ttt->no_encryption = 1;
-    ttt->deinit  = transop_deinit_null;
-    ttt->tick    = transop_tick_null;
-    ttt->fwd     = transop_encode_null;
-    ttt->rev     = transop_decode_null;
+  ttt->transform_id = N2N_TRANSFORM_ID_NULL;
+  ttt->no_encryption = 1;
+  ttt->deinit  = transop_deinit_null;
+  ttt->tick    = transop_tick_null;
+  ttt->fwd     = transop_encode_null;
+  ttt->rev     = transop_decode_null;
 
-    return(0);
+  return(0);
 }
