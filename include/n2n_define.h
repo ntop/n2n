@@ -32,11 +32,10 @@
 /* Max available space to add supernodes' informations (sockets and MACs) in REGISTER_SUPER_ACK
  * Field sizes of REGISTER_SUPER_ACK as used in encode/decode fucntions in src/wire.c
  * REVISIT: replace 255 by DEFAULT_MTU as soon as header encryption allows for longer packets to be encrypted. */
-#define REG_SUPER_ACK_PAYLOAD_SPACE \
-	(255-(1+1+2+sizeof(n2n_common_t)+sizeof(n2n_cookie_t)+sizeof(n2n_mac_t)+1+2+4+1+sizeof(n2n_sock_t)+1)) \
+#define REG_SUPER_ACK_PAYLOAD_SPACE   (255-(sizeof(n2n_common_t)+sizeof(n2n_REGISTER_SUPER_ACK_t)))
 
 /* Space needed to store socket and MAC address of a supernode */
-#define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE		(sizeof(n2n_sock_t)+sizeof(n2n_mac_t))
+#define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE		(sizeof(n2n_REGISTER_SUPER_ACK_payload_t))
 
 #define PURGE_REGISTRATION_FREQUENCY   30
 #define RE_REG_AND_PURGE_FREQUENCY     10
@@ -142,6 +141,30 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define SUPERNODE_PORT  1234
 
 /* ************************************** */
+
+#define N2N_PKT_VERSION                 3
+#define N2N_DEFAULT_TTL                 2       /* can be forwarded twice at most */
+#define N2N_COMMUNITY_SIZE              16
+#define N2N_MAC_SIZE                    6
+#define N2N_COOKIE_SIZE                 4
+#define N2N_DESC_SIZE                   16
+#define N2N_PKT_BUF_SIZE                2048
+#define N2N_SOCKBUF_SIZE                64      /* string representation of INET or INET6 sockets */
+
+#define N2N_MULTICAST_PORT              1968
+#define N2N_MULTICAST_GROUP             "224.0.0.68"
+
+#ifdef WIN32
+#define N2N_IFNAMSIZ            64
+#else
+#define N2N_IFNAMSIZ            16 /* 15 chars * NULL */
+#endif
+
+#define SN_SELECTION_CRITERION_DATA_TYPE   uint32_t
+#define SN_SELECTION_CRITERION_BUF_SIZE   14
+
+#define N2N_TRANSFORM_ID_USER_START     64
+#define N2N_TRANSFORM_ID_MAX            65535
 
 #ifndef max
 #define max(a, b) ((a < b) ? b : a)

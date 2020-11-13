@@ -100,15 +100,6 @@
 
 #define ETH_ADDR_LEN 6
 
-struct ether_hdr
-{
-  uint8_t  dhost[ETH_ADDR_LEN];
-  uint8_t  shost[ETH_ADDR_LEN];
-  uint16_t type;                /* higher layer protocol encapsulated */
-} __attribute__ ((__packed__));
-
-typedef struct ether_hdr ether_hdr_t;
-
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <machine/endian.h>
 #endif
@@ -160,53 +151,6 @@ typedef struct ether_hdr ether_hdr_t;
 
 #endif
 
-/* *************************************** */
-
-struct n2n_iphdr {
-#if defined(__LITTLE_ENDIAN__)
-  u_int8_t ihl:4, version:4;
-#elif defined(__BIG_ENDIAN__)
-  u_int8_t version:4, ihl:4;
-#else
-# error "Byte order must be defined"
-#endif
-  u_int8_t tos;
-  u_int16_t tot_len;
-  u_int16_t id;
-  u_int16_t frag_off;
-  u_int8_t ttl;
-  u_int8_t protocol;
-  u_int16_t check;
-  u_int32_t saddr;
-  u_int32_t daddr;
-} __attribute__ ((__packed__));
-
-struct n2n_tcphdr
-{
-  u_int16_t source;
-  u_int16_t dest;
-  u_int32_t seq;
-  u_int32_t ack_seq;
-#if defined(__LITTLE_ENDIAN__)
-  u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
-#elif defined(__BIG_ENDIAN__)
-  u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
-#else
-# error "Byte order must be defined"
-#endif
-  u_int16_t window;
-  u_int16_t check;
-  u_int16_t urg_ptr;
-} __attribute__ ((__packed__));
-
-struct n2n_udphdr
-{
-  u_int16_t source;
-  u_int16_t dest;
-  u_int16_t len;
-  u_int16_t check;
-} __attribute__ ((__packed__));
-
 #ifdef HAVE_LIBZSTD
 #include <zstd.h>
 #endif
@@ -231,12 +175,13 @@ struct n2n_udphdr
 #endif /* #ifndef WIN32 */
 
 #include "minilzo.h"
-#include "n2n_define.h"
 #include <signal.h>
 #include <string.h>
 #include <stdarg.h>
-#include "uthash.h"
 #include "lzoconf.h"
+#include "uthash.h"
+#include "n2n_define.h"
+#include "n2n_typedefs.h"
 
 #ifdef WIN32
 #include "win32/wintap.h"
@@ -246,7 +191,6 @@ struct n2n_udphdr
 #endif /* #ifdef WIN32 */
 
 #include "n2n_wire.h"
-#include "n2n_transforms.h"
 #include "random_numbers.h"
 #include "pearson.h"
 #include "portable_endian.h"
@@ -255,134 +199,6 @@ struct n2n_udphdr
 #include "speck.h"
 #include "n2n_regex.h"
 #include "sn_selection.h"
-#ifdef WIN32
-#define N2N_IFNAMSIZ            64
-#else
-#define N2N_IFNAMSIZ            16 /* 15 chars * NULL */
-#endif
-
-#ifndef WIN32
-typedef struct tuntap_dev {
-  int             fd;
-  int             if_idx;
-  n2n_mac_t       mac_addr;
-  uint32_t        ip_addr;
-  uint32_t        device_mask;
-  uint16_t        mtu;
-  char            dev_name[N2N_IFNAMSIZ];
-} tuntap_dev;
-
-#define SOCKET int
-#endif /* #ifndef WIN32 */
-
-/** Uncomment this to enable the MTU check, then try to ssh to generate a fragmented packet. */
-/** NOTE: see doc/MTU.md for an explanation on the 1400 value */
-//#define MTU_ASSERT_VALUE 1400
-
-/** Common type used to hold stringified IP addresses. */
-typedef char ipstr_t[32];
-
-/** Common type used to hold stringified MAC addresses. */
-#define N2N_MACSTR_SIZE 32
-typedef char macstr_t[N2N_MACSTR_SIZE];
-typedef char dec_ip_str_t[N2N_NETMASK_STR_SIZE];
-typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
-
-typedef struct speck_context_t he_context_t;
-typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
-
-
-struct peer_info {
-  n2n_mac_t        mac_addr;
-  n2n_ip_subnet_t  dev_addr;
-  n2n_desc_t       dev_desc;
-  n2n_sock_t       sock;
-  n2n_cookie_t     last_cookie;
-  int              timeout;
-  uint8_t          purgeable;
-  time_t           last_seen;
-  time_t           last_p2p;
-  time_t           last_sent_query;
-  SN_SELECTION_CRITERION_DATA_TYPE selection_criterion;
-  uint64_t         last_valid_time_stamp;
-  char             *ip_addr;
-
-  UT_hash_handle   hh; /* makes this structure hashable */
-};
-
-
-typedef struct n2n_route {
-  in_addr_t        net_addr;
-  uint8_t          net_bitlen;
-  in_addr_t        gateway;
-} n2n_route_t;
-
-typedef struct n2n_edge n2n_edge_t;
-
-/* *************************************************** */
-
-typedef enum {
-  N2N_ACCEPT = 0,
-  N2N_DROP = 1
-} n2n_verdict;
-
-/* *************************************************** */
-
-/* Callbacks allow external programs to attach functions in response to
- * N2N events. */
-typedef struct n2n_edge_callbacks {
-  /* The supernode registration has been updated */
-  void (*sn_registration_updated)(n2n_edge_t *eee, time_t now, const n2n_sock_t *sn);
-
-  /* A packet has been received from a peer. N2N_DROP can be returned to
-   * drop the packet. The packet payload can be modified. This only allows
-   * the packet size to be reduced */
-  n2n_verdict (*packet_from_peer)(n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t *payload_size);
-
-  /* A packet has been received from the TAP interface. N2N_DROP can be
-   * returned to drop the packet. The packet payload can be modified.
-   * This only allows the packet size to be reduced */
-  n2n_verdict (*packet_from_tap)(n2n_edge_t *eee, uint8_t *payload, uint16_t *payload_size);
-
-  /* Called whenever the IP address of the TAP interface changes. */
-  void (*ip_address_changed)(n2n_edge_t *eee, uint32_t old_ip, uint32_t new_ip);
-
-  /* Called periodically in the main loop. */
-  void (*main_loop_period)(n2n_edge_t *eee, time_t now);
-} n2n_edge_callbacks_t;
-
-/* ***************************************************** */
-// network traffic filter
-
-typedef struct port_range{
-    uint16_t start_port; // range contain 'start_port' self
-    uint16_t end_port; // range contain 'end_port' self
-} port_range_t;
-
-typedef struct filter_rule_key
-{
-    in_addr_t        src_net_cidr;
-    uint8_t          src_net_bit_len;
-    port_range_t     src_port_range;
-    in_addr_t        dst_net_cidr;
-    uint8_t          dst_net_bit_len;
-    port_range_t     dst_port_range;
-    uint8_t          bool_tcp_configured;
-    uint8_t          bool_udp_configured;
-    uint8_t          bool_icmp_configured;
-} filter_rule_key_t;
-
-typedef struct filter_rule
-{
-    filter_rule_key_t key;
-
-    uint8_t             bool_accept_icmp;
-    uint8_t             bool_accept_udp;
-    uint8_t             bool_accept_tcp;
-
-    UT_hash_handle hh;         /* makes this structure hashable */
-} filter_rule_t;
-
 
 //rule_str format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/-
 //
@@ -399,186 +215,6 @@ typedef struct filter_rule
 //
 // for impl, see: network_traffic_filter.c
 uint8_t process_traffic_filter_rule_str(const char* rule_str, filter_rule_t* rule_struct);
-
-#ifdef FILTER_TRAFFIC
-/*
- * network traffic filter interface
- */
-typedef struct network_traffic_filter
-{
-/* A packet has been received from a peer. N2N_DROP can be returned to
- * drop the packet. The packet payload can be modified. This only allows
- * the packet size to be reduced */
-    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee,
-					   const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
-
-/* A packet has been received from the TAP interface. N2N_DROP can be
- * returned to drop the packet. The packet payload can be modified.
- * This only allows the packet size to be reduced */
-    n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
-
-} network_traffic_filter_t;
-#endif
-
-/* *************************************************** */
-
-typedef struct n2n_tuntap_priv_config {
-  char                tuntap_dev_name[N2N_IFNAMSIZ];
-  char                ip_mode[N2N_IF_MODE_SIZE];
-  dec_ip_str_t        ip_addr;
-  dec_ip_str_t        netmask;
-  char                device_mac[N2N_MACNAMSIZ];
-  int                 mtu;
-  uint8_t             daemon;
-#ifndef WIN32
-  uid_t               userid;
-  gid_t               groupid;
-#endif
-} n2n_tuntap_priv_config_t;
-
-/* *************************************************** */
-
-
-typedef struct n2n_edge_conf {
-  struct peer_info    *supernodes;            /**< List of supernodes */
-  n2n_route_t         *routes;                /**< Networks to route through n2n */
-  n2n_community_t     community_name;         /**< The community. 16 full octets. */
-  n2n_desc_t          dev_desc;               /**< The device description (hint) */
-  uint8_t	      header_encryption;      /**< Header encryption indicator. */
-  he_context_t        *header_encryption_ctx; /**< Header encryption cipher context. */
-  he_context_t        *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
-  n2n_transform_t     transop_id;             /**< The transop to use. */
-  uint8_t             compression;            /**< Compress outgoing data packets before encryption */
-  uint16_t            num_routes;	            /**< Number of routes in routes */
-  uint8_t             tuntap_ip_mode;         /**< Interface IP address allocated mode, eg. DHCP. */
-  uint8_t             allow_routing;          /**< Accept packet no to interface address. */
-  uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
-  uint8_t             disable_pmtu_discovery; /**< Disable the Path MTU discovery. */
-  uint8_t             allow_p2p;              /**< Allow P2P connection */
-  uint8_t             sn_num;                 /**< Number of supernode addresses defined. */
-  uint8_t             tos;                    /** TOS for sent packets */
-  char                *encrypt_key;
-  int                 register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
-  int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
-  int                 local_port;
-  int                 mgmt_port;
-#ifdef FILTER_TRAFFIC
-  filter_rule_t       *network_traffic_filter_rules;
-#endif
-} n2n_edge_conf_t;
-
-
-struct n2n_edge_stats {
-  uint32_t tx_p2p;
-  uint32_t rx_p2p;
-  uint32_t tx_sup;
-  uint32_t rx_sup;
-  uint32_t tx_sup_broadcast;
-  uint32_t rx_sup_broadcast;
-};
-
-struct n2n_edge {
-  n2n_edge_conf_t     conf;
-
-  /* Status */
-  struct peer_info    *curr_sn;                /**< Currently active supernode. */
-  uint8_t             sn_wait;                 /**< Whether we are waiting for a supernode response. */
-  size_t              sup_attempts;            /**< Number of remaining attempts to this supernode. */
-  tuntap_dev          device;                  /**< All about the TUNTAP device */
-  n2n_trans_op_t      transop;                 /**< The transop to use when encoding */
-  n2n_route_t         *sn_route_to_clean;      /**< Supernode route to clean */
-  n2n_edge_callbacks_t cb;                     /**< API callbacks */
-  void 	              *user_data;              /**< Can hold user data */
-  uint64_t            sn_last_valid_time_stamp;/**< last valid time stamp from supernode */
-  SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_data;
-
-  /* Sockets */
-  n2n_sock_t          supernode;
-  int                 udp_sock;
-  int                 udp_mgmt_sock;           /**< socket for status info. */
-
-#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-  n2n_sock_t          multicast_peer;          /**< Multicast peer group (for local edges) */
-  int                 udp_multicast_sock;      /**< socket for local multicast registrations. */
-  int                 multicast_joined;        /**< 1 if the group has been joined.*/
-#endif
-
-  /* Peers */
-  struct peer_info *  known_peers;             /**< Edges we are connected to. */
-  struct peer_info *  pending_peers;           /**< Edges we have tried to register with. */
-
-  /* Timers */
-  time_t              last_register_req;       /**< Check if time to re-register with super*/
-  time_t              last_p2p;                /**< Last time p2p traffic was received. */
-  time_t              last_sup;                /**< Last time a packet arrived from supernode. */
-  time_t              last_sweep;              /**< Last time a sweep was performed. */
-  time_t              start_time;              /**< For calculating uptime */
-
-
-  struct n2n_edge_stats stats;                 /**< Statistics */
-
-  n2n_tuntap_priv_config_t tuntap_priv_conf;   /**< Tuntap config */
-
-#ifdef FILTER_TRAFFIC
-  network_traffic_filter_t *network_traffic_filter;
-#endif
-};
-
-
-typedef struct sn_stats
-{
-  size_t errors;         /* Number of errors encountered. */
-  size_t reg_super;      /* Number of REGISTER_SUPER requests received. */
-  size_t reg_super_nak;  /* Number of REGISTER_SUPER requests declined. */
-  size_t fwd;            /* Number of messages forwarded. */
-  size_t broadcast;      /* Number of messages broadcast to a community. */
-  time_t last_fwd;       /* Time when last message was forwarded. */
-  time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
-} sn_stats_t;
-
-struct sn_community
-{
-  char community[N2N_COMMUNITY_SIZE];
-  uint8_t             is_federation;          /* if not-zero, then the current community is the federation of supernodes */
-  uint8_t             purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
-  uint8_t	      header_encryption;      /* Header encryption indicator. */
-  he_context_t        *header_encryption_ctx; /* Header encryption cipher context. */
-  he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
-  struct              peer_info *edges;       /* Link list of registered edges. */
-  int64_t	      number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
-  n2n_ip_subnet_t     auto_ip_net;            /* Address range of auto ip address service. */
-
-  UT_hash_handle hh; /* makes this structure hashable */
-};
-
-struct sn_community_regular_expression
-{
-  re_t rule;         // compiles regular expression
-
-  UT_hash_handle hh; /* makes this structure hashable */
-};
-
-typedef struct n2n_sn
-{
-  time_t start_time; /* Used to measure uptime. */
-  sn_stats_t stats;
-  int daemon;           /* If non-zero then daemonise. */
-  n2n_mac_t mac_addr;
-  uint16_t lport;       /* Local UDP port to bind to. */
-  uint16_t mport;       /* Management UDP port to bind to. */
-  int sock;             /* Main socket for UDP traffic with edges. */
-  int mgmt_sock;        /* management socket. */
-  n2n_ip_subnet_t min_auto_ip_net; /* Address range of auto_ip service. */
-  n2n_ip_subnet_t max_auto_ip_net; /* Address range of auto_ip service. */
-#ifndef WIN32
-  uid_t userid;
-  gid_t groupid;
-#endif
-  int lock_communities; /* If true, only loaded and matching communities can be used. */
-  struct sn_community *communities;
-  struct sn_community_regular_expression *rules;
-  struct sn_community *federation;
-} n2n_sn_t;
 
 /* ************************************** */
 
