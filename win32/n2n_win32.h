@@ -28,26 +28,6 @@
 
 #include "wintap.h"
 
-#ifdef _MSC_VER
-#include "getopt.h"
-
-/* Other Win environments are expected to support stdint.h */
-
-/* stdint.h typedefs (C99) (not present in Visual Studio) */
-typedef unsigned int uint32_t;
-typedef unsigned short uint16_t;
-typedef unsigned char uint8_t;
-
-/* sys/types.h typedefs (not present in Visual Studio) */
-typedef unsigned int u_int32_t;
-typedef unsigned short u_int16_t;
-typedef unsigned char u_int8_t;
-
-typedef int ssize_t;
-#endif /* #ifdef _MSC_VER */
-
-typedef unsigned long in_addr_t;
-
 #undef EAFNOSUPPORT
 #define EAFNOSUPPORT   WSAEAFNOSUPPORT 
 #define MAX(a,b) (a > b ? a : b)
@@ -58,18 +38,6 @@ typedef unsigned long in_addr_t;
 
 #define socklen_t int
 
-#define ETH_ADDR_LEN 6
-/*                                                                                                                                                                                     
- * Structure of a 10Mb/s Ethernet header.                                                                                                                                              
- */
-struct ether_hdr
-{
-    uint8_t  dhost[ETH_ADDR_LEN];
-    uint8_t  shost[ETH_ADDR_LEN];
-    uint16_t type;                /* higher layer protocol encapsulated */
-};
-
-typedef struct ether_hdr ether_hdr_t;
 
 /* ************************************* */
 

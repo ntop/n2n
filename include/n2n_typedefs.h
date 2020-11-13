@@ -19,7 +19,38 @@
 #ifndef _N2N_TYPEDEFS_H_
 #define _N2N_TYPEDEFS_H_
 
-#include <inttypes.h>
+
+
+typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
+typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
+typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
+typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
+typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer */
+
+#ifdef _MSC_VER
+#include "getopt.h"
+
+ /* Other Win environments are expected to support stdint.h */
+
+ /* stdint.h typedefs (C99) (not present in Visual Studio) */
+typedef unsigned int uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char uint8_t;
+
+/* sys/types.h typedefs (not present in Visual Studio) */
+typedef unsigned int u_int32_t;
+typedef unsigned short u_int16_t;
+typedef unsigned char u_int8_t;
+
+typedef int ssize_t;
+
+typedef unsigned long in_addr_t;
+
+#include "n2n_win32.h"
+
+#endif /* #ifdef _MSC_VER */
+
+
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <machine/endian.h>
@@ -175,12 +206,6 @@ typedef struct filter_rule
     UT_hash_handle hh;         /* makes this structure hashable */
 } filter_rule_t;
 
-
-typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
-typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
-typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
-typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
-typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer */
 
 #ifndef WIN32
 typedef struct tuntap_dev {
