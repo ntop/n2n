@@ -16,8 +16,8 @@
  *
  */
 
-#include "sn_selection.h"
-#include <stdint.h>
+#include "n2n.h"
+
 
 static SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_read(n2n_edge_t *eee);
 static int sn_selection_criterion_sort(peer_info_t *a, peer_info_t *b);

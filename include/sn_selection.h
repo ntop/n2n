@@ -19,16 +19,9 @@
 #ifndef _SN_SELECTION_
 #define _SN_SELECTION_
 
-#define SN_SELECTION_CRITERION_DATA_TYPE   uint32_t
-#define SN_SELECTION_CRITERION_BUF_SIZE   14
-
 typedef char selection_criterion_str_t[SN_SELECTION_CRITERION_BUF_SIZE];
 
 #include "n2n.h"
-
-typedef struct n2n_edge n2n_edge_t;
-typedef struct peer_info peer_info_t;
-typedef struct n2n_sn n2n_sn_t;
 
 /* selection criterion's functions */
 int sn_selection_criterion_init(peer_info_t *peer);

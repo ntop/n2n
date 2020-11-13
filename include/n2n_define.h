@@ -143,6 +143,30 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
 /* ************************************** */
 
+#define N2N_PKT_VERSION                 3
+#define N2N_DEFAULT_TTL                 2       /* can be forwarded twice at most */
+#define N2N_COMMUNITY_SIZE              16
+#define N2N_MAC_SIZE                    6
+#define N2N_COOKIE_SIZE                 4
+#define N2N_DESC_SIZE                   16
+#define N2N_PKT_BUF_SIZE                2048
+#define N2N_SOCKBUF_SIZE                64      /* string representation of INET or INET6 sockets */
+
+#define N2N_MULTICAST_PORT              1968
+#define N2N_MULTICAST_GROUP             "224.0.0.68"
+
+#ifdef WIN32
+#define N2N_IFNAMSIZ            64
+#else
+#define N2N_IFNAMSIZ            16 /* 15 chars * NULL */
+#endif
+
+#define SN_SELECTION_CRITERION_DATA_TYPE   uint32_t
+#define SN_SELECTION_CRITERION_BUF_SIZE   14
+
+#define N2N_TRANSFORM_ID_USER_START     64
+#define N2N_TRANSFORM_ID_MAX            65535
+
 #ifndef max
 #define max(a, b) ((a < b) ? b : a)
 #endif
