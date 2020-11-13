@@ -89,7 +89,7 @@ struct ether_hdr
     uint8_t  dhost[ETH_ADDR_LEN];
     uint8_t  shost[ETH_ADDR_LEN];
     uint16_t type;                /* higher layer protocol encapsulated */
-} __attribute__ ((__packed__));
+} PACK_STRUCT;
 
 typedef struct ether_hdr ether_hdr_t;
 
