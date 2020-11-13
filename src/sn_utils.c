@@ -363,7 +363,7 @@ static int update_edge(n2n_sn_t *sss,
                        time_t now) {
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
-  struct peer_info *scan;
+  struct peer_info *scan, *iter, *tmp;
 
   traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
 	     macaddr_str(mac_buf, reg->edgeMac),
