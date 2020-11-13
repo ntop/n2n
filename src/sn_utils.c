@@ -382,6 +382,7 @@ static int update_edge(n2n_sn_t *sss,
         break;
       }
     }
+  }
   
   if (NULL == scan) {
     /* Not known */
