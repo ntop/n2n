@@ -1209,9 +1209,9 @@ static int process_udp(n2n_sn_t * sss,
                                                                             * their SN_ACTIVE time before they get re-registred to. */
 
 	  if(((++num)*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE) > REG_SUPER_ACK_PAYLOAD_SPACE) break; /* no more space available in REGISTER_SUPER_ACK payload */
-	  memcpy((void*)tmp_dst, (void*)&(peer->sock), sizeof(n2n_sock_t));
+	  memcpy(tmp_dst, &(peer->sock), sizeof(n2n_sock_t));
 	  tmp_dst += sizeof(n2n_sock_t);
-	  memcpy((void*)tmp_dst, (void*)&(peer->mac_addr), sizeof(n2n_mac_t));
+	  memcpy(tmp_dst, &(peer->mac_addr), sizeof(n2n_mac_t));
 	  tmp_dst += sizeof(n2n_mac_t);
 	}
 	ack.num_sn = num;
@@ -1255,8 +1255,7 @@ static int process_udp(n2n_sn_t * sss,
     macstr_t           	 	    mac_buf1;
     n2n_sock_t          	    sender;
     n2n_sock_t        		    *orig_sender;
-    n2n_sock_t			    *tmp_sock;
-    n2n_mac_t			    *tmp_mac;
+    n2n_REGISTER_SUPER_ACK_payload_t  *payload;
     int				    i;
     uint8_t			    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
     int                             skip_add;
@@ -1308,20 +1307,18 @@ static int process_udp(n2n_sn_t * sss,
       }
     }
 
-    tmp_sock = (n2n_sock_t *)dec_tmpbuf;
-    tmp_mac  = (n2n_mac_t *)(dec_tmpbuf + sizeof(n2n_sock_t));
+    payload = (n2n_REGISTER_SUPER_ACK_payload_t *)dec_tmpbuf;
 
     for(i=0; i<ack.num_sn; i++) {
       skip_add = SN_ADD;
-      tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), tmp_sock, tmp_mac, &skip_add);
+      tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), &(payload->mac), &skip_add);
 
       if(skip_add == SN_ADD_ADDED) {
         tmp->last_seen = now - LAST_SEEN_SN_NEW;
       }
 
-      /* REVISIT: find a more elegant expression to increase following pointers. */
-      tmp_sock = tmp_sock + REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE;
-      tmp_mac  = (n2n_mac_t *)(tmp_sock + sizeof(n2n_sock_t));
+      // shift to next payload entry
+      payload++;
     }
 
     break;
