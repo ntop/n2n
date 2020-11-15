@@ -395,6 +395,7 @@ static int update_edge(n2n_sn_t *sss,
     scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
     memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
     memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+    memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
     scan->last_valid_time_stamp = initial_time_stamp();
 
     HASH_ADD_PEER(comm->edges, scan);
@@ -406,6 +407,7 @@ static int update_edge(n2n_sn_t *sss,
     /* Known */
     if (!sock_equal(sender_sock, &(scan->sock))) {
       memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+      memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
 
       traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
 		 macaddr_str(mac_buf, reg->edgeMac),
@@ -1075,17 +1077,17 @@ static int process_udp(n2n_sn_t * sss,
       n2n_REGISTER_SUPER_ACK_t        ack;
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-      uint8_t	                        tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+      uint8_t	                       tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
       uint8_t                         *tmp_dst;
       size_t                          encx=0;
       struct sn_community             *fed;
       struct sn_community_regular_expression *re, *tmp_re;
-      struct peer_info		            *peer, *tmp_peer, *p;
+      struct peer_info		       *peer, *tmp_peer, *p;
       int8_t                          allowed_match = -1;
       uint8_t                         match = 0;
-      int			                        match_length = 0;
+      int			       match_length = 0;
       n2n_ip_subnet_t                 ipaddr;
-      int 			                      num = 0;
+      int 			       num = 0;
       int                             skip_add;
       int                             skip;
 
@@ -1118,7 +1120,7 @@ static int process_udp(n2n_sn_t * sss,
 
 	  if( (allowed_match != -1)
 	      && (match_length == strlen((const char *)cmn.community)) // --- only full matches allowed (remove, if also partial matches wanted)
-	      && (allowed_match == 0)) {                 // --- only full matches allowed (remove, if also partial matches wanted)
+	      && (allowed_match == 0)) { // --- only full matches allowed (remove, if also partial matches wanted)
 	    match = 1;
 	    break;
 	  }
@@ -1245,7 +1247,6 @@ static int process_udp(n2n_sn_t * sss,
   }
   case MSG_TYPE_UNREGISTER_SUPER: {
     n2n_UNREGISTER_SUPER_t unreg;
-    struct sn_community    *comm;
     struct peer_info       *peer;
 
 
@@ -1263,46 +1264,40 @@ static int process_udp(n2n_sn_t * sss,
 
     decode_UNREGISTER_SUPER(&unreg, &cmn, udp_buf, &rem, &idx);
 
-    if (comm) {
-      if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-        if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-	  traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER due to time stamp error.");
-	  return -1;
-	}
+    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+      if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+        traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER due to time stamp error.");
+        return -1;
       }
     }
 
     traceEvent(TRACE_DEBUG, "Rx UNREGISTER_SUPER from %s",
 	       macaddr_str(mac_buf, unreg.srcMac));
 
-    HASH_FIND_COMMUNITY(sss->communities, cmn.community, comm);
-
-    if(comm != NULL){
-      HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
-      if(peer != NULL){
-        if(memcmp(unreg.cookie, peer->last_cookie, sizeof(n2n_cookie_t)) == 0){
-          HASH_DEL(comm->edges, peer);
-	}
+    HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
+    if(peer != NULL){
+      if(memcmp(unreg.cookie, peer->last_cookie, sizeof(n2n_cookie_t)) == 0){
+        HASH_DEL(comm->edges, peer);
       }
     }
 	 
     break;
   }
   case MSG_TYPE_REGISTER_SUPER_ACK: {
-    n2n_REGISTER_SUPER_ACK_t        ack;
-    size_t                          encx=0;
-    struct sn_community             *fed;
+    n2n_REGISTER_SUPER_ACK_t       ack;
+    size_t                         encx=0;
+    struct sn_community            *fed;
     struct peer_info		    *scan, *tmp;
     n2n_sock_str_t      	    sockbuf1;
     n2n_sock_str_t      	    sockbuf2;
-    macstr_t           	 	    mac_buf1;
+    macstr_t           	    mac_buf1;
     n2n_sock_t          	    sender;
     n2n_sock_t        		    *orig_sender;
     n2n_sock_t			    *tmp_sock;
     n2n_mac_t			    *tmp_mac;
-    int				    i;
+    int		            i;
     uint8_t			    dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
-    int                             skip_add;
+    int                            skip_add;
     n2n_REGISTER_SUPER_ACK_payload_t *payload;
 
     memset(&sender, 0, sizeof(n2n_sock_t));
