@@ -373,7 +373,7 @@ int decode_UNREGISTER_SUPER(n2n_UNREGISTER_SUPER_t *unreg,
                           size_t *idx){
   size_t retval = 0;
   memset(unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
-  retval += encode_buf(base, idx, unreg->cookie, N2N_COOKIE_SIZE);
+  retval += decode_buf(unreg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
   retval += decode_mac(unreg->srcMac, base, rem, idx);
 
   return retval;

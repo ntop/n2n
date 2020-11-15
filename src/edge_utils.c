@@ -804,7 +804,7 @@ static void send_unregister_super(n2n_edge_t *eee){
   n2n_sock_str_t sockbuf;
 
   memset(&cmn, 0, sizeof(cmn));
-  memset(&reg, 0, sizeof(unreg));
+  memset(&unreg, 0, sizeof(unreg));
 
   cmn.ttl = N2N_DEFAULT_TTL;
   cmn.pc = n2n_unregister_super;

@@ -1261,7 +1261,7 @@ static int process_udp(n2n_sn_t * sss,
       return -1;
     }
 
-    decode_UNREGISTER_SUPER(&unreg, &cmn, udp_buf, &rem. &idx);
+    decode_UNREGISTER_SUPER(&unreg, &cmn, udp_buf, &rem, &idx);
 
     if (comm) {
       if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
