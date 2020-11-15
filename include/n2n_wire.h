@@ -131,6 +131,17 @@ int decode_REGISTER_SUPER( n2n_REGISTER_SUPER_t * pkt,
                            size_t * rem,
                            size_t * idx );
 
+int encode_UNREGISTER_SUPER(uint8_t *base,
+                            size_t *idx,
+                            const n2n_common_t *common,
+                            const n2n_UNREGISTER_SUPER_t *unreg);
+
+int decode_UNREGISTER_SUPER(n2n_UNREGISTER_SUPER_t *unreg,
+                            const n2n_common_t *cmn, /* info on how to interpret it */
+                            const uint8_t *base,
+                            size_t *rem,
+                            size_t *idx);
+
 int encode_REGISTER_ACK( uint8_t * base,
                          size_t * idx,
                          const n2n_common_t * common,

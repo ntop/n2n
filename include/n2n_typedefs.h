@@ -119,11 +119,12 @@ typedef enum n2n_pc
    n2n_packet=3,               /* PACKET data content */
    n2n_register_ack=4,         /* ACK of a registration from edge to edge */
    n2n_register_super=5,       /* Register edge to supernode */
-   n2n_register_super_ack=6,   /* ACK from supernode to edge */
-   n2n_register_super_nak=7,   /* NAK from supernode to edge - registration refused */
-   n2n_federation=8,           /* Not used by edge */
-   n2n_peer_info=9,            /* Send info on a peer from sn to edge */
-   n2n_query_peer=10           /* ask supernode for info on a peer */
+   n2n_unregister_super=6,     /* Deregister edge from supernode */
+   n2n_register_super_ack=7,   /* ACK from supernode to edge */
+   n2n_register_super_nak=8,   /* NAK from supernode to edge - registration refused */
+   n2n_federation=9,           /* Not used by edge */
+   n2n_peer_info=10,           /* Send info on a peer from sn to edge */
+   n2n_query_peer=11           /* ask supernode for info on a peer */
   } n2n_pc_t;
 
 #define N2N_FLAGS_OPTIONS               0x0080
@@ -249,6 +250,15 @@ typedef struct n2n_REGISTER_SUPER_ACK_payload {
   n2n_sock_t           sock;          /**< socket of supernode */
   n2n_mac_t            mac;           /**< MAC of supernode */
 } n2n_REGISTER_SUPER_ACK_payload_t;
+
+
+/* Linked with n2n_unregister_super in n2n_pc_t. */
+typedef struct n2n_UNREGISTER_SUPER
+{
+  n2n_cookie_t cookie;
+  n2n_mac_t srcMac;
+  n2n_sock_t sock;
+} n2n_UNREGISTER_SUPER_t;
 
 
 typedef struct n2n_PEER_INFO {

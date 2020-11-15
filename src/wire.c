@@ -353,6 +353,35 @@ int decode_REGISTER_SUPER(n2n_REGISTER_SUPER_t *reg,
 }
 
 
+int encode_UNREGISTER_SUPER(uint8_t *base,
+                          size_t *idx,
+                          const n2n_common_t *common,
+                          const n2n_UNREGISTER_SUPER_t *unreg){
+  int retval = 0;
+  retval += encode_common(base, idx, common);
+  retval += encode_buf(base, idx, unreg->cookie, N2N_COOKIE_SIZE);
+  retval += encode_mac(base, idx, unreg->srcMac);
+  retval += encode_sock(base, idx &(unreg->sock));
+
+  return retval;
+}
+
+
+int decode_UNREGISTER_SUPER(n2n_UNREGISTER_SUPER_t *unreg,
+                          const n2n_common_t *cmn, /* info on how to interpret it */
+                          const uint8_t *base,
+                          size_t *rem,
+                          size_t *idx){
+  size_t retval = 0;
+  memset(unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
+  retval += encode_buf(base, idx, unreg->cookie, N2N_COOKIE_SIZE);
+  retval += decode_mac(unreg->srcMac, base, rem, idx);
+  retval += decode_sock(&(unreg->sock), base, rem, idx);
+
+  return retval;
+}
+
+
 int encode_REGISTER_ACK(uint8_t *base,
                         size_t *idx,
                         const n2n_common_t *common,

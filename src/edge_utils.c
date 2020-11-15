@@ -273,10 +273,10 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   }
 
 #ifdef FILTER_TRAFFIC
-  eee->network_traffic_filter = create_network_traffic_filter();  
+  eee->network_traffic_filter = create_network_traffic_filter();
   network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
 #endif
-  
+
   //edge_init_success:
   *rv = 0;
   return(eee);
@@ -795,12 +795,58 @@ static void send_register_super(n2n_edge_t *eee) {
 }
 
 
+static void send_unregister_super(n2n_edge_t *eee){
+  uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
+  size_t idx;
+  /* ssize_t sent; */
+  n2n_common_t cmn;
+  n2n_UNREGISTER_SUPER_t unreg;
+  n2n_sock_str_t sockbuf;
+
+  memset(&cmn, 0, sizeof(cmn));
+  memset(&reg, 0, sizeof(unreg));
+
+  cmn.ttl = N2N_DEFAULT_TTL;
+  cmn.pc = n2n_unregister_super;
+  cmn.flags = 0;
+  memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
+
+  for (idx = 0; idx < N2N_COOKIE_SIZE; ++idx)
+    eee->curr_sn->last_cookie[idx] = n2n_rand() % 0xff;
+
+  memcpy(unreg.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
+
+  idx = 0;
+  encode_mac(unreg.srcMac, &idx, eee->device.mac_addr);
+
+  idx = 0;
+  encode_sock(unreg.sock, &idx, eee->udp_sock);
+
+  idx = 0;
+  encode_UNREGISTER_SUPER(pktbuf, &idx, &cmn, &unreg);
+
+  traceEvent(TRACE_DEBUG, "send UNREGISTER_SUPER to %s",
+	     sock_to_cstr(sockbuf, &(eee->curr_sn->sock)));
+
+  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt(pktbuf, idx, eee->conf.header_encryption_ctx,
+			  eee->conf.header_iv_ctx,
+			  time_stamp(), pearson_hash_16(pktbuf, idx));
+
+  /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, &(eee->curr_sn->sock));
+
+}
+
+
 static int sort_supernodes(n2n_edge_t *eee, time_t now){
   struct peer_info *scan, *tmp;
 
   if(eee->curr_sn != eee->conf.supernodes){
     eee->curr_sn = eee->conf.supernodes;
     memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
+
+    send_unregister_super(eee);
+
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
     traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
@@ -1179,7 +1225,7 @@ static int handle_PACKET(n2n_edge_t * eee,
         return(0);
       }
 #endif
-      
+
       if(eee->cb.packet_from_peer) {
 	uint16_t tmp_eth_size = eth_size;
 	if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, &tmp_eth_size) == N2N_DROP) {
@@ -1764,7 +1810,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
 	    }
 	  }
 #endif
-	  
+
 	  if(eee->cb.packet_from_tap) {
 	    uint16_t tmp_len = len;
 	    if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
@@ -2317,6 +2363,9 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 
 /** Deinitialise the edge and deallocate any owned memory. */
 void edge_term(n2n_edge_t * eee) {
+
+  send_unregister_super(eee);
+
   if(eee->udp_sock >= 0)
     closesocket(eee->udp_sock);
 
@@ -2338,7 +2387,7 @@ void edge_term(n2n_edge_t * eee) {
 #ifdef FILTER_TRAFFIC
   destroy_network_traffic_filter(eee->network_traffic_filter);
 #endif
-  
+
   closeTraceFile();
 
   free(eee);
