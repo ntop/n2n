@@ -1243,15 +1243,15 @@ static int process_udp(n2n_sn_t * sss,
       }
       break;
   }
-	case MSG_TYPE_UNREGISTER_SUPER: {
-		n2n_UNREGISTER_SUPER_t unreg;
-		struct sn_community    *comm;
-		struct peer_info       *peer, *tmp;
+  case MSG_TYPE_UNREGISTER_SUPER: {
+    n2n_UNREGISTER_SUPER_t unreg;
+    struct sn_community    *comm;
+    struct peer_info       *peer;
 
 
-		memset(&unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
+    memset(&unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
 
-		if(!comm) {
+    if(!comm) {
       traceEvent(TRACE_DEBUG, "process_udp UNREGISTER_SUPER with unknown community %s", cmn.community);
       return -1;
     }
@@ -1261,9 +1261,9 @@ static int process_udp(n2n_sn_t * sss,
       return -1;
     }
 
-		decode_UNREGISTER_SUPER(&unreg, &cmn, udp_buf, &rem. &idx);
+    decode_UNREGISTER_SUPER(&unreg, &cmn, udp_buf, &rem. &idx);
 
-		if (comm) {
+    if (comm) {
       if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
         if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
 	  traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER due to time stamp error.");
@@ -1272,23 +1272,22 @@ static int process_udp(n2n_sn_t * sss,
       }
     }
 
-		traceEvent(TRACE_DEBUG, "Rx UNREGISTER_SUPER from %s [%s]",
-	 macaddr_str(mac_buf, unreg.srcMac),
-	 sock_to_cstr(sockbuf, &(unreg.sock)));
+    traceEvent(TRACE_DEBUG, "Rx UNREGISTER_SUPER from %s",
+	       macaddr_str(mac_buf, unreg.srcMac));
 
-	 HASH_FIND_COMMUNITY(sss->communities, cmn.community, comm);
+    HASH_FIND_COMMUNITY(sss->communities, cmn.community, comm);
 
-	 if(comm != NULL){
-		 HASH_ITER(hh, comm->edges, peer, tmp){
-			 if((memcmp(peer->mac_addr, unreg.srcMac, sizeof(n2n_mac_t)) == 0) &&
-		      (memcmp(peer->sock, unreg.sock, sizeof(n2n_sock_t)) == 0){
-				    HASH_DEL(comm->edges, peer);
-			 }
-		 }
-	 }
+    if(comm != NULL){
+      HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
+      if(peer != NULL){
+        if(memcmp(unreg.cookie, peer->last_cookie, sizeof(n2n_cookie_t)) == 0){
+          HASH_DEL(comm->edges, peer);
+	}
+      }
+    }
 	 
     break;
-	}
+  }
   case MSG_TYPE_REGISTER_SUPER_ACK: {
     n2n_REGISTER_SUPER_ACK_t        ack;
     size_t                          encx=0;

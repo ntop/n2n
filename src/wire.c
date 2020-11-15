@@ -361,7 +361,6 @@ int encode_UNREGISTER_SUPER(uint8_t *base,
   retval += encode_common(base, idx, common);
   retval += encode_buf(base, idx, unreg->cookie, N2N_COOKIE_SIZE);
   retval += encode_mac(base, idx, unreg->srcMac);
-  retval += encode_sock(base, idx &(unreg->sock));
 
   return retval;
 }
@@ -376,7 +375,6 @@ int decode_UNREGISTER_SUPER(n2n_UNREGISTER_SUPER_t *unreg,
   memset(unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
   retval += encode_buf(base, idx, unreg->cookie, N2N_COOKIE_SIZE);
   retval += decode_mac(unreg->srcMac, base, rem, idx);
-  retval += decode_sock(&(unreg->sock), base, rem, idx);
 
   return retval;
 }

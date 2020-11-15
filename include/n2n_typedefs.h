@@ -257,7 +257,6 @@ typedef struct n2n_UNREGISTER_SUPER
 {
   n2n_cookie_t cookie;
   n2n_mac_t srcMac;
-  n2n_sock_t sock;
 } n2n_UNREGISTER_SUPER_t;
 
 

@@ -28,7 +28,7 @@
 #define MSG_TYPE_FEDERATION             9
 #define MSG_TYPE_PEER_INFO              10
 #define MSG_TYPE_QUERY_PEER             11
-#define MSG_TYPE_MAX_TYPE	        11
+#define MSG_TYPE_MAX_TYPE	       11
 
 /* Max available space to add supernodes' informations (sockets and MACs) in REGISTER_SUPER_ACK
  * Field sizes of REGISTER_SUPER_ACK as used in encode/decode fucntions in src/wire.c

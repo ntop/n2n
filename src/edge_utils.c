@@ -811,16 +811,10 @@ static void send_unregister_super(n2n_edge_t *eee){
   cmn.flags = 0;
   memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
-  for (idx = 0; idx < N2N_COOKIE_SIZE; ++idx)
-    eee->curr_sn->last_cookie[idx] = n2n_rand() % 0xff;
-
   memcpy(unreg.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
 
   idx = 0;
   encode_mac(unreg.srcMac, &idx, eee->device.mac_addr);
-
-  idx = 0;
-  encode_sock(unreg.sock, &idx, eee->udp_sock);
 
   idx = 0;
   encode_UNREGISTER_SUPER(pktbuf, &idx, &cmn, &unreg);
@@ -842,11 +836,10 @@ static int sort_supernodes(n2n_edge_t *eee, time_t now){
   struct peer_info *scan, *tmp;
 
   if(eee->curr_sn != eee->conf.supernodes){
+    send_unregister_super(eee);
+    
     eee->curr_sn = eee->conf.supernodes;
     memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
-
-    send_unregister_super(eee);
-
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
     traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
