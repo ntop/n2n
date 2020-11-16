@@ -261,12 +261,12 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   eee->udp_sock = -1;
   eee->udp_mgmt_sock = -1;
 
-  eee->conf.token.scheme = n2n_auth_simple_id;
+  eee->conf.auth.scheme = n2n_auth_simple_id;
 
   for (idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx)
-    eee->conf.token.token[idx] = n2n_rand() % 0xff;
+    eee->conf.auth.token[idx] = n2n_rand() % 0xff;
 
-  eee->conf.token.toksize = sizeof(eee->conf.token.token);
+  eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   eee->udp_multicast_sock = -1;
@@ -784,7 +784,7 @@ static void send_register_super(n2n_edge_t *eee) {
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
   memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
-  memcpy(&(reg.auth), &(eee->conf.token), sizeof(n2n_auth_t));
+  memcpy(&(reg.auth), &(eee->conf.auth), sizeof(n2n_auth_t));
 
   idx = 0;
   encode_mac(reg.edgeMac, &idx, eee->device.mac_addr);
@@ -820,7 +820,7 @@ static void send_unregister_super(n2n_edge_t *eee){
   cmn.flags = 0;
   memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
-  memcpy(&(unreg.auth), &(eee->conf.token), sizeof(n2n_auth_t));
+  memcpy(&(unreg.auth), &(eee->conf.auth), sizeof(n2n_auth_t));
 
   idx = 0;
   encode_mac(unreg.srcMac, &idx, eee->device.mac_addr);

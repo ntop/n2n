@@ -478,7 +478,7 @@ typedef struct n2n_edge_conf {
   int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
   int                 local_port;
   int                 mgmt_port;
-  n2n_auth_t          token;
+  n2n_auth_t          auth;
 #ifdef FILTER_TRAFFIC
   filter_rule_t       *network_traffic_filter_rules;
 #endif

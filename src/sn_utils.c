@@ -359,7 +359,8 @@ static uint16_t reg_lifetime(n2n_sn_t *sss)
   * with the one received from the packet.
   */
 static int auth_edge(n2n_auth_t *auth1, n2n_auth_t *auth2){
-  return (memcmp(auth1, auth2, sizeof(n2n_auth_t)));
+  /* 0 = success (tokens are equal). */
+  return (memcmp(auth1, auth2, sizeof(n2n_auth_t))); 
 }
 
 /** Update the edge table with the details of the edge which contacted the
@@ -425,6 +426,8 @@ static int update_edge(n2n_sn_t *sss,
 		    sock_to_cstr(sockbuf, sender_sock));
       }
     } else {
+      memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
+      
       traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
 		 macaddr_str(mac_buf, reg->edgeMac),
 		 sock_to_cstr(sockbuf, sender_sock));
