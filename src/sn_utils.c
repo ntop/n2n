@@ -374,6 +374,7 @@ static int update_edge(n2n_sn_t *sss,
   n2n_sock_str_t sockbuf;
   struct peer_info *scan, *iter, *tmp;
   int auth;
+  int ret;
 
   traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
 	     macaddr_str(mac_buf, reg->edgeMac),
@@ -414,6 +415,8 @@ static int update_edge(n2n_sn_t *sss,
     traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
 	       macaddr_str(mac_buf, reg->edgeMac),
 	       sock_to_cstr(sockbuf, sender_sock));
+    ret = update_edge_new_sn;
+    
   } else {
     /* Known */
     if (!sock_equal(sender_sock, &(scan->sock))) {
@@ -424,18 +427,26 @@ static int update_edge(n2n_sn_t *sss,
         traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
 		    macaddr_str(mac_buf, reg->edgeMac),
 		    sock_to_cstr(sockbuf, sender_sock));
-      }
+	ret = update_edge_sock_change;
+      } else {
+        traceEvent(TRACE_INFO, "authentication failed");
+
+        ret = update_edge_auth_fail;
+      } 
+      
     } else {
       memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
       
       traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
 		 macaddr_str(mac_buf, reg->edgeMac),
 		 sock_to_cstr(sockbuf, sender_sock));
+
+      ret = update_edge_no_change;
     }
   }
-
-  scan->last_seen = now;
-  return 0;
+  
+  scan->last_seen = now;   
+  return ret;    
 }
 
 
@@ -1090,6 +1101,7 @@ static int process_udp(n2n_sn_t * sss,
     {
       n2n_REGISTER_SUPER_t            reg;
       n2n_REGISTER_SUPER_ACK_t        ack;
+      n2n_REGISTER_SUPER_NAK_t        nak;
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
       uint8_t	                       tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
@@ -1105,8 +1117,10 @@ static int process_udp(n2n_sn_t * sss,
       int 			       num = 0;
       int                             skip_add;
       int                             skip;
+      int                             ret_value;
 
       memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
+      memset(&nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
 
       /* Edge/supernode requesting registration with us.  */
       sss->stats.last_reg_super=now;
@@ -1191,11 +1205,11 @@ static int process_udp(n2n_sn_t * sss,
 	ack.sock.family = AF_INET;
 	ack.sock.port = ntohs(sender_sock->sin_port);
 	memcpy(ack.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
-
+        /*
 	if((from_supernode == 0) != (comm->is_federation == IS_NO_FEDERATION)) {
 	  traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER: from_supernode value doesn't correspond to the internal federation marking");
           return -1;
-	}
+	}*/
 
 	/* Add sender's data to federation (or update it) */
 	if(comm->is_federation == IS_FEDERATION) {
@@ -1237,7 +1251,7 @@ static int process_udp(n2n_sn_t * sss,
 		   sock_to_cstr(sockbuf, &(ack.sock)));
 
 	if(memcmp(reg.edgeMac, &null_mac, N2N_MAC_SIZE) != 0) {
-	  update_edge(sss, &reg, comm, &(ack.sock), now);
+	  ret_value = update_edge(sss, &reg, comm, &(ack.sock), now);
 	}
 
 	encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
@@ -1246,13 +1260,41 @@ static int process_udp(n2n_sn_t * sss,
 	  packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
 				 comm->header_iv_ctx,
 				 time_stamp (), pearson_hash_16 (ackbuf, encx));
+				 
+	switch(ret_value){
+	  case update_edge_auth_fail: {
+	    cmn2.ttl = N2N_DEFAULT_TTL;
+	    cmn2.pc = n2n_register_super_ack;
+	    cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
+	    memcpy(cmn2.community, cmn.community, sizeof(n2n_community_t));
 
-	sendto(sss->sock, ackbuf, encx, 0,
+	    memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
+	    
+	    encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
+	    
+	    sendto(sss->sock, ackbuf, encx, 0,
+	           (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+
+	    traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
+		       macaddr_str(mac_buf, reg.edgeMac));
+	    
+	    break;
+	  } 
+	  
+	  case update_edge_new_sn: {
+	    if(!(cmn.flags & N2N_FLAGS_SOCKET)){
+	      try_forward(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
+	    }
+	
+	    sendto(sss->sock, ackbuf, encx, 0,
 	       (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
 
-	traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
-		   macaddr_str(mac_buf, reg.edgeMac),
-		   sock_to_cstr(sockbuf, &(ack.sock)));
+	    traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
+		       macaddr_str(mac_buf, reg.edgeMac),
+		       sock_to_cstr(sockbuf, &(ack.sock)));
+	    break;
+	  }
+	}
       } else {
 	traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
 		   (char*)cmn.community);
@@ -1385,10 +1427,10 @@ static int process_udp(n2n_sn_t * sss,
     n2n_common_t                     cmn2;
     n2n_PEER_INFO_t                  pi;
     struct sn_community_regular_expression *re, *tmp_re;
-    struct peer_info		             *peer, *tmp_peer, *p;
+    struct peer_info		      *peer, *tmp_peer, *p;
     int8_t                           allowed_match = -1;
     uint8_t                          match = 0;
-    int			                         match_length = 0;
+    int			      match_length = 0;
     uint8_t                          *rec_buf; /* either udp_buf or encbuf */
 
     if(!comm && sss->lock_communities) {

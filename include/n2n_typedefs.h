@@ -164,10 +164,19 @@ typedef struct n2n_sock
   } addr;
 } n2n_sock_t;
 
-typedef enum {
+typedef enum 
+{
   n2n_auth_none = 0,
   n2n_auth_simple_id = 1
 } n2n_auth_scheme_t;
+
+typedef enum
+{
+  update_edge_no_change = 0,
+  update_edge_sock_change = 1,
+  update_edge_new_sn = 2,
+  update_edge_auth_fail = -1
+} update_edge_ret_value_t;
 
 typedef struct n2n_auth
 {
