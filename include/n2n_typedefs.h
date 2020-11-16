@@ -607,6 +607,7 @@ typedef struct n2n_sn
   struct sn_community *communities;
   struct sn_community_regular_expression *rules;
   struct sn_community *federation;
+  n2n_auth_t auth;
 } n2n_sn_t;
 
 

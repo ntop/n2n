@@ -52,7 +52,7 @@ static int update_edge(n2n_sn_t *sss,
                        const n2n_REGISTER_SUPER_t* reg,
                        struct sn_community *comm,
                        const n2n_sock_t *sender_sock,
-                       int skip,
+                       int skip_add,
                        time_t now);
 
 static int purge_expired_communities(n2n_sn_t *sss,
@@ -259,6 +259,7 @@ int comm_init(struct sn_community *comm, char *cmn) {
 /** Initialise the supernode structure */
 int sn_init(n2n_sn_t *sss) {
   int i;
+  size_t idx;
 
 #ifdef WIN32
   initWin32();
@@ -294,6 +295,13 @@ int sn_init(n2n_sn_t *sss) {
     packet_header_setup_key(sss->federation->community, &(sss->federation->header_encryption_ctx), &(sss->federation->header_iv_ctx));
     sss->federation->edges = NULL;
   }
+  
+  sss->auth.scheme = n2n_auth_simple_id;
+
+  for (idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx)
+    sss->auth.token[idx] = n2n_rand() % 0xff;
+
+  sss->auth.toksize = sizeof(sss->auth.token);
 
   n2n_srand (n2n_seed());
 
@@ -370,7 +378,7 @@ static int update_edge(n2n_sn_t *sss,
                        const n2n_REGISTER_SUPER_t* reg,
                        struct sn_community *comm,
                        const n2n_sock_t *sender_sock,
-                       int skip,
+                       int skip_add,
                        time_t now) {
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
@@ -399,7 +407,7 @@ static int update_edge(n2n_sn_t *sss,
 
   if (NULL == scan) {
   /* Not known */
-    if(skip == SN_ADD){
+    if(skip_add == SN_ADD){
        scan = (struct peer_info *) calloc(1,
 				       sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
 
@@ -636,7 +644,7 @@ static int re_register_and_purge_supernodes(n2n_sn_t *sss, struct sn_community *
 	memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
 	reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
 	reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
-	reg.auth.scheme = 0; /* No auth yet */
+	memcpy(&(reg.auth), &(sss->auth), sizeof(n2n_auth_t));
 
 	idx = 0;
 	encode_mac(reg.edgeMac, &idx, sss->mac_addr);
@@ -1273,10 +1281,7 @@ static int process_udp(n2n_sn_t * sss,
 				 
 	switch(ret_value){
 	  case update_edge_auth_fail: {
-	    cmn2.ttl = N2N_DEFAULT_TTL;
-	    cmn2.pc = n2n_register_super_ack;
-	    cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
-	    memcpy(cmn2.community, cmn.community, sizeof(n2n_community_t));
+	    cmn2.pc = n2n_register_super_nak;
 
 	    memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
 	    
