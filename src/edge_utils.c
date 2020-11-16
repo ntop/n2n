@@ -16,8 +16,8 @@
  *
  */
 
-#include "network_traffic_filter.h"
 #include "n2n.h"
+#include "network_traffic_filter.h"
 #include "edge_utils_win32.h"
 
 /* heap allocation for compression as per lzo example doc */
@@ -272,11 +272,9 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
     goto edge_init_error;
   }
 
-#ifdef FILTER_TRAFFIC
-  eee->network_traffic_filter = create_network_traffic_filter();  
+  eee->network_traffic_filter = create_network_traffic_filter();
   network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
-#endif
-  
+
   //edge_init_success:
   *rv = 0;
   return(eee);
@@ -1172,14 +1170,12 @@ static int handle_PACKET(n2n_edge_t * eee,
 	}
       }
 
-#ifdef FILTER_TRAFFIC
       if(eee->network_traffic_filter->filter_packet_from_peer( eee->network_traffic_filter, eee, orig_sender,
 								eth_payload, eth_size ) == N2N_DROP){
         traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)eth_size);
         return(0);
       }
-#endif
-      
+
       if(eee->cb.packet_from_peer) {
 	uint16_t tmp_eth_size = eth_size;
 	if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, &tmp_eth_size) == N2N_DROP) {
@@ -1755,7 +1751,6 @@ void edge_read_from_tap(n2n_edge_t * eee) {
         }
       else
         {
-#ifdef FILTER_TRAFFIC
 	  if(eee->network_traffic_filter) {
 	    if( eee->network_traffic_filter->filter_packet_from_tap( eee->network_traffic_filter, eee, eth_pkt,
 								     len) == N2N_DROP){
@@ -1763,8 +1758,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
               return;
 	    }
 	  }
-#endif
-	  
+
 	  if(eee->cb.packet_from_tap) {
 	    uint16_t tmp_len = len;
 	    if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
@@ -2335,10 +2329,8 @@ void edge_term(n2n_edge_t * eee) {
 
   edge_cleanup_routes(eee);
 
-#ifdef FILTER_TRAFFIC
   destroy_network_traffic_filter(eee->network_traffic_filter);
-#endif
-  
+
   closeTraceFile();
 
   free(eee);
@@ -2838,7 +2830,6 @@ void edge_term_conf(n2n_edge_conf_t *conf) {
   if (conf->routes) free(conf->routes);
   if (conf->encrypt_key) free(conf->encrypt_key);
 
-#ifdef FILTER_TRAFFIC
   if(conf->network_traffic_filter_rules)
     {
       filter_rule_t *el = 0, *tmp = 0;
@@ -2848,7 +2839,6 @@ void edge_term_conf(n2n_edge_conf_t *conf) {
 	  free(el);
 	}
     }
-#endif
 }
 
 /* ************************************** */

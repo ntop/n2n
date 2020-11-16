@@ -98,59 +98,6 @@
 #include <syslog.h>
 #include <sys/wait.h>
 
-#define ETH_ADDR_LEN 6
-
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-#include <machine/endian.h>
-#endif
-
-#ifdef __OpenBSD__
-#include <endian.h>
-#define __BYTE_ORDER BYTE_ORDER
-#if BYTE_ORDER == LITTLE_ENDIAN
-#ifndef __LITTLE_ENDIAN__
-#define __LITTLE_ENDIAN__
-#endif /* __LITTLE_ENDIAN__ */
-#else
-#define __BIG_ENDIAN__
-#endif/* BYTE_ORDER */
-#endif/* __OPENBSD__ */
-
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-#ifndef __LITTLE_ENDIAN__
-#define __LITTLE_ENDIAN__
-#endif
-#else
-#ifndef __BIG_ENDIAN__
-#define __BIG_ENDIAN__
-#endif
-#endif
-
-#ifdef WIN32
-#ifndef __LITTLE_ENDIAN__
-#define __LITTLE_ENDIAN__ 1
-#endif
-#endif
-
-#if !(defined(__LITTLE_ENDIAN__) || defined(__BIG_ENDIAN__))
-#if defined(__mips__)
-#undef __LITTLE_ENDIAN__
-#undef __LITTLE_ENDIAN
-#define __BIG_ENDIAN__
-#endif
-
-/* Everything else */
-#if (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__))
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define __LITTLE_ENDIAN__
-#else
-#define __BIG_ENDIAN__
-#endif
-#endif
-
-#endif
-
 #ifdef HAVE_LIBZSTD
 #include <zstd.h>
 #endif
@@ -199,22 +146,7 @@
 #include "speck.h"
 #include "n2n_regex.h"
 #include "sn_selection.h"
-
-//rule_str format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/-
-//
-//ip/len indicate a cidr block, len can be ignore, means single ip (not cidr block) will be use in filter rule.
-//
-//'+','-' after proto type indicate allow or disallow that proto transmit packet. if any of above three proto missed, it will be disallow.
-//
-//[s_port,e_port] can be instead by single port number, if not specify, 0-65535 ports will be used. ports range include start_port and end_port.
-//
-//examples:
-//192.168.1.5/32:[0,65535],192.168.0.0/24:[8081,65535],TCP-,UDP-,ICMP+
-//192.168.1.5:[0,65535],192.168.0.0/24:8000,ICMP+
-//192.168.1.5,192.168.0.7 // packets by all proto of all ports from 192.158.1.5 to any ports of 192.168.0.7 will be disallow(dropped).
-//
-// for impl, see: network_traffic_filter.c
-uint8_t process_traffic_filter_rule_str(const char* rule_str, filter_rule_t* rule_struct);
+#include "network_traffic_filter.h"
 
 /* ************************************** */
 

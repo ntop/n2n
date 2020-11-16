@@ -1,0 +1,39 @@
+version: 2.1
+
+orbs:
+  win: circleci/windows@2.4.0
+
+jobs:
+  linux-gcc:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - checkout
+      - run:
+          name: Install Software
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y cmake build-essential
+            mkdir build
+            cd build
+            cmake ..
+            make
+  windows-msvc:
+    executor: win/default
+    steps:
+      - checkout
+      - run:
+          name: Download CMake
+          command: |
+            $ProgressPreference = "SilentlyContinue"
+            Invoke-WebRequest -URI https://github.com/Kitware/CMake/releases/download/v3.16.4/cmake-3.16.4-win64-x64.zip -OutFile $Env:HOMEPATH\cmake-3.16.4-win64-x64.zip
+            Expand-Archive $Env:HOMEPATH\cmake-3.16.4-win64-x64.zip -DestinationPath "$Env:ProgramFiles"
+            Rename-Item "$Env:ProgramFiles\cmake-3.16.4-win64-x64" -NewName CMake
+      - run: .ci\install-vcpkg.ps1 "$Env:CIRCLE_WORKING_DIRECTORY"
+      - run: .ci\build-project.ps1
+workflows:
+  version: 2
+  run-all:
+    jobs:
+      - linux-gcc
+      - windows-msvc
