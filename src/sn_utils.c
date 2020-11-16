@@ -1284,6 +1284,7 @@ static int process_udp(n2n_sn_t * sss,
 	    cmn2.pc = n2n_register_super_nak;
 
 	    memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
+	    memcpy(&(nak.srcMac), &(reg.edgeMac), sizeof(n2n_mac_t));
 	    
 	    encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
 	    
@@ -1433,6 +1434,58 @@ static int process_udp(n2n_sn_t * sss,
       payload++;
     }
 
+    break;
+  }
+  case MSG_TYPE_REGISTER_SUPER_NAK: {
+    n2n_REGISTER_SUPER_NAK_t       nak;
+    size_t                         encx=0;
+    struct sn_community            *tmp_comm;
+    struct peer_info               *peer;
+    n2n_sock_str_t      	    sockbuf;
+    macstr_t           	    mac_buf;
+    n2n_sock_t                     sender;
+    
+    memset(&sender, 0, sizeof(n2n_sock_t));
+    sender.family = AF_INET;
+    sender.port = ntohs(sender_sock->sin_port);
+    memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+    
+    memset(&nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
+    
+    if(!comm) {
+      traceEvent(TRACE_DEBUG, "process_udp REGISTER_SUPER_NAK with unknown community %s", cmn.community);
+      return -1;
+    }
+
+    if((from_supernode == 0) != (comm->is_federation == IS_NO_FEDERATION)) {
+      traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_NAK: from_supernode value doesn't correspond to the internal federation marking.");
+      return -1;
+    }
+
+    decode_REGISTER_SUPER_NAK(&nak, &cmn, udp_buf, &rem, &idx);
+  
+    if (comm) {
+      if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+        if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, nak.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+	  traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_NAK due to time stamp error.");
+	  return -1;
+	}
+      }
+    }
+
+    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_NAK from %s [%s]",
+	       macaddr_str(mac_buf, nak.srcMac),
+	       sock_to_cstr(sockbuf, &sender));
+	       
+    HASH_FIND_COMMUNITY(sss->communities, comm->community, tmp_comm);
+    
+    if(tmp_comm != NULL){
+      HASH_FIND_PEER(tmp_comm->edges, nak.srcMac, peer);
+      if(tmp_comm->is_federation == IS_NO_FEDERATION){
+        HASH_DEL(tmp_comm->edges, peer);
+      }
+    }
+    
     break;
   }
   case MSG_TYPE_QUERY_PEER: {

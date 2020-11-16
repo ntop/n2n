@@ -2135,6 +2135,33 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  }
 	break;
       }
+    case MSG_TYPE_REGISTER_SUPER_NAK: {
+      n2n_REGISTER_SUPER_NAK_t nak;
+      struct peer_info *peer, *scan;
+
+      memset(&nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
+      
+      decode_REGISTER_SUPER_NAK(&nak, &cmn, udp_buf, &rem, &idx);
+      
+      traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_NAK");
+      
+      if((memcmp(&(nak.srcMac), &(eee->device.mac_addr), sizeof(n2n_mac_t))) == 0){
+        traceEvent(TRACE_INFO, "%s is already used. Stopping the program", macaddr_str(mac_buf1, nak.srcMac));
+        exit(1);
+      } else {
+        HASH_FIND_PEER(eee->known_peers, nak.srcMac, peer);
+        if(peer != NULL){
+          HASH_DEL(eee->known_peers, peer);
+        }
+        
+        HASH_FIND_PEER(eee->pending_peers, nak.srcMac, scan);
+        if(scan != NULL){
+          HASH_DEL(eee->pending_peers, scan);
+        }
+      }
+      
+      break;
+    }
     case MSG_TYPE_PEER_INFO: {
       n2n_PEER_INFO_t pi;
       struct peer_info *  scan;

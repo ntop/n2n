@@ -481,6 +481,7 @@ int encode_REGISTER_SUPER_NAK(uint8_t *base,
   int retval = 0;
   retval += encode_common(base, idx, common);
   retval += encode_buf(base, idx, nak->cookie, N2N_COOKIE_SIZE);  
+  retval += encode_mac(base, idx, nak->srcMac);
   
   return retval;                        
 }
@@ -494,6 +495,7 @@ int decode_REGISTER_SUPER_NAK(n2n_REGISTER_SUPER_NAK_t *nak,
   size_t retval = 0;
   memset(nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
   retval += decode_buf(nak->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+  retval += decode_mac(nak->srcMac, base, rem, idx);
   
   return retval;                        
 }
