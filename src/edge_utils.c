@@ -820,7 +820,7 @@ static void send_unregister_super(n2n_edge_t *eee){
   cmn.flags = 0;
   memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
-  memcpy(unreg.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
+  memcpy(&(unreg.auth), &(eee->conf.token), sizeof(n2n_auth_t));
 
   idx = 0;
   encode_mac(unreg.srcMac, &idx, eee->device.mac_addr);

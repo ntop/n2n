@@ -354,6 +354,14 @@ static uint16_t reg_lifetime(n2n_sn_t *sss)
   return 15;
 }
 
+/** Compare two authentication tokens. It is called by update_edge
+  * and in UNREGISTER_SUPER handling to compare the stored auth token
+  * with the one received from the packet.
+  */
+static int auth_edge(n2n_auth_t *auth1, n2n_auth_t *auth2){
+  return (memcmp(auth1, auth2, sizeof(n2n_auth_t)));
+}
+
 /** Update the edge table with the details of the edge which contacted the
  *  supernode. */
 static int update_edge(n2n_sn_t *sss,
@@ -364,6 +372,7 @@ static int update_edge(n2n_sn_t *sss,
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
   struct peer_info *scan, *iter, *tmp;
+  int auth;
 
   traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
 	     macaddr_str(mac_buf, reg->edgeMac),
@@ -407,12 +416,14 @@ static int update_edge(n2n_sn_t *sss,
   } else {
     /* Known */
     if (!sock_equal(sender_sock, &(scan->sock))) {
-      memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
-      memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
+      if((auth = auth_edge(&(scan->auth), &(reg->auth))) == 0){
+        memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+        memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
 
-      traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
-		 macaddr_str(mac_buf, reg->edgeMac),
-		 sock_to_cstr(sockbuf, sender_sock));
+        traceEvent(TRACE_INFO, "update_edge updated   %s ==> %s",
+		    macaddr_str(mac_buf, reg->edgeMac),
+		    sock_to_cstr(sockbuf, sender_sock));
+      }
     } else {
       traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
 		 macaddr_str(mac_buf, reg->edgeMac),
@@ -815,7 +826,7 @@ static int process_udp(n2n_sn_t * sss,
   n2n_sock_str_t      sockbuf;
   char                buf[32];
   struct sn_community *comm, *tmp;
-  uint64_t	          stamp;
+  uint64_t	       stamp;
   const n2n_mac_t     null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
   traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
@@ -1194,7 +1205,7 @@ static int process_udp(n2n_sn_t * sss,
 	/* Skip random numbers of supernodes before payload assembling, calculating an appropriate random_number.
 	 * That way, all supernodes have a chance to be propagated with REGISTER_SUPER_ACK. */
 	skip = HASH_COUNT(sss->federation->edges)  - (int)(REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE / REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE);
-    skip = (skip < 0) ? 0 : n2n_rand_sqr(skip);
+        skip = (skip < 0) ? 0 : n2n_rand_sqr(skip);
 
 	/* Assembling supernode list for REGISTER_SUPER_ACK payload */
 	tmp_dst = tmpbuf;
@@ -1249,6 +1260,7 @@ static int process_udp(n2n_sn_t * sss,
   case MSG_TYPE_UNREGISTER_SUPER: {
     n2n_UNREGISTER_SUPER_t unreg;
     struct peer_info       *peer;
+    int                    auth;
 
 
     memset(&unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
@@ -1277,7 +1289,7 @@ static int process_udp(n2n_sn_t * sss,
 
     HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
     if(peer != NULL){
-      if(memcmp(unreg.cookie, peer->last_cookie, sizeof(n2n_cookie_t)) == 0){
+      if((auth = auth_edge(&(peer->auth), &unreg.auth)) == 0){
         HASH_DEL(comm->edges, peer);
       }
     }

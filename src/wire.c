@@ -360,7 +360,9 @@ int encode_UNREGISTER_SUPER(uint8_t *base,
                           const n2n_UNREGISTER_SUPER_t *unreg){
   int retval = 0;
   retval += encode_common(base, idx, common);
-  retval += encode_buf(base, idx, unreg->cookie, N2N_COOKIE_SIZE);
+  retval += encode_uint16(base, idx, unreg->auth.scheme); 
+  retval += encode_uint16(base, idx, unreg->auth.toksize);
+  retval += encode_buf(base, idx, unreg->auth.token, unreg->auth.toksize);
   retval += encode_mac(base, idx, unreg->srcMac);
 
   return retval;
@@ -374,7 +376,9 @@ int decode_UNREGISTER_SUPER(n2n_UNREGISTER_SUPER_t *unreg,
                           size_t *idx){
   size_t retval = 0;
   memset(unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
-  retval += decode_buf(unreg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+  retval += decode_uint16(&(unreg->auth.scheme), base, rem, idx);
+  retval += decode_uint16(&(unreg->auth.toksize), base, rem, idx);
+  retval += decode_buf(unreg->auth.token, unreg->auth.toksize, base, rem, idx);
   retval += decode_mac(unreg->srcMac, base, rem, idx);
 
   return retval;

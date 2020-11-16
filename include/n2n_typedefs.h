@@ -167,7 +167,7 @@ typedef struct n2n_sock
 typedef enum {
   n2n_auth_none = 0,
   n2n_auth_simple_id = 1
-} n2n_auth_init_t;
+} n2n_auth_scheme_t;
 
 typedef struct n2n_auth
 {
@@ -260,7 +260,7 @@ typedef struct n2n_REGISTER_SUPER_ACK_payload {
 /* Linked with n2n_unregister_super in n2n_pc_t. */
 typedef struct n2n_UNREGISTER_SUPER
 {
-  n2n_cookie_t cookie;
+  n2n_auth_t auth;
   n2n_mac_t srcMac;
 } n2n_UNREGISTER_SUPER_t;
 
