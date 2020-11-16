@@ -52,6 +52,7 @@ static int update_edge(n2n_sn_t *sss,
                        const n2n_REGISTER_SUPER_t* reg,
                        struct sn_community *comm,
                        const n2n_sock_t *sender_sock,
+                       int skip,
                        time_t now);
 
 static int purge_expired_communities(n2n_sn_t *sss,
@@ -369,6 +370,7 @@ static int update_edge(n2n_sn_t *sss,
                        const n2n_REGISTER_SUPER_t* reg,
                        struct sn_community *comm,
                        const n2n_sock_t *sender_sock,
+                       int skip,
                        time_t now) {
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
@@ -396,27 +398,28 @@ static int update_edge(n2n_sn_t *sss,
   }
 
   if (NULL == scan) {
-    /* Not known */
-
-    scan = (struct peer_info *) calloc(1,
+  /* Not known */
+    if(skip == SN_ADD){
+       scan = (struct peer_info *) calloc(1,
 				       sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
 
-    memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
-    scan->dev_addr.net_addr = reg->dev_addr.net_addr;
-    scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
-    memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
-    memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
-    memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
-    memcpy(&(scan->auth), &(reg->auth), sizeof(n2n_auth_t));
-    scan->last_valid_time_stamp = initial_time_stamp();
+      memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
+      scan->dev_addr.net_addr = reg->dev_addr.net_addr;
+      scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
+      memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
+      memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+      memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
+      memcpy(&(scan->auth), &(reg->auth), sizeof(n2n_auth_t));
+      scan->last_valid_time_stamp = initial_time_stamp();
 
-    HASH_ADD_PEER(comm->edges, scan);
+      HASH_ADD_PEER(comm->edges, scan);
 
-    traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
-	       macaddr_str(mac_buf, reg->edgeMac),
-	       sock_to_cstr(sockbuf, sender_sock));
+      traceEvent(TRACE_INFO, "update_edge created   %s ==> %s",
+	         macaddr_str(mac_buf, reg->edgeMac),
+	         sock_to_cstr(sockbuf, sender_sock));
+    }
+   
     ret = update_edge_new_sn;
-    
   } else {
     /* Known */
     if (!sock_equal(sender_sock, &(scan->sock))) {
@@ -445,7 +448,10 @@ static int update_edge(n2n_sn_t *sss,
     }
   }
   
-  scan->last_seen = now;   
+  if(scan != NULL){
+    scan->last_seen = now; 
+  }
+    
   return ret;    
 }
 
@@ -1251,7 +1257,11 @@ static int process_udp(n2n_sn_t * sss,
 		   sock_to_cstr(sockbuf, &(ack.sock)));
 
 	if(memcmp(reg.edgeMac, &null_mac, N2N_MAC_SIZE) != 0) {
-	  ret_value = update_edge(sss, &reg, comm, &(ack.sock), now);
+	  if(cmn.flags & N2N_FLAGS_SOCKET){
+	    ret_value = update_edge(sss, &reg, comm, &(ack.sock), SN_ADD_SKIP, now);
+	  } else {
+	    ret_value = update_edge(sss, &reg, comm, &(ack.sock), SN_ADD, now);
+	  }
 	}
 
 	encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
