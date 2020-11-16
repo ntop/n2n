@@ -396,7 +396,7 @@ static int update_edge(n2n_sn_t *sss,
     memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
     memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
     memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
-		memcpy(&(scan->auth), reg->auth, sizeof(n2n_auth_t));
+    memcpy(&(scan->auth), &(reg->auth), sizeof(n2n_auth_t));
     scan->last_valid_time_stamp = initial_time_stamp();
 
     HASH_ADD_PEER(comm->edges, scan);
