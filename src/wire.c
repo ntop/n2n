@@ -327,8 +327,9 @@ int encode_REGISTER_SUPER(uint8_t *base,
   retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
   retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
   retval += encode_buf(base, idx, reg->dev_desc, N2N_DESC_SIZE);
-  retval += encode_uint16(base, idx, 0); /* NULL auth scheme */
-  retval += encode_uint16(base, idx, 0); /* No auth data */
+  retval += encode_uint16(base, idx, reg->auth.scheme); 
+  retval += encode_uint16(base, idx, reg->auth.toksize);
+  retval += encode_buf(base, idx, reg->auth.token, reg->auth.toksize);
 
   return retval;
 }

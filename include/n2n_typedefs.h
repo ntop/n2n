@@ -164,6 +164,11 @@ typedef struct n2n_sock
   } addr;
 } n2n_sock_t;
 
+typedef enum {
+  n2n_auth_none = 0,
+  n2n_auth_simple_id = 1
+} n2n_auth_init_t;
+
 typedef struct n2n_auth
 {
   uint16_t    scheme;                         /* What kind of auth */
@@ -284,6 +289,7 @@ struct peer_info {
   n2n_desc_t       dev_desc;
   n2n_sock_t       sock;
   n2n_cookie_t     last_cookie;
+  n2n_auth_t       auth;
   int              timeout;
   uint8_t          purgeable;
   time_t           last_seen;
@@ -472,6 +478,7 @@ typedef struct n2n_edge_conf {
   int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
   int                 local_port;
   int                 mgmt_port;
+  n2n_auth_t          token;
 #ifdef FILTER_TRAFFIC
   filter_rule_t       *network_traffic_filter_rules;
 #endif

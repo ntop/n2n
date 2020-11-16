@@ -179,6 +179,7 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   n2n_edge_t *eee = calloc(1, sizeof(n2n_edge_t));
   int rc = -1, i = 0;
   struct peer_info *scan, *tmp;
+  size_t idx = 0;
 
   if((rc = edge_verify_conf(conf)) != 0) {
     traceEvent(TRACE_ERROR, "Invalid configuration");
@@ -259,6 +260,14 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   // if called in-between, see "Supernode not responding" in update_supernode_reg(...)
   eee->udp_sock = -1;
   eee->udp_mgmt_sock = -1;
+
+  eee->token.scheme = n2n_auth_simple_id;
+
+  for (idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx)
+    eee->token.token[idx] = n2n_rand() % 0xff;
+
+  eee->token.toksize = sizeof(eee->token.token);
+
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   eee->udp_multicast_sock = -1;
 #endif
@@ -775,7 +784,7 @@ static void send_register_super(n2n_edge_t *eee) {
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
   memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
-  reg.auth.scheme = 0; /* No auth yet */
+  memcpy(reg.auth, eee->token, sizeof(n2n_auth_t));
 
   idx = 0;
   encode_mac(reg.edgeMac, &idx, eee->device.mac_addr);
@@ -837,7 +846,7 @@ static int sort_supernodes(n2n_edge_t *eee, time_t now){
 
   if(eee->curr_sn != eee->conf.supernodes){
     send_unregister_super(eee);
-    
+
     eee->curr_sn = eee->conf.supernodes;
     memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
