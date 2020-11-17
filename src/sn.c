@@ -213,6 +213,8 @@ static void help() {
   printf("-t <port>         | Management UDP Port (for multiple supernodes on a machine).\n");
   printf("-a <net-net/bit>  | Subnet range for auto ip address service, e.g.\n");
   printf("                  | -a 192.168.0.0-192.168.255.0/24, defaults to 10.128.255.0-10.255.255.0/24\n");
+  printf("-P                | Disable forward peer to peer packet to saving traffic fee. Can switch between enabled\n");
+  printf("                  | and disabled by run command 'netcat -u 127.0.0.1 5645', input 'forward' and press Enter to .\n");
   printf("-v                | Increase verbosity. Can be used multiple times.\n");
   printf("-h                | This help message.\n");
   printf("\n");
@@ -371,6 +373,10 @@ static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
     sss->daemon = 0;
     break;
 
+  case 'P': /* disable peer to peer forward */
+    sss->enable_forward = 0;
+    break;
+
   case 'h': /* help */
     help();
     break;
@@ -407,7 +413,7 @@ static const struct option long_options[] = {
 static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
   u_char c;
 
-  while((c = getopt_long(argc, argv, "fp:l:u:g:t:a:c:F:m:vh",
+  while((c = getopt_long(argc, argv, "fp:l:u:g:t:a:c:F:m:Pvh",
 			 long_options, NULL)) != '?') {
     if(c == 255) break;
     setOption(c, optarg, sss);

@@ -302,7 +302,7 @@ int sn_init(n2n_sn_t *sss) {
   }
   sss->mac_addr[0] &= ~0x01; /* Clear multicast bit */
   sss->mac_addr[0] |= 0x02;  /* Set locally-assigned bit */
-
+  sss->enable_forward = 1; /* default enable forward peer to peer packet */
   return 0; /* OK */
 }
 
@@ -705,6 +705,25 @@ static int process_mgmt(n2n_sn_t *sss,
 
   traceEvent(TRACE_DEBUG, "process_mgmt");
 
+  if ((0 == memcmp(mgmt_buf, "help", 4)) || (0 == memcmp(mgmt_buf, "?", 1))) {
+    ressize = 0;
+
+    ressize += snprintf((char *) resbuf, (N2N_PKT_BUF_SIZE ),
+                            "Help for supernode management console:\n"
+                            "\tforward | switch forward enabled status\n"
+                            "\t<enter> | Display statistics\n\n");
+
+    sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+
+    return 0;
+  }
+  if ((0 == memcmp(mgmt_buf, "forward", 7))) {
+    ressize = 0;
+
+    sss->enable_forward = sss->enable_forward == 0 ? 1 : 0;
+
+    // no send and no return to print statistics after config success.
+  }
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
  		      "    id    tun_tap             MAC                edge                   hint             last_seen\n");
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -770,6 +789,12 @@ static int process_mgmt(n2n_sn_t *sss,
   ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
 		      "last reg  %lu sec ago\n\n",
 		      (long unsigned int) (now - sss->stats.last_reg_super));
+
+  ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+                      "forward: %s\n\n", sss->enable_forward ? "enabled" : "disabled");
+
+  ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+                      "\nType \"help\" to see more commands.\n\n");
 
   sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
 
@@ -994,10 +1019,15 @@ static int process_udp(n2n_sn_t * sss,
       }
 
       /* Common section to forward the final product. */
-      if(unicast)
+      if(unicast && sss->enable_forward)
 	try_forward(sss, comm, &cmn, pkt.dstMac, from_supernode, rec_buf, encx);
-      else
+      else if(!unicast)
 	try_broadcast(sss, comm, &cmn, pkt.srcMac, from_supernode, rec_buf, encx);
+      else{
+          traceEvent(TRACE_DEBUG, "PACKET %s -> %s dropped due to forward peer to peer packet not enabled!",
+                     macaddr_str(mac_buf, pkt.srcMac),
+                     macaddr_str(mac_buf2, pkt.dstMac));
+      }
       break;
     }
   case MSG_TYPE_REGISTER:

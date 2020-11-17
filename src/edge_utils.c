@@ -34,7 +34,8 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
                                            const n2n_mac_t mac,
                                            const n2n_ip_subnet_t *dev_addr,
                                            const n2n_desc_t *dev_desc,
-                                           const n2n_sock_t *peer);
+                                           const n2n_sock_t *peer,
+                                           uint8_t is_packet_msg);
 
 static int edge_init_sockets(n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos);
 static int edge_init_routes(n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
@@ -46,7 +47,8 @@ static void check_known_peer_sock_change(n2n_edge_t *eee,
                                          const n2n_ip_subnet_t *dev_addr,
                                          const n2n_desc_t *dev_desc,
                                          const n2n_sock_t *peer,
-                                         time_t when);
+                                         time_t when,
+                                         uint8_t is_packet_msg);
 
 /* ************************************** */
 
@@ -404,7 +406,8 @@ static void register_with_new_peer(n2n_edge_t *eee,
                                    const n2n_mac_t mac,
                                    const n2n_ip_subnet_t *dev_addr,
                                    const n2n_desc_t *dev_desc,
-                                   const n2n_sock_t *peer) {
+                                   const n2n_sock_t *peer,
+                                   uint8_t is_packet_msg) {
   /* REVISIT: purge of pending_peers not yet done. */
   struct peer_info *scan;
   macstr_t mac_buf;
@@ -420,6 +423,7 @@ static void register_with_new_peer(n2n_edge_t *eee,
     scan->sock = *peer;
     scan->timeout = eee->conf.register_interval; /* TODO: should correspond to the peer supernode registration timeout */
     scan->last_valid_time_stamp = initial_time_stamp();
+    scan->last_seen = time(NULL);
 
     HASH_ADD_PEER(eee->pending_peers, scan);
 
@@ -473,7 +477,12 @@ static void register_with_new_peer(n2n_edge_t *eee,
   } else{
     scan->sock = *peer;
   }
+  if(is_packet_msg){
+    /* Only update last_seen at packet msg. purge_expired_registrations use it to clear pending_peers, assign it only
+     * at create new pending peers, make it possiable to retry if punching (p2p) timeout. Otherwise REGISTER/PACKET msg
+     * from remote peer will not trigger a new punching process. */
   scan->last_seen = time(NULL);
+  }
   if(dev_addr != NULL){
     memcpy(&(scan->dev_addr), dev_addr, sizeof(n2n_ip_subnet_t));
   }
@@ -489,14 +498,15 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
                                            const n2n_mac_t mac,
                                            const n2n_ip_subnet_t *dev_addr,
                                            const n2n_desc_t *dev_desc,
-                                           const n2n_sock_t *peer) {
+                                           const n2n_sock_t *peer,
+                                           uint8_t is_packet_msg) {
   struct peer_info *scan;
 
   HASH_FIND_PEER(eee->known_peers, mac, scan);
 
   if (scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
-    register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
+    register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer, is_packet_msg);
   } else {
     /* Already in known_peers. */
     time_t now = time(NULL);
@@ -506,7 +516,7 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
 
     if ((now - scan->last_seen) > 0 /* >= 1 sec */) {
       /* Don't register too often */
-      check_known_peer_sock_change(eee, from_supernode, mac, dev_addr, dev_desc, peer, now);
+      check_known_peer_sock_change(eee, from_supernode, mac, dev_addr, dev_desc, peer, now, is_packet_msg);
     }
   }
 }
@@ -598,7 +608,8 @@ static void check_known_peer_sock_change(n2n_edge_t *eee,
                                          const n2n_ip_subnet_t *dev_addr,
                                          const n2n_desc_t *dev_desc,
                                          const n2n_sock_t *peer,
-                                         time_t when) {
+                                         time_t when,
+                                         uint8_t is_packet_msg) {
   struct peer_info *scan;
   n2n_sock_str_t sockbuf1;
   n2n_sock_str_t sockbuf2; /* don't clobber sockbuf1 if writing two addresses to trace */
@@ -628,7 +639,7 @@ static void check_known_peer_sock_change(n2n_edge_t *eee,
       HASH_DEL(eee->known_peers, scan);
       free(scan);
 
-      register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
+      register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer, is_packet_msg);
     } else {
       /* Don't worry about what the supernode reports, it could be seeing a different socket. */
     }
@@ -1910,7 +1921,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	}
 
 	/* Update the sender in peer table entry */
-	check_peer_registration_needed(eee, from_supernode, pkt.srcMac, NULL, NULL, orig_sender);
+        check_peer_registration_needed(eee, from_supernode, pkt.srcMac, NULL, NULL, orig_sender, 1);
 
 	handle_PACKET(eee, from_supernode, &pkt, orig_sender, udp_buf+idx, recvlen-idx);
 	break;
@@ -1964,7 +1975,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		     sock_to_cstr(sockbuf1, &sender), sock_to_cstr(sockbuf2, orig_sender));
 	}
 
-	check_peer_registration_needed(eee, from_supernode, reg.srcMac, &reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender);
+        check_peer_registration_needed(eee, from_supernode, reg.srcMac, &reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender, 0);
 	break;
       }
     case MSG_TYPE_REGISTER_ACK:
@@ -2282,7 +2293,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
     update_supernode_reg(eee, nowTime);
 
     numPurged =  purge_expired_registrations(&eee->known_peers, &last_purge_known, PURGE_REGISTRATION_FREQUENCY);
-    numPurged += purge_expired_registrations(&eee->pending_peers, &last_purge_pending, PURGE_REGISTRATION_FREQUENCY);
+    numPurged += purge_expired_registrations(&eee->pending_peers, &last_purge_pending, eee->conf.register_interval);
 
     if(numPurged > 0) {
       traceEvent(TRACE_INFO, "%u peers removed. now: pending=%u, operational=%u",

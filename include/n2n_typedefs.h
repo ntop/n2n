@@ -660,6 +660,7 @@ typedef struct n2n_sn
   struct sn_community *communities;
   struct sn_community_regular_expression *rules;
   struct sn_community *federation;
+  uint8_t enable_forward; /* 0 for disable forward, 1 for */
 } n2n_sn_t;
 
 
