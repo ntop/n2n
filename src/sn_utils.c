@@ -1219,11 +1219,6 @@ static int process_udp(n2n_sn_t * sss,
 	ack.sock.family = AF_INET;
 	ack.sock.port = ntohs(sender_sock->sin_port);
 	memcpy(ack.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
-        /*
-	if((from_supernode == 0) != (comm->is_federation == IS_NO_FEDERATION)) {
-	  traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER: from_supernode value doesn't correspond to the internal federation marking");
-          return -1;
-	}*/
 
 	/* Add sender's data to federation (or update it) */
 	if(comm->is_federation == IS_FEDERATION) {
@@ -1272,70 +1267,62 @@ static int process_udp(n2n_sn_t * sss,
 	  }
 	}
 
-	/***** SWITCH HA SOLO 2 CASI: USA COSTRUTTO IF-ELSE *********/		 
-	switch(ret_value){
-	  case update_edge_auth_fail: {
-	    cmn2.pc = n2n_register_super_nak;
+	if(ret_value == update_edge_auth_fail){
+	  cmn2.pc = n2n_register_super_nak;
 
-	    memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
-	    memcpy(&(nak.srcMac), &(reg.edgeMac), sizeof(n2n_mac_t));
+	  memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
+	  memcpy(&(nak.srcMac), &(reg.edgeMac), sizeof(n2n_mac_t));
 	    
-	    encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
+	  encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
 	    
-	     if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+	  if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+	    packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
+			            comm->header_iv_ctx,
+				    time_stamp (), pearson_hash_16 (ackbuf, encx));
+	    
+	  sendto(sss->sock, ackbuf, encx, 0,
+	         (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+	           
+	  if(cmn.flags & N2N_FLAGS_SOCKET){
+	    sendto_sock(sss, &reg.sock, ackbuf, encx);
+	  }
+
+	  traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
+		     macaddr_str(mac_buf, reg.edgeMac));
+	} else {
+	  if(!(cmn.flags & N2N_FLAGS_SOCKET)){
+	    reg.sock.family = AF_INET;
+	    reg.sock.port = ntohs(sender_sock->sin_port);
+	    memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+	      
+	    cmn2.pc = n2n_register_super;
+	    encode_REGISTER_SUPER(ackbuf, &encx, &cmn2, &reg);
+	      
+	    if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
 	      packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
-				 comm->header_iv_ctx,
-				 time_stamp (), pearson_hash_16 (ackbuf, encx));
-	    
+				      comm->header_iv_ctx,
+				      time_stamp (), pearson_hash_16 (ackbuf, encx));
+				 
+	    try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
+	      
+	    encx = 0;
+	    cmn2.pc = n2n_register_super_ack;
+	      
+	    encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
+	      
+	    if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+	      packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
+				      comm->header_iv_ctx,
+				      time_stamp (), pearson_hash_16 (ackbuf, encx));
+				 
 	    sendto(sss->sock, ackbuf, encx, 0,
 	           (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
-	           
-	    if(cmn.flags & N2N_FLAGS_SOCKET){
-	      sendto_sock(sss, &reg.sock, ackbuf, encx);
-	    }
-
-	    traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
-		       macaddr_str(mac_buf, reg.edgeMac));
-	    
-	    break;
-	  } 
-	  
-	  default: {
-	    if(!(cmn.flags & N2N_FLAGS_SOCKET)){
-	      reg.sock.family = AF_INET;
-	      reg.sock.port = ntohs(sender_sock->sin_port);
-	      memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
-	      
-	      cmn2.pc = n2n_register_super;
-	      encode_REGISTER_SUPER(ackbuf, &encx, &cmn2, &reg);
-	      
-	      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-	        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
-				        comm->header_iv_ctx,
-				        time_stamp (), pearson_hash_16 (ackbuf, encx));
-				 
-	      try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
-	      
-	      encx = 0;
-	      cmn2.pc = n2n_register_super_ack;
-	      
-	      encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
-	      
-	      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-	        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
-				        comm->header_iv_ctx,
-				        time_stamp (), pearson_hash_16 (ackbuf, encx));
-				 
-	      sendto(sss->sock, ackbuf, encx, 0,
-	             (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
 	             
-	      traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
-		         macaddr_str(mac_buf, reg.edgeMac),
-		         sock_to_cstr(sockbuf, &(ack.sock)));
-	    }
-	    break;
+	    traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
+		       macaddr_str(mac_buf, reg.edgeMac),
+		       sock_to_cstr(sockbuf, &(ack.sock)));
 	  }
-	}
+	}	
       } else {
 	traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
 		   (char*)cmn.community);
