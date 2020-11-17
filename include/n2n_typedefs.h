@@ -19,67 +19,193 @@
 #ifndef _N2N_TYPEDEFS_H_
 #define _N2N_TYPEDEFS_H_
 
-struct ether_hdr
-{
-  uint8_t  dhost[ETH_ADDR_LEN];
-  uint8_t  shost[ETH_ADDR_LEN];
-  uint16_t type;                /* higher layer protocol encapsulated */
-} __attribute__ ((__packed__));
 
-typedef struct ether_hdr ether_hdr_t;
-
-/* *************************************** */
-
-struct n2n_iphdr {
-#if defined(__LITTLE_ENDIAN__)
-  u_int8_t ihl:4, version:4;
-#elif defined(__BIG_ENDIAN__)
-  u_int8_t version:4, ihl:4;
-#else
-# error "Byte order must be defined"
-#endif
-  u_int8_t tos;
-  u_int16_t tot_len;
-  u_int16_t id;
-  u_int16_t frag_off;
-  u_int8_t ttl;
-  u_int8_t protocol;
-  u_int16_t check;
-  u_int32_t saddr;
-  u_int32_t daddr;
-} __attribute__ ((__packed__));
-
-struct n2n_tcphdr
-{
-  u_int16_t source;
-  u_int16_t dest;
-  u_int32_t seq;
-  u_int32_t ack_seq;
-#if defined(__LITTLE_ENDIAN__)
-  u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
-#elif defined(__BIG_ENDIAN__)
-  u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
-#else
-# error "Byte order must be defined"
-#endif
-  u_int16_t window;
-  u_int16_t check;
-  u_int16_t urg_ptr;
-} __attribute__ ((__packed__));
-
-struct n2n_udphdr
-{
-  u_int16_t source;
-  u_int16_t dest;
-  u_int16_t len;
-  u_int16_t check;
-} __attribute__ ((__packed__));
 
 typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
 typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
 typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
 typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
 typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer */
+
+#ifdef _MSC_VER
+#include "getopt.h"
+
+ /* Other Win environments are expected to support stdint.h */
+
+ /* stdint.h typedefs (C99) (not present in Visual Studio) */
+typedef unsigned int uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char uint8_t;
+
+/* sys/types.h typedefs (not present in Visual Studio) */
+typedef unsigned int u_int32_t;
+typedef unsigned short u_int16_t;
+typedef unsigned char u_int8_t;
+
+typedef int ssize_t;
+
+typedef unsigned long in_addr_t;
+
+#include "n2n_win32.h"
+
+#endif /* #ifdef _MSC_VER */
+
+
+
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#include <machine/endian.h>
+#endif
+
+#ifdef __OpenBSD__
+#include <endian.h>
+#define __BYTE_ORDER BYTE_ORDER
+#if BYTE_ORDER == LITTLE_ENDIAN
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif /* __LITTLE_ENDIAN__ */
+#else
+#define __BIG_ENDIAN__
+#endif/* BYTE_ORDER */
+#endif/* __OPENBSD__ */
+
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#endif
+#else
+#ifndef __BIG_ENDIAN__
+#define __BIG_ENDIAN__
+#endif
+#endif
+
+#ifdef WIN32
+#ifndef __LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__ 1
+#endif
+#endif
+
+#if !(defined(__LITTLE_ENDIAN__) || defined(__BIG_ENDIAN__))
+#if defined(__mips__)
+#undef __LITTLE_ENDIAN__
+#undef __LITTLE_ENDIAN
+#define __BIG_ENDIAN__
+#endif
+
+/* Everything else */
+#if (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__))
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define __LITTLE_ENDIAN__
+#else
+#define __BIG_ENDIAN__
+#endif
+#endif
+
+#endif
+
+/* *************************************** */
+
+#ifdef __GNUC__
+#define PACK_STRUCT __attribute__((__packed__))
+#else
+#define PACK_STRUCT
+#endif
+
+#ifdef _MSC_VER
+#pragma pack(push,1)
+#endif
+
+#define ETH_ADDR_LEN 6
+
+struct ether_hdr
+{
+    uint8_t  dhost[ETH_ADDR_LEN];
+    uint8_t  shost[ETH_ADDR_LEN];
+    uint16_t type;                /* higher layer protocol encapsulated */
+} PACK_STRUCT;
+
+typedef struct ether_hdr ether_hdr_t;
+
+
+struct n2n_iphdr {
+#if defined(__LITTLE_ENDIAN__)
+    u_int8_t ihl:4, version:4;
+#elif defined(__BIG_ENDIAN__)
+    u_int8_t version:4, ihl:4;
+#else
+# error "Byte order must be defined"
+#endif
+    u_int8_t tos;
+    u_int16_t tot_len;
+    u_int16_t id;
+    u_int16_t frag_off;
+    u_int8_t ttl;
+    u_int8_t protocol;
+    u_int16_t check;
+    u_int32_t saddr;
+    u_int32_t daddr;
+} PACK_STRUCT;
+
+struct n2n_tcphdr
+{
+    u_int16_t source;
+    u_int16_t dest;
+    u_int32_t seq;
+    u_int32_t ack_seq;
+#if defined(__LITTLE_ENDIAN__)
+    u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
+#elif defined(__BIG_ENDIAN__)
+    u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
+#else
+# error "Byte order must be defined"
+#endif
+    u_int16_t window;
+    u_int16_t check;
+    u_int16_t urg_ptr;
+} PACK_STRUCT;
+
+struct n2n_udphdr
+{
+    u_int16_t source;
+    u_int16_t dest;
+    u_int16_t len;
+    u_int16_t check;
+} PACK_STRUCT;
+
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
+
+
+typedef struct port_range{
+    uint16_t start_port; // range contain 'start_port' self
+    uint16_t end_port; // range contain 'end_port' self
+} port_range_t;
+
+typedef struct filter_rule_key
+{
+    in_addr_t        src_net_cidr;
+    uint8_t          src_net_bit_len;
+    port_range_t     src_port_range;
+    in_addr_t        dst_net_cidr;
+    uint8_t          dst_net_bit_len;
+    port_range_t     dst_port_range;
+    uint8_t          bool_tcp_configured;
+    uint8_t          bool_udp_configured;
+    uint8_t          bool_icmp_configured;
+} filter_rule_key_t;
+
+typedef struct filter_rule
+{
+    filter_rule_key_t key;
+
+    uint8_t             bool_accept_icmp;
+    uint8_t             bool_accept_udp;
+    uint8_t             bool_accept_tcp;
+
+    UT_hash_handle hh;         /* makes this structure hashable */
+} filter_rule_t;
+
 
 #ifndef WIN32
 typedef struct tuntap_dev {
@@ -332,6 +458,17 @@ typedef enum {
 
 /* *************************************************** */
 
+typedef struct network_traffic_filter
+{
+    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee,
+                                           const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
+
+    n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
+
+} network_traffic_filter_t;
+
+/* *************************************************** */
+
 /* Callbacks allow external programs to attach functions in response to
  * N2N events. */
 typedef struct n2n_edge_callbacks {
@@ -354,60 +491,6 @@ typedef struct n2n_edge_callbacks {
   /* Called periodically in the main loop. */
   void (*main_loop_period)(n2n_edge_t *eee, time_t now);
 } n2n_edge_callbacks_t;
-
-/* ***************************************************** */
-// network traffic filter
-
-typedef struct port_range{
-    uint16_t start_port; // range contain 'start_port' self
-    uint16_t end_port; // range contain 'end_port' self
-} port_range_t;
-
-typedef struct filter_rule_key
-{
-    in_addr_t        src_net_cidr;
-    uint8_t          src_net_bit_len;
-    port_range_t     src_port_range;
-    in_addr_t        dst_net_cidr;
-    uint8_t          dst_net_bit_len;
-    port_range_t     dst_port_range;
-    uint8_t          bool_tcp_configured;
-    uint8_t          bool_udp_configured;
-    uint8_t          bool_icmp_configured;
-} filter_rule_key_t;
-
-typedef struct filter_rule
-{
-    filter_rule_key_t key;
-
-    uint8_t             bool_accept_icmp;
-    uint8_t             bool_accept_udp;
-    uint8_t             bool_accept_tcp;
-
-    UT_hash_handle hh;         /* makes this structure hashable */
-} filter_rule_t;
-
-#ifdef FILTER_TRAFFIC
-/*
- * network traffic filter interface
- */
-typedef struct network_traffic_filter
-{
-/* A packet has been received from a peer. N2N_DROP can be returned to
- * drop the packet. The packet payload can be modified. This only allows
- * the packet size to be reduced */
-    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee,
-					   const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
-
-/* A packet has been received from the TAP interface. N2N_DROP can be
- * returned to drop the packet. The packet payload can be modified.
- * This only allows the packet size to be reduced */
-    n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
-
-} network_traffic_filter_t;
-#endif
-
-/* *************************************************** */
 
 typedef struct n2n_tuntap_priv_config {
   char                tuntap_dev_name[N2N_IFNAMSIZ];
@@ -490,9 +573,7 @@ typedef struct n2n_edge_conf {
   int                 local_port;
   int                 mgmt_port;
   n2n_auth_t          auth;
-#ifdef FILTER_TRAFFIC
   filter_rule_t       *network_traffic_filter_rules;
-#endif
 } n2n_edge_conf_t;
 
 
@@ -547,11 +628,8 @@ struct n2n_edge {
 
   n2n_tuntap_priv_config_t tuntap_priv_conf;   /**< Tuntap config */
 
-#ifdef FILTER_TRAFFIC
   network_traffic_filter_t *network_traffic_filter;
-#endif
 };
-
 
 typedef struct sn_stats
 {

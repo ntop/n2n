@@ -1118,17 +1118,19 @@ static int process_udp(n2n_sn_t * sss,
       n2n_REGISTER_SUPER_NAK_t        nak;
       n2n_common_t                    cmn2;
       uint8_t                         ackbuf[N2N_SN_PKTBUF_SIZE];
-      uint8_t	                       tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+      uint8_t	                        tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
       uint8_t                         *tmp_dst;
+      uint8_t                         payload_buf[REG_SUPER_ACK_PAYLOAD_SPACE];
+      n2n_REGISTER_SUPER_ACK_payload_t *payload;
       size_t                          encx=0;
       struct sn_community             *fed;
       struct sn_community_regular_expression *re, *tmp_re;
-      struct peer_info		       *peer, *tmp_peer, *p;
+      struct peer_info		            *peer, *tmp_peer, *p;
       int8_t                          allowed_match = -1;
       uint8_t                         match = 0;
-      int			       match_length = 0;
+      int			                        match_length = 0;
       n2n_ip_subnet_t                 ipaddr;
-      int 			       num = 0;
+      int 			                      num = 0;
       int                             skip_add;
       int                             skip;
       int                             ret_value;
@@ -1234,7 +1236,7 @@ static int process_udp(n2n_sn_t * sss,
         skip = (skip < 0) ? 0 : n2n_rand_sqr(skip);
 
 	/* Assembling supernode list for REGISTER_SUPER_ACK payload */
-	tmp_dst = tmpbuf;
+        payload = (n2n_REGISTER_SUPER_ACK_payload_t*)payload_buf;
 	HASH_ITER(hh, sss->federation->edges, peer, tmp_peer) {
           if(skip){
 	    skip--;
@@ -1247,10 +1249,10 @@ static int process_udp(n2n_sn_t * sss,
                                                                             * their SN_ACTIVE time before they get re-registred to. */
 
 	  if(((++num)*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE) > REG_SUPER_ACK_PAYLOAD_SPACE) break; /* no more space available in REGISTER_SUPER_ACK payload */
-	  memcpy(tmp_dst, &(peer->sock), sizeof(n2n_sock_t));
-	  tmp_dst += sizeof(n2n_sock_t);
-	  memcpy(tmp_dst, &(peer->mac_addr), sizeof(n2n_mac_t));
-	  tmp_dst += sizeof(n2n_mac_t);
+	  memcpy(&(payload->sock), &(peer->sock), sizeof(n2n_sock_t));
+	  memcpy(&(payload->mac),  &(peer->mac_addr), sizeof(n2n_mac_t));
+	  // shift to next payload entry
+	  payload++;
 	}
 	ack.num_sn = num;
 

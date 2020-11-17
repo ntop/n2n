@@ -16,8 +16,8 @@
  *
  */
 
-#include "network_traffic_filter.h"
 #include "n2n.h"
+#include "network_traffic_filter.h"
 #include "edge_utils_win32.h"
 
 /* heap allocation for compression as per lzo example doc */
@@ -281,10 +281,8 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
     goto edge_init_error;
   }
 
-#ifdef FILTER_TRAFFIC
   eee->network_traffic_filter = create_network_traffic_filter();
   network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
-#endif
 
   //edge_init_success:
   *rv = 0;
@@ -1072,8 +1070,6 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
   eee->sn_wait=1;
 
-  send_grat_arps(eee);
-
   eee->last_register_req = nowTime;
 }
 
@@ -1208,13 +1204,11 @@ static int handle_PACKET(n2n_edge_t * eee,
 	}
       }
 
-#ifdef FILTER_TRAFFIC
       if(eee->network_traffic_filter->filter_packet_from_peer( eee->network_traffic_filter, eee, orig_sender,
 								eth_payload, eth_size ) == N2N_DROP){
         traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)eth_size);
         return(0);
       }
-#endif
 
       if(eee->cb.packet_from_peer) {
 	uint16_t tmp_eth_size = eth_size;
@@ -1791,7 +1785,6 @@ void edge_read_from_tap(n2n_edge_t * eee) {
         }
       else
         {
-#ifdef FILTER_TRAFFIC
 	  if(eee->network_traffic_filter) {
 	    if( eee->network_traffic_filter->filter_packet_from_tap( eee->network_traffic_filter, eee, eth_pkt,
 								     len) == N2N_DROP){
@@ -1799,7 +1792,6 @@ void edge_read_from_tap(n2n_edge_t * eee) {
               return;
 	    }
 	  }
-#endif
 
 	  if(eee->cb.packet_from_tap) {
 	    uint16_t tmp_len = len;
@@ -1810,6 +1802,12 @@ void edge_read_from_tap(n2n_edge_t * eee) {
 	    }
 	    len = tmp_len;
 	  }
+
+          if (!eee->last_sup) {
+            // drop packets before first registration with supernode
+            traceEvent(TRACE_DEBUG, "DROP packet before first registration with supernode");
+            return;
+          }
 
 	  edge_send_packet2net(eee, eth_pkt, len);
         }
@@ -1836,8 +1834,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
   n2n_sock_t          sender;
   n2n_sock_t *        orig_sender=NULL;
   time_t              now=0;
-  uint64_t 	      stamp = 0;
-
+  uint64_t 	          stamp = 0;
   size_t              i;
 
   i = sizeof(sender_sock);
@@ -1921,6 +1918,12 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	    return;
 	  }
 	}
+
+        if (!eee->last_sup) {
+          // drop packets received before first registration with supernode
+          traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET recevied before first registration with supernode.");
+          return;
+        }
 
 	if(is_valid_peer_sock(&pkt.sock))
 	  orig_sender = &(pkt.sock);
@@ -2098,9 +2101,6 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                   payload++;
 		}
 
-		eee->last_sup = now;
-		eee->sn_wait=0;
-		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 		if (eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
 		  if ((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
 		    net = htonl(ra.dev_addr.net_addr);
@@ -2115,6 +2115,13 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		    }
 		  }
 		}
+
+                if (!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
+                  send_grat_arps(eee);
+
+		eee->last_sup = now;
+		eee->sn_wait=0;
+		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
 		if(eee->cb.sn_registration_updated)
 		  eee->cb.sn_registration_updated(eee, now, &sender);
@@ -2399,9 +2406,7 @@ void edge_term(n2n_edge_t * eee) {
 
   edge_cleanup_routes(eee);
 
-#ifdef FILTER_TRAFFIC
   destroy_network_traffic_filter(eee->network_traffic_filter);
-#endif
 
   closeTraceFile();
 
@@ -2902,7 +2907,6 @@ void edge_term_conf(n2n_edge_conf_t *conf) {
   if (conf->routes) free(conf->routes);
   if (conf->encrypt_key) free(conf->encrypt_key);
 
-#ifdef FILTER_TRAFFIC
   if(conf->network_traffic_filter_rules)
     {
       filter_rule_t *el = 0, *tmp = 0;
@@ -2912,7 +2916,6 @@ void edge_term_conf(n2n_edge_conf_t *conf) {
 	  free(el);
 	}
     }
-#endif
 }
 
 /* ************************************** */
