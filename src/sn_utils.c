@@ -295,15 +295,16 @@ int sn_init(n2n_sn_t *sss) {
     packet_header_setup_key(sss->federation->community, &(sss->federation->header_encryption_ctx), &(sss->federation->header_iv_ctx));
     sss->federation->edges = NULL;
   }
-  
+
+  n2n_srand (n2n_seed());
+	
+  /* Random auth token */
   sss->auth.scheme = n2n_auth_simple_id;
 
   for (idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx)
     sss->auth.token[idx] = n2n_rand() % 0xff;
 
   sss->auth.toksize = sizeof(sss->auth.token);
-
-  n2n_srand (n2n_seed());
 
   /* Random MAC address */
   for(i=0; i<6; i++) {
