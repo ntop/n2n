@@ -367,7 +367,7 @@ static uint16_t reg_lifetime(n2n_sn_t *sss)
   * and in UNREGISTER_SUPER handling to compare the stored auth token
   * with the one received from the packet.
   */
-static int auth_edge(n2n_auth_t *auth1, n2n_auth_t *auth2){
+static int auth_edge(const n2n_auth_t *auth1, const n2n_auth_t *auth2){
   /* 0 = success (tokens are equal). */
   return (memcmp(auth1, auth2, sizeof(n2n_auth_t))); 
 }
@@ -1272,13 +1272,7 @@ static int process_udp(n2n_sn_t * sss,
 	  }
 	}
 
-	encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
-
-	if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
-	  packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
-				 comm->header_iv_ctx,
-				 time_stamp (), pearson_hash_16 (ackbuf, encx));
-				 
+	/***** SWITCH HA SOLO 2 CASI: USA COSTRUTTO IF-ELSE *********/		 
 	switch(ret_value){
 	  case update_edge_auth_fail: {
 	    cmn2.pc = n2n_register_super_nak;
@@ -1288,8 +1282,17 @@ static int process_udp(n2n_sn_t * sss,
 	    
 	    encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
 	    
+	     if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+	      packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
+				 comm->header_iv_ctx,
+				 time_stamp (), pearson_hash_16 (ackbuf, encx));
+	    
 	    sendto(sss->sock, ackbuf, encx, 0,
 	           (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+	           
+	    if(cmn.flags & N2N_FLAGS_SOCKET){
+	      sendto_sock(sss, &reg.sock, ackbuf, encx);
+	    }
 
 	    traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
 		       macaddr_str(mac_buf, reg.edgeMac));
@@ -1297,17 +1300,39 @@ static int process_udp(n2n_sn_t * sss,
 	    break;
 	  } 
 	  
-	  case update_edge_new_sn: {
+	  default: {
 	    if(!(cmn.flags & N2N_FLAGS_SOCKET)){
-	      try_forward(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
+	      reg.sock.family = AF_INET;
+	      reg.sock.port = ntohs(sender_sock->sin_port);
+	      memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+	      
+	      cmn2.pc = n2n_register_super;
+	      encode_REGISTER_SUPER(ackbuf, &encx, &cmn2, &reg);
+	      
+	      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+	        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
+				        comm->header_iv_ctx,
+				        time_stamp (), pearson_hash_16 (ackbuf, encx));
+				 
+	      try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
+	      
+	      encx = 0;
+	      cmn2.pc = n2n_register_super_ack;
+	      
+	      encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
+	      
+	      if (comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+	        packet_header_encrypt (ackbuf, encx, comm->header_encryption_ctx,
+				        comm->header_iv_ctx,
+				        time_stamp (), pearson_hash_16 (ackbuf, encx));
+				 
+	      sendto(sss->sock, ackbuf, encx, 0,
+	             (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+	             
+	      traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
+		         macaddr_str(mac_buf, reg.edgeMac),
+		         sock_to_cstr(sockbuf, &(ack.sock)));
 	    }
-	
-	    sendto(sss->sock, ackbuf, encx, 0,
-	       (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
-
-	    traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
-		       macaddr_str(mac_buf, reg.edgeMac),
-		       sock_to_cstr(sockbuf, &(ack.sock)));
 	    break;
 	  }
 	}
@@ -1439,7 +1464,6 @@ static int process_udp(n2n_sn_t * sss,
   case MSG_TYPE_REGISTER_SUPER_NAK: {
     n2n_REGISTER_SUPER_NAK_t       nak;
     size_t                         encx=0;
-    struct sn_community            *tmp_comm;
     struct peer_info               *peer;
     n2n_sock_str_t      	    sockbuf;
     macstr_t           	    mac_buf;
@@ -1454,11 +1478,6 @@ static int process_udp(n2n_sn_t * sss,
     
     if(!comm) {
       traceEvent(TRACE_DEBUG, "process_udp REGISTER_SUPER_NAK with unknown community %s", cmn.community);
-      return -1;
-    }
-
-    if((from_supernode == 0) != (comm->is_federation == IS_NO_FEDERATION)) {
-      traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_NAK: from_supernode value doesn't correspond to the internal federation marking.");
       return -1;
     }
 
@@ -1477,12 +1496,10 @@ static int process_udp(n2n_sn_t * sss,
 	       macaddr_str(mac_buf, nak.srcMac),
 	       sock_to_cstr(sockbuf, &sender));
 	       
-    HASH_FIND_COMMUNITY(sss->communities, comm->community, tmp_comm);
-    
-    if(tmp_comm != NULL){
-      HASH_FIND_PEER(tmp_comm->edges, nak.srcMac, peer);
-      if(tmp_comm->is_federation == IS_NO_FEDERATION){
-        HASH_DEL(tmp_comm->edges, peer);
+    HASH_FIND_PEER(comm->edges, nak.srcMac, peer);
+    if(comm->is_federation == IS_NO_FEDERATION){
+      if(peer != NULL){
+        HASH_DEL(comm->edges, peer);
       }
     }
     

@@ -2146,7 +2146,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
       traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_NAK");
       
       if((memcmp(&(nak.srcMac), &(eee->device.mac_addr), sizeof(n2n_mac_t))) == 0){
-        traceEvent(TRACE_INFO, "%s is already used. Stopping the program", macaddr_str(mac_buf1, nak.srcMac));
+        traceEvent(TRACE_ERROR, "%s is already used. Stopping the program.", macaddr_str(mac_buf1, nak.srcMac));
         exit(1);
       } else {
         HASH_FIND_PEER(eee->known_peers, nak.srcMac, peer);
