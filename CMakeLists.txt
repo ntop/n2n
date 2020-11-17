@@ -39,22 +39,23 @@ add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
 
 # N2n specific params
-OPTION(N2N_OPTION_AES "USE AES" ON)
+OPTION(N2N_OPTION_USE_OPENSSL "USE OPENSSL Library" OFF)
 
-if(NOT DEFINED N2N_OPTION_AES)
-set(N2N_OPTION_AES ON)
-endif(NOT DEFINED N2N_OPTION_AES)
+if(NOT DEFINED N2N_OPTION_USE_OPENSSL)
+set(N2N_OPTION_USE_OPENSSL OFF)
+endif(NOT DEFINED N2N_OPTION_USE_OPENSSL)
 
-if(N2N_OPTION_AES)
+if(N2N_OPTION_USE_OPENSSL)
   find_package(OpenSSL QUIET)
   if(NOT OPENSSL_FOUND)
-    MESSAGE(WARNING "OpenSSL not found, AES disabled.")
-    set(N2N_OPTION_AES OFF)
+    MESSAGE(WARNING "OpenSSL not found, Use built-in AES.")
+    set(N2N_OPTION_USE_OPENSSL OFF)
   else()
+    MESSAGE(STATUS "Found OpenSSL ${OPENSSL_VERSION}")
     include_directories(${OPENSSL_INCLUDE_DIR})
-    add_definitions(-DN2N_HAVE_AES)
+    add_definitions(-DHAVE_OPENSSL_1_1)
   endif(NOT OPENSSL_FOUND)
-endif(N2N_OPTION_AES)
+endif(N2N_OPTION_USE_OPENSSL)
 
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
@@ -119,10 +120,10 @@ add_library(n2n STATIC
         src/sn_selection.c)
 
 
-if(N2N_OPTION_AES)
+if(N2N_OPTION_USE_OPENSSL)
 #  target_link_libraries(n2n crypto)
   target_link_libraries(n2n ${OPENSSL_LIBRARIES})
-endif(N2N_OPTION_AES)
+endif(N2N_OPTION_USE_OPENSSL)
 
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
