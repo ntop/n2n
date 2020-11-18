@@ -2102,10 +2102,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                   // shfiting to the next payload entry
                   payload++;
 		}
-
-		eee->last_sup = now;
-		eee->sn_wait=0;
-		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
+		    
 		if (eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
 		  if ((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
 		    net = htonl(ra.dev_addr.net_addr);
