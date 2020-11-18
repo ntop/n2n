@@ -432,14 +432,52 @@ typedef enum {
 
 /* *************************************************** */
 
-typedef struct network_traffic_filter
+typedef enum {
+  FPP_UNKNOWN=0,
+  FPP_ARP = 1,
+  FPP_TCP=2,
+  FPP_UDP=3,
+  FPP_ICMP=4,
+  FPP_IGMP=5
+} filter_packet_proto;
+
+
+typedef struct packet_address_proto_info{
+  in_addr_t           src_ip;
+  uint16_t            src_port;
+  in_addr_t           dst_ip;
+  uint16_t            dst_port;
+  filter_packet_proto proto;
+}packet_address_proto_info_t;
+
+typedef struct filter_rule_pair_cache
 {
-    n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee,
+  packet_address_proto_info_t key;
+
+  uint8_t             bool_allow_traffic;
+
+  uint32_t         active_count;
+
+  UT_hash_handle hh;         /* makes this structure hashable */
+} filter_rule_pair_cache_t;
+
+struct network_traffic_filter;
+typedef struct network_traffic_filter network_traffic_filter_t;
+
+struct network_traffic_filter
+{
+  n2n_verdict (*filter_packet_from_peer)(network_traffic_filter_t* filter, n2n_edge_t *eee,
                                            const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
 
-    n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
+  n2n_verdict (*filter_packet_from_tap)(network_traffic_filter_t* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
 
-} network_traffic_filter_t;
+  filter_rule_t *rules;
+
+  filter_rule_pair_cache_t *connections_rule_cache;
+
+  uint32_t work_count_scene_last_clear;
+
+};
 
 /* *************************************************** */
 

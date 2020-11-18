@@ -24,21 +24,6 @@
 #define CLEAR_CACHE_EVERY_X_COUNT 10000
 #define CLAER_CACHE_ACTIVE_COUNT 10
 
-typedef n2n_verdict (*filter_packet_from_peer_func_t)(struct network_traffic_filter* filter, n2n_edge_t *eee,
-                                       const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
-
-typedef n2n_verdict (*filter_packet_from_tap_func_t)(struct network_traffic_filter* filter, n2n_edge_t *eee,
-                                      uint8_t *payload, uint16_t payload_size);
-
-typedef enum {
-  FPP_UNKNOWN=0,
-  FPP_ARP = 1,
-  FPP_TCP=2,
-  FPP_UDP=3,
-  FPP_ICMP=4,
-  FPP_IGMP=5
-} filter_packet_proto;
-
 /* for [-Wmissing-declarations] */
 const char* get_filter_packet_proto_name(filter_packet_proto proto);
 
@@ -61,13 +46,6 @@ const char* get_filter_packet_proto_name(filter_packet_proto proto)
     }
 }
 
-typedef struct packet_address_proto_info{
-  in_addr_t           src_ip;
-  uint16_t            src_port;
-  in_addr_t           dst_ip;
-  uint16_t            dst_port;
-  filter_packet_proto proto;
-}packet_address_proto_info_t;
 
 /* for [-Wmissing-declarations] */
 const char* get_filter_packet_info_log_string(packet_address_proto_info_t* info);
@@ -205,16 +183,7 @@ const char* get_filter_rule_info_log_string(filter_rule_t* rule)
   return buf;
 }
 
-typedef struct filter_rule_pair_cache
-{
-  packet_address_proto_info_t key;
 
-  uint8_t             bool_allow_traffic;
-
-  uint32_t         active_count;
-
-  UT_hash_handle hh;         /* makes this structure hashable */
-} filter_rule_pair_cache_t;
 
 /* for [-Wmissing-declarations] */
 uint8_t march_cidr_and_address(in_addr_t network, uint8_t net_bitlen, in_addr_t ip_addr);
@@ -289,25 +258,11 @@ filter_rule_t* get_filter_rule(filter_rule_t **rules, packet_address_proto_info_
   return marched_rule;
 }
 
-typedef struct network_traffic_filter_impl
-{
-  n2n_verdict (*filter_packet_from_peer)(struct network_traffic_filter* filter, n2n_edge_t *eee,
-					 const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
-
-  n2n_verdict (*filter_packet_from_tap)(struct network_traffic_filter* filter, n2n_edge_t *eee,
-					uint8_t *payload, uint16_t payload_size);
-
-  filter_rule_t *rules;
-
-  filter_rule_pair_cache_t *connections_rule_cache;
-
-  uint32_t work_count_scene_last_clear;
-}network_traffic_filter_impl_t;
 
 /* for [-Wmissing-declarations] */
-void update_and_clear_cache_if_need(network_traffic_filter_impl_t *filter);
+void update_and_clear_cache_if_need(network_traffic_filter_t *filter);
 
-void update_and_clear_cache_if_need(network_traffic_filter_impl_t *filter)
+void update_and_clear_cache_if_need(network_traffic_filter_t *filter)
 {
   if( ++(filter->work_count_scene_last_clear) > CLEAR_CACHE_EVERY_X_COUNT)
     {
@@ -328,9 +283,9 @@ void update_and_clear_cache_if_need(network_traffic_filter_impl_t *filter)
 }
 
 /* for [-Wmissing-declarations] */
-filter_rule_pair_cache_t* get_or_create_filter_rule_cache(network_traffic_filter_impl_t *filter, packet_address_proto_info_t *pkt_addr_info);
+filter_rule_pair_cache_t* get_or_create_filter_rule_cache(network_traffic_filter_t *filter, packet_address_proto_info_t *pkt_addr_info);
 
-filter_rule_pair_cache_t* get_or_create_filter_rule_cache(network_traffic_filter_impl_t *filter, packet_address_proto_info_t *pkt_addr_info)
+filter_rule_pair_cache_t* get_or_create_filter_rule_cache(network_traffic_filter_t *filter, packet_address_proto_info_t *pkt_addr_info)
 {
   filter_rule_pair_cache_t* rule_cache_find_result = 0;
   HASH_FIND(hh, filter->connections_rule_cache, pkt_addr_info, sizeof(packet_address_proto_info_t), rule_cache_find_result);
@@ -367,9 +322,9 @@ filter_rule_pair_cache_t* get_or_create_filter_rule_cache(network_traffic_filter
 }
 
 /* for [-Wmissing-declarations] */
-n2n_verdict filter_packet_from_peer(network_traffic_filter_impl_t *filter, n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
+n2n_verdict filter_packet_from_peer(network_traffic_filter_t *filter, n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
 
-n2n_verdict filter_packet_from_peer(network_traffic_filter_impl_t *filter, n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size)
+n2n_verdict filter_packet_from_peer(network_traffic_filter_t *filter, n2n_edge_t *eee, const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size)
 {
   filter_rule_pair_cache_t *cur_pkt_rule = 0;
   packet_address_proto_info_t pkt_info;
@@ -385,9 +340,9 @@ n2n_verdict filter_packet_from_peer(network_traffic_filter_impl_t *filter, n2n_e
 }
 
 /* for [-Wmissing-declarations] */
-n2n_verdict filter_packet_from_tap(network_traffic_filter_impl_t *filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
+n2n_verdict filter_packet_from_tap(network_traffic_filter_t *filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
 
-n2n_verdict filter_packet_from_tap(network_traffic_filter_impl_t *filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size)
+n2n_verdict filter_packet_from_tap(network_traffic_filter_t *filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size)
 {
   filter_rule_pair_cache_t *cur_pkt_rule = 0;
   packet_address_proto_info_t pkt_info;
@@ -406,31 +361,30 @@ n2n_verdict filter_packet_from_tap(network_traffic_filter_impl_t *filter, n2n_ed
 network_traffic_filter_t *create_network_traffic_filter();
 
 network_traffic_filter_t *create_network_traffic_filter() {
-  network_traffic_filter_impl_t *filter = malloc(sizeof(network_traffic_filter_impl_t));
+  network_traffic_filter_t *filter = malloc(sizeof(network_traffic_filter_t));
 
-  memset(filter, 0, sizeof(network_traffic_filter_impl_t));
-  filter->filter_packet_from_peer = (filter_packet_from_peer_func_t)filter_packet_from_peer;
-  filter->filter_packet_from_tap = (filter_packet_from_tap_func_t)filter_packet_from_tap;
-  return (network_traffic_filter_t*)filter;
+  memset(filter, 0, sizeof(network_traffic_filter_t));
+  filter->filter_packet_from_peer = filter_packet_from_peer;
+  filter->filter_packet_from_tap = filter_packet_from_tap;
+  return filter;
 }
 
 /* for [-Wmissing-declarations] */
 void destroy_network_traffic_filter(network_traffic_filter_t *filter);
 
 void destroy_network_traffic_filter(network_traffic_filter_t *filter) {
-  network_traffic_filter_impl_t *_filter = (network_traffic_filter_impl_t*)filter;
   filter_rule_t *el = 0, *tmp = 0;
   filter_rule_pair_cache_t* el1 = 0, * tmp1 = 0;
 
-  HASH_ITER(hh, _filter->rules, el, tmp)
+  HASH_ITER(hh, filter->rules, el, tmp)
     {
-      HASH_DEL(_filter->rules, el);
+      HASH_DEL(filter->rules, el);
       free(el);
     }
 
-  HASH_ITER(hh, _filter->connections_rule_cache, el1, tmp1)
+  HASH_ITER(hh, filter->connections_rule_cache, el1, tmp1)
     {
-      HASH_DEL(_filter->connections_rule_cache, el1);
+      HASH_DEL(filter->connections_rule_cache, el1);
       free(el);
     }
 
@@ -444,10 +398,9 @@ void network_traffic_filter_add_rule(network_traffic_filter_t* filter, filter_ru
   filter_rule_t *item=NULL, *tmp=NULL;
 
   HASH_ITER(hh, rules, item, tmp) {
-    network_traffic_filter_impl_t *_filter = (network_traffic_filter_impl_t *)filter;
     filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
     memcpy(new_rule, item, sizeof(filter_rule_t));
-    HASH_ADD(hh, _filter->rules, key, sizeof(filter_rule_key_t), new_rule);
+    HASH_ADD(hh, filter->rules, key, sizeof(filter_rule_key_t), new_rule);
     traceEvent(TRACE_NORMAL, "### ADD network traffic filter %s", get_filter_rule_info_log_string(new_rule));
   }
 }
