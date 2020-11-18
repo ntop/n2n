@@ -1063,6 +1063,18 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
 /* ************************************** */
 
+/** NOT IMPLEMENTED
+ *
+ *  This would send a DEREGISTER packet to a peer edge or supernode to indicate
+ *  the edge is going away.
+ */
+static void send_deregister(n2n_edge_t * eee,
+                            n2n_sock_t * remote_peer) {
+  /* Marshall and send message */
+}
+
+/* ************************************** */
+
 /** Return the IP address of the current supernode in the ring. */
 static const char * supernode_ip(const n2n_edge_t * eee) {
   return (eee->curr_sn->ip_addr);
@@ -2340,6 +2352,8 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 #ifdef WIN32
   WaitForSingleObject(tun_read_thread, INFINITE);
 #endif
+	
+  send_deregister(eee, &(eee->supernode));
 
   closesocket(eee->udp_sock);
 
