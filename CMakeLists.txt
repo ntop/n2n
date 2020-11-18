@@ -40,6 +40,9 @@ OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
 
 # N2n specific params
 OPTION(N2N_OPTION_USE_OPENSSL "USE OPENSSL Library" OFF)
+OPTION(N2N_OPTION_USE_PCAPLIB "USE PCAP Library" OFF)
+OPTION(N2N_OPTION_USE_ZSTD "USE ZSTD Library" OFF)
+
 
 if(NOT DEFINED N2N_OPTION_USE_OPENSSL)
 set(N2N_OPTION_USE_OPENSSL OFF)
@@ -52,11 +55,18 @@ if(N2N_OPTION_USE_OPENSSL)
     set(N2N_OPTION_USE_OPENSSL OFF)
   else()
     MESSAGE(STATUS "Found OpenSSL ${OPENSSL_VERSION}")
-    include_directories(${OPENSSL_INCLUDE_DIR})
-    add_definitions(-DHAVE_OPENSSL_1_1)
+    string(COMPARE GREATER "${OPENSSL_VERSION}" "1.1"  OPENSSL_V11)
+    if(OPENSSL_V11)
+      MESSAGE(STATUS "Use OpenSSL With -DHAVE_OPENSSL_1_1")
+      include_directories(${OPENSSL_INCLUDE_DIR})
+      add_definitions(-DHAVE_OPENSSL_1_1)
+    endif()
   endif(NOT OPENSSL_FOUND)
 endif(N2N_OPTION_USE_OPENSSL)
 
+if(N2N_OPTION_USE_ZSTD)
+  add_definitions(-DN2N_HAVE_ZSTD)
+endif(N2N_OPTION_USE_ZSTD)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
@@ -125,6 +135,10 @@ if(N2N_OPTION_USE_OPENSSL)
   target_link_libraries(n2n ${OPENSSL_LIBRARIES})
 endif(N2N_OPTION_USE_OPENSSL)
 
+if(N2N_OPTION_USE_ZSTD)
+  target_link_libraries(n2n zstd)
+endif(N2N_OPTION_USE_ZSTD)
+
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
   add_subdirectory(win32)
@@ -146,7 +160,7 @@ target_link_libraries(example_edge_embed n2n)
 add_executable(example_sn_embed src/example_sn_embed.c)
 target_link_libraries(example_sn_embed n2n)
 
-if(NOT DEFINED WIN32)
+if(N2N_OPTION_USE_PCAPLIB AND (NOT DEFINED WIN32))
   # Linux Capabilities
   find_library(CAP_LIB cap)
   if(CAP_LIB)
@@ -154,7 +168,7 @@ if(NOT DEFINED WIN32)
     set(CMAKE_REQUIRED_LIBRARIES ${CAP_LIB})
     ADD_DEFINITIONS("-DHAVE_LIBCAP")
   endif()
-endif(NOT DEFINED WIN32)
+endif(N2N_OPTION_USE_PCAPLIB AND (NOT DEFINED WIN32))
 
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin
@@ -167,18 +181,20 @@ install(TARGETS edge supernode
 add_executable(n2n-benchmark tools/benchmark.c)
 target_link_libraries(n2n-benchmark n2n)
 
-find_library(PCAP_LIB pcap)
-if(PCAP_LIB)
-  add_executable(n2n-decode tools/n2n_decode.c)
-  target_link_libraries(n2n-decode n2n pcap)
-  install(TARGETS n2n-decode RUNTIME DESTINATION bin)
+if(N2N_OPTION_USE_PCAPLIB)
+  find_library(PCAP_LIB pcap)
+  if(PCAP_LIB)
+    add_executable(n2n-decode tools/n2n_decode.c)
+    target_link_libraries(n2n-decode n2n pcap)
+    install(TARGETS n2n-decode RUNTIME DESTINATION bin)
 
-  set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
-  check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
-  IF(HAVE_PCAP_IMMEDIATE_MODE)
-    ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
-  ENDIF(HAVE_PCAP_IMMEDIATE_MODE)
-endif(PCAP_LIB)
+    set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
+    check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
+    IF(HAVE_PCAP_IMMEDIATE_MODE)
+      ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
+    ENDIF(HAVE_PCAP_IMMEDIATE_MODE)
+  endif(PCAP_LIB)
+endif(N2N_OPTION_USE_PCAPLIB)
 
 install(TARGETS n2n-benchmark RUNTIME DESTINATION bin)
 
