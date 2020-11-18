@@ -809,6 +809,7 @@ static void send_register_super(n2n_edge_t *eee) {
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
   memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
+  reg.auth.scheme = 0; /* No auth yet */
 
   idx = 0;
   encode_mac(reg.edgeMac, &idx, eee->device.mac_addr);
@@ -1803,7 +1804,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
 	    len = tmp_len;
 	  }
 	      
-	  if (!eee->last_sup) {
+	   if (!eee->last_sup) {
             // drop packets before first registration with supernode
             traceEvent(TRACE_DEBUG, "DROP packet before first registration with supernode");
             return;
@@ -1920,7 +1921,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  }
 	}
 	      
-	if (!eee->last_sup) {
+	 if (!eee->last_sup) {
           // drop packets received before first registration with supernode
           traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET recevied before first registration with supernode.");
           return;
@@ -2120,7 +2121,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		  }
 		}
 		    
-		if (!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
+		 if (!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
                   send_grat_arps(eee);
 
 		eee->last_sup = now;
