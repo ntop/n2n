@@ -16,8 +16,8 @@
  *
  */
 
-#include "n2n.h"
 #include "network_traffic_filter.h"
+#include "n2n.h"
 #include "edge_utils_win32.h"
 
 /* heap allocation for compression as per lzo example doc */
@@ -179,6 +179,7 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   n2n_edge_t *eee = calloc(1, sizeof(n2n_edge_t));
   int rc = -1, i = 0;
   struct peer_info *scan, *tmp;
+  size_t idx = 0;
 
   if((rc = edge_verify_conf(conf)) != 0) {
     traceEvent(TRACE_ERROR, "Invalid configuration");
@@ -259,6 +260,14 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
   // if called in-between, see "Supernode not responding" in update_supernode_reg(...)
   eee->udp_sock = -1;
   eee->udp_mgmt_sock = -1;
+
+  eee->conf.auth.scheme = n2n_auth_simple_id;
+
+  for (idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx)
+    eee->conf.auth.token[idx] = n2n_rand() % 0xff;
+
+  eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
+
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
   eee->udp_multicast_sock = -1;
 #endif
@@ -272,8 +281,10 @@ n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv) {
     goto edge_init_error;
   }
 
+#ifdef FILTER_TRAFFIC
   eee->network_traffic_filter = create_network_traffic_filter();
   network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
+#endif
 
   //edge_init_success:
   *rv = 0;
@@ -385,6 +396,20 @@ static void register_with_local_peers(n2n_edge_t * eee) {
 }
 
 /* ************************************** */
+ static struct peer_info* find_peer_by_sock(const n2n_sock_t *sock, struct peer_info *peer_list){
+   struct peer_info *scan, *tmp, *ret = NULL;
+   
+   HASH_ITER(hh, peer_list, scan, tmp){
+     if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t)) == 0){
+       ret = scan;
+       break;
+     }
+   }
+   
+   return ret;
+ }
+
+/* ************************************** */
 
 /** Start the registration process.
  *
@@ -494,6 +519,17 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
 
   HASH_FIND_PEER(eee->known_peers, mac, scan);
 
+  /* If we were not able to find it by MAC, we try to find it by socket. */
+  if(scan == NULL ){
+    scan = find_peer_by_sock(peer, eee->known_peers);
+
+    if(scan){
+      HASH_DEL(eee->known_peers, scan);
+      memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
+      HASH_ADD_PEER(eee->known_peers, scan);
+    }
+  }
+
   if (scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
     register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
@@ -521,19 +557,28 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 				   const n2n_mac_t mac,
 				   const n2n_sock_t * peer,
 				   time_t now) {
-  struct peer_info *scan;
+  struct peer_info *scan, *scan_tmp;
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
   HASH_FIND_PEER(eee->pending_peers, mac, scan);
+  if(scan == NULL){
+    scan = find_peer_by_sock(peer, eee->pending_peers);
+  }
 
   if(scan) {
     HASH_DEL(eee->pending_peers, scan);
 
-    /* Add scan to known_peers. */
-    HASH_ADD_PEER(eee->known_peers, scan);
+    scan_tmp = find_peer_by_sock(peer, eee->known_peers);
+    if(scan_tmp != NULL){
+      HASH_DEL(eee->known_peers, scan_tmp);
+      scan = scan_tmp;
+      memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
+    } else {
+      scan->sock = *peer;
+    }
 
-    scan->sock = *peer;
+    HASH_ADD_PEER(eee->known_peers, scan);
     scan->last_p2p = now;
 
     traceEvent(TRACE_DEBUG, "P2P connection established: %s [%s]",
@@ -773,7 +818,7 @@ static void send_register_super(n2n_edge_t *eee) {
   reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
   reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
   memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
-  reg.auth.scheme = 0; /* No auth yet */
+  memcpy(&(reg.auth), &(eee->conf.auth), sizeof(n2n_auth_t));
 
   idx = 0;
   encode_mac(reg.edgeMac, &idx, eee->device.mac_addr);
@@ -793,10 +838,49 @@ static void send_register_super(n2n_edge_t *eee) {
 }
 
 
+static void send_unregister_super(n2n_edge_t *eee){
+  uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
+  size_t idx;
+  /* ssize_t sent; */
+  n2n_common_t cmn;
+  n2n_UNREGISTER_SUPER_t unreg;
+  n2n_sock_str_t sockbuf;
+
+  memset(&cmn, 0, sizeof(cmn));
+  memset(&unreg, 0, sizeof(unreg));
+
+  cmn.ttl = N2N_DEFAULT_TTL;
+  cmn.pc = n2n_unregister_super;
+  cmn.flags = 0;
+  memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
+
+  memcpy(&(unreg.auth), &(eee->conf.auth), sizeof(n2n_auth_t));
+
+  idx = 0;
+  encode_mac(unreg.srcMac, &idx, eee->device.mac_addr);
+
+  idx = 0;
+  encode_UNREGISTER_SUPER(pktbuf, &idx, &cmn, &unreg);
+
+  traceEvent(TRACE_DEBUG, "send UNREGISTER_SUPER to %s",
+	     sock_to_cstr(sockbuf, &(eee->curr_sn->sock)));
+
+  if (eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
+    packet_header_encrypt(pktbuf, idx, eee->conf.header_encryption_ctx,
+			  eee->conf.header_iv_ctx,
+			  time_stamp(), pearson_hash_16(pktbuf, idx));
+
+  /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, &(eee->curr_sn->sock));
+
+}
+
+
 static int sort_supernodes(n2n_edge_t *eee, time_t now){
   struct peer_info *scan, *tmp;
 
   if(eee->curr_sn != eee->conf.supernodes){
+    send_unregister_super(eee);
+
     eee->curr_sn = eee->conf.supernodes;
     memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
@@ -1022,19 +1106,9 @@ void update_supernode_reg(n2n_edge_t * eee, time_t nowTime) {
 
   eee->sn_wait=1;
 
+  send_grat_arps(eee);
+
   eee->last_register_req = nowTime;
-}
-
-/* ************************************** */
-
-/** NOT IMPLEMENTED
- *
- *  This would send a DEREGISTER packet to a peer edge or supernode to indicate
- *  the edge is going away.
- */
-static void send_deregister(n2n_edge_t * eee,
-                            n2n_sock_t * remote_peer) {
-  /* Marshall and send message */
 }
 
 /* ************************************** */
@@ -1168,11 +1242,13 @@ static int handle_PACKET(n2n_edge_t * eee,
 	}
       }
 
+#ifdef FILTER_TRAFFIC
       if(eee->network_traffic_filter->filter_packet_from_peer( eee->network_traffic_filter, eee, orig_sender,
 								eth_payload, eth_size ) == N2N_DROP){
         traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)eth_size);
         return(0);
       }
+#endif
 
       if(eee->cb.packet_from_peer) {
 	uint16_t tmp_eth_size = eth_size;
@@ -1749,6 +1825,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
         }
       else
         {
+#ifdef FILTER_TRAFFIC
 	  if(eee->network_traffic_filter) {
 	    if( eee->network_traffic_filter->filter_packet_from_tap( eee->network_traffic_filter, eee, eth_pkt,
 								     len) == N2N_DROP){
@@ -1756,6 +1833,7 @@ void edge_read_from_tap(n2n_edge_t * eee) {
               return;
 	    }
 	  }
+#endif
 
 	  if(eee->cb.packet_from_tap) {
 	    uint16_t tmp_len = len;
@@ -1766,12 +1844,6 @@ void edge_read_from_tap(n2n_edge_t * eee) {
 	    }
 	    len = tmp_len;
 	  }
-
-          if (!eee->last_sup) {
-            // drop packets before first registration with supernode
-            traceEvent(TRACE_DEBUG, "DROP packet before first registration with supernode");
-            return;
-          }
 
 	  edge_send_packet2net(eee, eth_pkt, len);
         }
@@ -1883,12 +1955,6 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	    return;
 	  }
 	}
-
-        if (!eee->last_sup) {
-          // drop packets received before first registration with supernode
-          traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET recevied before first registration with supernode.");
-          return;
-        }
 
 	if(is_valid_peer_sock(&pkt.sock))
 	  orig_sender = &(pkt.sock);
@@ -2066,6 +2132,9 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                   payload++;
 		}
 
+		eee->last_sup = now;
+		eee->sn_wait=0;
+		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 		if (eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
 		  if ((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
 		    net = htonl(ra.dev_addr.net_addr);
@@ -2080,13 +2149,6 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		    }
 		  }
 		}
-
-                if (!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
-                  send_grat_arps(eee);
-
-		eee->last_sup = now;
-		eee->sn_wait=0;
-		eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
 		if(eee->cb.sn_registration_updated)
 		  eee->cb.sn_registration_updated(eee, now, &sender);
@@ -2107,6 +2169,33 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	  }
 	break;
       }
+    case MSG_TYPE_REGISTER_SUPER_NAK: {
+      n2n_REGISTER_SUPER_NAK_t nak;
+      struct peer_info *peer, *scan;
+
+      memset(&nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
+      
+      decode_REGISTER_SUPER_NAK(&nak, &cmn, udp_buf, &rem, &idx);
+      
+      traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_NAK");
+      
+      if((memcmp(&(nak.srcMac), &(eee->device.mac_addr), sizeof(n2n_mac_t))) == 0){
+        traceEvent(TRACE_ERROR, "%s is already used. Stopping the program.", macaddr_str(mac_buf1, nak.srcMac));
+        exit(1);
+      } else {
+        HASH_FIND_PEER(eee->known_peers, nak.srcMac, peer);
+        if(peer != NULL){
+          HASH_DEL(eee->known_peers, peer);
+        }
+        
+        HASH_FIND_PEER(eee->pending_peers, nak.srcMac, scan);
+        if(scan != NULL){
+          HASH_DEL(eee->pending_peers, scan);
+        }
+      }
+      
+      break;
+    }
     case MSG_TYPE_PEER_INFO: {
       n2n_PEER_INFO_t pi;
       struct peer_info *  scan;
@@ -2314,7 +2403,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
   WaitForSingleObject(tun_read_thread, INFINITE);
 #endif
 
-  send_deregister(eee, &(eee->supernode));
+  send_unregister_super(eee);
 
   closesocket(eee->udp_sock);
 
@@ -2325,6 +2414,7 @@ int run_edge_loop(n2n_edge_t * eee, int *keep_running) {
 
 /** Deinitialise the edge and deallocate any owned memory. */
 void edge_term(n2n_edge_t * eee) {
+
   if(eee->udp_sock >= 0)
     closesocket(eee->udp_sock);
 
@@ -2343,7 +2433,9 @@ void edge_term(n2n_edge_t * eee) {
 
   edge_cleanup_routes(eee);
 
+#ifdef FILTER_TRAFFIC
   destroy_network_traffic_filter(eee->network_traffic_filter);
+#endif
 
   closeTraceFile();
 
@@ -2844,6 +2936,7 @@ void edge_term_conf(n2n_edge_conf_t *conf) {
   if (conf->routes) free(conf->routes);
   if (conf->encrypt_key) free(conf->encrypt_key);
 
+#ifdef FILTER_TRAFFIC
   if(conf->network_traffic_filter_rules)
     {
       filter_rule_t *el = 0, *tmp = 0;
@@ -2853,6 +2946,7 @@ void edge_term_conf(n2n_edge_conf_t *conf) {
 	  free(el);
 	}
     }
+#endif
 }
 
 /* ************************************** */
