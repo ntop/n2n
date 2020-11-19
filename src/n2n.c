@@ -385,6 +385,26 @@ void print_n2n_version() {
 
 /* *********************************************** */
 
+size_t purge_expired_pending_peers(struct peer_info ** pending_peers_list, time_t* p_last_purge, int timeout) {
+  time_t now = time(NULL);
+  if((now - (*p_last_purge)) < timeout) return 0;
+
+  traceEvent(TRACE_DEBUG, "Purging old registrations");
+
+  struct peer_info *scan, *tmp;
+  size_t retval=0;
+
+  HASH_ITER(hh, *pending_peers_list, scan, tmp) {
+    if(scan->purgeable == SN_PURGEABLE && scan->last_try_punching_time < (now - NAT_PUNCHING_TIMEOUT)) {
+      HASH_DEL(*pending_peers_list, scan);
+      retval++;
+      free(scan);
+    }
+  }
+  (*p_last_purge) = now;
+  return retval;
+}
+
 size_t purge_expired_registrations(struct peer_info ** peer_list, time_t* p_last_purge, int timeout) {
   time_t now = time(NULL);
   size_t num_reg = 0;

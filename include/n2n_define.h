@@ -39,8 +39,10 @@
 #define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE		(sizeof(n2n_REGISTER_SUPER_ACK_payload_t))
 
 #define PURGE_REGISTRATION_FREQUENCY   30
+#define PURGE_PENDING_PEERS_FREQUENCY  5
 #define RE_REG_AND_PURGE_FREQUENCY     10
 #define REGISTRATION_TIMEOUT           60
+#define NAT_PUNCHING_TIMEOUT           10
 
 #define SOCKET_TIMEOUT_INTERVAL_SECS    10
 #define REGISTER_SUPER_INTERVAL_DFL     20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
