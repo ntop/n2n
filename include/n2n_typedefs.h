@@ -252,7 +252,15 @@ typedef enum n2n_pc
    n2n_query_peer=10           /* ask supernode for info on a peer */
   } n2n_pc_t;
 
-#define N2N_FLAGS_OPTIONS               0x0080
+
+/* This value is used in sn_utils.c process_udp, flags large than this value will make supernode treat packet's header as encrypted.
+ * If add new flags, must change N2N_FLAGS_MAX_VALUE at the same time.*/
+#define N2N_FLAGS_MAX_VALUE            0x0100
+
+/* Set at edge if the packet paylod is ARP. Supernode always forward ARP packet.*/
+#define N2N_FLAGS_ARP_PACKET            0x0100
+
+#define N2N_FLAGS_OPTIONS               0x0080 // TODO: this flags not need any more, can be delete.
 #define N2N_FLAGS_SOCKET                0x0040
 #define N2N_FLAGS_FROM_SUPERNODE        0x0020
 

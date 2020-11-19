@@ -1632,6 +1632,9 @@ void edge_send_packet2net(n2n_edge_t * eee,
   cmn.ttl = N2N_DEFAULT_TTL;
   cmn.pc = n2n_packet;
   cmn.flags=0; /* no options, not from supernode, no socket */
+  if( ntohs(eh.type) == 0x0806 ) /* arp packet */
+    cmn.flags |= N2N_FLAGS_ARP_PACKET;
+
   memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
   memset(&pkt, 0, sizeof(pkt));

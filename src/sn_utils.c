@@ -854,7 +854,7 @@ static int process_udp(n2n_sn_t * sss,
   if ( (udp_buf[19] == (uint8_t)0x00) // null terminated community name
        && (udp_buf[00] == N2N_PKT_VERSION) // correct packet version
        && ((be16toh (*(uint16_t*)&(udp_buf[02])) & N2N_FLAGS_TYPE_MASK ) <= MSG_TYPE_MAX_TYPE  ) // message type
-       && ( be16toh (*(uint16_t*)&(udp_buf[02])) < N2N_FLAGS_OPTIONS) // flags
+       && ((be16toh (*(uint16_t*)&(udp_buf[02])) & N2N_FLAGS_BITS_MASK ) <= N2N_FLAGS_MAX_VALUE) // flags
        ) {
     /* most probably unencrypted */
     /* make sure, no downgrading happens here and no unencrypted packets can be
@@ -1017,9 +1017,9 @@ static int process_udp(n2n_sn_t * sss,
 				 comm->header_iv_ctx,
 				 time_stamp (), pearson_hash_16 (rec_buf, udp_size));
       }
-
-      /* Common section to forward the final product. */
-      if(unicast && sss->enable_forward)
+    if((cmn.flags & N2N_FLAGS_ARP_PACKET))
+      /* Forward no broadcast packet only if forward flag enabled, or the packet is arp packet. */
+      if(unicast && (sss->enable_forward || (cmn.flags & N2N_FLAGS_ARP_PACKET)))
 	try_forward(sss, comm, &cmn, pkt.dstMac, from_supernode, rec_buf, encx);
       else if(!unicast)
 	try_broadcast(sss, comm, &cmn, pkt.srcMac, from_supernode, rec_buf, encx);
