@@ -245,11 +245,12 @@ typedef enum n2n_pc
    n2n_packet=3,               /* PACKET data content */
    n2n_register_ack=4,         /* ACK of a registration from edge to edge */
    n2n_register_super=5,       /* Register edge to supernode */
-   n2n_register_super_ack=6,   /* ACK from supernode to edge */
-   n2n_register_super_nak=7,   /* NAK from supernode to edge - registration refused */
-   n2n_federation=8,           /* Not used by edge */
-   n2n_peer_info=9,            /* Send info on a peer from sn to edge */
-   n2n_query_peer=10           /* ask supernode for info on a peer */
+   n2n_unregister_super=6,     /* Deregister edge from supernode */
+   n2n_register_super_ack=7,   /* ACK from supernode to edge */
+   n2n_register_super_nak=8,   /* NAK from supernode to edge - registration refused */
+   n2n_federation=9,           /* Not used by edge */
+   n2n_peer_info=10,           /* Send info on a peer from sn to edge */
+   n2n_query_peer=11           /* ask supernode for info on a peer */
   } n2n_pc_t;
 
 
@@ -296,6 +297,20 @@ typedef struct n2n_sock
     uint8_t     v4[IPV4_SIZE];  /* byte sequence */
   } addr;
 } n2n_sock_t;
+
+typedef enum 
+{
+  n2n_auth_none = 0,
+  n2n_auth_simple_id = 1
+} n2n_auth_scheme_t;
+
+typedef enum
+{
+  update_edge_no_change = 0,
+  update_edge_sock_change = 1,
+  update_edge_new_sn = 2,
+  update_edge_auth_fail = -1
+} update_edge_ret_value_t;
 
 typedef struct n2n_auth
 {
@@ -346,6 +361,7 @@ typedef struct n2n_PACKET
 typedef struct n2n_REGISTER_SUPER {
   n2n_cookie_t        cookie;         /**< Link REGISTER_SUPER and REGISTER_SUPER_ACK */
   n2n_mac_t           edgeMac;        /**< MAC to register with edge sending socket */
+  n2n_sock_t          sock;           /**< Sending socket associated with srcMac */
   n2n_ip_subnet_t     dev_addr;       /**< IP address of the tuntap adapter. */
   n2n_desc_t          dev_desc;       /**< Hint description correlated with the edge */
   n2n_auth_t          auth;           /**< Authentication scheme and tokens */
@@ -374,6 +390,7 @@ typedef struct n2n_REGISTER_SUPER_ACK {
 typedef struct n2n_REGISTER_SUPER_NAK
 {
   n2n_cookie_t        cookie;         /* Return cookie from REGISTER_SUPER */
+  n2n_mac_t           srcMac;
 } n2n_REGISTER_SUPER_NAK_t;
 
 
@@ -383,6 +400,14 @@ typedef struct n2n_REGISTER_SUPER_ACK_payload {
   n2n_sock_t           sock;          /**< socket of supernode */
   n2n_mac_t            mac;           /**< MAC of supernode */
 } n2n_REGISTER_SUPER_ACK_payload_t;
+
+
+/* Linked with n2n_unregister_super in n2n_pc_t. */
+typedef struct n2n_UNREGISTER_SUPER
+{
+  n2n_auth_t auth;
+  n2n_mac_t srcMac;
+} n2n_UNREGISTER_SUPER_t;
 
 
 typedef struct n2n_PEER_INFO {
@@ -409,6 +434,7 @@ struct peer_info {
   n2n_desc_t       dev_desc;
   n2n_sock_t       sock;
   n2n_cookie_t     last_cookie;
+  n2n_auth_t       auth;
   int              timeout;
   uint8_t          purgeable;
   time_t           last_seen;
@@ -478,9 +504,8 @@ struct network_traffic_filter
                                            const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
 
   n2n_verdict (*filter_packet_from_tap)(network_traffic_filter_t* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
-
+  
   filter_rule_t *rules;
-
   filter_rule_pair_cache_t *connections_rule_cache;
 
   uint32_t work_count_scene_last_clear;
@@ -592,6 +617,7 @@ typedef struct n2n_edge_conf {
   int                 register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
   int                 local_port;
   int                 mgmt_port;
+  n2n_auth_t          auth;
   filter_rule_t       *network_traffic_filter_rules;
 } n2n_edge_conf_t;
 
@@ -707,6 +733,7 @@ typedef struct n2n_sn
   struct sn_community_regular_expression *rules;
   struct sn_community *federation;
   uint8_t enable_forward; /* 0 for disable forward, 1 for */
+  n2n_auth_t auth;
 } n2n_sn_t;
 
 
