@@ -1505,7 +1505,7 @@ static int check_query_peer_info(n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
     scan->timeout = eee->conf.register_interval; /* TODO: should correspond to the peer supernode registration timeout */
     scan->last_seen = now; /* Don't change this it marks the pending peer for removal. */
     scan->last_valid_time_stamp = initial_time_stamp ();
-
+    scan->last_try_punching_time = time(NULL);
     HASH_ADD_PEER(eee->pending_peers, scan);
   }
 
