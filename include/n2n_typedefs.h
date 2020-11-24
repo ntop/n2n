@@ -728,7 +728,14 @@ typedef struct n2n_sn
   n2n_auth_t auth;
 } n2n_sn_t;
 
-
+#if defined(WIN32)
+// used for n2n.c's clock_gettime() replacement and calls thereof
+// from time_stamp() and several functions of tools/benchmark.c
+struct timespec {
+  long tv_sec;
+  long tv_nsec;
+};
+#endif
 
 
 #endif /* _N2N_TYPEDEFS_H_ */

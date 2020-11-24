@@ -18,8 +18,8 @@
 
 #include "n2n.h"
 
-#define DURATION                2.5   // test duration per algorithm
-#define PACKETS_BEFORE_GETTIME  2047  // do not check time after every packet but after (2 ^ n - 1)
+#define DURATION                2.5   // test duration per algorithm (seconds)
+#define PACKETS_BEFORE_GETTIME  4095  // do not check time after every packet but after (2 ^ n - 1)
 
 /* heap allocation for compression as per lzo example doc */
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
@@ -130,10 +130,10 @@ static void deinit_compression_for_benchmark(void) {
 
 static void run_compression_benchmark() {
   const float target_sec = DURATION;
-  struct timeval t1;
-  struct timeval t2;
-  ssize_t target_usec = target_sec * 1e6;
-  ssize_t tdiff; // microseconds
+  struct timespec t1;
+  struct timespec t2;
+  ssize_t target_nsec = target_sec * 1e9;
+  ssize_t tdiff; // nanoseconds
   size_t num_packets;
   float mpps;
   uint8_t compression_buffer[N2N_PKT_BUF_SIZE]; // size allows enough of a reserve required for compression
@@ -147,9 +147,9 @@ static void run_compression_benchmark() {
   fflush(stdout);
   tdiff = 0;
   num_packets = 0;
-  gettimeofday( &t1, NULL );
+  clock_gettime(CLOCK_REALTIME, &t1);
 
-  while(tdiff < target_usec) {
+  while(tdiff < target_nsec) {
     compression_len = N2N_PKT_BUF_SIZE;
     if(lzo1x_1_compress(PKT_CONTENT, sizeof(PKT_CONTENT), compression_buffer, &compression_len, wrkmem) != LZO_E_OK) {
       printf("\n\t compression error\n");
@@ -157,11 +157,11 @@ static void run_compression_benchmark() {
     }
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+      clock_gettime(CLOCK_REALTIME, &t2);
+      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000000) + (t2.tv_nsec - t1.tv_nsec);
     }
   }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
+  mpps = num_packets / (tdiff / 1e9) / 1e6;
   printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
 
@@ -171,18 +171,18 @@ static void run_compression_benchmark() {
   fflush(stdout);
   tdiff = 0;
   num_packets = 0;
-  gettimeofday( &t1, NULL );
+  clock_gettime(CLOCK_REALTIME, &t1);
 
-  while(tdiff < target_usec) {
+  while(tdiff < target_nsec) {
     deflated_len = N2N_PKT_BUF_SIZE;
     lzo1x_decompress (compression_buffer, compression_len, deflation_buffer, (lzo_uint*)&deflated_len, NULL);
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+      clock_gettime(CLOCK_REALTIME, &t2);
+      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000000) + (t2.tv_nsec - t1.tv_nsec);
     }
   }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
+  mpps = num_packets / (tdiff / 1e9) / 1e6;
   printf(" <--- (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
   if(memcmp(deflation_buffer, PKT_CONTENT, sizeof(PKT_CONTENT)) != 0)
@@ -196,8 +196,9 @@ static void run_compression_benchmark() {
   fflush(stdout);
   tdiff = 0;
   num_packets = 0;
-  gettimeofday( &t1, NULL );
-  while(tdiff < target_usec) {
+  clock_gettime(CLOCK_REALTIME, &t1);
+
+  while(tdiff < target_nsec) {
     compression_len = N2N_PKT_BUF_SIZE;
     compression_len = ZSTD_compress(compression_buffer, compression_len, PKT_CONTENT, sizeof(PKT_CONTENT), ZSTD_COMPRESSION_LEVEL) ;
     if(ZSTD_isError(compression_len)) {
@@ -206,11 +207,11 @@ static void run_compression_benchmark() {
     }
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+      clock_gettime(CLOCK_REALTIME, &t2);
+      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000000) + (t2.tv_nsec - t1.tv_nsec);
     }
   }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
+  mpps = num_packets / (tdiff / 1e9) / 1e6;
   printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
 
@@ -220,8 +221,9 @@ static void run_compression_benchmark() {
   fflush(stdout);
   tdiff = 0;
   num_packets = 0;
-  gettimeofday( &t1, NULL );
-  while(tdiff < target_usec) {
+  clock_gettime(CLOCK_REALTIME, &t1);
+
+  while(tdiff < target_nsec) {
     deflated_len = N2N_PKT_BUF_SIZE;
     deflated_len = (int32_t)ZSTD_decompress (deflation_buffer, deflated_len, compression_buffer, compression_len);
     if(ZSTD_isError(deflated_len)) {
@@ -231,11 +233,11 @@ static void run_compression_benchmark() {
     }
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+      clock_gettime(CLOCK_REALTIME, &t2);
+      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000000) + (t2.tv_nsec - t1.tv_nsec);
     }
   }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
+  mpps = num_packets / (tdiff / 1e9) / 1e6;
   printf(" <--- (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
   if(memcmp(deflation_buffer, PKT_CONTENT, sizeof(PKT_CONTENT)) != 0)
@@ -248,11 +250,11 @@ static void run_compression_benchmark() {
 
 static void run_hashing_benchmark(void) {
   const float target_sec = DURATION;
-  struct timeval t1;
-  struct timeval t2;
+  struct timespec t1;
+  struct timespec t2;
   ssize_t nw;
-  ssize_t target_usec = target_sec * 1e6;
-  ssize_t tdiff = 0; // microseconds
+  ssize_t target_nsec = target_sec * 1e9;
+  ssize_t tdiff = 0; // nanoseconds
   size_t num_packets = 0;
 
   uint32_t hash;
@@ -261,20 +263,20 @@ static void run_hashing_benchmark(void) {
 	 "prs32", "hash", target_sec, (unsigned int)sizeof(PKT_CONTENT));
   fflush(stdout);
 
-  gettimeofday( &t1, NULL );
+  clock_gettime(CLOCK_REALTIME, &t1);
   nw = 4;
 
-  while(tdiff < target_usec) {
+  while(tdiff < target_nsec) {
     hash = pearson_hash_32 (PKT_CONTENT, sizeof(PKT_CONTENT));
     hash++; // clever compiler finds out that we do no use the variable
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+      clock_gettime(CLOCK_REALTIME, &t2);
+      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000000) + (t2.tv_nsec - t1.tv_nsec);
     }
   }
 
-  float mpps = num_packets / (tdiff / 1e6) / 1e6;
+  float mpps = num_packets / (tdiff / 1e9) / 1e6;
 
   printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
@@ -289,13 +291,13 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
   n2n_mac_t mac_buf;
   uint8_t decodebuf[N2N_PKT_BUF_SIZE];
   const float target_sec = DURATION;
-  struct timeval t1;
-  struct timeval t2;
+  struct timespec t1;
+  struct timespec t2;
   size_t idx;
   size_t rem;
   size_t nw;
-  ssize_t target_usec = target_sec * 1e6;
-  ssize_t tdiff; // microseconds
+  ssize_t target_nsec = target_sec * 1e9;
+  ssize_t tdiff; // nanoseconds
   size_t num_packets;
   float mpps;
 
@@ -306,19 +308,20 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
   memset(mac_buf, 0, sizeof(mac_buf));
   num_packets = 0;
   tdiff = 0;
-  gettimeofday( &t1, NULL );
-  while(tdiff < target_usec) {
+  clock_gettime(CLOCK_REALTIME, &t1);
+
+  while(tdiff < target_nsec) {
     nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, conf->community_name);
     nw += op_fn->fwd(op_fn,
 		     pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
 		     PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+      clock_gettime(CLOCK_REALTIME, &t2);
+      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000000) + (t2.tv_nsec - t1.tv_nsec);
     }
   }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
+  mpps = num_packets / (tdiff / 1e9) / 1e6;
   printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
 
@@ -328,8 +331,9 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
   fflush(stdout);
   num_packets = 0;
   tdiff = 0;
-  gettimeofday( &t1, NULL );
-  while(tdiff < target_usec) {
+  clock_gettime(CLOCK_REALTIME, &t1);
+
+  while(tdiff < target_nsec) {
     idx=0;
     rem=nw;
     decode_common( &cmn, pktbuf, &rem, &idx);
@@ -337,11 +341,11 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
     op_fn->rev(op_fn, decodebuf, N2N_PKT_BUF_SIZE, pktbuf+idx, rem, 0);
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+      clock_gettime(CLOCK_REALTIME, &t2);
+      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000000) + (t2.tv_nsec - t1.tv_nsec);
     }
   }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
+  mpps = num_packets / (tdiff / 1e9) / 1e6;
   printf(" <--- (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
   if(memcmp(decodebuf, PKT_CONTENT, sizeof(PKT_CONTENT)) != 0)

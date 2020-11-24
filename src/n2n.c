@@ -523,22 +523,21 @@ int sock_equal(const n2n_sock_t * a,
 /* *********************************************** */
 
 #if defined(WIN32)
-int gettimeofday(struct timeval *tp, void *tzp) {
-  time_t clock;
-  struct tm tm;
-  SYSTEMTIME wtm;
-  GetLocalTime(&wtm);
-  tm.tm_year = wtm.wYear - 1900;
-  tm.tm_mon = wtm.wMonth - 1;
-  tm.tm_mday = wtm.wDay;
-  tm.tm_hour = wtm.wHour;
-  tm.tm_min = wtm.wMinute;
-  tm.tm_sec = wtm.wSecond;
-  tm.tm_isdst = -1;
-  clock = mktime(&tm);
-  tp->tv_sec = clock;
-  tp->tv_usec = wtm.wMilliseconds * 1000;
-  return (0);
+// taken from https://stackoverflow.com/a/31335254
+struct timespec {
+  long tv_sec;
+  long tv_nsec;
+};
+
+int clock_gettime (int any_clock_type, struct timespec *spec) {
+
+  __int64 wintime;
+  GetSystemTimeAsFileTime((FILETIME*)&wintime);
+  wintime      -=116444736000000000i64;      // from 01 JAN 1601 to 01 JAN 1970
+  spec->tv_sec  =wintime / 10000000i64;      // seconds
+  spec->tv_nsec =wintime % 10000000i64 *100; // nanoseconds (100 ns accuracy)
+
+  return 0;
 }
 #endif
 
@@ -546,19 +545,19 @@ int gettimeofday(struct timeval *tp, void *tzp) {
 // returns a time stamp for use with replay protection
 uint64_t time_stamp (void) {
 
-  struct timeval tod;
+  struct timespec t;
   uint64_t micro_seconds;
 
-  gettimeofday (&tod, NULL);
+  clock_gettime(CLOCK_REALTIME, &t);
   /* We will (roughly) calculate the microseconds since 1970 leftbound into the return value.
      The leading 32 bits are used for tv_sec. The following 20 bits (sufficent as microseconds
-     fraction never exceeds 1,000,000,) encode the value tv_usec. The remaining lowest 12 bits
-     are kept random for use in IV */
+     fraction never exceeds 1,000,000,) encode the value tv_nsec/1024 ( ~ usec). The remaining
+     lowest 12 bits are kept random for use in IV */
   micro_seconds = n2n_rand();
-  micro_seconds = ( (((uint64_t)(tod.tv_sec) << 32) + (tod.tv_usec << 12))
+  micro_seconds = ( (((uint64_t)(t.tv_sec) << 32) + ((t.tv_nsec >> 10) << 12))
                   |  (micro_seconds >> 52) );
-  // more exact but more costly due to the multiplication:
-  // micro_seconds = (tod.tv_sec * 1000000 + tod.tv_usec) << 12) | ...
+  // more exact but more costly due to the multiplication and divison
+  // micro_seconds = (t.tv_sec * 1000000 + t.tv_nsec / 1000) << 12) | ...
 
   return (micro_seconds);
 }
