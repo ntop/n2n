@@ -524,11 +524,6 @@ int sock_equal(const n2n_sock_t * a,
 
 #if defined(WIN32)
 // taken from https://stackoverflow.com/a/31335254
-struct timespec {
-  long tv_sec;
-  long tv_nsec;
-};
-
 int clock_gettime (int any_clock_type, struct timespec *spec) {
 
   __int64 wintime;
