@@ -394,6 +394,20 @@ static void register_with_local_peers(n2n_edge_t * eee) {
 }
 
 /* ************************************** */
+ static struct peer_info* find_peer_by_sock(const n2n_sock_t *sock, struct peer_info *peer_list){
+   struct peer_info *scan, *tmp, *ret = NULL;
+   
+   HASH_ITER(hh, peer_list, scan, tmp){
+     if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t)) == 0){
+       ret = scan;
+       break;
+     }
+   }
+   
+   return ret;
+ }
+
+/* ************************************** */
 
 /** Start the registration process.
  *
@@ -503,6 +517,17 @@ static void check_peer_registration_needed(n2n_edge_t *eee,
 
   HASH_FIND_PEER(eee->known_peers, mac, scan);
 
+  /* If we were not able to find it by MAC, we try to find it by socket. */
+  if(scan == NULL ){
+    scan = find_peer_by_sock(peer, eee->known_peers);
+
+    if(scan){
+      HASH_DEL(eee->known_peers, scan);
+      memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
+      HASH_ADD_PEER(eee->known_peers, scan);
+    }
+  }
+
   if (scan == NULL) {
     /* Not in known_peers - start the REGISTER process. */
     register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
@@ -530,19 +555,28 @@ static void peer_set_p2p_confirmed(n2n_edge_t * eee,
 				   const n2n_mac_t mac,
 				   const n2n_sock_t * peer,
 				   time_t now) {
-  struct peer_info *scan;
+  struct peer_info *scan, *scan_tmp;
   macstr_t mac_buf;
   n2n_sock_str_t sockbuf;
 
   HASH_FIND_PEER(eee->pending_peers, mac, scan);
+  if(scan == NULL){
+    scan = find_peer_by_sock(peer, eee->pending_peers);
+  }
 
   if(scan) {
     HASH_DEL(eee->pending_peers, scan);
 
-    /* Add scan to known_peers. */
-    HASH_ADD_PEER(eee->known_peers, scan);
+    scan_tmp = find_peer_by_sock(peer, eee->known_peers);
+    if(scan_tmp != NULL){
+      HASH_DEL(eee->known_peers, scan_tmp);
+      scan = scan_tmp;
+      memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
+    } else {
+      scan->sock = *peer;
+    }
 
-    scan->sock = *peer;
+    HASH_ADD_PEER(eee->known_peers, scan);
     scan->last_p2p = now;
 
     traceEvent(TRACE_DEBUG, "P2P connection established: %s [%s]",
@@ -1802,8 +1836,8 @@ void edge_read_from_tap(n2n_edge_t * eee) {
 	    }
 	    len = tmp_len;
 	  }
-
-          if (!eee->last_sup) {
+	      
+	   if (!eee->last_sup) {
             // drop packets before first registration with supernode
             traceEvent(TRACE_DEBUG, "DROP packet before first registration with supernode");
             return;
@@ -1918,8 +1952,8 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 	    return;
 	  }
 	}
-
-        if (!eee->last_sup) {
+	      
+	 if (!eee->last_sup) {
           // drop packets received before first registration with supernode
           traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET recevied before first registration with supernode.");
           return;
@@ -2100,7 +2134,7 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
                   // shfiting to the next payload entry
                   payload++;
 		}
-
+		    
 		if (eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
 		  if ((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
 		    net = htonl(ra.dev_addr.net_addr);
@@ -2115,8 +2149,8 @@ void readFromIPSocket(n2n_edge_t * eee, int in_sock) {
 		    }
 		  }
 		}
-
-                if (!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
+		    
+		 if (!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
                   send_grat_arps(eee);
 
 		eee->last_sup = now;
