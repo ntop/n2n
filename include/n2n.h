@@ -54,7 +54,6 @@
 
 #define PACKAGE_BUILDDATE (__DATE__ " " __TIME__)
 
-#include <time.h>
 #include <ctype.h>
 #include <stdlib.h>
 
@@ -121,6 +120,7 @@
 #define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
 
+#include <time.h> /* should be included after eventually including unistd.h for _POSIX_TIMERS macro gets correctly defined */
 #include "minilzo.h"
 #include <signal.h>
 #include <string.h>
