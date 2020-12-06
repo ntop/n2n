@@ -64,6 +64,7 @@
 #define TAP_COMPONENT_ID "tap0801"
 
 extern void initWin32();
+extern void destroyWin32();
 extern void win_print_available_adapters();
 
 #endif

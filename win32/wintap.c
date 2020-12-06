@@ -20,6 +20,11 @@ void initWin32() {
   }
 }
 
+
+void destroyWin32() {
+	WSACleanup();
+}
+
 struct win_adapter_info {
   HANDLE handle;
   char adapterid[1024];
