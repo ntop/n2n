@@ -539,6 +539,7 @@ int gettimeofday(struct timeval *tp, void *tzp) {
   tp->tv_sec = clock;
   tp->tv_usec = wtm.wMilliseconds * 1000;
   return (0);
+}
 #endif
 
 
