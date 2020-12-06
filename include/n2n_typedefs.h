@@ -27,7 +27,7 @@ typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
 typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
 typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE];       /* tracing string buffer */
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW32__)
 #include "getopt.h"
 
  /* Other Win environments are expected to support stdint.h */
@@ -42,13 +42,15 @@ typedef unsigned int u_int32_t;
 typedef unsigned short u_int16_t;
 typedef unsigned char u_int8_t;
 
+#ifndef __MINGW32__
 typedef int ssize_t;
+#endif
 
 typedef unsigned long in_addr_t;
 
 #include "n2n_win32.h"
 
-#endif /* #ifdef _MSC_VER */
+#endif /* #if defined(_MSC_VER) || defined(__MINGW32__) */
 
 
 
@@ -111,7 +113,7 @@ typedef unsigned long in_addr_t;
 #define PACK_STRUCT
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW32__)
 #pragma pack(push,1)
 #endif
 
@@ -172,7 +174,7 @@ struct n2n_udphdr
     u_int16_t check;
 } PACK_STRUCT;
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW32__)
 #pragma pack(pop)
 #endif
 
