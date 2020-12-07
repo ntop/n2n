@@ -567,8 +567,8 @@ uint64_t time_stamp (void) {
 #endif
   micro_seconds |= (uint64_t)n2n_rand() >> 52;
 
-  // it would be more exact but more costly due to the
-  // multiplication and divison to do the follwoing:
+  // to do the following would be more exact but also
+  // more costly due to the multiplication and divison:
   // micro_seconds = (t.tv_sec * 1000000 + t.tv_nsec / 1000) << 12) | ... or
   // micro_seconds = (t.tv_sec * 1000000 + t.tv_usec)        << 12) | ...
 
