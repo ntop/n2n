@@ -37,39 +37,39 @@
 #define AES128_KEY_BYTES        (128/8)
 
 
-#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------
+#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------------------------------
 
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
 typedef struct aes_context_t {
-  EVP_CIPHER_CTX      *enc_ctx;                /* openssl's reusable evp_* en/de-cryption context */
-  EVP_CIPHER_CTX      *dec_ctx;                /* openssl's reusable evp_* en/de-cryption context */
-  const EVP_CIPHER    *cipher;                 /* cipher to use: e.g. EVP_aes_128_cbc */
-  uint8_t             key[AES256_KEY_BYTES];   /* the pure key data for payload encryption & decryption */
-  AES_KEY             ecb_dec_key;             /* one step ecb decryption key */
+    EVP_CIPHER_CTX      *enc_ctx;                /* openssl's reusable evp_* en/de-cryption context */
+    EVP_CIPHER_CTX      *dec_ctx;                /* openssl's reusable evp_* en/de-cryption context */
+    const EVP_CIPHER    *cipher;                 /* cipher to use: e.g. EVP_aes_128_cbc */
+    uint8_t             key[AES256_KEY_BYTES];   /* the pure key data for payload encryption & decryption */
+    AES_KEY             ecb_dec_key;             /* one step ecb decryption key */
 } aes_context_t;
 
-#elif defined (__AES__) && defined (__SSE2__) // Intel's AES-NI ---------------------------
+#elif defined (__AES__) && defined (__SSE2__) // Intel's AES-NI ---------------------------------------------------
 
 #include <immintrin.h>
 
 typedef struct aes_context_t {
-  __m128i rk_enc[15];
-  __m128i rk_dec[15];
-  int     Nr;
+    __m128i rk_enc[15];
+    __m128i rk_dec[15];
+    int     Nr;
 } aes_context_t;
 
-#else // plain C --------------------------------------------------------------------------
+#else // plain C --------------------------------------------------------------------------------------------------
 
 typedef struct aes_context_t {
-  uint32_t enc_rk[60];    // round keys for encryption
-  uint32_t dec_rk[60];    // round keys for decryption
-  int      Nr;            // number of rounds
+    uint32_t enc_rk[60];    // round keys for encryption
+    uint32_t dec_rk[60];    // round keys for decryption
+    int      Nr;            // number of rounds
 } aes_context_t;
 
-#endif // ---------------------------------------------------------------------------------
+#endif // ---------------------------------------------------------------------------------------------------------
 
 
 int aes_cbc_encrypt (unsigned char *out, const unsigned char *in, size_t in_len,
