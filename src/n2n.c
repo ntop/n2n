@@ -546,19 +546,31 @@ int gettimeofday(struct timeval *tp, void *tzp) {
 // returns a time stamp for use with replay protection
 uint64_t time_stamp (void) {
 
-  struct timeval tod;
   uint64_t micro_seconds;
+#if defined (_POSIX_TIMERS)
+  struct timespec t;
+  clock_gettime(CLOCK_REALTIME, &t);
+#else
+  struct timeval t;
+  gettimeofday (&t, NULL);
+#endif
 
-  gettimeofday (&tod, NULL);
   /* We will (roughly) calculate the microseconds since 1970 leftbound into the return value.
      The leading 32 bits are used for tv_sec. The following 20 bits (sufficent as microseconds
-     fraction never exceeds 1,000,000,) encode the value tv_usec. The remaining lowest 12 bits
-     are kept random for use in IV */
-  micro_seconds = n2n_rand();
-  micro_seconds = ( (((uint64_t)(tod.tv_sec) << 32) + (tod.tv_usec << 12))
-                  |  (micro_seconds >> 52) );
-  // more exact but more costly due to the multiplication:
-  // micro_seconds = (tod.tv_sec * 1000000 + tod.tv_usec) << 12) | ...
+     fraction never exceeds 1,000,000,) encode the value tv_nsec/1024 ( ~ usec) or tv_usec
+     respectively. The remaining lowest 12 bits are kept random for use in IV */
+  micro_seconds  = (uint64_t)(t.tv_sec) << 32;
+#if defined (_POSIX_TIMERS)
+  micro_seconds += (t.tv_nsec >> 10) << 12;
+#else
+  micro_seconds += t.tv_usec << 12;
+#endif
+  micro_seconds |= (uint64_t)n2n_rand() >> 52;
+
+  // to do the following would be more exact but also
+  // more costly due to the multiplication and divison:
+  // micro_seconds = (t.tv_sec * 1000000 + t.tv_nsec / 1000) << 12) | ... or
+  // micro_seconds = (t.tv_sec * 1000000 + t.tv_usec)        << 12) | ...
 
   return (micro_seconds);
 }
