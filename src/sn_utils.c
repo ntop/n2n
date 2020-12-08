@@ -351,6 +351,10 @@ void sn_term(n2n_sn_t *sss)
     }
     free(re);
   }
+
+#ifdef WIN32
+	destroyWin32();
+#endif
 }
 
 /** Determine the appropriate lifetime for new registrations.

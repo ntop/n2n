@@ -771,6 +771,9 @@ int main(int argc, char* argv[]) {
 #ifdef HAVE_LIBCAP
   cap_t caps;
 #endif
+#ifdef WIN32
+	initWin32();
+#endif
 
   /* Defaults */
   edge_init_conf_defaults(&conf);
@@ -954,6 +957,10 @@ int main(int argc, char* argv[]) {
   edge_term_conf(&eee->conf);
   tuntap_close(&eee->device);
   edge_term(eee);
+
+#ifdef WIN32
+	destroyWin32();
+#endif
 
   return(rc);
 }

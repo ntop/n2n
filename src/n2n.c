@@ -277,7 +277,7 @@ int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
 	freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
 	ainfo = NULL;
       } else {
-      traceEvent(TRACE_WARNING, "Failed to resolve supernode host %s", supernode_host);
+      traceEvent(TRACE_WARNING, "Failed to resolve supernode host %s, %d: %s", supernode_host, nameerr, gai_strerror(nameerr));
       rv = -2;
     }
 
