@@ -27,16 +27,16 @@
 // taken from https://en.wikibooks.org/wiki/OpenSSL/Error_handling
 static char *openssl_err_as_string (void) {
 
-    BIO *bio = BIO_new (BIO_s_mem ());
-    ERR_print_errors (bio);
+    BIO *bio = BIO_new(BIO_s_mem());
+    ERR_print_errors(bio);
     char *buf = NULL;
-    size_t len = BIO_get_mem_data (bio, &buf);
-    char *ret = (char *) calloc (1, 1 + len);
+    size_t len = BIO_get_mem_data(bio, &buf);
+    char *ret = (char *)calloc(1, 1 + len);
 
     if(ret)
-        memcpy (ret, buf, len);
+        memcpy(ret, buf, len);
 
-    BIO_free (bio);
+    BIO_free(bio);
 
     return ret;
 }
@@ -135,10 +135,10 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
     CC20_ODD_ROUND (A, B, C, D);     \
     CC20_EVEN_ROUND(A, B, C, D)
 
-#define STOREXOR(O,I,X)                                                 \
-    _mm_storeu_si128 ((__m128i*)O,                                      \
-                      _mm_xor_si128 (_mm_loadu_si128((__m128i*)I), X)); \
-    I += 16; O += 16                                                    \
+#define STOREXOR(O,I,X)                                                \
+    _mm_storeu_si128((__m128i*)O,                                      \
+                      _mm_xor_si128(_mm_loadu_si128((__m128i*)I), X)); \
+    I += 16; O += 16                                                   \
 
 
 int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
@@ -150,10 +150,10 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 
     const uint8_t *magic_constant = (uint8_t*)"expand 32-byte k";
 
-    a = _mm_loadu_si128 ((__m128i*)magic_constant);
-    b = _mm_loadu_si128 ((__m128i*)(ctx->key));
-    c = _mm_loadu_si128 ( (__m128i*)((ctx->key)+16));
-    d = _mm_loadu_si128 ((__m128i*)iv);
+    a = _mm_loadu_si128((__m128i*)magic_constant);
+    b = _mm_loadu_si128((__m128i*)(ctx->key));
+    c = _mm_loadu_si128( (__m128i*)((ctx->key)+16));
+    d = _mm_loadu_si128((__m128i*)iv);
 
     while(in_len >= 128) {
         k0 = a; k1 = b; k2 = c; k3 = d;
@@ -225,10 +225,10 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 
         k0 = ADD(k0, a); k1 = ADD(k1, b); k2 = ADD(k2, c); k3 = ADD(k3, d);
 
-        _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[ 0]), k0);
-        _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[ 4]), k1);
-        _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[ 8]), k2);
-        _mm_storeu_si128 ((__m128i*)&(ctx->keystream32[12]), k3);
+        _mm_storeu_si128((__m128i*)&(ctx->keystream32[ 0]), k0);
+        _mm_storeu_si128((__m128i*)&(ctx->keystream32[ 4]), k1);
+        _mm_storeu_si128((__m128i*)&(ctx->keystream32[ 8]), k2);
+        _mm_storeu_si128((__m128i*)&(ctx->keystream32[12]), k3);
 
         // keep in mind that out and in got increased inside the last loop
         // and point to current position now
@@ -394,7 +394,7 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 int cc20_init (const unsigned char *key, cc20_context_t **ctx) {
 
     // allocate context...
-    *ctx = (cc20_context_t*) calloc(1, sizeof(cc20_context_t));
+    *ctx = (cc20_context_t*)calloc(1, sizeof(cc20_context_t));
     if(!(*ctx))
         return -1;
 #if defined (HAVE_OPENSSL_1_1)
