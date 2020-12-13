@@ -40,7 +40,7 @@ You can create your own infrastructure by setting up a supernode on a public ser
 1. Install the n2n package
 2. Edit `/etc/n2n/supernode.conf` and add the following:
    ```
-   -l=1234
+   -p=1234
    ```
 3. Start the supernode service with `sudo systemctl start supernode`
 4. Optionally enable supernode start on boot: `sudo systemctl enable supernode`
@@ -66,16 +66,6 @@ For Windows, MacOS and general building options, please check out [Building docu
 
 **IMPORTANT** It is generally recommended to use the [latest stable release](https://github.com/ntop/n2n/releases). Please note that the current _dev_ branch usually is not guaranteed to be backward compatible neither with the latest stable release nor with previous _dev_ states. On the other hand, if you dare to try the bleeding edge features, you are encouraged to compile from _dev_ – just keep track of sometimes rapidly occuring changes. Feedback in the _Issues_ section is appreciated.
 
-## Running edge as a Service
-
-edge can also be run as a service instead of cli:
-
-1. Edit `/etc/n2n/edge.conf` with your custom options. See `/etc/n2n/edge.conf.sample`.
-2. Start the service: `sudo systemctl start edge`
-3. Optionally enable edge start on boot: `sudo systemctl enable edge`
-
-You can run multiple edge service instances by creating `/etc/n2n/edge-instance1.conf` and
-starting it with `sudo systemctl start edge@instance1`.
 
 ## Security Considerations
 
@@ -88,20 +78,15 @@ AES encryption by default. Other ciphers can be chosen using the `-A_` option.
 
 A benchmark of the encryption methods is available when compiled from source with `tools/n2n-benchmark`.
 
-The header which contains some metadata like the virtual MAC address of the edge nodes, their IP address
-and the community name optionally can be encrypted applying `-H` on the edges.
+The header which contains some metadata like the virtual MAC address of the edge nodes, their IP address, their real 
+hostname and the community name optionally can be encrypted applying `-H` on the edges.
 
-## Virtual Network Device Configuration
 
-The [TAP Configuration Guide](https://github.com/ntop/n2n/blob/dev/doc/TapConfiguration.md) contains hints on various settings that can be applied to the virtual network device, including IPv6 addresses as well as notes on MTU and on how to draw IP addresses from DHCP servers.
+## Advanced Configuration
 
-## Routing the Traffic
+More information about communities, routing, traffic restrictions and on how to run an edge as 
+a service is available in the [more detailed documentation](doc/Advanced.md).
 
-Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`-n`). Details can be found in the [Routing document](doc/Routing.md).
-
-## Traffic Restrictions
-
-It is possible to drop or accept specific packet transmit over edge network interface by rules. Rules can be specify by (`-R rule_str`) multiple times. Details can be found in the [Traffic Restrictions](doc/TrafficRestrictions.md).
 
 ## Contribution
 
