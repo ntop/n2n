@@ -7,9 +7,9 @@
 #       -p
 #        Sets the UDP listening port. 
 #
-# -p=7777
+-p=7777
 #
 #        -c
-#        Optionally specify the list of allowed communities in supernodes.list file.
+#        Optionally specifies the allowed communities as listed in community.list file.
 #
-# -c=supernodes.list
+# -c=community.list
