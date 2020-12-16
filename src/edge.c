@@ -57,10 +57,10 @@ int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
  *
  *  return 0 on success and -1 on error
  */
-static int scan_address(char * ip_addr, size_t addr_size,
-			char * netmask, size_t netmask_size,
-			char * ip_mode, size_t mode_size,
-			char * s) {
+static int scan_address (char * ip_addr, size_t addr_size,
+                         char * netmask, size_t netmask_size,
+                         char * ip_mode, size_t mode_size,
+                         char * s) {
 
   int retval = -1;
   char * start;
@@ -116,37 +116,37 @@ static void help() {
   print_n2n_version();
 
   printf("edge <config file> (see edge.conf)\n"
-	 "or\n"
-	 );
+         "or\n"
+         );
   printf("edge "
 #if defined(N2N_CAN_NAME_IFACE)
-	 "-d <tap device> "
+         "-d <tap device> "
 #endif /* #if defined(N2N_CAN_NAME_IFACE) */
-	 "-a [static:|dhcp:]<tap IP address>[/nn] "
-	 "-c <community> "
-	 "[-k <encrypt key>]\n"
-	 "    "
+         "-a [static:|dhcp:]<tap IP address>[/nn] "
+         "-c <community> "
+         "[-k <encrypt key>]\n"
+         "    "
 #ifndef WIN32
-	 "[-u <uid> -g <gid>]"
+         "[-u <uid> -g <gid>]"
 #endif /* #ifndef WIN32 */
 
 #ifndef WIN32
-	 "[-f]"
+         "[-f]"
 #endif /* #ifndef WIN32 */
 #ifdef __linux__
-	 "[-T <tos>]"
+         "[-T <tos>]"
 #endif
-	 "[-n cidr:gateway] "
-	 "[-m <MAC address>] "
-	 "-l <supernode host:port>\n"
-	 "    "
-	 "[-p <local port>] [-M <mtu>] "
+         "[-n cidr:gateway] "
+         "[-m <MAC address>] "
+         "-l <supernode host:port>\n"
+         "    "
+         "[-p <local port>] [-M <mtu>] "
 #ifndef __APPLE__
-	 "[-D] "
+         "[-D] "
 #endif
-	 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] "
-	 "[-R <rule_str>] "
-	 "[-h]\n\n");
+         "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] "
+         "[-R <rule_str>] "
+         "[-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
   printf("-d <tap device>          | tap device name\n");
@@ -178,14 +178,14 @@ static void help() {
   printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to Twofish then).\n");
   printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish (default),\n");
   printf("                         | -A3 or -A (deprecated) = AES, "
-	 "-A4 = ChaCha20, "
-	 "-A5 = Speck-CTR.\n");
+         "-A4 = ChaCha20, "
+         "-A5 = Speck-CTR.\n");
   printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
   printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
 #ifdef N2N_HAVE_ZSTD
-	 ", -z2 = zstd"
+         ", -z2 = zstd"
 #endif
-	 " (default=disabled).\n");
+         " (default=disabled).\n");
   printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
   printf("-S                       | Do not connect P2P. Always use the supernode.\n");
 #ifdef __linux__
@@ -210,25 +210,22 @@ static void help() {
 
 /* *************************************************** */
 
-static void setPayloadCompression(n2n_edge_conf_t *conf, int compression) {
+static void setPayloadCompression (n2n_edge_conf_t *conf, int compression) {
   /* even though 'compression' and 'conf->compression' share the same encoding scheme,
    * a switch-statement under conditional compilation is used to sort out the
    * unsupported optarguments */
   switch (compression) {
-  case 1:
-    {
+    case 1: {
       conf->compression = N2N_COMPRESSION_ID_LZO;
       break;
     }
 #ifdef N2N_HAVE_ZSTD
-  case 2:
-    {
+    case 2: {
       conf->compression = N2N_COMPRESSION_ID_ZSTD;
       break;
     }
 #endif
-  default:
-    {
+    default: {
       conf->compression = N2N_COMPRESSION_ID_NONE;
       // internal comrpession scheme numbering differs from cli counting by one, hence plus one
       // (internal: 0 == invalid, 1 == none, 2 == lzo, 3 == zstd)
@@ -240,38 +237,37 @@ static void setPayloadCompression(n2n_edge_conf_t *conf, int compression) {
 
 /* *************************************************** */
 
-static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
+static void setPayloadEncryption (n2n_edge_conf_t *conf, int cipher) {
   /* even though 'cipher' and 'conf->transop_id' share the same encoding scheme,
    * a switch-statement under conditional compilation is used to sort out the
    * unsupported ciphers */
   switch (cipher) {
-  case 1:
-    {
+    case 1: {
       conf->transop_id = N2N_TRANSFORM_ID_NULL;
       break;
     }
-  case 2:
-    {
+
+    case 2: {
       conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
       break;
     }
-  case 3:
-    {
+
+    case 3: {
       conf->transop_id = N2N_TRANSFORM_ID_AES;
       break;
     }
-  case 4:
-    {
+
+    case 4: {
       conf->transop_id = N2N_TRANSFORM_ID_CHACHA20;
       break;
     }
-  case 5:
-    {
+
+    case 5: {
       conf->transop_id = N2N_TRANSFORM_ID_SPECK;
       break;
     }
-  default:
-    {
+
+    default: {
       conf->transop_id = N2N_TRANSFORM_ID_INVAL;
       traceEvent(TRACE_NORMAL, "the %s cipher given by -A_ option is not supported in this version.", transop_str(cipher));
       exit(1);
@@ -281,184 +277,165 @@ static void setPayloadEncryption( n2n_edge_conf_t *conf, int cipher) {
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec, n2n_edge_conf_t *conf) {
+static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *ec, n2n_edge_conf_t *conf) {
   /* traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, optargument ? optargument : ""); */
 
   switch(optkey) {
-  case 'a': /* IP address and mode of TUNTAP interface */
-    {
+    case 'a': /* IP address and mode of TUNTAP interface */ {
       scan_address(ec->ip_addr, N2N_NETMASK_STR_SIZE,
-		   ec->netmask, N2N_NETMASK_STR_SIZE,
-		   ec->ip_mode, N2N_IF_MODE_SIZE,
-		   optargument);
+                   ec->netmask, N2N_NETMASK_STR_SIZE,
+                   ec->ip_mode, N2N_IF_MODE_SIZE,
+                   optargument);
       break;
     }
 
-  case 'c': /* community as a string */
-    {
+    case 'c': /* community as a string */ {
       memset(conf->community_name, 0, N2N_COMMUNITY_SIZE);
       strncpy((char *)conf->community_name, optargument, N2N_COMMUNITY_SIZE);
-      conf->community_name[N2N_COMMUNITY_SIZE-1] = '\0';
+      conf->community_name[N2N_COMMUNITY_SIZE - 1] = '\0';
       break;
     }
 
-  case 'E': /* multicast ethernet addresses accepted. */
-    {
-      conf->drop_multicast=0;
+    case 'E': /* multicast ethernet addresses accepted. */ {
+      conf->drop_multicast = 0;
       traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic");
       break;
     }
 
 #ifndef WIN32
-  case 'u': /* unprivileged uid */
-    {
+    case 'u': /* unprivileged uid */ {
       ec->userid = atoi(optargument);
       break;
     }
 
-  case 'g': /* unprivileged uid */
-    {
+    case 'g': /* unprivileged uid */ {
       ec->groupid = atoi(optargument);
       break;
     }
 #endif
 
 #ifndef WIN32
-  case 'f' : /* do not fork as daemon */
-    {
-      ec->daemon=0;
+    case 'f' : /* do not fork as daemon */ {
+      ec->daemon = 0;
       break;
     }
 #endif /* #ifndef WIN32 */
 
-  case 'm' : /* TUNTAP MAC address */
-    {
-      strncpy(ec->device_mac,optargument,N2N_MACNAMSIZ);
-      ec->device_mac[N2N_MACNAMSIZ-1] = '\0';
+    case 'm' : /* TUNTAP MAC address */ {
+      strncpy(ec->device_mac, optargument, N2N_MACNAMSIZ);
+      ec->device_mac[N2N_MACNAMSIZ - 1] = '\0';
       break;
     }
 
-  case 'M' : /* TUNTAP MTU */
-    {
+    case 'M' : /* TUNTAP MTU */ {
       ec->mtu = atoi(optargument);
       break;
     }
 
 #ifndef __APPLE__
-  case 'D' : /* enable PMTU discovery */
-    {
+    case 'D' : /* enable PMTU discovery */ {
       conf->disable_pmtu_discovery = 0;
       break;
     }
 #endif
 
-  case 'k': /* encrypt key */
-    {
+    case 'k': /* encrypt key */ {
       if(conf->encrypt_key) free(conf->encrypt_key);
       conf->encrypt_key = strdup(optargument);
       traceEvent(TRACE_DEBUG, "encrypt_key = '%s'\n", conf->encrypt_key);
       break;
     }
 
-  case 'r': /* enable packet routing across n2n endpoints */
-    {
+    case 'r': /* enable packet routing across n2n endpoints */ {
       conf->allow_routing = 1;
       break;
     }
 
-  case 'A':
-    {
+    case 'A': {
       int cipher;
 
-      if (optargument) {
+      if(optargument) {
         cipher = atoi(optargument);
       } else {
         traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
-		   "please use -A3 instead to choose a the AES cipher for payload encryption.");
+                   "please use -A3 instead to choose a the AES cipher for payload encryption.");
 
-      	cipher = N2N_TRANSFORM_ID_AES; // default, if '-A' only
+        cipher = N2N_TRANSFORM_ID_AES; // default, if '-A' only
       }
 
       setPayloadEncryption(conf, cipher);
       break;
     }
 
-  case 'H': /* indicate header encryption */
-    {
+    case 'H': /* indicate header encryption */ {
       /* we cannot be sure if this gets parsed before the community name is set.
        * so, only an indicator is set, action is taken later*/
       conf->header_encryption = HEADER_ENCRYPTION_ENABLED;
       break;
     }
 
-  case 'z':
-    {
+    case 'z': {
       int compression;
 
-      if (optargument) {
+      if(optargument) {
         compression = atoi(optargument);
       } else
-	compression = 1; // default, if '-z' only, equals -z1
+        compression = 1; // default, if '-z' only, equals -z1
 
       setPayloadCompression(conf, compression);
       break;
     }
 
-  case 'l': /* supernode-list */
-    if(optargument) {
-      if(edge_conf_add_supernode(conf, optargument) != 0) {
-        traceEvent(TRACE_WARNING, "Too many supernodes!");
-        exit(1);
+    case 'l': /* supernode-list */
+      if(optargument) {
+        if(edge_conf_add_supernode(conf, optargument) != 0) {
+          traceEvent(TRACE_WARNING, "Too many supernodes!");
+          exit(1);
+        }
+        break;
       }
+
+    case 'i': /* supernode registration interval */
+      conf->register_interval = atoi(optargument);
       break;
-    }
 
-  case 'i': /* supernode registration interval */
-    conf->register_interval = atoi(optargument);
-    break;
-
-  case 'L': /* supernode registration interval */
-    conf->register_ttl = atoi(optarg);
-    break;
+    case 'L': /* supernode registration interval */
+      conf->register_ttl = atoi(optarg);
+      break;
 
 #if defined(N2N_CAN_NAME_IFACE)
-  case 'd': /* TUNTAP name */
-    {
+    case 'd': /* TUNTAP name */ {
       strncpy(ec->tuntap_dev_name, optargument, N2N_IFNAMSIZ);
-      ec->tuntap_dev_name[N2N_IFNAMSIZ-1] = '\0';
+      ec->tuntap_dev_name[N2N_IFNAMSIZ - 1] = '\0';
       break;
     }
 #endif
 
-  case 'I': /* Device Description (hint) */
-    {
+    case 'I': /* Device Description (hint) */ {
       memset(conf->dev_desc, 0, N2N_DESC_SIZE);
       /* reserve possible last char as null terminator. */
       strncpy((char *)conf->dev_desc, optargument, N2N_DESC_SIZE-1);
       break;
     }
 
-  case 'p':
-    {
+    case 'p': {
       conf->local_port = atoi(optargument);
 
-      if(conf->local_port == 0){
-	traceEvent(TRACE_WARNING, "Bad local port format");
-	break;
+      if(conf->local_port == 0) {
+        traceEvent(TRACE_WARNING, "Bad local port format");
+        break;
       }
 
       break;
     }
 
-  case 't':
-    {
+    case 't': {
       conf->mgmt_port = atoi(optargument);
       break;
     }
 
 #ifdef __linux__
-  case 'T':
-    {
+    case 'T': {
       if((optargument[0] == '0') && (optargument[1] == 'x'))
         conf->tos = strtol(&optargument[2], NULL, 16);
       else
@@ -468,8 +445,7 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
     }
 #endif
 
-  case 'n':
-    {
+    case 'n': {
       char cidr_net[64], gateway[64];
       n2n_route_t route;
 
@@ -505,38 +481,35 @@ static int setOption(int optkey, char *optargument, n2n_tuntap_priv_config_t *ec
       break;
     }
 
-  case 'S':
-    {
+    case 'S': {
       conf->allow_p2p = 0;
       break;
     }
 
-  case 'h': /* help */
-    {
+    case 'h': /* help */ {
       help();
       break;
     }
 
-  case 'v': /* verbose */
-    setTraceLevel(getTraceLevel() + 1);
-    break;
+    case 'v': /* verbose */
+      setTraceLevel(getTraceLevel() + 1);
+      break;
 
-  case 'R': /* network traffic filter */
-    {
+    case 'R': /* network traffic filter */ {
       filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
       memset(new_rule, 0, sizeof(filter_rule_t));
-      if(process_traffic_filter_rule_str(optargument, new_rule) )
-	{
-	  HASH_ADD(hh, conf->network_traffic_filter_rules, key, sizeof(filter_rule_key_t), new_rule);
-	}else{
+
+      if(process_traffic_filter_rule_str(optargument, new_rule)) {
+        HASH_ADD(hh, conf->network_traffic_filter_rules, key, sizeof(filter_rule_key_t), new_rule);
+      } else {
         free(new_rule);
         traceEvent(TRACE_WARNING, "Invalid filter rule: %s", optargument);
         return(-1);
       }
       break;
     }
-  default:
-    {
+
+    default: {
       traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
       return(-1);
     }
@@ -562,7 +535,7 @@ static const struct option long_options[] =
 /* *************************************************** */
 
 /* read command line options */
-static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap_priv_config_t *ec) {
+static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap_priv_config_t *ec) {
   u_char c;
 
   while ((c = getopt_long(argc, argv,
@@ -581,7 +554,7 @@ static int loadFromCLI(int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tuntap
 
 /* *************************************************** */
 
-static char *trim(char *s) {
+static char *trim (char *s) {
   char *end;
 
   while(isspace(s[0]) || (s[0] == '"') || (s[0] == '\'')) s++;
@@ -589,7 +562,7 @@ static char *trim(char *s) {
 
   end = &s[strlen(s) - 1];
   while(end > s
-	&& (isspace(end[0])|| (end[0] == '"') || (end[0] == '\'')))
+        && (isspace(end[0])|| (end[0] == '"') || (end[0] == '\'')))
     end--;
   end[1] = 0;
 
@@ -599,7 +572,7 @@ static char *trim(char *s) {
 /* *************************************************** */
 
 /* parse the configuration file */
-static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv_config_t *ec) {
+static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv_config_t *ec) {
   char buffer[4096], *line, *key, *value;
   u_int line_len, opt_name_len;
   FILE *fd;
@@ -624,22 +597,22 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv
 
       opt = long_options;
       while(opt->name != NULL) {
-	opt_name_len = strlen(opt->name);
+        opt_name_len = strlen(opt->name);
 
-	if(!strncmp(key, opt->name, opt_name_len)
-	   && (line_len <= opt_name_len
-	       || key[opt_name_len] == '\0'
-	       || key[opt_name_len] == ' '
-	       || key[opt_name_len] == '=')) {
-	  if(line_len > opt_name_len)	  key[opt_name_len] = '\0';
-	  if(line_len > opt_name_len + 1) value = trim(&key[opt_name_len + 1]);
+        if(!strncmp(key, opt->name, opt_name_len)
+           && (line_len <= opt_name_len
+               || key[opt_name_len] == '\0'
+               || key[opt_name_len] == ' '
+               || key[opt_name_len] == '=')) {
+          if(line_len > opt_name_len)     key[opt_name_len] = '\0';
+          if(line_len > opt_name_len + 1) value = trim(&key[opt_name_len + 1]);
 
-	  // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
-	  setOption(opt->val, value, ec, conf);
-	  break;
-	}
+          // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
+          setOption(opt->val, value, ec, conf);
+          break;
+        }
 
-	opt++;
+        opt++;
       }
     } else if(line[0] == '-') { /* short opt */
       char *equal;
@@ -649,23 +622,23 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv
       equal = strchr(line, '=');
 
       if(equal) {
-	equal[0] = '\0';
-	value = &equal[1];
+        equal[0] = '\0';
+        value = &equal[1];
 
-	if((value[0] == '\0') && (key[1] != '\0'))
-	  value = &key[1];
+        if((value[0] == '\0') && (key[1] != '\0'))
+          value = &key[1];
       } else {
-	value = NULL;
+        value = NULL;
 
-	/* Adding an exception for -A_ -z_ which can come
+        /* Adding an exception for -A_ -z_ which can come
            without '=' and even without any further data */
 
-	if (key[0] == 'z') {
-	  if (key[1]) value = &key[1];
-	  key = "z";
-	} else if (key[0] == 'A') {
-	  if (key[1]) value = &key[1];
-	  key = "A";
+        if(key[0] == 'z') {
+          if(key[1]) value = &key[1];
+          key = "z";
+        } else if(key[0] == 'A') {
+          if(key[1]) value = &key[1];
+          key = "A";
         }
       }
       // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
@@ -683,7 +656,7 @@ static int loadFromFile(const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv
 
 /* ************************************** */
 
-static void daemonize() {
+static void daemonize () {
 #ifndef WIN32
   int childpid;
 
@@ -696,7 +669,7 @@ static void daemonize() {
 
   if((childpid = fork()) < 0)
     traceEvent(TRACE_ERROR, "Occurred while daemonizing (errno=%d)",
-	       errno);
+               errno);
   else {
     if(!childpid) { /* child */
       int rc;
@@ -704,7 +677,7 @@ static void daemonize() {
       //traceEvent(TRACE_NORMAL, "Bye bye: I'm becoming a daemon...");
       rc = chdir("/");
       if(rc != 0)
-	traceEvent(TRACE_ERROR, "Error while moving to / directory");
+        traceEvent(TRACE_ERROR, "Error while moving to / directory");
 
       setsid();  /* detach from the terminal */
 
@@ -759,7 +732,7 @@ BOOL WINAPI term_handler(DWORD sig)
 /* *************************************************** */
 
 /** Entry point to program from kernel. */
-int main(int argc, char* argv[]) {
+int main (int argc, char* argv[]) {
   int rc;
   tuntap_dev tuntap;    /* a tuntap device */
   n2n_edge_t *eee;      /* single instance for this program */
@@ -772,7 +745,7 @@ int main(int argc, char* argv[]) {
   cap_t caps;
 #endif
 #ifdef WIN32
-	initWin32();
+        initWin32();
 #endif
 
   /* Defaults */
@@ -807,7 +780,7 @@ int main(int argc, char* argv[]) {
     /* Load from current directory */
     rc = loadFromFile("edge.conf", &conf, &ec);
 #else
-  rc = -1;
+    rc = -1;
 #endif
 
   if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
@@ -852,11 +825,11 @@ int main(int argc, char* argv[]) {
   }
   memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
 
-  if ((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
-      ((eee->tuntap_priv_conf.ip_mode[0] == '\0') && (eee->tuntap_priv_conf.ip_addr[0] != '\0'))) {
+  if((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
+     ((eee->tuntap_priv_conf.ip_mode[0] == '\0') && (eee->tuntap_priv_conf.ip_addr[0] != '\0'))) {
     traceEvent(TRACE_NORMAL, "Use manually set IP address.");
     eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_STATIC;
-  } else if (0 == strcmp("dhcp", eee->tuntap_priv_conf.ip_mode)) {
+  } else if(0 == strcmp("dhcp", eee->tuntap_priv_conf.ip_mode)) {
     traceEvent(TRACE_NORMAL, "Obtain IP from other edge DHCP services.");
     eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_DHCP;
   } else {
@@ -872,22 +845,22 @@ int main(int argc, char* argv[]) {
       wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS;
       wait_time.tv_usec = 0;
 
-      if (select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
-	if (FD_ISSET(eee->udp_sock, &socket_mask)) {
-	  readFromIPSocket(eee, eee->udp_sock);
-	}
+      if(select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
+        if(FD_ISSET(eee->udp_sock, &socket_mask)) {
+          readFromIPSocket(eee, eee->udp_sock);
+        }
       }
-    } while (eee->sn_wait);
+    } while(eee->sn_wait);
     eee->last_register_req = 0;
   }
 
-  if (tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
-		  eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
-		  eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0) exit(1);
+  if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
+                 eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
+                 eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0) exit(1);
   traceEvent(TRACE_NORMAL, "Local tap IP: %s, Mask: %s",
-	     eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask);
+             eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask);
   memcpy(&eee->device, &tuntap, sizeof(tuntap));
-  //	hexdump((unsigned char*)&tuntap,sizeof(tuntap_dev));
+  //    hexdump((unsigned char*)&tuntap,sizeof(tuntap_dev));
 
 #ifndef WIN32
   if(eee->tuntap_priv_conf.daemon) {
@@ -915,7 +888,7 @@ int main(int argc, char* argv[]) {
 
   if((eee->tuntap_priv_conf.userid != 0) || (eee->tuntap_priv_conf.groupid != 0)) {
     traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
-	       (signed int)eee->tuntap_priv_conf.userid, (signed int)eee->tuntap_priv_conf.groupid);
+               (signed int)eee->tuntap_priv_conf.userid, (signed int)eee->tuntap_priv_conf.groupid);
 
     /* Finished with the need for root privileges. Drop to unprivileged user. */
     if((setgid(eee->tuntap_priv_conf.groupid) != 0)
@@ -959,7 +932,7 @@ int main(int argc, char* argv[]) {
   edge_term(eee);
 
 #ifdef WIN32
-	destroyWin32();
+  destroyWin32();
 #endif
 
   return(rc);

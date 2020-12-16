@@ -35,7 +35,7 @@ struct tunread_arg {
   int *keep_running;
 };
 
-extern HANDLE startTunReadThread(struct tunread_arg *arg);
+extern HANDLE startTunReadThread (struct tunread_arg *arg);
 
 
 #endif /* WIN32 */
