@@ -119,11 +119,10 @@ typedef unsigned long in_addr_t;
 
 #define ETH_ADDR_LEN 6
 
-struct ether_hdr
-{
-    uint8_t  dhost[ETH_ADDR_LEN];
-    uint8_t  shost[ETH_ADDR_LEN];
-    uint16_t type;                /* higher layer protocol encapsulated */
+struct ether_hdr {
+  uint8_t  dhost[ETH_ADDR_LEN];
+  uint8_t  shost[ETH_ADDR_LEN];
+  uint16_t type;                /* higher layer protocol encapsulated */
 } PACK_STRUCT;
 
 typedef struct ether_hdr ether_hdr_t;
@@ -148,30 +147,28 @@ struct n2n_iphdr {
     u_int32_t daddr;
 } PACK_STRUCT;
 
-struct n2n_tcphdr
-{
-    u_int16_t source;
-    u_int16_t dest;
-    u_int32_t seq;
-    u_int32_t ack_seq;
+struct n2n_tcphdr {
+  u_int16_t source;
+  u_int16_t dest;
+  u_int32_t seq;
+  u_int32_t ack_seq;
 #if defined(__LITTLE_ENDIAN__)
-    u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
+  u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
 #elif defined(__BIG_ENDIAN__)
-    u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
+  u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
 #else
 # error "Byte order must be defined"
 #endif
-    u_int16_t window;
-    u_int16_t check;
-    u_int16_t urg_ptr;
+  u_int16_t window;
+  u_int16_t check;
+  u_int16_t urg_ptr;
 } PACK_STRUCT;
 
-struct n2n_udphdr
-{
-    u_int16_t source;
-    u_int16_t dest;
-    u_int16_t len;
-    u_int16_t check;
+struct n2n_udphdr {
+  u_int16_t source;
+  u_int16_t dest;
+  u_int16_t len;
+  u_int16_t check;
 } PACK_STRUCT;
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -179,33 +176,31 @@ struct n2n_udphdr
 #endif
 
 
-typedef struct port_range{
-    uint16_t start_port; // range contain 'start_port' self
-    uint16_t end_port; // range contain 'end_port' self
+typedef struct port_range {
+  uint16_t start_port; // range contain 'start_port' self
+  uint16_t end_port;   // range contain 'end_port' self
 } port_range_t;
 
-typedef struct filter_rule_key
-{
-    in_addr_t        src_net_cidr;
-    uint8_t          src_net_bit_len;
-    port_range_t     src_port_range;
-    in_addr_t        dst_net_cidr;
-    uint8_t          dst_net_bit_len;
-    port_range_t     dst_port_range;
-    uint8_t          bool_tcp_configured;
-    uint8_t          bool_udp_configured;
-    uint8_t          bool_icmp_configured;
+typedef struct filter_rule_key {
+  in_addr_t        src_net_cidr;
+  uint8_t          src_net_bit_len;
+  port_range_t     src_port_range;
+  in_addr_t        dst_net_cidr;
+  uint8_t          dst_net_bit_len;
+  port_range_t     dst_port_range;
+  uint8_t          bool_tcp_configured;
+  uint8_t          bool_udp_configured;
+  uint8_t          bool_icmp_configured;
 } filter_rule_key_t;
 
-typedef struct filter_rule
-{
-    filter_rule_key_t key;
+typedef struct filter_rule {
+  filter_rule_key_t key;
 
-    uint8_t             bool_accept_icmp;
-    uint8_t             bool_accept_udp;
-    uint8_t             bool_accept_tcp;
+  uint8_t             bool_accept_icmp;
+  uint8_t             bool_accept_udp;
+  uint8_t             bool_accept_tcp;
 
-    UT_hash_handle hh;         /* makes this structure hashable */
+  UT_hash_handle hh;         /* makes this structure hashable */
 } filter_rule_t;
 
 
@@ -239,21 +234,20 @@ typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
 typedef struct speck_context_t he_context_t;
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
 
-typedef enum n2n_pc
-  {
-   n2n_ping=0,                 /* Not used */
-   n2n_register=1,             /* Register edge to edge */
-   n2n_deregister=2,           /* Deregister this edge */
-   n2n_packet=3,               /* PACKET data content */
-   n2n_register_ack=4,         /* ACK of a registration from edge to edge */
-   n2n_register_super=5,       /* Register edge to supernode */
-   n2n_unregister_super=6,     /* Deregister edge from supernode */
-   n2n_register_super_ack=7,   /* ACK from supernode to edge */
-   n2n_register_super_nak=8,   /* NAK from supernode to edge - registration refused */
-   n2n_federation=9,           /* Not used by edge */
-   n2n_peer_info=10,           /* Send info on a peer from sn to edge */
-   n2n_query_peer=11           /* ask supernode for info on a peer */
-  } n2n_pc_t;
+typedef enum n2n_pc {
+  n2n_ping =               0,   /* Not used */
+  n2n_register =           1,   /* Register edge to edge */
+  n2n_deregister =         2,   /* Deregister this edge */
+  n2n_packet =             3,   /* PACKET data content */
+  n2n_register_ack =       4,   /* ACK of a registration from edge to edge */
+  n2n_register_super =     5,   /* Register edge to supernode */
+  n2n_unregister_super =   6,   /* Deregister edge from supernode */
+  n2n_register_super_ack = 7,   /* ACK from supernode to edge */
+  n2n_register_super_nak = 8,   /* NAK from supernode to edge - registration refused */
+  n2n_federation =         9,   /* Not used by edge */
+  n2n_peer_info =          10,  /* Send info on a peer from sn to edge */
+  n2n_query_peer =         11   /* ask supernode for info on a peer */
+} n2n_pc_t;
 
 #define N2N_FLAGS_OPTIONS               0x0080
 #define N2N_FLAGS_SOCKET                0x0040
@@ -281,40 +275,34 @@ typedef struct n2n_ip_subnet {
 } n2n_ip_subnet_t;
 
 
-typedef struct n2n_sock
-{
+typedef struct n2n_sock {
   uint8_t     family;         /* AF_INET or AF_INET6; or 0 if invalid */
   uint16_t    port;           /* host order */
-  union
-  {
+  union {
     uint8_t     v6[IPV6_SIZE];  /* byte sequence */
     uint8_t     v4[IPV4_SIZE];  /* byte sequence */
   } addr;
 } n2n_sock_t;
 
-typedef enum 
-{
-  n2n_auth_none = 0,
+typedef enum {
+  n2n_auth_none =      0,
   n2n_auth_simple_id = 1
 } n2n_auth_scheme_t;
 
-typedef enum
-{
-  update_edge_no_change = 0,
+typedef enum {
+  update_edge_no_change =   0,
   update_edge_sock_change = 1,
-  update_edge_new_sn = 2,
-  update_edge_auth_fail = -1
+  update_edge_new_sn =      2,
+  update_edge_auth_fail =  -1
 } update_edge_ret_value_t;
 
-typedef struct n2n_auth
-{
+typedef struct n2n_auth {
   uint16_t    scheme;                         /* What kind of auth */
   uint16_t    toksize;                        /* Size of auth token */
   uint8_t     token[N2N_AUTH_TOKEN_SIZE];     /* Auth data interpreted based on scheme */
 } n2n_auth_t;
 
-typedef struct n2n_common
-{
+typedef struct n2n_common {
   /* NOTE: wire representation is different! */
   /* int                 version; */
 
@@ -324,8 +312,7 @@ typedef struct n2n_common
   n2n_community_t     community;
 } n2n_common_t;
 
-typedef struct n2n_REGISTER
-{
+typedef struct n2n_REGISTER {
   n2n_cookie_t         cookie;         /**< Link REGISTER and REGISTER_ACK */
   n2n_mac_t            srcMac;         /**< MAC of registering party */
   n2n_mac_t            dstMac;         /**< MAC of target edge */
@@ -334,21 +321,19 @@ typedef struct n2n_REGISTER
   n2n_desc_t           dev_desc;       /**< Hint description correlated with the edge */
 } n2n_REGISTER_t;
 
-typedef struct n2n_REGISTER_ACK
-{
+typedef struct n2n_REGISTER_ACK {
   n2n_cookie_t         cookie;         /**< Return cookie from REGISTER */
   n2n_mac_t            srcMac;         /**< MAC of acknowledging party (supernode or edge) */
   n2n_mac_t            dstMac;         /**< Reflected MAC of registering edge from REGISTER */
   n2n_sock_t           sock;           /**< Supernode's view of edge socket (IP Addr, port) */
 } n2n_REGISTER_ACK_t;
 
-typedef struct n2n_PACKET
-{
+typedef struct n2n_PACKET {
   n2n_mac_t           srcMac;
   n2n_mac_t           dstMac;
   n2n_sock_t          sock;
   uint8_t             transform;
-  uint8_t	      compression;
+  uint8_t             compression;
 } n2n_PACKET_t;
 
 /* Linked with n2n_register_super in n2n_pc_t. Only from edge to supernode. */
@@ -375,14 +360,13 @@ typedef struct n2n_REGISTER_SUPER_ACK {
    * n2n_sock_t.
    */
   uint8_t              num_sn;         /**< Number of supernodes that were send
-					* even if we cannot store them all. If
-					* non-zero then sn_bak is valid. */
+                                        * even if we cannot store them all. If
+                                        * non-zero then sn_bak is valid. */
 } n2n_REGISTER_SUPER_ACK_t;
 
 
 /* Linked with n2n_register_super_ack in n2n_pc_t. Only from supernode to edge. */
-typedef struct n2n_REGISTER_SUPER_NAK
-{
+typedef struct n2n_REGISTER_SUPER_NAK {
   n2n_cookie_t        cookie;         /* Return cookie from REGISTER_SUPER */
   n2n_mac_t           srcMac;
 } n2n_REGISTER_SUPER_NAK_t;
@@ -397,24 +381,22 @@ typedef struct n2n_REGISTER_SUPER_ACK_payload {
 
 
 /* Linked with n2n_unregister_super in n2n_pc_t. */
-typedef struct n2n_UNREGISTER_SUPER
-{
+typedef struct n2n_UNREGISTER_SUPER {
   n2n_auth_t auth;
   n2n_mac_t srcMac;
 } n2n_UNREGISTER_SUPER_t;
 
 
 typedef struct n2n_PEER_INFO {
-  uint16_t             aflags;
-  n2n_mac_t            srcMac;
-  n2n_mac_t            mac;
-  n2n_sock_t           sock;
+  uint16_t                         aflags;
+  n2n_mac_t                        srcMac;
+  n2n_mac_t                        mac;
+  n2n_sock_t                       sock;
   SN_SELECTION_CRITERION_DATA_TYPE data;
 } n2n_PEER_INFO_t;
 
 
-typedef struct n2n_QUERY_PEER
-{
+typedef struct n2n_QUERY_PEER {
   n2n_mac_t           srcMac;
   n2n_sock_t          sock;
   n2n_mac_t           targetMac;
@@ -455,22 +437,22 @@ typedef struct n2n_edge n2n_edge_t;
 
 typedef enum {
   N2N_ACCEPT = 0,
-  N2N_DROP = 1
+  N2N_DROP =   1
 } n2n_verdict;
 
 /* *************************************************** */
 
 typedef enum {
-  FPP_UNKNOWN=0,
-  FPP_ARP = 1,
-  FPP_TCP=2,
-  FPP_UDP=3,
-  FPP_ICMP=4,
-  FPP_IGMP=5
+  FPP_UNKNOWN = 0,
+  FPP_ARP =     1,
+  FPP_TCP =     2,
+  FPP_UDP =     3,
+  FPP_ICMP =    4,
+  FPP_IGMP =    5
 } filter_packet_proto;
 
 
-typedef struct packet_address_proto_info{
+typedef struct packet_address_proto_info {
   in_addr_t           src_ip;
   uint16_t            src_port;
   in_addr_t           dst_ip;
@@ -478,13 +460,11 @@ typedef struct packet_address_proto_info{
   filter_packet_proto proto;
 }packet_address_proto_info_t;
 
-typedef struct filter_rule_pair_cache
-{
+typedef struct filter_rule_pair_cache {
   packet_address_proto_info_t key;
 
-  uint8_t             bool_allow_traffic;
-
-  uint32_t         active_count;
+  uint8_t                     bool_allow_traffic;
+  uint32_t                    active_count;
 
   UT_hash_handle hh;         /* makes this structure hashable */
 } filter_rule_pair_cache_t;
@@ -492,10 +472,9 @@ typedef struct filter_rule_pair_cache
 struct network_traffic_filter;
 typedef struct network_traffic_filter network_traffic_filter_t;
 
-struct network_traffic_filter
-{
+struct network_traffic_filter {
   n2n_verdict (*filter_packet_from_peer)(network_traffic_filter_t* filter, n2n_edge_t *eee,
-                                           const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
+                                         const n2n_sock_t *peer, uint8_t *payload, uint16_t payload_size);
 
   n2n_verdict (*filter_packet_from_tap)(network_traffic_filter_t* filter, n2n_edge_t *eee, uint8_t *payload, uint16_t payload_size);
 
@@ -549,24 +528,24 @@ typedef struct n2n_tuntap_priv_config {
 /* *************************************************** */
 
 typedef enum n2n_transform {
-  N2N_TRANSFORM_ID_INVAL = 0,
-  N2N_TRANSFORM_ID_NULL = 1,
-  N2N_TRANSFORM_ID_TWOFISH = 2,
-  N2N_TRANSFORM_ID_AES = 3,
+  N2N_TRANSFORM_ID_INVAL =    0,
+  N2N_TRANSFORM_ID_NULL =     1,
+  N2N_TRANSFORM_ID_TWOFISH =  2,
+  N2N_TRANSFORM_ID_AES =      3,
   N2N_TRANSFORM_ID_CHACHA20 = 4,
-  N2N_TRANSFORM_ID_SPECK = 5,
+  N2N_TRANSFORM_ID_SPECK =    5,
 } n2n_transform_t;
 
 struct n2n_trans_op; /* Circular definition */
 
-typedef int             (*n2n_transdeinit_f)( struct n2n_trans_op * arg );
-typedef void            (*n2n_transtick_f)( struct n2n_trans_op * arg, time_t now );
-typedef int             (*n2n_transform_f)( struct n2n_trans_op * arg,
-                                            uint8_t * outbuf,
-                                            size_t out_len,
-                                            const uint8_t * inbuf,
-                                            size_t in_len,
-                                            const n2n_mac_t peer_mac);
+typedef int             (*n2n_transdeinit_f)(struct n2n_trans_op * arg);
+typedef void            (*n2n_transtick_f)(struct n2n_trans_op * arg, time_t now);
+typedef int             (*n2n_transform_f)(struct n2n_trans_op * arg,
+                                           uint8_t * outbuf,
+                                           size_t out_len,
+                                           const uint8_t * inbuf,
+                                           size_t in_len,
+                                           const n2n_mac_t peer_mac);
 /** Holds the info associated with a data transform plugin.
  *
  *  When a packet arrives the transform ID is extracted. This defines the code
@@ -581,7 +560,7 @@ typedef struct n2n_trans_op {
   size_t              rx_cnt;
 
   n2n_transdeinit_f   deinit; /* destructor function */
-  n2n_transtick_f    tick;   /* periodic maintenance */
+  n2n_transtick_f     tick;   /* periodic maintenance */
   n2n_transform_f     fwd;    /* encode a payload */
   n2n_transform_f     rev;    /* decode a payload */
 } n2n_trans_op_t;
@@ -594,12 +573,12 @@ typedef struct n2n_edge_conf {
   n2n_route_t         *routes;                /**< Networks to route through n2n */
   n2n_community_t     community_name;         /**< The community. 16 full octets. */
   n2n_desc_t          dev_desc;               /**< The device description (hint) */
-  uint8_t	      header_encryption;      /**< Header encryption indicator. */
+  uint8_t             header_encryption;      /**< Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /**< Header encryption cipher context. */
   he_context_t        *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
   n2n_transform_t     transop_id;             /**< The transop to use. */
   uint8_t             compression;            /**< Compress outgoing data packets before encryption */
-  uint16_t            num_routes;	            /**< Number of routes in routes */
+  uint16_t            num_routes;                   /**< Number of routes in routes */
   uint8_t             tuntap_ip_mode;         /**< Interface IP address allocated mode, eg. DHCP. */
   uint8_t             allow_routing;          /**< Accept packet no to interface address. */
   uint8_t             drop_multicast;         /**< Multicast ethernet addresses. */
@@ -637,7 +616,7 @@ struct n2n_edge {
   n2n_trans_op_t      transop;                 /**< The transop to use when encoding */
   n2n_route_t         *sn_route_to_clean;      /**< Supernode route to clean */
   n2n_edge_callbacks_t cb;                     /**< API callbacks */
-  void 	              *user_data;              /**< Can hold user data */
+  void                *user_data;              /**< Can hold user data */
   uint64_t            sn_last_valid_time_stamp;/**< last valid time stamp from supernode */
   SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_data;
 
@@ -671,8 +650,7 @@ struct n2n_edge {
   network_traffic_filter_t *network_traffic_filter;
 };
 
-typedef struct sn_stats
-{
+typedef struct sn_stats {
   size_t errors;         /* Number of errors encountered. */
   size_t reg_super;      /* Number of REGISTER_SUPER requests received. */
   size_t reg_super_nak;  /* Number of REGISTER_SUPER requests declined. */
@@ -682,16 +660,15 @@ typedef struct sn_stats
   time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
 } sn_stats_t;
 
-struct sn_community
-{
-  char community[N2N_COMMUNITY_SIZE];
+struct sn_community {
+  char                community[N2N_COMMUNITY_SIZE];
   uint8_t             is_federation;          /* if not-zero, then the current community is the federation of supernodes */
   uint8_t             purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
-  uint8_t	      header_encryption;      /* Header encryption indicator. */
+  uint8_t             header_encryption;      /* Header encryption indicator. */
   he_context_t        *header_encryption_ctx; /* Header encryption cipher context. */
-  he_context_t        *header_iv_ctx;	      /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
+  he_context_t        *header_iv_ctx;         /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
   struct              peer_info *edges;       /* Link list of registered edges. */
-  int64_t	      number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
+  int64_t             number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
   n2n_ip_subnet_t     auto_ip_net;            /* Address range of auto ip address service. */
 
   UT_hash_handle hh; /* makes this structure hashable */
@@ -700,15 +677,13 @@ struct sn_community
 /* Typedef'd pointer to get abstract datatype. */
 typedef struct regex_t* re_t;
 
-struct sn_community_regular_expression
-{
+struct sn_community_regular_expression {
   re_t rule;         // compiles regular expression
 
   UT_hash_handle hh; /* makes this structure hashable */
 };
 
-typedef struct n2n_sn
-{
+typedef struct n2n_sn {
   time_t start_time; /* Used to measure uptime. */
   sn_stats_t stats;
   int daemon;           /* If non-zero then daemonise. */
