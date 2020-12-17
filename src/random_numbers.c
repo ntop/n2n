@@ -20,211 +20,226 @@
 #include "random_numbers.h"
 
 
-/* The following code offers an alterate pseudo random number generator
-   namely XORSHIFT128+ to use instead of C's rand(). Its performance is
-   on par with C's rand().
-*/
+// the following code offers an alterate pseudo random number generator
+// namely XORSHIFT128+ to use instead of C's rand()
+// its performance is on par with C's rand()
 
 
-/* The state must be seeded in a way that it is not all zero, choose some
-   arbitrary defaults (in this case: taken from splitmix64) */
+// the state must be seeded in a way that it is not all zero, choose some
+// arbitrary defaults (in this case: taken from splitmix64)
 static rn_generator_state_t rn_current_state = {
-  .a    = 0x9E3779B97F4A7C15,
-  .b    = 0xBF58476D1CE4E5B9 };
+    .a = 0x9E3779B97F4A7C15,
+    .b = 0xBF58476D1CE4E5B9
+};
 
 
-/* used for mixing the initializing seed */
+// used for mixing the initializing seed
 static uint64_t splitmix64 (splitmix64_state_t *state) {
 
-  uint64_t result = state->s;
+    uint64_t result = state->s;
 
-  state->s = result + 0x9E3779B97F4A7C15;
+    state->s = result + 0x9E3779B97F4A7C15;
 
-  result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9;
-  result = (result ^ (result >> 27)) * 0x94D049BB133111EB;
+    result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9;
+    result = (result ^ (result >> 27)) * 0x94D049BB133111EB;
 
-  return result ^ (result >> 31);
+    return result ^ (result >> 31);
 }
 
 
 int n2n_srand (uint64_t seed) {
 
-  uint8_t i;
-  splitmix64_state_t smstate = {seed};
+    uint8_t i;
+    splitmix64_state_t smstate = { seed };
 
-  rn_current_state.a = 0;
-  rn_current_state.b = 0;
+    rn_current_state.a = 0;
+    rn_current_state.b = 0;
 
-  rn_current_state.a = splitmix64 (&smstate);
-  rn_current_state.b = splitmix64 (&smstate);
+    rn_current_state.a = splitmix64 (&smstate);
+    rn_current_state.b = splitmix64 (&smstate);
 
-  /* the following lines could be deleted as soon as it is formally prooved that
-     there is no seed leading to (a == b == 0). Until then, just to be safe: */
-  if ( (rn_current_state.a == 0) && (rn_current_state.b == 0) ) {
-    rn_current_state.a = 0x9E3779B97F4A7C15;
-    rn_current_state.b = 0xBF58476D1CE4E5B9;
-  }
+    // the following lines could be deleted as soon as it is formally prooved that
+    // there is no seed leading to (a == b == 0). until then, just to be safe:
+    if((rn_current_state.a == 0) && (rn_current_state.b == 0)) {
+        rn_current_state.a = 0x9E3779B97F4A7C15;
+        rn_current_state.b = 0xBF58476D1CE4E5B9;
+    }
 
-  // stabilize in unlikely case of weak state with only a few bits set
-  for(i = 0; i < 32; i++)
-    n2n_rand();
+    // stabilize in unlikely case of weak state with only a few bits set
+    for(i = 0; i < 32; i++)
+        n2n_rand();
 
-  return 0;
+    return 0;
 }
 
 
-/* The following code of xorshift128p was taken from
-   https://en.wikipedia.org/wiki/Xorshift as of July, 2019
-   and thus is considered public domain. */
-uint64_t n2n_rand () {
+// the following code of xorshift128p was taken from
+// https://en.wikipedia.org/wiki/Xorshift as of July, 2019
+// and thus is considered public domain
+uint64_t n2n_rand (void) {
 
-  uint64_t t       = rn_current_state.a;
-  uint64_t const s = rn_current_state.b;
+    uint64_t t       = rn_current_state.a;
+    uint64_t const s = rn_current_state.b;
 
-  rn_current_state.a = s;
-  t ^= t << 23;
-  t ^= t >> 17;
-  t ^= s ^ (s >> 26);
-  rn_current_state.b = t;
+    rn_current_state.a = s;
+    t ^= t << 23;
+    t ^= t >> 17;
+    t ^= s ^ (s >> 26);
+    rn_current_state.b = t;
 
-  return t + s;
+    return t + s;
 }
 
 
-/* The following code tries to gather some entropy from several sources
-   for use as seed. Note, that this code does not set the random generator
-   state yet, a call to   n2n_srand ( n2n_seed() )   would do. */
+// the following code tries to gather some entropy from several sources
+// for use as seed. Note, that this code does not set the random generator
+// state yet, a call to   n2n_srand (n2n_seed())   would do
 uint64_t n2n_seed (void) {
 
-  uint64_t seed = 0;
-  uint64_t ret = 0;
-  size_t i;
+    uint64_t seed = 0;   /* this could even go uninitialized */
+    uint64_t ret = 0;    /* this could even go uninitialized */
+    size_t i;
 
 #ifdef SYS_getrandom
-  int rc = -1;
-  for(i = 0; (i < RND_RETRIES) && (rc != sizeof(seed)); i++) {
-    rc = syscall (SYS_getrandom, &seed, sizeof(seed), GRND_NONBLOCK);
-    // if successful, rc should contain the requested number of random bytes
-    if(rc != sizeof(seed)) {
-      if (errno != EAGAIN) {
-        traceEvent(TRACE_ERROR, "n2n_seed faced error errno=%u from getrandom syscall.", errno);
-        break;
-      }
+    int rc = -1;
+    for(i = 0; (i < RND_RETRIES) && (rc != sizeof(seed)); i++) {
+        rc = syscall (SYS_getrandom, &seed, sizeof(seed), GRND_NONBLOCK);
+        // if successful, rc should contain the requested number of random bytes
+        if(rc != sizeof(seed)) {
+            if (errno != EAGAIN) {
+                traceEvent(TRACE_ERROR, "n2n_seed faced error errno=%u from getrandom syscall.", errno);
+                break;
+            }
+        }
     }
-  }
-  // if we still see an EAGAIN error here, we must have run out of retries
-  if(errno == EAGAIN) {
-    traceEvent(TRACE_ERROR, "n2n_seed saw getrandom syscall indicate not being able to provide enough entropy yet.");
-  }
+
+    // if we still see an EAGAIN error here, we must have run out of retries
+    if(errno == EAGAIN) {
+        traceEvent(TRACE_ERROR, "n2n_seed saw getrandom syscall indicate not being able to provide enough entropy yet.");
+    }
 #endif
 
-  // as we want randomness, it does no harm to add up even uninitialized values or
-  // erroneously arbitrary values returned from the syscall for the first time
-  ret += seed;
+    // as we want randomness, it does no harm to add up even uninitialized values or
+    // erroneously arbitrary values returned from the syscall for the first time
+    ret += seed;
 
-  // __RDRND__ is set only if architecturual feature is set, e.g. compile with -march=native
+    // __RDRND__ is set only if architecturual feature is set, e.g. compiled with -march=native
 #ifdef __RDRND__
-  for(i = 0; i < RND_RETRIES; i++) {
-    if(_rdrand64_step ((unsigned long long*)&seed)) {
-      // success!
-      // from now on, we keep this inside the loop because in case of failure
-      // and with unchanged values, we do not want to double the previous value
-      ret += seed;
-      break;
+    for(i = 0; i < RND_RETRIES; i++) {
+        if(_rdrand64_step((unsigned long long*)&seed)) {
+            // success!
+            // from now on, we keep this inside the loop because in case of failure
+            // and with unchanged values, we do not want to double the previous value
+            ret += seed;
+            break;
+        }
+        // continue loop to try again otherwise
     }
-    // continue loop to try again otherwise
-  }
-  if(i == RND_RETRIES){
-    traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDRND.");
-  }
+    if(i == RND_RETRIES) {
+        traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDRND.");
+    }
 #endif
 
-  // __RDSEED__ ist set only if architecturual feature is set, e.g. compile with -march=native
+    // __RDSEED__ ist set only if architecturual feature is set, e.g. compile with -march=native
 #ifdef __RDSEED__
-  for(i = 0; i < RND_RETRIES; i++) {
-    if(_rdseed64_step((unsigned long long*)&seed)) {
-      // success!
-      ret += seed;
-      break;
+    for(i = 0; i < RND_RETRIES; i++) {
+        if(_rdseed64_step((unsigned long long*)&seed)) {
+            // success!
+            ret += seed;
+            break;
+        }
+        // continue loop to try again otherwise
     }
-    // continue loop to try again otherwise
-  }
-  if(i == RND_RETRIES){
-    traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDSEED.");
-  }
+    if(i == RND_RETRIES) {
+        traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDSEED.");
+    }
 #endif
 
-  /* The WIN32 code is still untested and thus commented
-     #ifdef WIN32
-     HCRYPTPROV crypto_provider;
-     CryptAcquireContext (&crypto_provider, NULL, (LPCWSTR)L"Microsoft Base Cryptographic Provider v1.0",
-                          PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
-     CryptGenRandom (crypto_provider, 8, &seed);
-     CryptReleaseContext (crypto_provider, 0);
-     ret += seed;
-     #endif */
+// the following WIN32 code is still untested and thus commented
+/*
+#ifdef WIN32
+    HCRYPTPROV crypto_provider;
+    CryptAcquireContext (&crypto_provider, NULL, (LPCWSTR)L"Microsoft Base Cryptographic Provider v1.0",
+                         PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+    CryptGenRandom (crypto_provider, 8, &seed);
+    CryptReleaseContext (crypto_provider, 0);
+    ret += seed;
+#endif
+*/
 
-  seed = time(NULL);             // UTC in seconds
-  ret += seed;
+    seed  = time(NULL);             /* UTC in seconds */
+    ret  += seed;
 
-  seed = clock() * 18444244737;  // clock() = ticks since program start
-  ret += seed;
+    seed  = clock();               /* ticks since program start */
+    seed *= 18444244737;
+    ret  += seed;
 
-  return ret;
+    return ret;
 }
 
-/* an integer squrare root approximation
- * from https://stackoverflow.com/a/1100591. */
-static int ftbl [33] = {0,1,1,2,2,4,5,8,11,16,22,32,45,64,90,128,181,256,362,512,724,1024,1448,2048,2896,4096,5792,8192,11585,16384,23170,32768,46340};
-static int ftbl2[32] = { 32768,33276,33776,34269,34755,35235,35708,36174,36635,37090,37540,37984,38423,38858,39287,39712,40132,40548,40960,41367,41771,42170,42566,42959,43347,43733,44115,44493,44869,45241,45611,45977};
+// an integer squrare root approximation
+// from https://stackoverflow.com/a/1100591
+static int ftbl[33] = {
+    0, 1, 1, 2, 2, 4, 5, 8, 11, 16, 22, 32, 45, 64, 90,
+    128, 181 ,256 ,362, 512, 724, 1024, 1448, 2048, 2896,
+    4096, 5792, 8192, 11585, 16384, 23170, 32768, 46340 };
 
 
-static int i_sqrt(int val) {
+static int ftbl2[32] = {
+    32768, 33276, 33776, 34269, 34755, 35235, 35708, 36174,
+    36635, 37090, 37540, 37984, 38423, 38858, 39287, 39712,
+    40132, 40548, 40960, 41367, 41771, 42170, 42566, 42959,
+    43347, 43733, 44115, 44493, 44869, 45241, 45611, 45977 };
 
-  int cnt = 0;
-  int t = val;
 
-  while(t) {
-    cnt++;
-    t>>=1;
-  }
+static int i_sqrt (int val) {
 
-  if(6 >= cnt)
-    t = (val << (6-cnt));
-  else
-    t = (val >> (cnt-6));
+    int cnt = 0;
+    int t = val;
 
-  return (ftbl[cnt] * ftbl2[t & 31]) >> 15;
+    while(t) {
+        cnt++;
+        t>>=1;
+    }
+
+    if(6 >= cnt)
+        t = (val << (6-cnt));
+    else
+        t = (val >> (cnt-6));
+
+    return (ftbl[cnt] * ftbl2[t & 31]) >> 15;
 }
 
 
-static int32_t int_sqrt(int val) {
+static int32_t int_sqrt (int val) {
 
-  int ret;
+    int ret;
 
-  ret  = i_sqrt (val);
-  ret += i_sqrt (val - ret * ret) / 16;
+    ret  = i_sqrt (val);
+    ret += i_sqrt (val - ret * ret) / 16;
 
-  return ret;
+    return ret;
 }
 
 
 // returns a random number from [0, max_n] with higher probability towards the borders
 uint32_t n2n_rand_sqr (uint32_t max_n) {
 
-  uint32_t raw_max = 0;
-  uint32_t raw_rnd = 0;
-  int32_t  ret     = 0;
+    uint32_t raw_max = 0;
+    uint32_t raw_rnd = 0;
+    int32_t  ret     = 0;
 
-  raw_max = (max_n+2) * (max_n+2);
-  raw_rnd = n2n_rand() % (raw_max);
+    raw_max = (max_n+2) * (max_n+2);
+    raw_rnd = n2n_rand() % (raw_max);
 
-  ret = int_sqrt(raw_rnd) / 2;
-  ret = (raw_rnd & 1) ? ret : -ret;
-  ret = max_n / 2 + ret;
+    ret = int_sqrt(raw_rnd) / 2;
+    ret = (raw_rnd & 1) ? ret : -ret;
+    ret = max_n / 2 + ret;
 
-  if (ret < 0)     ret = 0;
-  if (ret > max_n) ret = max_n;
+    if(ret < 0)
+        ret = 0;
+    if (ret > max_n)
+        ret = max_n;
 
-  return ret;
+    return ret;
 }
