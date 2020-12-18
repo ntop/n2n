@@ -98,7 +98,6 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
     return 0;
 }
 
-/* ********************************************************************** */
 
 void packet_header_setup_key (const char *community_name, he_context_t **ctx,
                                                           he_context_t **ctx_iv) {
