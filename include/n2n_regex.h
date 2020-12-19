@@ -52,21 +52,21 @@
 #define _N2N_REGEX_
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 #include <stdio.h>
 
 /* Compile regex string pattern to a regex_t-array. */
-re_t re_compile(const char* pattern);
+re_t re_compile (const char* pattern);
 
 
 /* Find matches of the compiled pattern inside text. */
-int  re_matchp(re_t pattern, const char* text, int* matchlenght);
+int  re_matchp (re_t pattern, const char* text, int* matchlenght);
 
 
 /* Find matches of the txt pattern inside text (will compile automatically first). */
-int  re_match(const char* pattern, const char* text, int* matchlenght);
+int  re_match (const char* pattern, const char* text, int* matchlenght);
 
 
 #ifdef __cplusplus
