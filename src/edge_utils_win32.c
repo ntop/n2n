@@ -22,11 +22,12 @@
 
 /* ************************************** */
 
-static DWORD* tunReadThread(LPVOID lpArg) {
+static DWORD* tunReadThread (LPVOID lpArg) {
+
   struct tunread_arg *arg = (struct tunread_arg*)lpArg;
 
   while(*arg->keep_running)
-	  edge_read_from_tap(arg->eee);
+          edge_read_from_tap(arg->eee);
 
   return((DWORD*)NULL);
 }
@@ -35,15 +36,16 @@ static DWORD* tunReadThread(LPVOID lpArg) {
 
 /** Start a second thread in Windows because TUNTAP interfaces do not expose
  *  file descriptors. */
-HANDLE startTunReadThread(struct tunread_arg *arg) {
+HANDLE startTunReadThread (struct tunread_arg *arg) {
+
   DWORD dwThreadId;
 
   return(CreateThread(NULL,         /* security attributes */
-		      0,            /* use default stack size */
-		      (LPTHREAD_START_ROUTINE)tunReadThread, /* thread function */
-		      (void*)arg,   /* argument to thread function */
-		      0,            /* thread creation flags */
-		      &dwThreadId)); /* thread id out */
+                      0,            /* use default stack size */
+                      (LPTHREAD_START_ROUTINE)tunReadThread, /* thread function */
+                      (void*)arg,   /* argument to thread function */
+                      0,            /* thread creation flags */
+                      &dwThreadId)); /* thread id out */
 }
 #endif
 
