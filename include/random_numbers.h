@@ -23,34 +23,36 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <time.h>        // time, clock
+#include <time.h>        /* time, clock */
 
-#include "n2n.h"         // traceEvent
+#include "n2n.h"         /* traceEvent */
+
 
 // syscall and inquiring random number from hardware generators might fail, so we will retry
 #define RND_RETRIES      1000
 
 #if defined (__linux__)
-#include <sys/syscall.h> // syscall, SYS_getrandom
+#include <sys/syscall.h> /* syscall, SYS_getrandom */
 #ifdef SYS_getrandom
 #define GRND_NONBLOCK       1
-#include <errno.h>       // errno, EAGAIN
+#include <errno.h>       /* errno, EAGAIN */
 #endif
 #endif
 
 #if defined (__RDRND__) || defined (__RDSEED__)
-#include <immintrin.h>  // _rdrand64_step, rdseed4_step
+#include <immintrin.h>  /* _rdrand64_step, rdseed4_step */
 #endif
 
-/* The WIN32 code is still untested and thus commented, also see random_numbers.c
-   #if defined (WIN32)
-   #include <Wincrypt.h>   // HCTYPTPROV, Crypt*-functions
-   #endif
+// the WIN32 code is still untested and thus commented, also see random_numbers.c
+/*
+#if defined (WIN32)
+#include <Wincrypt.h>   // HCTYPTPROV, Crypt*-functions
+#endif
 */
 
 
 typedef struct rn_generator_state_t {
-  uint64_t a, b;
+    uint64_t a, b;
 } rn_generator_state_t;
 
 typedef struct splitmix64_state_t {
@@ -60,9 +62,9 @@ typedef struct splitmix64_state_t {
 
 int n2n_srand (uint64_t seed);
 
-uint64_t n2n_rand ();
+uint64_t n2n_rand (void);
 
-uint64_t n2n_seed ();
+uint64_t n2n_seed (void);
 
 uint32_t n2n_rand_sqr (uint32_t max_n);
 
