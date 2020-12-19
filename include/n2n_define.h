@@ -28,15 +28,15 @@
 #define MSG_TYPE_FEDERATION             9
 #define MSG_TYPE_PEER_INFO              10
 #define MSG_TYPE_QUERY_PEER             11
-#define MSG_TYPE_MAX_TYPE	       11
+#define MSG_TYPE_MAX_TYPE               11
 
 /* Max available space to add supernodes' informations (sockets and MACs) in REGISTER_SUPER_ACK
  * Field sizes of REGISTER_SUPER_ACK as used in encode/decode fucntions in src/wire.c
  * REVISIT: replace 255 by DEFAULT_MTU as soon as header encryption allows for longer packets to be encrypted. */
-#define REG_SUPER_ACK_PAYLOAD_SPACE   (255-(sizeof(n2n_common_t)+sizeof(n2n_REGISTER_SUPER_ACK_t)))
+#define REG_SUPER_ACK_PAYLOAD_SPACE   (255 - (sizeof(n2n_common_t) + sizeof(n2n_REGISTER_SUPER_ACK_t)))
 
 /* Space needed to store socket and MAC address of a supernode */
-#define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE		(sizeof(n2n_REGISTER_SUPER_ACK_payload_t))
+#define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE                (sizeof(n2n_REGISTER_SUPER_ACK_payload_t))
 
 #define PURGE_REGISTRATION_FREQUENCY   30
 #define RE_REG_AND_PURGE_FREQUENCY     10
@@ -51,7 +51,7 @@
  * values should be at least 3*SOCKET_TIMEOUT_INTERVAL_SECS apart. */
 #define LAST_SEEN_SN_ACTIVE      20 /* sec, indicates supernodes that are proven to be active */
 #define LAST_SEEN_SN_INACTIVE    90 /* sec, indicates supernodes that are proven to be inactive: they will be purged */
-#define LAST_SEEN_SN_NEW         (LAST_SEEN_SN_INACTIVE - LAST_SEEN_SN_ACTIVE)/2 /* sec, indicates supernodes with unsure status, must be tested to check if they are active */
+#define LAST_SEEN_SN_NEW         (LAST_SEEN_SN_INACTIVE - LAST_SEEN_SN_ACTIVE) / 2 /* sec, indicates supernodes with unsure status, must be tested to check if they are active */
 
 
 #define IFACE_UPDATE_INTERVAL           (30) /* sec. How long it usually takes to get an IP lease. */
@@ -66,8 +66,8 @@
 #define UDP_SIZE      8
 
 /* parameters for replay protection */
-#define TIME_STAMP_FRAME	0x0000001000000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
-#define TIME_STAMP_JITTER	0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another
+#define TIME_STAMP_FRAME        0x0000001000000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
+#define TIME_STAMP_JITTER       0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another
                                                       * set to 0x0000000000000000LL if increasing (or equal) time stamps allowed only */
 #define TIME_STAMP_ALLOW_JITTER                    1 /* constant for allowing or... */
 #define TIME_STAMP_NO_JITTER                       0 /* not allowing jitter to be considered */
@@ -76,19 +76,19 @@
 /* Compression is disabled by default for outgoing packets if no cli
  * option is given. All edges are built with decompression support so
  * they are able to understand each other (this applies to lzo only). */
-#define N2N_COMPRESSION_ID_INVALID	0
-#define N2N_COMPRESSION_ID_NONE		1	/* default, see edge_init_conf_defaults(...) in edge_utils.c */
-#define N2N_COMPRESSION_ID_LZO		2	/* set if '-z1' or '-z' cli option is present, see setOption(...) in edge.c */
-#define N2N_COMPRESSION_ID_ZSTD		3	/* set if '-z2' cli option is present, available only if compiled with zstd lib */
-#define ZSTD_COMPRESSION_LEVEL		7	/* 1 (faster) ... 22 (more compression) */
+#define N2N_COMPRESSION_ID_INVALID      0
+#define N2N_COMPRESSION_ID_NONE         1       /* default, see edge_init_conf_defaults(...) in edge_utils.c */
+#define N2N_COMPRESSION_ID_LZO          2       /* set if '-z1' or '-z' cli option is present, see setOption(...) in edge.c */
+#define N2N_COMPRESSION_ID_ZSTD         3       /* set if '-z2' cli option is present, available only if compiled with zstd lib */
+#define ZSTD_COMPRESSION_LEVEL          7       /* 1 (faster) ... 22 (more compression) */
 
 /* Federation name and indicators */
 #define FEDERATION_NAME "*Federation"
 enum federation{IS_NO_FEDERATION = 0,IS_FEDERATION = 1};
 
 /* (un)purgeable community indicator (supernode) */
-#define COMMUNITY_UNPURGEABLE		0
-#define COMMUNITY_PURGEABLE		1
+#define COMMUNITY_UNPURGEABLE           0
+#define COMMUNITY_PURGEABLE             1
 
 /* (un)purgeable supernode indicator */
 enum sn_purge{SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
@@ -100,9 +100,9 @@ enum sn_purge{SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 
 #define DEFAULT_MTU   1290
 
-#define HASH_ADD_PEER(head,add)				\
+#define HASH_ADD_PEER(head,add)                         \
   HASH_ADD(hh,head,mac_addr,sizeof(n2n_mac_t),add)
-#define HASH_FIND_PEER(head,mac,out)		\
+#define HASH_FIND_PEER(head,mac,out)            \
   HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
 #define N2N_EDGE_SN_HOST_SIZE   48
 #define N2N_EDGE_NUM_SUPERNODES 2
@@ -128,8 +128,8 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
 /* The way TUNTAP allocated IP. */
 #define TUNTAP_IP_MODE_SN_ASSIGN 0
-#define TUNTAP_IP_MODE_STATIC 1
-#define TUNTAP_IP_MODE_DHCP 2
+#define TUNTAP_IP_MODE_STATIC    1
+#define TUNTAP_IP_MODE_DHCP      2
 
 /* Default network segment of the auto ip address service provided by sn. */
 #define N2N_SN_MIN_AUTO_IP_NET_DEFAULT "10.128.0.0"
@@ -161,7 +161,7 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define N2N_IFNAMSIZ            16 /* 15 chars * NULL */
 #endif
 
-#define SN_SELECTION_CRITERION_DATA_TYPE   uint32_t
+#define SN_SELECTION_CRITERION_DATA_TYPE  uint32_t
 #define SN_SELECTION_CRITERION_BUF_SIZE   14
 
 #define N2N_TRANSFORM_ID_USER_START     64

@@ -164,94 +164,94 @@
 /* ************************************** */
 
 /* Transop Init Functions */
-int n2n_transop_null_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-int n2n_transop_tf_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-int n2n_transop_aes_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-int n2n_transop_cc20_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
-int n2n_transop_speck_init(const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+int n2n_transop_null_init (const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+int n2n_transop_tf_init (const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+int n2n_transop_aes_init (const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+int n2n_transop_cc20_init (const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
+int n2n_transop_speck_init (const n2n_edge_conf_t *conf, n2n_trans_op_t *ttt);
 
 /* Log */
-void setTraceLevel(int level);
-void setUseSyslog(int use_syslog);
-void setTraceFile(FILE *f);
-int getTraceLevel();
-void closeTraceFile();
-void traceEvent(int eventTraceLevel, char* file, int line, char * format, ...);
+void setTraceLevel (int level);
+void setUseSyslog (int use_syslog);
+void setTraceFile (FILE *f);
+int getTraceLevel ();
+void closeTraceFile ();
+void traceEvent (int eventTraceLevel, char* file, int line, char * format, ...);
 
 /* Tuntap API */
-int tuntap_open(tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
-		char *device_mask, const char * device_mac, int mtu);
-int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len);
-int tuntap_write(struct tuntap_dev *tuntap, unsigned char *buf, int len);
-void tuntap_close(struct tuntap_dev *tuntap);
-void tuntap_get_address(struct tuntap_dev *tuntap);
+int tuntap_open (tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
+                 char *device_mask, const char * device_mac, int mtu);
+int tuntap_read (struct tuntap_dev *tuntap, unsigned char *buf, int len);
+int tuntap_write (struct tuntap_dev *tuntap, unsigned char *buf, int len);
+void tuntap_close (struct tuntap_dev *tuntap);
+void tuntap_get_address (struct tuntap_dev *tuntap);
 
 /* Utils */
-char* intoa(uint32_t addr, char* buf, uint16_t buf_len);
-uint32_t bitlen2mask(uint8_t bitlen);
-uint8_t mask2bitlen(uint32_t mask);
-char* macaddr_str(macstr_t buf, const n2n_mac_t mac);
-int str2mac( uint8_t * outmac /* 6 bytes */, const char * s );
-int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
-uint8_t is_multi_broadcast(const uint8_t * dest_mac);
-char* msg_type2str(uint16_t msg_type);
-void hexdump(const uint8_t * buf, size_t len);
-void print_n2n_version();
-int is_empty_ip_address(const n2n_sock_t * sock);
-void print_edge_stats(const n2n_edge_t *eee);
+char* intoa (uint32_t addr, char* buf, uint16_t buf_len);
+uint32_t bitlen2mask (uint8_t bitlen);
+uint8_t mask2bitlen (uint32_t mask);
+char* macaddr_str (macstr_t buf, const n2n_mac_t mac);
+int str2mac (uint8_t * outmac /* 6 bytes */, const char * s);
+int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn);
+uint8_t is_multi_broadcast (const uint8_t * dest_mac);
+char* msg_type2str (uint16_t msg_type);
+void hexdump (const uint8_t * buf, size_t len);
+void print_n2n_version ();
+int is_empty_ip_address (const n2n_sock_t * sock);
+void print_edge_stats (const n2n_edge_t *eee);
 
 /* Sockets */
-char* sock_to_cstr( n2n_sock_str_t out,
-		    const n2n_sock_t * sock );
-char * ip_subnet_to_str(dec_ip_bit_str_t buf, const n2n_ip_subnet_t *ipaddr);
-SOCKET open_socket(int local_port, int bind_any);
-int sock_equal( const n2n_sock_t * a,
-		const n2n_sock_t * b );
+char* sock_to_cstr (n2n_sock_str_t out,
+                    const n2n_sock_t * sock);
+char * ip_subnet_to_str (dec_ip_bit_str_t buf, const n2n_ip_subnet_t *ipaddr);
+SOCKET open_socket (int local_port, int bind_any);
+int sock_equal (const n2n_sock_t * a,
+                const n2n_sock_t * b);
 
 /* Header encryption */
-uint64_t time_stamp(void);
+uint64_t time_stamp (void);
 uint64_t initial_time_stamp (void);
 int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp, int allow_jitter);
 
 /* Operations on peer_info lists. */
-size_t purge_peer_list( struct peer_info ** peer_list,
-                        time_t purge_before );
-size_t clear_peer_list( struct peer_info ** peer_list );
-size_t purge_expired_registrations( struct peer_info ** peer_list, time_t* p_last_purge, int timeout );
+size_t purge_peer_list (struct peer_info ** peer_list,
+                        time_t purge_before);
+size_t clear_peer_list (struct peer_info ** peer_list);
+size_t purge_expired_registrations (struct peer_info ** peer_list, time_t* p_last_purge, int timeout);
 
 /* Edge conf */
-void edge_init_conf_defaults(n2n_edge_conf_t *conf);
-int edge_verify_conf(const n2n_edge_conf_t *conf);
-int edge_conf_add_supernode(n2n_edge_conf_t *conf, const char *ip_and_port);
-const n2n_edge_conf_t* edge_get_conf(const n2n_edge_t *eee);
-void edge_term_conf(n2n_edge_conf_t *conf);
+void edge_init_conf_defaults (n2n_edge_conf_t *conf);
+int edge_verify_conf (const n2n_edge_conf_t *conf);
+int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port);
+const n2n_edge_conf_t* edge_get_conf (const n2n_edge_t *eee);
+void edge_term_conf (n2n_edge_conf_t *conf);
 
 /* Public functions */
-n2n_edge_t* edge_init(const n2n_edge_conf_t *conf, int *rv);
-void update_supernode_reg(n2n_edge_t * eee, time_t nowTime);
-void readFromIPSocket(n2n_edge_t * eee, int in_sock);
-void edge_term(n2n_edge_t *eee);
-void edge_set_callbacks(n2n_edge_t *eee, const n2n_edge_callbacks_t *callbacks);
-void edge_set_userdata(n2n_edge_t *eee, void *user_data);
-void* edge_get_userdata(n2n_edge_t *eee);
-void edge_send_packet2net(n2n_edge_t *eee, uint8_t *tap_pkt, size_t len);
-void edge_read_from_tap(n2n_edge_t *eee);
-int edge_get_n2n_socket(n2n_edge_t *eee);
-int edge_get_management_socket(n2n_edge_t *eee);
-int run_edge_loop(n2n_edge_t *eee, int *keep_running);
-int quick_edge_init(char *device_name, char *community_name,
-		    char *encrypt_key, char *device_mac,
-		    char *local_ip_address,
-		    char *supernode_ip_address_port,
-		    int *keep_on_running);
-int comm_init(struct sn_community *comm, char *cmn);
-int sn_init(n2n_sn_t *sss);
-void sn_term(n2n_sn_t *sss);
-int supernode2sock(n2n_sock_t * sn, const n2n_sn_name_t addrIn);
-struct peer_info* add_sn_to_list_by_mac_or_sock(struct peer_info **sn_list, n2n_sock_t *sock, n2n_mac_t *mac, int *skip_add);
-int run_sn_loop(n2n_sn_t *sss, int *keep_running);
-int assign_one_ip_subnet(n2n_sn_t *sss, struct sn_community *comm);
-const char* compression_str(uint8_t cmpr);
-const char* transop_str(enum n2n_transform tr);
+n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv);
+void update_supernode_reg (n2n_edge_t * eee, time_t nowTime);
+void readFromIPSocket (n2n_edge_t * eee, int in_sock);
+void edge_term (n2n_edge_t *eee);
+void edge_set_callbacks (n2n_edge_t *eee, const n2n_edge_callbacks_t *callbacks);
+void edge_set_userdata (n2n_edge_t *eee, void *user_data);
+void* edge_get_userdata (n2n_edge_t *eee);
+void edge_send_packet2net (n2n_edge_t *eee, uint8_t *tap_pkt, size_t len);
+void edge_read_from_tap (n2n_edge_t *eee);
+int edge_get_n2n_socket (n2n_edge_t *eee);
+int edge_get_management_socket (n2n_edge_t *eee);
+int run_edge_loop (n2n_edge_t *eee, int *keep_running);
+int quick_edge_init (char *device_name, char *community_name,
+                     char *encrypt_key, char *device_mac,
+                     char *local_ip_address,
+                     char *supernode_ip_address_port,
+                     int *keep_on_running);
+int comm_init (struct sn_community *comm, char *cmn);
+int sn_init (n2n_sn_t *sss);
+void sn_term (n2n_sn_t *sss);
+int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn);
+struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n_sock_t *sock, n2n_mac_t *mac, int *skip_add);
+int run_sn_loop (n2n_sn_t *sss, int *keep_running);
+int assign_one_ip_subnet (n2n_sn_t *sss, struct sn_community *comm);
+const char* compression_str (uint8_t cmpr);
+const char* transop_str (enum n2n_transform tr);
 
 #endif /* _N2N_H_ */
