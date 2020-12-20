@@ -1332,7 +1332,7 @@ static int process_udp (n2n_sn_t * sss,
 
             encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
 
-            if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED)
+            if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
               packet_header_encrypt(ackbuf, encx, comm->header_encryption_ctx,
                                     comm->header_iv_ctx,
                                     time_stamp(), pearson_hash_16(ackbuf, encx));
