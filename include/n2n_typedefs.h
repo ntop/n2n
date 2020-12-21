@@ -691,7 +691,7 @@ typedef struct n2n_sn {
     uint16_t                               lport;           /* Local UDP port to bind to. */
     uint16_t                               mport;           /* Management UDP port to bind to. */
     int                                    sock;            /* Main socket for UDP traffic with edges. */
-    int                                    mgmt_soc         /* management socket. */
+    int                                    mgmt_sock;         /* management socket. */
     n2n_ip_subnet_t                        min_auto_ip_net; /* Address range of auto_ip service. */
     n2n_ip_subnet_t                        max_auto_ip_net; /* Address range of auto_ip service. */
 #ifndef WIN32
