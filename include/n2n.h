@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -20,15 +20,15 @@
 #define _N2N_H_
 
 /*
-  tunctl -t tun0
-  tunctl -t tun1
-  ifconfig tun0 1.2.3.4 up
-  ifconfig tun1 1.2.3.5 up
-  ./edge -d tun0 -l 2000 -r 127.0.0.1:3000 -c hello
-  ./edge -d tun1 -l 3000 -r 127.0.0.1:2000 -c hello
+    tunctl -t tun0
+    tunctl -t tun1
+    ifconfig tun0 1.2.3.4 up
+    ifconfig tun1 1.2.3.5 up
+    ./edge -d tun0 -l 2000 -r 127.0.0.1:3000 -c hello
+    ./edge -d tun1 -l 3000 -r 127.0.0.1:2000 -c hello
 
 
-  tunctl -u UID -t tunX
+    tunctl -u UID -t tunX
 */
 
 
@@ -154,11 +154,11 @@
 #include "tf.h"
 
 #ifndef TRACE_ERROR
-#define TRACE_ERROR     0, __FILE__, __LINE__
-#define TRACE_WARNING   1, __FILE__, __LINE__
-#define TRACE_NORMAL    2, __FILE__, __LINE__
-#define TRACE_INFO      3, __FILE__, __LINE__
-#define TRACE_DEBUG     4, __FILE__, __LINE__
+#define TRACE_ERROR       0, __FILE__, __LINE__
+#define TRACE_WARNING     1, __FILE__, __LINE__
+#define TRACE_NORMAL      2, __FILE__, __LINE__
+#define TRACE_INFO        3, __FILE__, __LINE__
+#define TRACE_DEBUG       4, __FILE__, __LINE__
 #endif
 
 /* ************************************** */
