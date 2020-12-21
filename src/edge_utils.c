@@ -1341,9 +1341,9 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
  *    action. */
 static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
-    char udp_buf[N2N_PKT_BUF_SIZE];            /* Compete UDP packet */
+    char udp_buf[N2N_PKT_BUF_SIZE]; /* Compete UDP packet */
     ssize_t recvlen;
-    /* ssize_t                         sendlen; */
+    /* ssize_t sendlen; */
     struct sockaddr_in sender_sock;
     socklen_t i;
     size_t msg_len;
@@ -1445,7 +1445,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
         if(peer->dev_addr.net_addr == 0) continue;
         net = htonl(peer->dev_addr.net_addr);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "%-4u    %-15s    %-17s    %-21s    %-15s %lu\n",
+                            "    %-4u  %-15s  %-17s  %-21s %-15s    %lu\n",
                             ++num, inet_ntoa(*(struct in_addr *) &net),
                             macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
@@ -1465,7 +1465,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
         if(peer->dev_addr.net_addr == 0) continue;
         net = htonl(peer->dev_addr.net_addr);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "%-4u    %-15s    %-17s    %-21s    %-15s %lu\n",
+                            "    %-4u  %-15s  %-17s  %-21s %-15s    %lu\n",
                             ++num, inet_ntoa(*(struct in_addr *) &net),
                             macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
@@ -1487,7 +1487,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "%-4u    %-15s    %-17s    %-21s    %-14s     %lu\n",
+                            "    %-4u  %-15s  %-17s  %-21s %-14s    %lu\n",
                             ++num,
                             (peer->purgeable == SN_UNPURGEABLE) ? "-l " : "    ",
                             macaddr_str(mac_buf, peer->mac_addr),
@@ -1532,11 +1532,11 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                         (unsigned int) eee->stats.rx_p2p);
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "last_super    %ld sec ago | ",
+                        "last_super %ld sec ago | ",
                         (now - eee->last_sup));
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "last_p2p    %ld sec ago\n",
+                        "last_p2p %ld sec ago\n",
                         (now - eee->last_p2p));
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),

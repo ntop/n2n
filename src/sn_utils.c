@@ -778,7 +778,7 @@ static int process_mgmt (n2n_sn_t *sss,
         num = 0;
         HASH_ITER(hh, community->edges, peer, tmpPeer) {
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                                "        %-4u    %-18s    %-17s    %-21s    %-15s    %lu\n",
+                                "    %-4u  %-18s  %-17s  %-21s %-15s    %lu\n",
                                 ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                                 macaddr_str(mac_buf, peer->mac_addr),
                                 sock_to_cstr(sockbuf, &(peer->sock)),
