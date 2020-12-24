@@ -5,7 +5,7 @@
 
 As communities designate virtual networks, they must be distingushable from each other. Its their name that makes them distinguishable and which therefore should be unique per network. The community name is composed of 15 byte-sized characters and it internally always is terminated by an additional zero character totalling up to 16 characters. Hence, the zero character cannot be part of the regular community name. There are some other characters that cannot be used, namely `. * + ? [ ] \`.
 
-To make full use of character space, hex values could be used, e.g. from Linux bash applying the `edge … -c $(echo -en '\x3a\x3b\x4a\x6a\xfa')…` command line syntax. If used with a configuration file, the bytes must be directly filled as characters into a corresponding `-c=:;Jjþ` line.
+To make full use of character space, hex values could be used, e.g. from Linux bash applying the `edge … -c $(echo -en '\x3a\x3b\x4a\x6a\xfa') …` command line syntax. If used with a configuration file, the bytes must be directly filled as characters into a corresponding `-c=:;Jjþ` line.
 
 
 ## Restrict Supernode Access
@@ -65,7 +65,7 @@ Also, as the `. * + ? [ ] \` characters indicate parts of regular expressions, w
 
 By default, the community name is transmitted in plain witch each packet. So, a fixed-name community might keep your younger siblings out of your community (as long as they do not know the community name) but sniffing attackers will find out the community name. Using this name, they will be able to access it by just connecting to the supernode then.
 
-[Header encryption](doc/Crypto.md#header) can be enabled to prevent plain transmission. It is important to understand that header encryption, if enabled, only works on fixed-name communities. It will not work on communitiy names described by regular expressions.
+[Header encryption](Crypto.md#header) can be enabled to prevent plain transmission. It is important to understand that header encryption, if enabled, only works on fixed-name communities. It will not work on communitiy names described by regular expressions.
 
 On the other hand, the provision of fixed-name communities blocks all other, non-listed communities. To allow a mixed operation of certain encrypted and hence fixed-name communities along with all other open communities, the following "trick" can be applied:
 

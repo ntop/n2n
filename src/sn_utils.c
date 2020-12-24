@@ -134,7 +134,7 @@ static ssize_t sendto_sock (n2n_sn_t *sss,
                             const n2n_sock_t *sock,
                             const uint8_t *pktbuf,
                             size_t pktsize) {
-
+  
     n2n_sock_str_t sockbuf;
 
     if(AF_INET == sock->family) {
@@ -331,6 +331,9 @@ void sn_term (n2n_sn_t *sss) {
         HASH_DEL(sss->communities, community);
         free(community);
     }
+    HASH_DEL(sss->communities, community);
+    free(community);
+  }
 
     HASH_ITER(hh, sss->rules, re, tmp_re) {
         HASH_DEL(sss->rules, re);
@@ -840,7 +843,7 @@ static int sendto_mgmt (n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
                         const uint8_t *mgmt_buf,
                         size_t mgmt_size) {
-
+  
     ssize_t r = sendto(sss->mgmt_sock, mgmt_buf, mgmt_size, 0 /*flags*/,
                        (struct sockaddr *)sender_sock, sizeof (struct sockaddr_in));
 

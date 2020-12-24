@@ -119,20 +119,20 @@ static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
             if(has_net) {
                 if(sscanf(net_str, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
                     traceEvent(TRACE_WARNING, "Bad net/bit format '%s' for community '%c', ignoring. See comments inside community.list file.",
-		               net_str, cmn_str);
+		                           net_str, cmn_str);
                     has_net = 0;
                 }
                 net = inet_addr(ip_str);
                 mask = bitlen2mask(bitlen);
                 if((net == (in_addr_t)(-1)) || (net == INADDR_NONE) || (net == INADDR_ANY)
-	           || ((ntohl(net) & ~mask) != 0)) {
+	                 || ((ntohl(net) & ~mask) != 0)) {
                     traceEvent(TRACE_WARNING, "Bad network '%s/%u' in '%s' for community '%s', ignoring.",
-		               ip_str, bitlen, net_str, cmn_str);
+		                           ip_str, bitlen, net_str, cmn_str);
                     has_net = 0;
                 }
                 if((bitlen > 30) || (bitlen == 0)) {
                     traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s' for community '%s', ignoring.",
-		               bitlen, net_str, cmn_str);
+		                           bitlen, net_str, cmn_str);
                     has_net = 0;
                 }
             }
@@ -140,7 +140,7 @@ static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
                 s->auto_ip_net.net_addr = ntohl(net);
                 s->auto_ip_net.net_bitlen = bitlen;
                 traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
-		           inet_ntoa(*(struct in_addr *) &net),
+		                       inet_ntoa(*(struct in_addr *) &net),
 		           s->auto_ip_net.net_bitlen,
 		           s->community);
             } else {
@@ -160,10 +160,10 @@ static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
     }
 
     traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
-	       num_communities, path);
+	             num_communities, path);
 
     traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
-	       num_regex, path);
+	             num_regex, path);
 
     /* No new communities will be allowed */
     sss->lock_communities = 1;
@@ -186,6 +186,7 @@ static void help () {
     printf("-p <local port> ");
     printf("-c <path> ");
     printf("-l <supernode:port> ");
+  
 #if defined(N2N_HAVE_DAEMON)
     printf("[-f] ");
 #endif
@@ -229,6 +230,7 @@ static void help () {
 /* *************************************************** */
 
 static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
+
     //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
 
     switch(optkey) {
@@ -289,7 +291,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
                     anchor_sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
                     if(anchor_sn->ip_addr) {
                         strncpy(anchor_sn->ip_addr, _optarg, N2N_EDGE_SN_HOST_SIZE - 1);
-	                memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+	                      memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
                         memcpy(&(anchor_sn->mac_addr), null_mac, sizeof(n2n_mac_t));
                         anchor_sn->purgeable = SN_UNPURGEABLE;
                         anchor_sn->last_valid_time_stamp = initial_time_stamp();
@@ -318,19 +320,19 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             net_max = inet_addr(ip_max_str);
             mask = bitlen2mask(bitlen);
             if((net_min == (in_addr_t)(-1)) || (net_min == INADDR_NONE) || (net_min == INADDR_ANY)
-	       || (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
-	       || (ntohl(net_min) >  ntohl(net_max))
-	       || ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0)) {
+	             || (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
+	             || (ntohl(net_min) >  ntohl(net_max))
+	             || ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0)) {
                 traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
-		           ip_min_str, ip_max_str, bitlen, _optarg,
-		           N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
+		                       ip_min_str, ip_max_str, bitlen, _optarg,
+		                       N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
                 break;
             }
 
             if((bitlen > 30) || (bitlen == 0)) {
                 traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
-		           bitlen, _optarg,
-		           N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
+		                       bitlen, _optarg,
+		                       N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
                 break;
             }
 
@@ -415,7 +417,7 @@ static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
     u_char c;
 
     while((c = getopt_long(argc, argv, "fp:l:u:g:t:a:c:F:m:vh",
-			   long_options, NULL)) != '?') {
+			     long_options, NULL)) != '?') {
         if(c == 255) {
             break;
         }
@@ -487,11 +489,11 @@ static int loadFromFile (const char *path, n2n_sn_t *sss) {
 	           || key[opt_name_len] == ' '
 	           || key[opt_name_len] == '=')) {
 	            if(line_len > opt_name_len) {
-                        key[opt_name_len] = '\0';
-                    }
+                  key[opt_name_len] = '\0';
+              }
 	            if(line_len > opt_name_len + 1) {
-                        value = trim(&key[opt_name_len + 1]);
-                    }
+                  value = trim(&key[opt_name_len + 1]);
+              }
 
 	            // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
 	            setOption(opt->val, value, sss);
@@ -531,7 +533,7 @@ static int add_federation_to_communities (n2n_sn_t *sss) {
         num_communities = HASH_COUNT(sss->communities);
 
         traceEvent(TRACE_INFO, "Added federation '%s' to the list of communities [total: %u]",
-	           (char*)sss->federation->community, num_communities);
+	                 (char*)sss->federation->community, num_communities);
     }
 
     return 0;
@@ -555,15 +557,15 @@ static void dump_registrations (int signo) {
 
         HASH_ITER(hh, comm->edges, list, tmp) {
             if(list->sock.family == AF_INET) {
-	        traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][last seen: %u sec ago]",
-		           ++num, macaddr_str(buf, list->mac_addr),
-		           list->sock.addr.v4[0], list->sock.addr.v4[1], list->sock.addr.v4[2], list->sock.addr.v4[3],
-		           list->sock.port,
-		           now - list->last_seen);
+	              traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][last seen: %u sec ago]",
+		                       ++num, macaddr_str(buf, list->mac_addr),
+		                       list->sock.addr.v4[0], list->sock.addr.v4[1], list->sock.addr.v4[2], list->sock.addr.v4[3],
+		                       list->sock.port,
+		                       now - list->last_seen);
             } else {
-	        traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][last seen: %u sec ago]",
-		           ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
-		           now - list->last_seen);
+	              traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][last seen: %u sec ago]",
+		                       ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
+		                       now - list->last_seen);
             }
         }
     }
@@ -578,7 +580,7 @@ static int keep_running;
 
 #if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
-BOOL WINAPI term_handler(DWORD sig)
+BOOL WINAPI term_handler (DWORD sig)
 #else
     static void term_handler(int sig)
 #endif
@@ -606,6 +608,7 @@ BOOL WINAPI term_handler(DWORD sig)
 int main (int argc, char * const argv[]) {
 
     int rc;
+
 #ifndef WIN32
     struct passwd *pw = NULL;
 #endif
@@ -621,6 +624,7 @@ int main (int argc, char * const argv[]) {
     } else if(argc > 1) {
         rc = loadFromCLI(argc, argv, &sss_node);
     } else
+      
 #ifdef WIN32
         /* Load from current directory */
         rc = loadFromFile("supernode.conf", &sss_node);
@@ -631,6 +635,7 @@ int main (int argc, char * const argv[]) {
     if(rc < 0) {
         help();
     }
+
 
 #if defined(N2N_HAVE_DAEMON)
     if(sss_node.daemon) {
@@ -668,7 +673,7 @@ int main (int argc, char * const argv[]) {
     }
     if((sss_node.userid != 0) || (sss_node.groupid != 0)) {
         traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
-	           (signed int)sss_node.userid, (signed int)sss_node.groupid);
+	                 (signed int)sss_node.userid, (signed int)sss_node.groupid);
 
         /* Finished with the need for root privileges. Drop to unprivileged user. */
         if((setgid(sss_node.groupid) != 0)
