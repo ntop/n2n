@@ -29,7 +29,8 @@ static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 /** Load the list of allowed communities. Existing/previous ones will be removed
  *
  */
-static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
+static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
+
   char buffer[4096], *line, *cmn_str, net_str[20];
   dec_ip_str_t ip_str = {'\0'};
   uint8_t bitlen;
@@ -48,10 +49,13 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
   }
 
   HASH_ITER(hh, sss->communities, s, tmp) {
-    if(s->is_federation) continue;
+    if(s->is_federation) {
+      continue;
+    }
     HASH_DEL(sss->communities, s);
-    if (NULL != s->header_encryption_ctx)
+    if(NULL != s->header_encryption_ctx) {
       free (s->header_encryption_ctx);
+    }
     free(s);
   }
 
@@ -63,37 +67,39 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
   while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
     int len = strlen(line);
 
-    if((len < 2) || line[0] == '#')
+    if(((len < 2) || line[0]) == '#') {
       continue;
-
+    }
     len--;
+
     while(len > 0) {
       if((line[len] == '\n') || (line[len] == '\r')) {
-	line[len] = '\0';
-	len--;
-      } else
-	break;
+        line[len] = '\0';
+        len--;
+      } else {
+        break;
+      }
     }
 
     // cut off any IP sub-network upfront
-    cmn_str = (char*)calloc(len+1, sizeof(char));
-    has_net = ( sscanf (line, "%s %s", cmn_str, net_str) == 2 );
+    cmn_str = (char*)calloc(len + 1, sizeof(char));
+    has_net = (sscanf(line, "%s %s", cmn_str, net_str) == 2);
 
     // if it contains typical characters...
     if(NULL != strpbrk(cmn_str, ".*+?[]\\")) {
       // ...it is treated as regular expression
-      re = (struct sn_community_regular_expression*)calloc(1,sizeof(struct sn_community_regular_expression));
-      if (re) {
+      re = (struct sn_community_regular_expression*)calloc(1, sizeof(struct sn_community_regular_expression));
+      if(re) {
         re->rule = re_compile(cmn_str);
         HASH_ADD_PTR(sss->rules, rule, re);
-	num_regex++;
+        num_regex++;
         traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", cmn_str);
         free(cmn_str);
         continue;
       }
     }
 
-    s = (struct sn_community*)calloc(1,sizeof(struct sn_community));
+    s = (struct sn_community*)calloc(1, sizeof(struct sn_community));
 
     if(s != NULL) {
       comm_init(s,cmn_str);
@@ -107,26 +113,26 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
       num_communities++;
       traceEvent(TRACE_INFO, "Added allowed community '%s' [total: %u]",
-		 (char*)s->community, num_communities);
+                 (char*)s->community, num_communities);
 
       // check for sub-network address
       if(has_net) {
         if(sscanf(net_str, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
           traceEvent(TRACE_WARNING, "Bad net/bit format '%s' for community '%c', ignoring. See comments inside community.list file.",
-		     net_str, cmn_str);
+                     net_str, cmn_str);
           has_net = 0;
         }
         net = inet_addr(ip_str);
         mask = bitlen2mask(bitlen);
         if((net == (in_addr_t)(-1)) || (net == INADDR_NONE) || (net == INADDR_ANY)
-	   || ((ntohl(net) & ~mask) != 0) ) {
+           || ((ntohl(net) & ~mask) != 0) ) {
           traceEvent(TRACE_WARNING, "Bad network '%s/%u' in '%s' for community '%s', ignoring.",
-		     ip_str, bitlen, net_str, cmn_str);
+                     ip_str, bitlen, net_str, cmn_str);
           has_net = 0;
         }
-        if ((bitlen > 30) || (bitlen == 0)) {
+        if((bitlen > 30) || (bitlen == 0)) {
           traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s' for community '%s', ignoring.",
-		     bitlen, net_str, cmn_str);
+                     bitlen, net_str, cmn_str);
           has_net = 0;
         }
       }
@@ -134,9 +140,9 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
         s->auto_ip_net.net_addr = ntohl(net);
         s->auto_ip_net.net_bitlen = bitlen;
         traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
-		   inet_ntoa(*(struct in_addr *) &net),
-		   s->auto_ip_net.net_bitlen,
-		   s->community);
+                   inet_ntoa(*(struct in_addr *) &net),
+                   s->auto_ip_net.net_bitlen,
+                   s->community);
       } else {
         assign_one_ip_subnet(sss, s);
       }
@@ -148,17 +154,16 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 
   fclose(fd);
 
-  if ((num_regex + num_communities) == 0)
-    {
-      traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", path);
-      return -1;
-    }
+  if((num_regex + num_communities) == 0) {
+    traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", path);
+    return -1;
+  }
 
   traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
-	     num_communities, path);
+             num_communities, path);
 
   traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
-	     num_regex, path);
+             num_regex, path);
 
   /* No new communities will be allowed */
   sss->lock_communities = 1;
@@ -170,12 +175,13 @@ static int load_allowed_sn_community(n2n_sn_t *sss, char *path) {
 /* *************************************************** */
 
 /** Help message to print if the command line arguments are not valid. */
-static void help() {
+static void help () {
+
   print_n2n_version();
 
   printf("supernode <config file> (see supernode.conf)\n"
-	 "or\n"
-	 );
+         "or\n"
+         );
   printf("supernode ");
   printf("-p <local port> ");
   printf("-c <path> ");
@@ -222,166 +228,164 @@ static void help() {
 
 /* *************************************************** */
 
-static int setOption(int optkey, char *_optarg, n2n_sn_t *sss) {
+static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
+
   //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
 
-  switch (optkey) {
-  case 'p': /* local-port */
-    sss->lport = atoi(_optarg);
+  switch(optkey) {
+    case 'p': /* local-port */
+      sss->lport = atoi(_optarg);
 
-    if(sss->lport == 0){
-      traceEvent(TRACE_WARNING, "Bad local port format");
+      if(sss->lport == 0) {
+        traceEvent(TRACE_WARNING, "Bad local port format");
+        break;
+      }
+
       break;
-    }
 
-    break;
+    case 't': /* mgmt-port */
+      sss->mport = atoi(_optarg);
 
-  case 't': /* mgmt-port */
-    sss->mport = atoi(_optarg);
+      if(sss->mport == 0) {
+        traceEvent(TRACE_WARNING, "Bad management port format");
+        break;
+      }
 
-    if(sss->mport == 0){
-      traceEvent(TRACE_WARNING, "Bad management port format");
       break;
-    }
 
-    break;
+    case 'l': { /* supernode:port */
+      n2n_sock_t *socket;
+      struct peer_info *anchor_sn;
+      size_t length;
+      int rv = -1;
+      int skip_add;
+      char *double_column = strchr(_optarg, ':');
 
-  case 'l': { /* supernode:port */
-    n2n_sock_t *socket;
-    struct peer_info *anchor_sn;
-    size_t length;
-    int rv = -1;
-    int skip_add;
-    char *double_column = strchr(_optarg, ':');
+      length = strlen(_optarg);
+      if(length >= N2N_EDGE_SN_HOST_SIZE) {
+        traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d", length, N2N_EDGE_SN_HOST_SIZE);
+        break;
+      }
 
-    length = strlen(_optarg);
-    if(length >= N2N_EDGE_SN_HOST_SIZE) {
-      traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d", length, N2N_EDGE_SN_HOST_SIZE);
-      break;
-    }
+      if(!double_column) {
+        traceEvent(TRACE_WARNING, "Invalid -l format: ignored");
+        return (-1);
+      }
 
-    if(!double_column){
-      traceEvent(TRACE_WARNING, "Invalid -l format: ignored");
-      return (-1);
-    }
+      socket = (n2n_sock_t *)calloc(1, sizeof(n2n_sock_t));
+      rv = supernode2sock(socket, _optarg);
 
-    socket = (n2n_sock_t *)calloc(1,sizeof(n2n_sock_t));
-    rv = supernode2sock(socket, _optarg);
+      if(rv != 0) {
+        traceEvent(TRACE_WARNING, "Invalid socket");
+        free(socket);
+        break;
+      }
 
-    if(rv != 0){
-      traceEvent(TRACE_WARNING, "Invalid socket");
+      if(sss->federation != NULL) {
+        skip_add = SN_ADD;
+        anchor_sn = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), socket, (n2n_mac_t*) null_mac, &skip_add);
+
+        if(anchor_sn != NULL) {
+          anchor_sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
+          if(anchor_sn->ip_addr) {
+            strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
+            memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+            memcpy(&(anchor_sn->mac_addr), null_mac, sizeof(n2n_mac_t));
+            anchor_sn->purgeable = SN_UNPURGEABLE;
+            anchor_sn->last_valid_time_stamp = initial_time_stamp();
+          }
+        }
+      }
+
       free(socket);
       break;
     }
 
-    if(sss->federation != NULL) {
+    case 'a': {
+      dec_ip_str_t ip_min_str = {'\0'};
+      dec_ip_str_t ip_max_str = {'\0'};
+      in_addr_t net_min, net_max;
+      uint8_t bitlen;
+      uint32_t mask;
 
-      skip_add = SN_ADD;
-      anchor_sn = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), socket, (n2n_mac_t*) null_mac, &skip_add);
-
-      if(anchor_sn != NULL){
-        anchor_sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
-        if(anchor_sn->ip_addr){
-          strncpy(anchor_sn->ip_addr,_optarg,N2N_EDGE_SN_HOST_SIZE-1);
-	  memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
-          memcpy(&(anchor_sn->mac_addr),null_mac,sizeof(n2n_mac_t));
-          anchor_sn->purgeable = SN_UNPURGEABLE;
-          anchor_sn->last_valid_time_stamp = initial_time_stamp();
-
-        }
+      if(sscanf(_optarg, "%15[^\\-]-%15[^/]/%hhu", ip_min_str, ip_max_str, &bitlen) != 3) {
+        traceEvent(TRACE_WARNING, "Bad net-net/bit format '%s'. See -h.", _optarg);
+        break;
       }
-    }
 
-    free(socket);
-    break;
-  }
+      net_min = inet_addr(ip_min_str);
+      net_max = inet_addr(ip_max_str);
+      mask = bitlen2mask(bitlen);
+      if((net_min == (in_addr_t)(-1)) || (net_min == INADDR_NONE) || (net_min == INADDR_ANY)
+         || (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
+         || (ntohl(net_min) >  ntohl(net_max))
+         || ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0) ) {
+        traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
+                   ip_min_str, ip_max_str, bitlen, _optarg,
+                   N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
+        break;
+      }
 
-  case 'a': {
-    dec_ip_str_t ip_min_str = {'\0'};
-    dec_ip_str_t ip_max_str = {'\0'};
-    in_addr_t net_min, net_max;
-    uint8_t bitlen;
-    uint32_t mask;
+      if((bitlen > 30) || (bitlen == 0)) {
+        traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
+                   bitlen, _optarg,
+                   N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
+        break;
+      }
 
-    if (sscanf(_optarg, "%15[^\\-]-%15[^/]/%hhu", ip_min_str, ip_max_str, &bitlen) != 3) {
-      traceEvent(TRACE_WARNING, "Bad net-net/bit format '%s'. See -h.", _optarg);
+      traceEvent(TRACE_NORMAL, "The network range for community ip address service is '%s...%s/%hhu'.", ip_min_str, ip_max_str, bitlen);
+
+      sss->min_auto_ip_net.net_addr = ntohl(net_min);
+      sss->min_auto_ip_net.net_bitlen = bitlen;
+      sss->max_auto_ip_net.net_addr = ntohl(net_max);
+      sss->max_auto_ip_net.net_bitlen = bitlen;
+
       break;
     }
-
-    net_min = inet_addr(ip_min_str);
-    net_max = inet_addr(ip_max_str);
-    mask = bitlen2mask(bitlen);
-    if ((net_min == (in_addr_t)(-1)) || (net_min == INADDR_NONE) || (net_min == INADDR_ANY)
-	|| (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
-	|| (ntohl(net_min) >  ntohl(net_max))
-	|| ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0) ) {
-      traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
-		 ip_min_str, ip_max_str, bitlen, _optarg,
-		 N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
-      break;
-    }
-
-    if ((bitlen > 30) || (bitlen == 0)) {
-      traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
-		 bitlen, _optarg,
-		 N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
-      break;
-    }
-
-    traceEvent(TRACE_NORMAL, "The network range for community ip address service is '%s...%s/%hhu'.", ip_min_str, ip_max_str, bitlen);
-
-    sss->min_auto_ip_net.net_addr = ntohl(net_min);
-    sss->min_auto_ip_net.net_bitlen = bitlen;
-    sss->max_auto_ip_net.net_addr = ntohl(net_max);
-    sss->max_auto_ip_net.net_bitlen = bitlen;
-
-    break;
-  }
 
 #ifndef WIN32
-  case 'u': /* unprivileged uid */
-    sss->userid = atoi(_optarg);
-    break;
+    case 'u': /* unprivileged uid */
+      sss->userid = atoi(_optarg);
+      break;
 
-  case 'g': /* unprivileged uid */
-    sss->groupid = atoi(_optarg);
-    break;
+    case 'g': /* unprivileged uid */
+      sss->groupid = atoi(_optarg);
+      break;
 #endif
 
-  case 'F': { /* federation name */
+    case 'F': { /* federation name */
+      snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1, "*%s", _optarg);
+      sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
 
-      snprintf(sss->federation->community,N2N_COMMUNITY_SIZE-1,"*%s",_optarg);
-      sss->federation->community[N2N_COMMUNITY_SIZE-1] = '\0';
-
-    break;
-  }
+      break;
+    }
 
 #if 0
-  case 'm': {/* MAC address */
-    str2mac(sss->mac_addr,_optarg);
-    break;
-  }
+    case 'm': {/* MAC address */
+      str2mac(sss->mac_addr,_optarg);
+      break;
+    }
 #endif /* #if 0 */
 
-  case 'c': /* community file */
-    load_allowed_sn_community(sss, _optarg);
-    break;
+    case 'c': /* community file */
+      load_allowed_sn_community(sss, _optarg);
+      break;
 
-  case 'f': /* foreground */
-    sss->daemon = 0;
-    break;
+    case 'f': /* foreground */
+      sss->daemon = 0;
+      break;
 
-  case 'h': /* help */
-    help();
-    break;
+    case 'h': /* help */
+      help();
+      break;
 
-  case 'v': /* verbose */
-    setTraceLevel(getTraceLevel() + 1);
-    break;
+    case 'v': /* verbose */
+      setTraceLevel(getTraceLevel() + 1);
+      break;
 
-  default:
-    traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char) optkey);
-    return (-1);
+    default:
+      traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char)optkey);
+      return (-1);
   }
 
   return (0);
@@ -404,12 +408,15 @@ static const struct option long_options[] = {
 /* *************************************************** */
 
 /* read command line options */
-static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
+static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
+
   u_char c;
 
   while((c = getopt_long(argc, argv, "fp:l:u:g:t:a:c:F:m:vh",
-			 long_options, NULL)) != '?') {
-    if(c == 255) break;
+                         long_options, NULL)) != '?') {
+    if(c == 255) {
+      break;
+    }
     setOption(c, optarg, sss);
   }
 
@@ -418,18 +425,22 @@ static int loadFromCLI(int argc, char * const argv[], n2n_sn_t *sss) {
 
 /* *************************************************** */
 
-static char *trim(char *s) {
+static char *trim (char *s) {
+
   char *end;
 
-  while(isspace(s[0]) || (s[0] == '"') || (s[0] == '\''))
+  while(isspace(s[0]) || (s[0] == '"') || (s[0] == '\'')) {
     s++;
+  }
 
-  if(s[0] == 0) return s;
+  if(s[0] == 0) {
+    return s;
+  }
 
   end = &s[strlen(s) - 1];
-  while(end > s
-	&& (isspace(end[0])|| (end[0] == '"') || (end[0] == '\'')))
+  while(end > s && (isspace(end[0])|| (end[0] == '"') || (end[0] == '\''))) {
     end--;
+  }
   end[1] = 0;
 
   return s;
@@ -438,7 +449,8 @@ static char *trim(char *s) {
 /* *************************************************** */
 
 /* parse the configuration file */
-static int loadFromFile(const char *path, n2n_sn_t *sss) {
+static int loadFromFile (const char *path, n2n_sn_t *sss) {
+
   char buffer[4096], *line, *key, *value;
   u_int line_len, opt_name_len;
   FILE *fd;
@@ -452,39 +464,47 @@ static int loadFromFile(const char *path, n2n_sn_t *sss) {
   }
 
   while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
-
     line = trim(line);
     value = NULL;
 
-    if((line_len = strlen(line)) < 2 || line[0] == '#')
+    if((line_len = strlen(line)) < 2 || line[0] == '#') {
       continue;
+    }
 
     if(!strncmp(line, "--", 2)) { /* long opt */
       key = &line[2], line_len -= 2;
 
       opt = long_options;
       while(opt->name != NULL) {
-	opt_name_len = strlen(opt->name);
+        opt_name_len = strlen(opt->name);
 
-	if(!strncmp(key, opt->name, opt_name_len)
-	   && (line_len <= opt_name_len
-	       || key[opt_name_len] == '\0'
-	       || key[opt_name_len] == ' '
-	       || key[opt_name_len] == '=')) {
-	  if(line_len > opt_name_len)	  key[opt_name_len] = '\0';
-	  if(line_len > opt_name_len + 1) value = trim(&key[opt_name_len + 1]);
+        if(!strncmp(key, opt->name, opt_name_len)
+           && (line_len <= opt_name_len
+               || key[opt_name_len] == '\0'
+               || key[opt_name_len] == ' '
+               || key[opt_name_len] == '=')) {
+          if(line_len > opt_name_len) {
+            key[opt_name_len] = '\0';
+          }
+          if(line_len > opt_name_len + 1) {
+            value = trim(&key[opt_name_len + 1]);
+          }
 
-	  // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
-	  setOption(opt->val, value, sss);
-	  break;
-	}
+          // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
+          setOption(opt->val, value, sss);
+          break;
+        }
 
-	opt++;
+        opt++;
       }
     } else if(line[0] == '-') { /* short opt */
       key = &line[1], line_len--;
-      if(line_len > 1) key[1] = '\0';
-      if(line_len > 2) value = trim(&key[2]);
+      if(line_len > 1) {
+        key[1] = '\0';
+      }
+      if(line_len > 2) {
+        value = trim(&key[2]);
+      }
 
       // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
       setOption(key[0], value, sss);
@@ -502,16 +522,15 @@ static int loadFromFile(const char *path, n2n_sn_t *sss) {
 /* *************************************************** */
 
 /* Add the federation to the communities list of a supernode */
-static int add_federation_to_communities(n2n_sn_t *sss){
+static int add_federation_to_communities (n2n_sn_t *sss) {
+
   uint32_t  num_communities = 0;
 
   if(sss->federation != NULL) {
     HASH_ADD_STR(sss->communities, community, sss->federation);
-
     num_communities = HASH_COUNT(sss->communities);
-
     traceEvent(TRACE_INFO, "Added federation '%s' to the list of communities [total: %u]",
-	       (char*)sss->federation->community, num_communities);
+               (char*)sss->federation->community, num_communities);
   }
 
   return 0;
@@ -520,7 +539,8 @@ static int add_federation_to_communities(n2n_sn_t *sss){
 /* *************************************************** */
 
 #ifdef __linux__
-static void dump_registrations(int signo) {
+static void dump_registrations (int signo) {
+
   struct sn_community *comm, *ctmp;
   struct peer_info *list, *tmp;
   char buf[32];
@@ -533,16 +553,17 @@ static void dump_registrations(int signo) {
     traceEvent(TRACE_NORMAL, "Dumping community: %s", comm->community);
 
     HASH_ITER(hh, comm->edges, list, tmp) {
-      if(list->sock.family == AF_INET)
-	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][last seen: %u sec ago]",
-		   ++num, macaddr_str(buf, list->mac_addr),
-		   list->sock.addr.v4[0], list->sock.addr.v4[1], list->sock.addr.v4[2], list->sock.addr.v4[3],
-		   list->sock.port,
-		   now-list->last_seen);
-      else
-	traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][last seen: %u sec ago]",
-		   ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
-		   now-list->last_seen);
+      if(list->sock.family == AF_INET) {
+        traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: %u.%u.%u.%u:%u][last seen: %u sec ago]",
+                   ++num, macaddr_str(buf, list->mac_addr),
+                   list->sock.addr.v4[0], list->sock.addr.v4[1], list->sock.addr.v4[2], list->sock.addr.v4[3],
+                   list->sock.port,
+                   now-list->last_seen);
+      } else {
+        traceEvent(TRACE_NORMAL, "[id: %u][MAC: %s][edge: IPv6:%u][last seen: %u sec ago]",
+                   ++num, macaddr_str(buf, list->mac_addr), list->sock.port,
+                   now-list->last_seen);
+     }
     }
   }
 
@@ -556,9 +577,9 @@ static int keep_running;
 
 #if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
-BOOL WINAPI term_handler(DWORD sig)
+BOOL WINAPI term_handler (DWORD sig)
 #else
-  static void term_handler(int sig)
+  static void term_handler (int sig)
 #endif
 {
   static int called = 0;
@@ -581,7 +602,8 @@ BOOL WINAPI term_handler(DWORD sig)
 /* *************************************************** */
 
 /** Main program entry point from kernel. */
-int main(int argc, char * const argv[]) {
+int main (int argc, char * const argv[]) {
+
   int rc;
 #ifndef WIN32
   struct passwd *pw = NULL;
@@ -592,11 +614,12 @@ int main(int argc, char * const argv[]) {
 
   if((argc >= 2) && (argv[1][0] != '-')) {
     rc = loadFromFile(argv[1], &sss_node);
-    if(argc > 2)
+    if(argc > 2) {
       rc = loadFromCLI(argc, argv, &sss_node);
-  } else if(argc > 1)
+    }
+  } else if(argc > 1) {
     rc = loadFromCLI(argc, argv, &sss_node);
-  else
+  } else
 #ifdef WIN32
     /* Load from current directory */
     rc = loadFromFile("supernode.conf", &sss_node);
@@ -604,8 +627,9 @@ int main(int argc, char * const argv[]) {
   rc = -1;
 #endif
 
-  if(rc < 0)
+  if(rc < 0) {
     help();
+  }
 
 #if defined(N2N_HAVE_DAEMON)
   if(sss_node.daemon) {
@@ -632,17 +656,17 @@ int main(int argc, char * const argv[]) {
   if(-1 == sss_node.mgmt_sock) {
     traceEvent(TRACE_ERROR, "Failed to open management socket. %s", strerror(errno));
     exit(-2);
-  } else
+  } else {
     traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", sss_node.mport);
-
+  }
 #ifndef WIN32
-  if (((pw = getpwnam ("n2n")) != NULL) || ((pw = getpwnam ("nobody")) != NULL)) {
+  if(((pw = getpwnam ("n2n")) != NULL) || ((pw = getpwnam ("nobody")) != NULL)) {
     sss_node.userid = sss_node.userid == 0 ? pw->pw_uid : 0;
     sss_node.groupid = sss_node.groupid == 0 ? pw->pw_gid : 0;
   }
   if((sss_node.userid != 0) || (sss_node.groupid != 0)) {
     traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
-	       (signed int)sss_node.userid, (signed int)sss_node.groupid);
+               (signed int)sss_node.userid, (signed int)sss_node.groupid);
 
     /* Finished with the need for root privileges. Drop to unprivileged user. */
     if((setgid(sss_node.groupid) != 0)
@@ -652,8 +676,9 @@ int main(int argc, char * const argv[]) {
     }
   }
 
-  if((getuid() == 0) || (getgid() == 0))
+  if((getuid() == 0) || (getgid() == 0)) {
     traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
+  }
 #endif
 
   traceEvent(TRACE_NORMAL, "supernode started");
