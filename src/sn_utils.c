@@ -331,9 +331,6 @@ void sn_term (n2n_sn_t *sss) {
         HASH_DEL(sss->communities, community);
         free(community);
     }
-    HASH_DEL(sss->communities, community);
-    free(community);
-  }
 
     HASH_ITER(hh, sss->rules, re, tmp_re) {
         HASH_DEL(sss->rules, re);
