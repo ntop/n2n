@@ -40,15 +40,15 @@ uint32_t packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
     uint32_t test_magic;
     // check for magic bytes and reasonable value in header len field
     // so, as a first step, decrypt 4 bytes only starting at byte 12
-    speck_he((uint8_t*)&test_magic, &packet[12], 4, iv, (speck_context_t*)ctx);
+    speck_ctr((uint8_t*)&test_magic, &packet[12], 4, iv, (speck_context_t*)ctx);
     test_magic = be32toh(test_magic);
     if((((test_magic >> 8) <<  8) == magic)         /* check the thre uppermost bytes */
      && (((uint8_t)test_magic) <= packet_len)) {    /* lowest 8 bit of test_magic are header_len */
         // decrypt the complete header
-        speck_he(&packet[12], &packet[12], (uint8_t)(test_magic) - 12, iv, (speck_context_t*)ctx);
+        speck_ctr(&packet[12], &packet[12], (uint8_t)(test_magic) - 12, iv, (speck_context_t*)ctx);
 
         // extract time stamp (first 64 bit) and checksum (last 16 bit) blended in IV
-        speck_he_iv_decrypt(iv, (speck_context_t*)ctx_iv);
+        speck_96_decrypt(iv, (speck_context_t*)ctx_iv);
         *checksum = be16toh(((uint16_t*)iv)[5]);
         *stamp    = be64toh(((uint64_t*)iv)[0]);
 
@@ -88,12 +88,12 @@ int32_t packet_header_encrypt (uint8_t packet[], uint8_t header_len, he_context_
     iv32[3] = htobe32(magic);
 
     // blend checksum into 96-bit IV
-    speck_he_iv_encrypt(iv, (speck_context_t*)ctx_iv);
+    speck_96_encrypt(iv, (speck_context_t*)ctx_iv);
 
     memcpy(packet, iv, 16);
     packet[15] = header_len;
 
-    speck_he(&packet[12], &packet[12], header_len - 12, iv, (speck_context_t*)ctx);
+    speck_ctr(&packet[12], &packet[12], header_len - 12, iv, (speck_context_t*)ctx);
 
     return 0;
 }
@@ -106,11 +106,11 @@ void packet_header_setup_key (const char *community_name, he_context_t **ctx,
     pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
     *ctx = (he_context_t*)calloc(1, sizeof (speck_context_t));
-    speck_expand_key_he(key, (speck_context_t*)*ctx);
+    speck_init((speck_context_t**)ctx, key, 128);
 
     // hash again and use last 96 bit (skipping 4 bytes) as key for IV encryption
     // REMOVE as soon as checksum and replay protection get their own fields
     pearson_hash_128(key, key, sizeof (key));
     *ctx_iv = (he_context_t*)calloc(1, sizeof (speck_context_t));
-    speck_expand_key_he_iv(&key[4], (speck_context_t*)*ctx_iv);
+    speck_96_expand_key((speck_context_t*)*ctx_iv, &key[4]);
 }

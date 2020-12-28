@@ -17,7 +17,7 @@
  */
 
 
-// cipher SPECK -- 128 bit block size -- 256 bit key size -- CTR mode
+// cipher SPECK -- 128 bit block size -- 128 and 256 bit key size -- CTR mode
 // taken from (and modified: removed pure crypto-stream generation and seperated key expansion)
 // https://github.com/nsacyber/simon-speck-supercop/blob/master/crypto_stream/speck128256ctr/
 
@@ -51,6 +51,7 @@
 typedef struct {
     u256 rk[34];
     u64 key[34];
+    u32 keysize;
 } speck_context_t;
 
 
@@ -67,6 +68,7 @@ typedef struct {
 typedef struct {
     u128 rk[34];
     u64 key[34];
+    u32 keysize;
 } speck_context_t;
 
 
@@ -78,8 +80,9 @@ typedef struct {
 #define u128 uint64x2_t
 
 typedef struct {
-   u128 rk[34];
-   u64 key[34];
+    u128 rk[34];
+    u64 key[34];
+    u32 keysize;
 } speck_context_t;
 
 
@@ -88,6 +91,7 @@ typedef struct {
 
 typedef struct {
     u64 key[34];
+    u32 keysize;
 } speck_context_t;
 
 
@@ -98,39 +102,26 @@ int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long i
                const unsigned char *n,
 	       speck_context_t *ctx);
 
-int speck_init (const unsigned char *k, speck_context_t **ctx);
+int speck_init (speck_context_t **ctx, const unsigned char *k, int keysize);
 
 int speck_deinit (speck_context_t *ctx);
 
 
 // ----------------------------------------------------------------------------------------------------------------
-
-
-// cipher SPECK -- 128 bit block size -- 128 bit key size -- CTR mode
-// used for header encryption, thus the postfix '_he'
-// for now: just plain C -- AVX, SSE, NEON do not make sense for short header
-
-
-int speck_he (unsigned char *out, const unsigned char *in, unsigned long long inlen,
-              const unsigned char *n, speck_context_t *ctx);
-
-int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx);
-
-
 // ----------------------------------------------------------------------------------------------------------------
 
 
 // cipher SPECK -- 96 bit block size -- 96 bit key size -- ECB mode
 // follows endianess rules as used in official implementation guide and NOT as in original 2013 cipher presentation
-// used for IV in header encryption, thus the in/postfix 'he_iv'
+// used for IV in header encryption
 // for now: just plain C -- probably no need for AVX, SSE, NEON
 
 
-int speck_he_iv_encrypt (unsigned char *inout, speck_context_t *ctx);
+int speck_96_encrypt (unsigned char *inout, speck_context_t *ctx);
 
-int speck_he_iv_decrypt (unsigned char *inout, speck_context_t *ctx);
+int speck_96_decrypt (unsigned char *inout, speck_context_t *ctx);
 
-int speck_expand_key_he_iv (const unsigned char *k, speck_context_t *ctx);
+int speck_96_expand_key (speck_context_t *ctx, const unsigned char *k);
 
 
 #endif // SPECK_H
