@@ -61,9 +61,6 @@
 #define ROL(X,r) (XOR(SL(X,r),SR(X,(64-r))))
 #define ROR(X,r) (XOR(SR(X,r),SL(X,(64-r))))
 
-#define numkeywords_256   4
-#define numkeywords_128   2
-
 #define R(X,Y,k) (X=XOR(ADD(ROR8(X),Y),k), Y=XOR(ROL(Y,3),X))
 
 #define Rx4(X,Y,k)  (R(X[0],Y[0],k))
@@ -283,12 +280,6 @@ static int speck_expand_key (speck_context_t *ctx, const unsigned char *k, int k
 #define ROL8(X)  (ROL(X,8))
 #define ROR8(X)  (ROR(X,8))
 #endif // SSS3 vs. SSE2 ----------------------------------------------
-
-// #define numrounds_256   34 // !!!
-#define numkeywords_256  4
-
-// #define numrounds_128   32 // !!!
-#define numkeywords_128  2
 
 #define R(X,Y,k) (X=XOR(ADD(ROR8(X),Y),k), Y=XOR(ROL(Y,3),X))
 
