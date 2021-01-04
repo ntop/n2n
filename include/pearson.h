@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,14 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-
-#if defined (__SSSE3__) && defined (__AES__) // AES-NI & SSSE3 ----------------------------------------------------
-
-
-#include <immintrin.h>
-
-
-#endif // AES-NI & SSSE3 ------------------------------------------------------------------------------------------
+#include "portable_endian.h"
 
 
 void pearson_hash_256 (uint8_t *out, const uint8_t *in, size_t len);
