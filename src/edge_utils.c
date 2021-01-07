@@ -2943,7 +2943,7 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
 
     if(getenv("N2N_KEY")) {
         conf->encrypt_key = strdup(getenv("N2N_KEY"));
-        conf->transop_id = N2N_TRANSFORM_ID_TWOFISH;
+        conf->transop_id = N2N_TRANSFORM_ID_AES;
     }
 }
 
@@ -3027,7 +3027,7 @@ int quick_edge_init (char *device_name, char *community_name,
     /* Setup the configuration */
     edge_init_conf_defaults(&conf);
     conf.encrypt_key = encrypt_key;
-    conf.transop_id = N2N_TRANSFORM_ID_TWOFISH;
+    conf.transop_id = N2N_TRANSFORM_ID_AES;
     conf.compression = N2N_COMPRESSION_ID_NONE;
     snprintf((char*)conf.community_name, sizeof(conf.community_name), "%s", community_name);
     edge_conf_add_supernode(&conf, supernode_ip_address_port);
