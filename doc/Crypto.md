@@ -72,7 +72,7 @@ Its initialization relies on seeding with a value as random as possible. Various
 
 For general purpose hashing, n2n employs [Pearson Block Hashing](https://github.com/Logan007/pearsonB) as it offers variable hash sizes and is said not to be too "collidy". However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash value shall publically prove the knowledge of a secret without showing the secret itself.
 
-_Pearson hashing is tweakable by using your own block-sized permutation._ Here, we use a three-round xor-rotate-multiply permutation scheme on 64-bit wide integer numbers with constants discovered by [David Stafford](http://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html) (`mix13`) permission obtained via eMail) which, these days, is better known as part of `splitmix64()`.
+_Pearson hashing is tweakable by using your own block-sized permutation._ Here, we use a three-round xor-rotate-multiply permutation scheme on 64-bit wide integer numbers with constants discovered by [David Stafford](http://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html) (`mix13`, permission obtained via eMail) which, these days, is better known as part of `splitmix64()`.
 
 _Pearson hashing allows verification of block-sized parts of the hash only – just in case performance requirements would urge to do so._
 
