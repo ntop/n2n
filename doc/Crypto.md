@@ -11,8 +11,6 @@ Payload encryption currently comes in four different flavors using ciphers of di
 - ChaCha20 (CTR) (`-A4`)
 - SPECK in CTR mode (`-A5`)
 
-To renounce encryption, `-A1` enables the so called `null_transform` transmitting all payload data unencryptedly.
-
 The following chart might help to make a quick comparison and decide what cipher to use:
 
 | Cipher | Mode | Block Size | Key Size         | IV length |Speed | Built-In | Origin |
@@ -25,6 +23,12 @@ The following chart might help to make a quick comparison and decide what cipher
 The two block ciphers Twofish and AES are used in CTS mode.
 
 n2n has all four ciphers built-in as basic versions. Some of them optionally compile to faster versions by the means of available hardware support (AES-NI, SSE, AVX – please see the [Building document](./Building.md) for details. Depending on your platform, AES and ChaCha20 might also draw notable acceleration from optionally compiling with openSSL 1.1 support.
+
+The`-k <key>` command line parameter supplies the key. As even non-privileged users might get to see the command line parameters (try `ps -Af | grep edge`), the key can also be supplied through the `N2N_KEY` environment variable: `sudo N2N_KEY=mysecretpass edge -c mynetwork -a 192.168.100.1 -f -l supernode.ntop.org:7777`.
+
+Providing `-k <key>` without specifying any cipher by `-A_` will default to AES encryption.
+
+To renounce encryption, `-A1` enables the so called `null_transform` transmitting all payload data unencryptedly. Omitting `-A_` and not providing a key through `-k <key>` shows the same effect.
 
 ### Twofish
 
