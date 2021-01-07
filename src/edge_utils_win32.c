@@ -8,7 +8,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -24,28 +24,29 @@
 
 static DWORD* tunReadThread (LPVOID lpArg) {
 
-  struct tunread_arg *arg = (struct tunread_arg*)lpArg;
+    struct tunread_arg *arg = (struct tunread_arg*)lpArg;
 
-  while(*arg->keep_running)
-          edge_read_from_tap(arg->eee);
+    while(*arg->keep_running) {
+        edge_read_from_tap(arg->eee);
+    }
 
-  return((DWORD*)NULL);
+    return((DWORD*)NULL);
 }
 
 /* ************************************** */
 
 /** Start a second thread in Windows because TUNTAP interfaces do not expose
- *  file descriptors. */
+ *    file descriptors. */
 HANDLE startTunReadThread (struct tunread_arg *arg) {
 
-  DWORD dwThreadId;
+    DWORD dwThreadId;
 
-  return(CreateThread(NULL,         /* security attributes */
-                      0,            /* use default stack size */
-                      (LPTHREAD_START_ROUTINE)tunReadThread, /* thread function */
-                      (void*)arg,   /* argument to thread function */
-                      0,            /* thread creation flags */
-                      &dwThreadId)); /* thread id out */
+    return(CreateThread(NULL,          /* security attributes */
+                        0,             /* use default stack size */
+                        (LPTHREAD_START_ROUTINE)tunReadThread, /* thread function */
+                        (void*)arg,    /* argument to thread function */
+                        0,             /* thread creation flags */
+                        &dwThreadId)); /* thread id out */
 }
 #endif
 
