@@ -84,7 +84,7 @@ hostname and the community name optionally can be encrypted applying `-H` on the
 
 ## Advanced Configuration
 
-More information about communities, routing, traffic restrictions and on how to run an edge as 
+More information about communities, support for multiple supernodes, routing, traffic restrictions and on how to run an edge as 
 a service is available in the [more detailed documentation](doc/Advanced.md).
 
 

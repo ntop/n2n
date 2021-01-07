@@ -18,6 +18,10 @@ starting it with `sudo systemctl start edge@instance1`.
 You might be interested to learn some [details about Communities](Communities.md) and understand how to limit supernodes' services to only a specified set of communities.
 
 
+## Federation
+
+It is available a special community which provides interconnection between supernodes. Details about how it works and how you can use it are available in [Federation](Federation.md).
+
 ## Virtual Network Device Configuration
 
 The [TAP Configuration Guide](TapConfiguration.md) contains hints on various settings that can be applied to the virtual network device, including IPv6 addresses as well as notes on MTU and on how to draw IP addresses from DHCP servers.
