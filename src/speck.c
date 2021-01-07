@@ -17,7 +17,7 @@
  */
 
 
-// cipher SPECK -- 128 bit block size -- 256 bit key size -- CTR mode
+// cipher SPECK -- 128 bit block size -- 128 and 256 bit key size -- CTR mode
 // taken from (and modified: removed pure crypto-stream generation and seperated key expansion)
 // https://github.com/nsacyber/simon-speck-supercop/blob/master/crypto_stream/speck128256ctr/
 
@@ -61,15 +61,11 @@
 #define ROL(X,r) (XOR(SL(X,r),SR(X,(64-r))))
 #define ROR(X,r) (XOR(SR(X,r),SL(X,(64-r))))
 
-#define numrounds   34
-#define numkeywords 4
-
 #define R(X,Y,k) (X=XOR(ADD(ROR8(X),Y),k), Y=XOR(ROL(Y,3),X))
 
 #define Rx4(X,Y,k)  (R(X[0],Y[0],k))
 #define Rx8(X,Y,k)  (R(X[0],Y[0],k), R(X[1],Y[1],k))
 #define Rx12(X,Y,k) (R(X[0],Y[0],k), R(X[1],Y[1],k), R(X[2],Y[2],k))
-
 #define Rx16(X,Y,k) (X[0]=ROR8(X[0]),     X[0]=ADD(X[0],Y[0]), X[1]=ROR8(X[1]),     X[1]=ADD(X[1],Y[1]), \
                      X[2]=ROR8(X[2]),     X[2]=ADD(X[2],Y[2]), X[3]=ROR8(X[3]),     X[3]=ADD(X[3],Y[3]), \
                      X[0]=XOR(X[0],k),    X[1]=XOR(X[1],k),    X[2]=XOR(X[2],k),    X[3]=XOR(X[3],k),    \
@@ -79,18 +75,19 @@
                      Y[0]=XOR(Y[0],Z[0]), Y[1]=XOR(Y[1],Z[1]), Y[2]=XOR(Y[2],Z[2]), Y[3]=XOR(Y[3],Z[3]), \
                      Y[0]=XOR(X[0],Y[0]), Y[1]=XOR(X[1],Y[1]), Y[2]=XOR(X[2],Y[2]), Y[3]=XOR(X[3],Y[3]))
 
-#define Rx2(x,y,k) (x[0]=RCS(x[0],8), x[1]=RCS(x[1],8), x[0]+=y[0],       x[1]+=y[1], \
-                    x[0]^=k,          x[1]^=k,          y[0]=LCS(y[0],3), y[1]=LCS(y[1],3), y[0]^=x[0], y[1]^=x[1])
-
-#define Rx1(x,y,k) (x[0]=RCS(x[0],8), x[0]+=y[0], x[0]^=k, y[0]=LCS(y[0],3), y[0]^=x[0])
-
+#define Rx1(x,y,k)  (x[0]=RCS(x[0],8), x[0]+=y[0], x[0]^=k, y[0]=LCS(y[0],3), y[0]^=x[0])
 #define Rx1b(x,y,k) (x=RCS(x,8), x+=y, x^=k, y=LCS(y,3), y^=x)
+#define Rx2(x,y,k)  (x[0]=RCS(x[0],8), x[1]=RCS(x[1],8), x[0]+=y[0],       x[1]+=y[1], \
+                     x[0]^=k,          x[1]^=k,          y[0]=LCS(y[0],3), y[1]=LCS(y[1],3), y[0]^=x[0], y[1]^=x[1])
 
-#define Encrypt(X,Y,k,n) (Rx##n(X,Y,k[0]),  Rx##n(X,Y,k[1]),  Rx##n(X,Y,k[2]),  Rx##n(X,Y,k[3]),  Rx##n(X,Y,k[4]),  Rx##n(X,Y,k[5]),  Rx##n(X,Y,k[6]),  Rx##n(X,Y,k[7]), \
-                          Rx##n(X,Y,k[8]),  Rx##n(X,Y,k[9]),  Rx##n(X,Y,k[10]), Rx##n(X,Y,k[11]), Rx##n(X,Y,k[12]), Rx##n(X,Y,k[13]), Rx##n(X,Y,k[14]), Rx##n(X,Y,k[15]), \
-                          Rx##n(X,Y,k[16]), Rx##n(X,Y,k[17]), Rx##n(X,Y,k[18]), Rx##n(X,Y,k[19]), Rx##n(X,Y,k[20]), Rx##n(X,Y,k[21]), Rx##n(X,Y,k[22]), Rx##n(X,Y,k[23]), \
-                          Rx##n(X,Y,k[24]), Rx##n(X,Y,k[25]), Rx##n(X,Y,k[26]), Rx##n(X,Y,k[27]), Rx##n(X,Y,k[28]), Rx##n(X,Y,k[29]), Rx##n(X,Y,k[30]), Rx##n(X,Y,k[31]), \
-                          Rx##n(X,Y,k[32]), Rx##n(X,Y,k[33]))
+
+#define Encrypt_128(X,Y,k,n) (Rx##n(X,Y,k[0]),  Rx##n(X,Y,k[1]),  Rx##n(X,Y,k[2]),  Rx##n(X,Y,k[3]),  Rx##n(X,Y,k[4]),  Rx##n(X,Y,k[5]),  Rx##n(X,Y,k[6]),  Rx##n(X,Y,k[7]), \
+                              Rx##n(X,Y,k[8]),  Rx##n(X,Y,k[9]),  Rx##n(X,Y,k[10]), Rx##n(X,Y,k[11]), Rx##n(X,Y,k[12]), Rx##n(X,Y,k[13]), Rx##n(X,Y,k[14]), Rx##n(X,Y,k[15]), \
+                              Rx##n(X,Y,k[16]), Rx##n(X,Y,k[17]), Rx##n(X,Y,k[18]), Rx##n(X,Y,k[19]), Rx##n(X,Y,k[20]), Rx##n(X,Y,k[21]), Rx##n(X,Y,k[22]), Rx##n(X,Y,k[23]), \
+                              Rx##n(X,Y,k[24]), Rx##n(X,Y,k[25]), Rx##n(X,Y,k[26]), Rx##n(X,Y,k[27]), Rx##n(X,Y,k[28]), Rx##n(X,Y,k[29]), Rx##n(X,Y,k[30]), Rx##n(X,Y,k[31]))
+
+#define Encrypt_256(X,Y,k,n) (Encrypt_128(X,Y,k,n),               \
+                              Rx##n(X,Y,k[32]), Rx##n(X,Y,k[33]))
 
 #define RK(X,Y,k,key,i)   (SET1(k[i],Y), key[i]=Y, X=RCS(X,8), X+=Y, X^=i, Y=LCS(Y,3), Y^=X)
 
@@ -100,61 +97,68 @@
                            RK(B,A,k,key,21), RK(C,A,k,key,22), RK(D,A,k,key,23), RK(B,A,k,key,24), RK(C,A,k,key,25), RK(D,A,k,key,26), RK(B,A,k,key,27), \
                            RK(C,A,k,key,28), RK(D,A,k,key,29), RK(B,A,k,key,30), RK(C,A,k,key,31), RK(D,A,k,key,32), RK(B,A,k,key,33))
 
+#define Encrypt_Dispatcher(keysize)                                                       \
+    u64  x[2], y[2];                                                                      \
+    u256 X[4], Y[4], Z[4];                                                                \
+                                                                                          \
+    if(numbytes == 16) {                                                                  \
+        x[0] = nonce[1]; y[0] = nonce[0]; nonce[0]++;                                     \
+        Encrypt_##keysize(x, y, ctx->key, 1);                                             \
+        ((u64 *)out)[1] = x[0]; ((u64 *)out)[0] = y[0];                                   \
+        return 0;                                                                         \
+    }                                                                                     \
+                                                                                          \
+    if(numbytes == 32) {                                                                  \
+        x[0] = nonce[1]; y[0] = nonce[0]; nonce[0]++;                                     \
+        x[1] = nonce[1]; y[1] = nonce[0]; nonce[0]++;                                     \
+        Encrypt_##keysize(x , y, ctx->key, 2);                                            \
+        ((u64 *)out)[1] = x[0] ^ ((u64 *)in)[1]; ((u64 *)out)[0] = y[0] ^ ((u64 *)in)[0]; \
+        ((u64 *)out)[3] = x[1] ^ ((u64 *)in)[3]; ((u64 *)out)[2] = y[1] ^ ((u64 *)in)[2]; \
+        return 0;                                                                         \
+    }                                                                                     \
+                                                                                          \
+    SET1(X[0], nonce[1]); SET4(Y[0], nonce[0]);                                           \
+                                                                                          \
+    if(numbytes == 64)                                                                    \
+        Encrypt_##keysize(X, Y, ctx->rk, 4);                                              \
+    else {                                                                                \
+        X[1] = X[0];                                                                      \
+        Y[1] = ADD(Y[0], _four);                                                          \
+        if(numbytes == 128)                                                               \
+            Encrypt_##keysize(X, Y, ctx->rk, 8);                                          \
+        else {                                                                            \
+            X[2] = X[0];                                                                  \
+            Y[2] = ADD(Y[1], _four);                                                      \
+            if(numbytes == 192)                                                           \
+                Encrypt_##keysize(X, Y, ctx->rk, 12);                                     \
+            else {                                                                        \
+                X[3] = X[0];                                                              \
+                Y[3] = ADD(Y[2], _four);                                                  \
+                Encrypt_##keysize(X, Y, ctx->rk, 16);                                     \
+            }                                                                             \
+        }                                                                                 \
+    }                                                                                     \
+                                                                                          \
+    nonce[0] += (numbytes >> 4);                                                          \
+                                                                                          \
+    XOR_STORE(in, out, X[0], Y[0]);                                                       \
+    if (numbytes >= 128)                                                                  \
+        XOR_STORE(in +  64, out +  64, X[1], Y[1]);                                       \
+    if(numbytes >= 192)                                                                   \
+        XOR_STORE(in + 128, out + 128, X[2], Y[2]);                                       \
+    if(numbytes >= 256)                                                                   \
+        XOR_STORE(in + 192, out + 192, X[3], Y[3]);                                       \
+                                                                                          \
+  return 0
+
 
 static int speck_encrypt_xor(unsigned char *out, const unsigned char *in, u64 nonce[], speck_context_t *ctx, int numbytes) {
 
-    u64  x[2], y[2];
-    u256 X[4], Y[4], Z[4];
-
-    if(numbytes == 16) {
-        x[0] = nonce[1]; y[0] = nonce[0]; nonce[0]++;
-        Encrypt(x, y, ctx->key, 1);
-        ((u64 *)out)[1] = x[0]; ((u64 *)out)[0] = y[0];
-        return 0;
+    if(ctx->keysize == 256) {
+        Encrypt_Dispatcher(256);
+    } else {
+        Encrypt_Dispatcher(128);
     }
-
-    if(numbytes == 32) {
-        x[0] = nonce[1]; y[0] = nonce[0]; nonce[0]++;
-        x[1] = nonce[1]; y[1] = nonce[0]; nonce[0]++;
-        Encrypt(x , y, ctx->key, 2);
-        ((u64 *)out)[1] = x[0] ^ ((u64 *)in)[1]; ((u64 *)out)[0] = y[0] ^ ((u64 *)in)[0];
-        ((u64 *)out)[3] = x[1] ^ ((u64 *)in)[3]; ((u64 *)out)[2] = y[1] ^ ((u64 *)in)[2];
-        return 0;
-    }
-
-    SET1(X[0], nonce[1]); SET4(Y[0], nonce[0]);
-
-    if(numbytes == 64)
-        Encrypt(X, Y, ctx->rk, 4);
-    else {
-        X[1] = X[0];
-        Y[1] = ADD(Y[0], _four);
-        if(numbytes == 128)
-            Encrypt(X, Y, ctx->rk, 8);
-        else {
-            X[2] = X[0];
-            Y[2] = ADD(Y[1], _four);
-            if(numbytes == 192)
-                Encrypt(X, Y, ctx->rk, 12);
-            else {
-                X[3] = X[0];
-                Y[3] = ADD(Y[2], _four);
-                Encrypt(X, Y, ctx->rk, 16);
-            }
-        }
-    }
-
-    nonce[0] += (numbytes >> 4);
-
-    XOR_STORE(in, out, X[0], Y[0]);
-    if (numbytes >= 128)
-        XOR_STORE(in +  64, out +  64, X[1], Y[1]);
-    if(numbytes >= 192)
-        XOR_STORE(in + 128, out + 128, X[2], Y[2]);
-    if(numbytes >= 256)
-        XOR_STORE(in + 192, out + 192, X[3], Y[3]);
-
-  return 0;
 }
 
 
@@ -205,7 +209,7 @@ static int internal_speck_ctr(unsigned char *out, const unsigned char *in, unsig
     }
 
     if(inlen > 0) {
-        speck_encrypt_xor (block, in, nonce, ctx, 16);
+        speck_encrypt_xor(block, in, nonce, ctx, 16);
         for(i = 0; i < inlen; i++)
             out[i] = block[i] ^ in[i];
     }
@@ -214,15 +218,22 @@ static int internal_speck_ctr(unsigned char *out, const unsigned char *in, unsig
 }
 
 
-static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (speck_context_t *ctx, const unsigned char *k, int keysize) {
 
     u64 K[4];
     size_t i;
 
-    for(i = 0; i < numkeywords; i++)
-    K[i] = ((u64 *)k)[i];
+    for(i = 0; i < (keysize >> 6); i++)
+        K[i] = ((u64 *)k)[i];
 
-    EK(K[0], K[1], K[2], K[3], ctx->rk, ctx->key);
+    // 128 bit has only two keys A and B thus replacing both C and D with B then
+    if(keysize == 128) {
+        EK(K[0], K[1], K[1], K[1], ctx->rk, ctx->key);
+    } else {
+        EK(K[0], K[1], K[2], K[3], ctx->rk, ctx->key);
+    }
+
+    ctx->keysize = keysize;
 
     return 0;
 }
@@ -270,15 +281,11 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #define ROR8(X)  (ROR(X,8))
 #endif // SSS3 vs. SSE2 ----------------------------------------------
 
-#define numrounds   34
-#define numkeywords 4
-
 #define R(X,Y,k) (X=XOR(ADD(ROR8(X),Y),k), Y=XOR(ROL(Y,3),X))
 
 #define Rx2(X,Y,k) (R(X[0],Y[0],k))
 #define Rx4(X,Y,k) (R(X[0],Y[0],k), R(X[1],Y[1],k))
 #define Rx6(X,Y,k) (R(X[0],Y[0],k), R(X[1],Y[1],k), R(X[2],Y[2],k))
-
 #define Rx8(X,Y,k) (X[0]=ROR8(X[0]),     X[0]=ADD(X[0],Y[0]), X[1]=ROR8(X[1]),     X[1]=ADD(X[1],Y[1]), \
                     X[2]=ROR8(X[2]),     X[2]=ADD(X[2],Y[2]), X[3]=ROR8(X[3]),     X[3]=ADD(X[3],Y[3]), \
                     X[0]=XOR(X[0],k),    X[1]=XOR(X[1],k),    X[2]=XOR(X[2],k),    X[3]=XOR(X[3],k),    \
@@ -289,14 +296,15 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
                     Y[0]=XOR(X[0],Y[0]), Y[1]=XOR(X[1],Y[1]), Y[2]=XOR(X[2],Y[2]), Y[3]=XOR(X[3],Y[3]))
 
 #define Rx1(x,y,k) (x[0]=RCS(x[0],8), x[0]+=y[0], x[0]^=k, y[0]=LCS(y[0],3), y[0]^=x[0])
-
 #define Rx1b(x,y,k) (x=RCS(x,8), x+=y, x^=k, y=LCS(y,3), y^=x)
 
-#define Encrypt(X,Y,k,n) (Rx##n(X,Y,k[0]),  Rx##n(X,Y,k[1]),  Rx##n(X,Y,k[2]),  Rx##n(X,Y,k[3]),  Rx##n(X,Y,k[4]),  Rx##n(X,Y,k[5]),  Rx##n(X,Y,k[6]),  Rx##n(X,Y,k[7]), \
-                          Rx##n(X,Y,k[8]),  Rx##n(X,Y,k[9]),  Rx##n(X,Y,k[10]), Rx##n(X,Y,k[11]), Rx##n(X,Y,k[12]), Rx##n(X,Y,k[13]), Rx##n(X,Y,k[14]), Rx##n(X,Y,k[15]), \
-                          Rx##n(X,Y,k[16]), Rx##n(X,Y,k[17]), Rx##n(X,Y,k[18]), Rx##n(X,Y,k[19]), Rx##n(X,Y,k[20]), Rx##n(X,Y,k[21]), Rx##n(X,Y,k[22]), Rx##n(X,Y,k[23]), \
-                          Rx##n(X,Y,k[24]), Rx##n(X,Y,k[25]), Rx##n(X,Y,k[26]), Rx##n(X,Y,k[27]), Rx##n(X,Y,k[28]), Rx##n(X,Y,k[29]), Rx##n(X,Y,k[30]), Rx##n(X,Y,k[31]), \
-                          Rx##n(X,Y,k[32]), Rx##n(X,Y,k[33]))
+#define Encrypt_128(X,Y,k,n) (Rx##n(X,Y,k[0]),  Rx##n(X,Y,k[1]),  Rx##n(X,Y,k[2]),  Rx##n(X,Y,k[3]),  Rx##n(X,Y,k[4]),  Rx##n(X,Y,k[5]),  Rx##n(X,Y,k[6]),  Rx##n(X,Y,k[7]), \
+                              Rx##n(X,Y,k[8]),  Rx##n(X,Y,k[9]),  Rx##n(X,Y,k[10]), Rx##n(X,Y,k[11]), Rx##n(X,Y,k[12]), Rx##n(X,Y,k[13]), Rx##n(X,Y,k[14]), Rx##n(X,Y,k[15]), \
+                              Rx##n(X,Y,k[16]), Rx##n(X,Y,k[17]), Rx##n(X,Y,k[18]), Rx##n(X,Y,k[19]), Rx##n(X,Y,k[20]), Rx##n(X,Y,k[21]), Rx##n(X,Y,k[22]), Rx##n(X,Y,k[23]), \
+                              Rx##n(X,Y,k[24]), Rx##n(X,Y,k[25]), Rx##n(X,Y,k[26]), Rx##n(X,Y,k[27]), Rx##n(X,Y,k[28]), Rx##n(X,Y,k[29]), Rx##n(X,Y,k[30]), Rx##n(X,Y,k[31]))
+
+#define Encrypt_256(X,Y,k,n) (Encrypt_128(X,Y,k,n),               \
+                              Rx##n(X,Y,k[32]), Rx##n(X,Y,k[33]))
 
 #define RK(X,Y,k,key,i)   (SET1(k[i],Y), key[i]=Y, X=RCS(X,8), X+=Y, X^=i, Y=LCS(Y,3), Y^=X)
 
@@ -306,50 +314,57 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
                            RK(B,A,k,key,21), RK(C,A,k,key,22), RK(D,A,k,key,23), RK(B,A,k,key,24), RK(C,A,k,key,25), RK(D,A,k,key,26), RK(B,A,k,key,27), \
                            RK(C,A,k,key,28), RK(D,A,k,key,29), RK(B,A,k,key,30), RK(C,A,k,key,31), RK(D,A,k,key,32), RK(B,A,k,key,33))
 
+#define Encrypt_Dispatcher(keysize)                        \
+    u64  x[2], y[2];                                       \
+    u128 X[4], Y[4], Z[4];                                 \
+                                                           \
+    if(numbytes == 16) {                                   \
+        x[0] = nonce[1]; y[0] = nonce[0]; nonce[0]++;      \
+        Encrypt_##keysize(x, y, ctx.key, 1);               \
+        ((u64 *)out)[1] = x[0]; ((u64 *)out)[0] = y[0];    \
+        return 0;                                          \
+    }                                                      \
+                                                           \
+    SET1(X[0], nonce[1]); SET2(Y[0], nonce[0]);            \
+                                                           \
+    if(numbytes == 32)                                     \
+        Encrypt_##keysize(X, Y, ctx.rk, 2);                \
+    else {                                                 \
+        X[1] = X[0]; Y[1] = ADD(Y[0], _two);               \
+        if(numbytes == 64)                                 \
+            Encrypt_##keysize(X, Y, ctx.rk, 4);            \
+        else {                                             \
+            X[2] = X[0]; Y[2] = ADD(Y[1], _two);           \
+            if(numbytes == 96)                             \
+                Encrypt_##keysize(X, Y, ctx.rk, 6);        \
+            else {                                         \
+                X[3] = X[0]; Y[3] = ADD(Y[2], _two);       \
+                Encrypt_##keysize(X, Y, ctx.rk, 8);        \
+            }                                              \
+        }                                                  \
+    }                                                      \
+                                                           \
+    nonce[0] += (numbytes >> 4);                           \
+                                                           \
+    XOR_STORE(in, out, X[0], Y[0]);                        \
+    if(numbytes >= 64)                                     \
+        XOR_STORE(in + 32, out + 32, X[1], Y[1]);          \
+    if(numbytes >= 96)                                     \
+        XOR_STORE(in + 64, out + 64, X[2], Y[2]);          \
+    if(numbytes >= 128)                                    \
+        XOR_STORE(in + 96, out + 96, X[3], Y[3]);          \
+                                                           \
+    return 0
+
 
 // attention: ctx is provided by value as it is faster in this case, astonishingly
 static int speck_encrypt_xor (unsigned char *out, const unsigned char *in, u64 nonce[], const speck_context_t ctx, int numbytes) {
 
-    u64  x[2], y[2];
-    u128 X[4], Y[4], Z[4];
-
-    if(numbytes == 16) {
-        x[0] = nonce[1]; y[0] = nonce[0]; nonce[0]++;
-        Encrypt(x, y, ctx.key, 1);
-        ((u64 *)out)[1] = x[0]; ((u64 *)out)[0] = y[0];
-        return 0;
+    if(ctx.keysize == 256) {
+        Encrypt_Dispatcher(256);
+    } else {
+        Encrypt_Dispatcher(128);
     }
-
-    SET1(X[0], nonce[1]); SET2 (Y[0], nonce[0]);
-
-    if(numbytes == 32)
-        Encrypt(X, Y, ctx.rk, 2);
-    else {
-        X[1] = X[0]; Y[1] = ADD(Y[0], _two);
-        if(numbytes == 64)
-            Encrypt(X, Y, ctx.rk, 4);
-        else {
-            X[2] = X[0]; Y[2] = ADD(Y[1], _two);
-            if(numbytes == 96)
-                Encrypt(X, Y, ctx.rk, 6);
-            else {
-                X[3] = X[0]; Y[3] = ADD(Y[2], _two);
-                Encrypt(X, Y, ctx.rk, 8);
-            }
-        }
-    }
-
-    nonce[0] += (numbytes >> 4);
-
-    XOR_STORE(in, out, X[0], Y[0]);
-    if(numbytes >= 64)
-        XOR_STORE(in + 32, out + 32, X[1], Y[1]);
-    if(numbytes >= 96)
-        XOR_STORE(in + 64, out + 64, X[2], Y[2]);
-    if(numbytes >= 128)
-        XOR_STORE(in + 96, out + 96, X[3], Y[3]);
-
-    return 0;
 }
 
 
@@ -405,15 +420,22 @@ static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsi
 }
 
 
-static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (speck_context_t *ctx, const unsigned char *k, int keysize) {
 
     u64 K[4];
     size_t i;
 
-    for(i = 0; i < numkeywords; i++)
+    for(i = 0; i < (keysize >> 6 ); i++)
         K[i] = ((u64 *)k)[i];
 
-    EK(K[0], K[1], K[2], K[3], ctx->rk, ctx->key);
+    // 128 bit has only two keys A and B thus replacing both C and D with B then
+    if(keysize == 128) {
+        EK(K[0], K[1], K[1], K[1], ctx->rk, ctx->key);
+    } else {
+        EK(K[0], K[1], K[2], K[3], ctx->rk, ctx->key);
+    }
+
+    ctx->keysize = keysize;
 
     return 0;
 }
@@ -448,13 +470,9 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #define ROR8(X) SET(vtbl1_u8((uint8x8_t)vget_low_u64(X),tableR), vtbl1_u8((uint8x8_t)vget_high_u64(X),tableR))
 #define ROL8(X) SET(vtbl1_u8((uint8x8_t)vget_low_u64(X),tableL), vtbl1_u8((uint8x8_t)vget_high_u64(X),tableL))
 
-#define numrounds 34
-#define numkeywords 4
-
 #define R(X,Y,k) (X=XOR(ADD(ROR8(X),Y),k), Y=XOR(ROL(Y,3),X))
 
 #define Rx2(X,Y,k) (R(X[0],Y[0],k))
-
 #define Rx4(X,Y,k) (R(X[0],Y[0],k), R(X[1],Y[1],k))
 #define Rx6(X,Y,k) (R(X[0],Y[0],k), R(X[1],Y[1],k), R(X[2],Y[2],k))
 #define Rx8(X,Y,k) (X[0]=ROR8(X[0]), X[0]=ADD(X[0],Y[0]), X[0]=XOR(X[0],k), X[1]=ROR8(X[1]), X[1]=ADD(X[1],Y[1]), X[1]=XOR(X[1],k), \
@@ -465,14 +483,15 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
                     Y[0]=XOR(X[0],Y[0]), Y[1]=XOR(X[1],Y[1]), Y[2]=XOR(X[2],Y[2]), Y[3]=XOR(X[3],Y[3]))
 
 #define Rx1(x,y,k) (x[0]=RCS(x[0],8), x[0]+=y[0], x[0]^=k, y[0]=LCS(y[0],3), y[0]^=x[0])
-
 #define Rx1b(x,y,k) (x=RCS(x,8), x+=y, x^=k, y=LCS(y,3), y^=x)
 
-#define Encrypt(X,Y,k,n) (Rx##n(X,Y,k[0]),  Rx##n(X,Y,k[1]),  Rx##n(X,Y,k[2]),  Rx##n(X,Y,k[3]),  Rx##n(X,Y,k[4]),  Rx##n(X,Y,k[5]),  Rx##n(X,Y,k[6]),  Rx##n(X,Y,k[7]), \
-                          Rx##n(X,Y,k[8]),  Rx##n(X,Y,k[9]),  Rx##n(X,Y,k[10]), Rx##n(X,Y,k[11]), Rx##n(X,Y,k[12]), Rx##n(X,Y,k[13]), Rx##n(X,Y,k[14]), Rx##n(X,Y,k[15]), \
-                          Rx##n(X,Y,k[16]), Rx##n(X,Y,k[17]), Rx##n(X,Y,k[18]), Rx##n(X,Y,k[19]), Rx##n(X,Y,k[20]), Rx##n(X,Y,k[21]), Rx##n(X,Y,k[22]), Rx##n(X,Y,k[23]), \
-                          Rx##n(X,Y,k[24]), Rx##n(X,Y,k[25]), Rx##n(X,Y,k[26]), Rx##n(X,Y,k[27]), Rx##n(X,Y,k[28]), Rx##n(X,Y,k[29]), Rx##n(X,Y,k[30]), Rx##n(X,Y,k[31]), \
-                          Rx##n(X,Y,k[32]), Rx##n(X,Y,k[33]))
+#define Encrypt_128(X,Y,k,n) (Rx##n(X,Y,k[0]),  Rx##n(X,Y,k[1]),  Rx##n(X,Y,k[2]),  Rx##n(X,Y,k[3]),  Rx##n(X,Y,k[4]),  Rx##n(X,Y,k[5]),  Rx##n(X,Y,k[6]),  Rx##n(X,Y,k[7]), \
+                              Rx##n(X,Y,k[8]),  Rx##n(X,Y,k[9]),  Rx##n(X,Y,k[10]), Rx##n(X,Y,k[11]), Rx##n(X,Y,k[12]), Rx##n(X,Y,k[13]), Rx##n(X,Y,k[14]), Rx##n(X,Y,k[15]), \
+                              Rx##n(X,Y,k[16]), Rx##n(X,Y,k[17]), Rx##n(X,Y,k[18]), Rx##n(X,Y,k[19]), Rx##n(X,Y,k[20]), Rx##n(X,Y,k[21]), Rx##n(X,Y,k[22]), Rx##n(X,Y,k[23]), \
+                              Rx##n(X,Y,k[24]), Rx##n(X,Y,k[25]), Rx##n(X,Y,k[26]), Rx##n(X,Y,k[27]), Rx##n(X,Y,k[28]), Rx##n(X,Y,k[29]), Rx##n(X,Y,k[30]), Rx##n(X,Y,k[31]))
+
+#define Encrypt_256(X,Y,k,n) (Encrypt_128(X,Y,k,n),               \
+                              Rx##n(X,Y,k[32]), Rx##n(X,Y,k[33]))
 
 #define RK(X,Y,k,key,i) (SET1(k[i],Y), key[i]=Y, X=RCS(X,8), X+=Y, X^=i, Y=LCS(Y,3), Y^=X)
 
@@ -482,47 +501,54 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
                            RK(B,A,k,key,21), RK(C,A,k,key,22), RK(D,A,k,key,23), RK(B,A,k,key,24), RK(C,A,k,key,25), RK(D,A,k,key,26), RK(B,A,k,key,27), \
                            RK(C,A,k,key,28), RK(D,A,k,key,29), RK(B,A,k,key,30), RK(C,A,k,key,31), RK(D,A,k,key,32), RK(B,A,k,key,33))
 
+#define Encrypt_Dispatcher(keysize)                     \
+    u64  x[2], y[2];                                    \
+    u128 X[4], Y[4], Z[4];                              \
+                                                        \
+    if(numbytes == 16) {                                \
+        x[0] = nonce[1]; y[0]=nonce[0]; nonce[0]++;     \
+        Encrypt_##keysize(x, y, ctx->key, 1);           \
+        ((u64 *)out)[1] = x[0]; ((u64 *)out)[0] = y[0]; \
+        return 0;                                       \
+    }                                                   \
+                                                        \
+    SET1(X[0], nonce[1]); SET2(Y[0], nonce[0]);         \
+                                                        \
+    if(numbytes == 32)                                  \
+        Encrypt_##keysize(X, Y, ctx->rk, 2);            \
+    else {                                              \
+        X[1] = X[0]; SET2(Y[1], nonce[0]);              \
+        if(numbytes == 64)                              \
+            Encrypt_##keysize(X, Y, ctx->rk, 4);        \
+        else {                                          \
+            X[2] = X[0]; SET2(Y[2], nonce[0]);          \
+            if(numbytes == 96)                          \
+                Encrypt_##keysize(X, Y, ctx->rk, 6);    \
+            else {                                      \
+                X[3] = X[0]; SET2(Y[3], nonce[0]);      \
+                Encrypt_##keysize(X, Y, ctx->rk, 8);    \
+            }                                           \
+        }                                               \
+    }                                                   \
+                                                        \
+    XOR_STORE(in, out, X[0], Y[0]);                     \
+    if(numbytes >= 64)                                  \
+        XOR_STORE(in +  32, out +  32, X[1], Y[1]);     \
+    if(numbytes >= 96)                                  \
+        XOR_STORE(in +  64, out +  64, X[2], Y[2]);     \
+    if(numbytes >= 128)                                 \
+        XOR_STORE(in +  96, out +  96, X[3], Y[3]);     \
+                                                        \
+    return 0
+
 
 static int speck_encrypt_xor (unsigned char *out, const unsigned char *in, u64 nonce[], speck_context_t *ctx, int numbytes) {
 
-    u64  x[2], y[2];
-    u128 X[4], Y[4], Z[4];
-
-    if(numbytes == 16) {
-        x[0] = nonce[1]; y[0]=nonce[0]; nonce[0]++;
-        Encrypt(x, y, ctx->key, 1);
-        ((u64 *)out)[1] = x[0]; ((u64 *)out)[0] = y[0];
-        return 0;
+    if(ctx->keysize == 256) {
+        Encrypt_Dispatcher(256);
+    } else {
+        Encrypt_Dispatcher(128);
     }
-
-    SET1(X[0], nonce[1]); SET2(Y[0], nonce[0]);
-
-    if(numbytes == 32)
-        Encrypt(X, Y, ctx->rk, 2);
-    else {
-        X[1] = X[0]; SET2(Y[1], nonce[0]);
-        if(numbytes == 64)
-            Encrypt(X, Y, ctx->rk, 4);
-        else {
-            X[2] = X[0]; SET2(Y[2], nonce[0]);
-            if(numbytes == 96)
-                Encrypt(X, Y, ctx->rk, 6);
-            else {
-                X[3] = X[0]; SET2(Y[3], nonce[0]);
-                Encrypt(X, Y, ctx->rk, 8);
-            }
-        }
-    }
-
-    XOR_STORE(in, out, X[0], Y[0]);
-    if(numbytes >= 64)
-        XOR_STORE(in +  32, out +  32, X[1], Y[1]);
-    if(numbytes >= 96)
-        XOR_STORE(in +  64, out +  64, X[2], Y[2]);
-    if(numbytes >= 128)
-        XOR_STORE(in +  96, out +  96, X[3], Y[3]);
-
-    return 0;
 }
 
 
@@ -577,15 +603,22 @@ static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsi
 }
 
 
-static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (speck_context_t *ctx, const unsigned char *k, int keysize) {
 
     u64 K[4];
     size_t i;
 
-    for(i = 0; i < numkeywords; i++)
+    for(i = 0; i < (keysize >> 6); i++)
         K[i] = ((u64 *)k)[i];
 
-    EK(K[0], K[1], K[2], K[3], ctx->rk, ctx->key);
+    // 128 bit has only two keys A and B thus replacing both C and D with B then
+    if(keysize == 128) {
+        EK(K[0], K[1], K[1], K[1], ctx->rk, ctx->key);
+    } else {
+        EK(K[0], K[1], K[2], K[3], ctx->rk, ctx->key);
+    }
+
+    ctx->keysize = keysize;
 
     return 0;
 }
@@ -599,11 +632,11 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #define R(x,y,k) (x=ROR(x,8), x+=y, x^=k, y=ROL(y,3), y^=x)
 
 
-static int speck_encrypt (u64 *u, u64 *v, speck_context_t *ctx) {
+static int speck_encrypt (u64 *u, u64 *v, speck_context_t *ctx, int numrounds) {
 
     u64 i, x = *u, y = *v;
 
-    for(i = 0; i < 34; i++)
+    for(i = 0; i < numrounds; i++)
         R(x, y, ctx->key[i]);
 
     *u = x; *v = y;
@@ -617,6 +650,7 @@ static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsi
 
     u64 i, nonce[2], x, y, t;
     unsigned char *block = malloc(16);
+    int numrounds = (ctx->keysize == 256)?34:32;
 
     if(!inlen) {
         free(block);
@@ -628,7 +662,7 @@ static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsi
     t=0;
     while(inlen >= 16) {
         x = nonce[1]; y = nonce[0]; nonce[0]++;
-        speck_encrypt(&x, &y, ctx);
+        speck_encrypt(&x, &y, ctx, numrounds);
         ((u64 *)out)[1+t] = htole64(x ^ ((u64 *)in)[1+t]);
         ((u64 *)out)[0+t] = htole64(y ^ ((u64 *)in)[0+t]);
         t += 2;
@@ -637,7 +671,7 @@ static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsi
 
     if(inlen > 0) {
         x = nonce[1]; y = nonce[0];
-        speck_encrypt(&x, &y, ctx);
+        speck_encrypt(&x, &y, ctx, numrounds);
         ((u64 *)block)[1] = htole64(x); ((u64 *)block)[0] = htole64(y);
         for(i = 0; i < inlen; i++)
             out[i + 8*t] = block[i] ^ in[i + 8*t];
@@ -649,23 +683,32 @@ static int internal_speck_ctr (unsigned char *out, const unsigned char *in, unsi
 }
 
 
-static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
+static int speck_expand_key (speck_context_t *ctx, const unsigned char *k, int keysize) {
 
     u64 K[4];
     u64 i;
 
-    for(i = 0; i < 4; i++)
-    K[i] = htole64( ((u64 *)k)[i] );
+    for(i = 0; i < (keysize >> 6); i++)
+        K[i] = htole64( ((u64 *)k)[i] );
 
     for(i = 0; i < 33; i += 3) {
         ctx->key[i  ] = K[0];
         R(K[1], K[0], i    );
-        ctx->key[i+1] = K[0];
-        R(K[2], K[0], i + 1);
-        ctx->key[i+2] = K[0];
-        R(K[3], K[0], i + 2);
+
+        if(keysize == 256) {
+            ctx->key[i+1] = K[0];
+            R(K[2], K[0], i + 1);
+            ctx->key[i+2] = K[0];
+            R(K[3], K[0], i + 2);
+        } else {
+            // counter the i += 3 to make the loop go one by one in this case
+            // we can afford the unused 31 and 32
+            i -= 2;
+        }
     }
     ctx->key[33] = K[0];
+
+    ctx->keysize = keysize;
 
     return 1;
 }
@@ -674,7 +717,7 @@ static int speck_expand_key (const unsigned char *k, speck_context_t *ctx) {
 #endif          // AVX, SSE, NEON, plain C ------------------------------------------------------------------------
 
 
-// this functions wraps the call to internal speck_ctr functions which have slightly different
+// this functions wraps the call to internal_speck_ctr functions which have slightly different
 // signature -- ctx by value for SSE with SPECK_CTX_BYVAL defined in speck.h, by name otherwise
 int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
                const unsigned char *n, speck_context_t *ctx) {
@@ -688,7 +731,8 @@ int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long i
 }
 
 
-int speck_init (const unsigned char *k, speck_context_t **ctx) {
+// create context loaded with round keys ready for use, key size either 128 or 256 (bits)
+int speck_init (speck_context_t **ctx, const unsigned char *k, int keysize) {
 
 #if defined (SPECK_ALIGNED_CTX)
     *ctx = (speck_context_t*)_mm_malloc(sizeof(speck_context_t), SPECK_ALIGNED_CTX);
@@ -699,7 +743,7 @@ int speck_init (const unsigned char *k, speck_context_t **ctx) {
         return -1;
     }
 
-    return speck_expand_key(k, *ctx);
+    return speck_expand_key(*ctx, k, keysize);
 }
 
 
@@ -720,87 +764,6 @@ int speck_deinit (speck_context_t *ctx) {
 // ----------------------------------------------------------------------------------------------------------------
 
 
-// cipher SPECK -- 128 bit block size -- 128 bit key size -- CTR mode
-// used for header encryption, thus the postfix '_he'
-// for now: just plain C -- AVX, SSE, NEON do not make sense for short header
-
-
-#define ROR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
-#define ROL64(x,r) (((x)<<(r))|((x)>>(64-(r))))
-#define R64(x,y,k) (x=ROR64(x,8), x+=y, x^=k, y=ROL64(y,3), y^=x)
-
-
-static int speck_encrypt_he (u64 *u, u64 *v, speck_context_t *ctx) {
-
-    u64 i, x=*u, y=*v;
-
-    for(i = 0; i < 32; i++)
-    R64(x, y, ctx->key[i]);
-
-    *u = x; *v = y;
-
-    return 0;
-}
-
-
-int speck_he (unsigned char *out, const unsigned char *in, unsigned long long inlen,
-              const unsigned char *n, speck_context_t *ctx) {
-
-    u64 i, nonce[2], x, y, t;
-    unsigned char *block = malloc(16);
-
-    if(!inlen) {
-        free(block);
-        return 0;
-    }
-
-    nonce[0] = htole64 ( ((u64*)n)[0] );
-    nonce[1] = htole64 ( ((u64*)n)[1] );
-
-    t = 0;
-    while(inlen >= 16) {
-        x = nonce[1]; y = nonce[0]; nonce[0]++;
-        speck_encrypt_he(&x, &y, ctx);
-        ((u64 *)out)[1+t] = htole64(x ^ ((u64 *)in)[1+t]);
-        ((u64 *)out)[0+t] = htole64(y ^ ((u64 *)in)[0+t]);
-        t += 2;
-        inlen -= 16;
-    }
-
-    if(inlen > 0) {
-        x = nonce[1]; y = nonce[0];
-        speck_encrypt_he(&x, &y, ctx);
-        ((u64 *)block)[1] = htole64(x); ((u64 *)block)[0] = htole64(y);
-        for(i = 0; i < inlen; i++)
-            out[i+8*t] = block[i] ^ in[i+8*t];
-    }
-
-    free(block);
-
-    return 0;
-}
-
-
-int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx) {
-
-    u64 A, B;
-    u64 i;
-
-    A = htole64( ((u64 *)k)[0] );
-    B = htole64( ((u64 *)k)[1] );
-
-    for(i = 0; i < 32; i++) {
-        ctx->key[i] = A;
-        R64(B, A, i);
-    }
-
-    return 1;
-}
-
-
-// ----------------------------------------------------------------------------------------------------------------
-
-
 // cipher SPECK -- 96 bit block size -- 96 bit key size -- ECB mode
 // follows endianess rules as used in official implementation guide and NOT as in original 2013 cipher presentation
 // used for IV in header encryption, thus the in/postfix 'he_iv'
@@ -814,7 +777,7 @@ int speck_expand_key_he (const unsigned char *k, speck_context_t *ctx) {
 #define DR96(x,y,k) (y^=x, y=ROTR48(y,3), x^=k, x-=y, x=ROTL48(x,8))
 
 
-int speck_he_iv_encrypt (unsigned char *inout, speck_context_t *ctx) {
+int speck_96_encrypt (unsigned char *inout, speck_context_t *ctx) {
 
     u64 x, y;
     int i;
@@ -835,7 +798,7 @@ int speck_he_iv_encrypt (unsigned char *inout, speck_context_t *ctx) {
 }
 
 
-int speck_he_iv_decrypt (unsigned char *inout, speck_context_t *ctx) {
+int speck_96_decrypt (unsigned char *inout, speck_context_t *ctx) {
 
     u64 x, y;
     int i;
@@ -856,7 +819,7 @@ int speck_he_iv_decrypt (unsigned char *inout, speck_context_t *ctx) {
 }
 
 
-int speck_expand_key_he_iv (const unsigned char *k, speck_context_t *ctx) {
+int speck_96_expand_key (speck_context_t *ctx, const unsigned char *k) {
 
     u64 A, B;
     int i;

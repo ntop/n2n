@@ -134,8 +134,8 @@ static int setup_speck_key (transop_speck_t *priv, const uint8_t *key, ssize_t k
     // the input key always gets hashed to make a more unpredictable and more complete use of the key space
     pearson_hash_256(key_mat_buf, key, key_size);
 
-    // expand the key material to the context (= round keys)
-    speck_init(key_mat_buf, &(priv->ctx));
+    // expand the key material to the context (= round keys), 256 bit keysize
+    speck_init(&(priv->ctx), key_mat_buf, 256);
 
     traceEvent(TRACE_DEBUG, "setup_speck_key completed\n");
 
