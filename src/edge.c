@@ -149,7 +149,7 @@ static void help () {
                  "[-h]\n\n");
 
 #if defined(N2N_CAN_NAME_IFACE)
-    printf("-d <tap device>                    | tap device name\n");
+    printf("-d <tap device>          | tap device name\n");
 #endif
 
     printf("-a [mode:]<address>[/nn] | Interface address and optional subnet (cidr, default /24). For DHCP use '-r -a dhcp:0.0.0.0'\n");
@@ -168,11 +168,11 @@ static void help () {
     printf("-f                       | Do not fork and run as a daemon; rather run in foreground.\n");
 #endif /* #ifndef WIN32 */
     printf("-m <MAC address>         | Fix MAC address for the TAP interface (otherwise it may be random)\n"
-                 "                   | eg. -m 01:02:03:04:05:06\n");
+           "                         | eg. -m 01:02:03:04:05:06\n");
     printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
 #ifndef __APPLE__
     printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but\n"
-                 "                   | causes connections stall when not properly supported.\n");
+           "                         | causes connections stall when not properly supported.\n");
 #endif
     printf("-r                       | Enable packet forwarding through n2n community.\n");
     printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to AES then).\n");
