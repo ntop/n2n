@@ -455,6 +455,27 @@ static int update_edge (n2n_sn_t *sss,
 }
 
 
+/** checks if a certain ip address is still available, i.e. not used by any other edge of a given community */
+static int ip_addr_available (struct sn_community *comm, n2n_ip_subnet_t *ip_addr) {
+
+    int success = 1;
+    struct peer_info *peer, *tmp_peer;
+
+    // prerequisite: list of peers is sorted according to peer's tap ip address
+    HASH_ITER(hh, comm->edges, peer, tmp_peer) {
+        if(peer->dev_addr.net_addr  > ip_addr->net_addr) {
+            break;
+        }
+        if(peer->dev_addr.net_addr == ip_addr->net_addr) {
+            success = 0;
+            break;
+        }
+    }
+
+    return success;
+}
+
+
 static signed int peer_tap_ip_sort (struct peer_info *a, struct peer_info *b) {
 
     uint32_t a_host_id = a->dev_addr.net_addr & (~bitlen2mask(a->dev_addr.net_bitlen));
@@ -465,40 +486,54 @@ static signed int peer_tap_ip_sort (struct peer_info *a, struct peer_info *b) {
 
 
 /** The IP address assigned to the edge by the auto ip address function of sn. */
-static int assign_one_ip_addr (struct sn_community *comm,
-                               n2n_ip_subnet_t *ipaddr) {
+static int assign_one_ip_addr (struct sn_community *comm, n2n_desc_t dev_desc, n2n_ip_subnet_t *ip_addr) {
 
-    struct peer_info *peer, *tmpPeer;
-    uint32_t net_id, mask, max_host, host_id = 1;
+    struct peer_info *peer, *tmp_peer;
+    uint32_t tmp, success, net_id, mask, max_host, host_id = 1;
     dec_ip_bit_str_t ip_bit_str = {'\0'};
 
     mask = bitlen2mask(comm->auto_ip_net.net_bitlen);
     net_id = comm->auto_ip_net.net_addr & mask;
     max_host = ~mask;
 
+    // sorting is a prerequisite for more efficient availabilitiy check
     HASH_SORT(comm->edges, peer_tap_ip_sort);
-    HASH_ITER(hh, comm->edges, peer, tmpPeer) {
-        if((peer->dev_addr.net_addr & bitlen2mask(peer->dev_addr.net_bitlen)) == net_id) {
-            if(host_id >= max_host) {
-                traceEvent(TRACE_WARNING, "No assignable IP to edge tap adapter.");
-                return -1;
-            }
-            if(peer->dev_addr.net_addr == 0) {
-                continue;
-            }
-            if((peer->dev_addr.net_addr & max_host) == host_id) {
-                ++host_id;
-            } else {
+
+    // first proposal derived from hash of mac address
+    tmp = pearson_hash_32(dev_desc, sizeof(n2n_desc_t)) & max_host;
+    if(tmp == 0)        tmp++; /* avoid 0 host */
+    if(tmp == max_host) tmp--; /* avoid broadcast address */
+    tmp |= net_id;
+
+    // candidate
+    ip_addr->net_bitlen = comm->auto_ip_net.net_bitlen;
+
+    // check for availability starting from proposal, then downwards, ...
+    for(host_id = tmp; host_id > net_id; host_id--) {
+        ip_addr->net_addr = host_id;
+        success = ip_addr_available(comm, ip_addr);
+        if(success) {
+            break;
+        }
+    }
+    // ... then upwards
+    if(!success) {
+        for(host_id = tmp + 1; host_id < (net_id + max_host); host_id++) {
+            ip_addr->net_addr = host_id;
+            success = ip_addr_available(comm, ip_addr);
+            if(success) {
                 break;
             }
         }
     }
-    ipaddr->net_addr = net_id | host_id;
-    ipaddr->net_bitlen = comm->auto_ip_net.net_bitlen;
 
-    traceEvent(TRACE_INFO, "Assign IP %s to tap adapter of edge.", ip_subnet_to_str(ip_bit_str, ipaddr));
-
-    return 0;
+    if(success) {
+        traceEvent(TRACE_INFO, "Assign IP %s to tap adapter of edge.", ip_subnet_to_str(ip_bit_str, ip_addr));
+        return 0;
+    } else {
+        traceEvent(TRACE_WARNING, "No assignable IP to edge tap adapter.");
+        return -1;
+    }
 }
 
 
@@ -1235,7 +1270,7 @@ static int process_udp (n2n_sn_t * sss,
                 if((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
                    ((reg.dev_addr.net_addr & 0xFFFF0000) == 0xA9FE0000 /* 169.254.0.0 */)) {
                     memset(&ipaddr, 0, sizeof(n2n_ip_subnet_t));
-                    assign_one_ip_addr(comm, &ipaddr);
+                    assign_one_ip_addr(comm, reg.dev_desc, &ipaddr);
                     ack.dev_addr.net_addr = ipaddr.net_addr;
                     ack.dev_addr.net_bitlen = ipaddr.net_bitlen;
                 }
