@@ -1141,7 +1141,6 @@ static int process_udp (n2n_sn_t * sss,
             n2n_REGISTER_SUPER_NAK_t               nak;
             n2n_common_t                           cmn2;
             uint8_t                                ackbuf[N2N_SN_PKTBUF_SIZE];
-            uint8_t                                tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
             uint8_t                                *tmp_dst;
             uint8_t                                payload_buf[REG_SUPER_ACK_PAYLOAD_SPACE];
             n2n_REGISTER_SUPER_ACK_payload_t       *payload;
@@ -1330,7 +1329,7 @@ static int process_udp (n2n_sn_t * sss,
                         encx = 0;
                         cmn2.pc = n2n_register_super_ack;
 
-                        encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, tmpbuf);
+                        encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, payload_buf);
 
                         if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                             packet_header_encrypt(ackbuf, encx, comm->header_encryption_ctx,
