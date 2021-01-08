@@ -25,10 +25,17 @@
 
 #include <process.h>
 #include <n2n.h>
+#include <winsock2.h>
+#include <iphlpapi.h>
 
 
 /* Multicast peers discovery disabled due to https://github.com/ntop/n2n/issues/65 */
-#define SKIP_MULTICAST_PEERS_DISCOVERY
+
+/* Currently, multicast is performed by specifying the default routing network adapter.
+ * If the solution is determined to be stable and effective,
+ * all macro definitions "SKIP_MULTICAST_PEERS_DISCOVERY" will be completely deleted in the future.
+ */
+//#define SKIP_MULTICAST_PEERS_DISCOVERY
 
 struct tunread_arg {
     n2n_edge_t *eee;
@@ -36,6 +43,7 @@ struct tunread_arg {
 };
 
 extern HANDLE startTunReadThread (struct tunread_arg *arg);
+int get_best_interface_ip(n2n_edge_t * eee, dec_ip_str_t ip_addr);
 
 
 #endif /* WIN32 */
