@@ -66,8 +66,8 @@
 #define UDP_SIZE      8
 
 /* parameters for replay protection */
-#define TIME_STAMP_FRAME              0x0000000001000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
-#define TIME_STAMP_JITTER             0x0000000000027100LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another
+#define TIME_STAMP_FRAME              0x0000001000000000LL /* clocks of different computers are allowed +/- 16 seconds to be off */
+#define TIME_STAMP_JITTER             0x0000000027100000LL /* we allow a packet to arrive 160 ms (== 0x27100 us) before another
                                                             * set to 0x0000000000000000LL if increasing (or equal) time stamps allowed only */
 #define TIME_STAMP_ALLOW_JITTER                          1 /* constant for allowing or... */
 #define TIME_STAMP_NO_JITTER                             0 /* not allowing jitter to be considered */

@@ -607,10 +607,12 @@ uint64_t time_stamp (void) {
 
     gettimeofday(&tod, NULL);
 
-    // (roughly) calculate the microseconds since 1970, note that the upper 12 bits remain unset
-    micro_seconds = ((uint64_t)(tod.tv_sec) << 20) + tod.tv_usec;
+    // (roughly) calculate the microseconds since 1970, note that the 8 bits between time stamp and flags remain unset
+    micro_seconds = ((uint64_t)(tod.tv_sec) << 32) + ((uint64_t)tod.tv_usec << 12);
     // more exact but more costly due to the multiplication:
-    // micro_seconds = (uint64_t)(tod.tv_sec) * 1000000 + tod.tv_usec
+    // micro_seconds = ((uint64_t)(tod.tv_sec) * 1000000ULL + tod.tv_usec) << 12;
+
+    // note that the lower 4 bits remain unset (flags, for later use)
 
     return micro_seconds;
 }
@@ -629,14 +631,14 @@ int time_stamp_verify_and_update (uint64_t stamp, uint64_t *previous_stamp, int 
 
     int64_t diff; // do not change to unsigned
 
-    // are the highest 8 bits reset?
-    if(stamp >> 56) {
-        traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp with highest bits set.");
+    // clear any incoming flags (their handling is not suppoted yet)
+    stamp = (stamp >> 4) << 4;
+
+    // are the 8 bits between time stamp and flags reset? this relies on flags being cleared above
+    if(stamp << 52) {
+        traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp with middle bits set.");
         return 0; // failure
     }
-
-    // clear any incoming flags (their handling is not suppoted yet)
-    stamp = (stamp << 12) >> 12;
 
     // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
     diff = stamp - time_stamp();

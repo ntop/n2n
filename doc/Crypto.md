@@ -187,12 +187,12 @@ The aforementioned 96-bit pre-IV can be depicted as follows:
     012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345
    +------------------------------------------------------------------------------------------------+
    ! 64-bit checksum of the whole packet                            !                               !
-   + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - XOR -! 32 pseudo-random bits         !
-   ! 0x00   ! F ! 52-bit time stamp with microsecond-accuracy       !                               !
+   + - - - - - - - - - - - - - - - - - - - - - - - XOR - - - - - - -! 32 pseudo-random bits         !
+   ! 52-bit time stamp with microsecond-accuracy       ! 0x00   ! F !                               !
    +------------------------------------------------------------------------------------------------+
 ```
 
-The time stamp consists of the 52-bit microsecond value, a 4-bit flag field F (accuracy indicator, other header encryption features – still under development) and is filled up with eight prepended zero-bits.
+The time stamp consists of the 52-bit microsecond value, a 4-bit flag field F (accuracy indicator, other header encryption features – still under development), and is filled up with 8 zero-bits in between.
 
 Encrypting this pre-IV using a block cipher step will generate a pseudo-random looking IV which gets written to the packet and used for the header encryption.
 
