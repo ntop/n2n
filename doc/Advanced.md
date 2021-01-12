@@ -1,6 +1,10 @@
 # Advanced Configuration
 
 
+## Configuration Files
+
+Read about [Configuration Files](ConfigurationFiles.md) as they might come in handy – especially, but not limited to, if edges or supernodes shall be run as a service (see below) or in case of bulk automated parameter generation for mass deployment.
+
 ## Running edge as a Service
 
 edge can also be run as a service instead of cli:

@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -525,14 +525,14 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
 static const struct option long_options[] =
     {
-        { "community",             required_argument, NULL, 'c' },
+        { "community",         required_argument, NULL, 'c' },
         { "supernode-list",    required_argument, NULL, 'l' },
-        { "tap-device",            required_argument, NULL, 'd' },
-        { "euid",                        required_argument, NULL, 'u' },
-        { "egid",                        required_argument, NULL, 'g' },
-        { "help"     ,                 no_argument,             NULL, 'h' },
-        { "verbose",                 no_argument,             NULL, 'v' },
-        { NULL,                            0,                                 NULL,    0    }
+        { "tap-device",        required_argument, NULL, 'd' },
+        { "euid",              required_argument, NULL, 'u' },
+        { "egid",              required_argument, NULL, 'g' },
+        { "help"     ,         no_argument,       NULL, 'h' },
+        { "verbose",           no_argument,       NULL, 'v' },
+        { NULL,                0,                 NULL,  0  }
     };
 
 /* *************************************************** */
@@ -549,8 +549,10 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
 #endif
                             ,
                             long_options, NULL)) != '?') {
+
         if(c == 255) break;
         setOption(c, optarg, ec, conf);
+
     }
 
     return 0;
@@ -579,10 +581,11 @@ static char *trim (char *s) {
 /* parse the configuration file */
 static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_priv_config_t *ec) {
 
-    char buffer[4096], *line, *key, *value;
-    u_int line_len, opt_name_len;
+    char buffer[4096], *line;
+    char *line_vec[3];
+    int tmp;
+
     FILE *fd;
-    const struct option *opt;
 
     fd = fopen(path, "r");
 
@@ -591,71 +594,29 @@ static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_pri
         return -1;
     }
 
+    // we mess around with optind, better save it
+    tmp = optind;
+
     while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
         line = trim(line);
-        value = NULL;
 
-        if((line_len = strlen(line)) < 2 || line[0] == '#')
+        if(strlen(line) < 2 || line[0] == '#')
             continue;
 
-        if(!strncmp(line, "--", 2)) { /* long opt */
-            key = &line[2], line_len -= 2;
-
-            opt = long_options;
-            while(opt->name != NULL) {
-                opt_name_len = strlen(opt->name);
-
-                if(!strncmp(key, opt->name, opt_name_len)
-                   && (line_len <= opt_name_len
-                       || key[opt_name_len] == '\0'
-                       || key[opt_name_len] == ' '
-                       || key[opt_name_len] == '=')) {
-                    if(line_len > opt_name_len) key[opt_name_len] = '\0';
-                    if(line_len > opt_name_len + 1) value = trim(&key[opt_name_len + 1]);
-
-                    // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
-                    setOption(opt->val, value, ec, conf);
-                    break;
-                }
-
-                opt++;
-            }
-        } else if(line[0] == '-') { /* short opt */
-            char *equal;
-
-            key = &line[1], line_len--;
-
-            equal = strchr(line, '=');
-
-            if(equal) {
-                equal[0] = '\0';
-                value = &equal[1];
-
-                if((value[0] == '\0') && (key[1] != '\0'))
-                    value = &key[1];
-            } else {
-                value = NULL;
-
-                /* Adding an exception for -A_ -z_ which can come
-                   without '=' and even without any further data */
-
-                if(key[0] == 'z') {
-                    if(key[1]) value = &key[1];
-                    key = "z";
-                } else if(key[0] == 'A') {
-                    if(key[1]) value = &key[1];
-                    key = "A";
-                }
-            }
-            // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
-            setOption(key[0], value, ec, conf);
-        } else {
-            traceEvent(TRACE_WARNING, "Skipping unrecognized line: %s", line);
-            continue;
-        }
+        // executable, cannot be omitted, content can be anything
+        line_vec[0] = line;
+        // first token, e.g. `-p` or `-A3', eventually followed by a whitespace or '=' delimiter
+        line_vec[1] = strtok(line, "\t =");
+        // separate parameter option, if present
+        line_vec[2] = strtok(NULL, "\t ");
+        // not to duplicate the option parser code, call loadFromCLI and pretend we have no option read yet
+        optind = 1;
+        // if second token present (optional argument, not part of first), then announce 3 vector members
+        loadFromCLI(line_vec[2] ? 3 : 2, line_vec, conf, ec);
     }
 
     fclose(fd);
+    optind = tmp;
 
     return 0;
 }
@@ -783,8 +744,9 @@ int main (int argc, char* argv[]) {
     } else if(argc > 1)
         rc = loadFromCLI(argc, argv, &conf, &ec);
     else
+
 #ifdef WIN32
-        /* Load from current directory */
+        // load from current directory
         rc = loadFromFile("edge.conf", &conf, &ec);
 #else
         rc = -1;
