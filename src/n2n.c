@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -594,7 +594,7 @@ int gettimeofday (struct timeval *tp, void *tzp) {
     tp->tv_sec = clock;
     tp->tv_usec = wtm.wMilliseconds * 1000;
 
-    return (0);
+    return 0;
 }
 #endif
 
@@ -605,33 +605,40 @@ uint64_t time_stamp (void) {
     struct timeval tod;
     uint64_t micro_seconds;
 
-    gettimeofday (&tod, NULL);
-    /* We will (roughly) calculate the microseconds since 1970 leftbound into the return value.
-       The leading 32 bits are used for tv_sec. The following 20 bits (sufficent as microseconds
-       fraction never exceeds 1,000,000,) encode the value tv_usec. The remaining lowest 12 bits
-       are kept random for use in IV */
-    micro_seconds = n2n_rand();
-    micro_seconds = ((((uint64_t)(tod.tv_sec) << 32) + (tod.tv_usec << 12))
-                    | (micro_seconds >> 52));
-    // more exact but more costly due to the multiplication:
-    // micro_seconds = (tod.tv_sec * 1000000 + tod.tv_usec) << 12) | ...
+    gettimeofday(&tod, NULL);
 
-    return (micro_seconds);
+    // (roughly) calculate the microseconds since 1970, note that the 8 bits between time stamp and flags remain unset
+    micro_seconds = ((uint64_t)(tod.tv_sec) << 32) + ((uint64_t)tod.tv_usec << 12);
+    // more exact but more costly due to the multiplication:
+    // micro_seconds = ((uint64_t)(tod.tv_sec) * 1000000ULL + tod.tv_usec) << 12;
+
+    // note that the lower 4 bits remain unset (flags, for later use)
+
+    return micro_seconds;
 }
 
 
 // returns an initial time stamp for use with replay protection
 uint64_t initial_time_stamp (void) {
 
-    return (time_stamp() - TIME_STAMP_FRAME);
+    return time_stamp() - TIME_STAMP_FRAME;
 }
 
 
 // checks if a provided time stamp is consistent with current time and previously valid time stamps
 // and, in case of validity, updates the "last valid time stamp"
-int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp, int allow_jitter) {
+int time_stamp_verify_and_update (uint64_t stamp, uint64_t *previous_stamp, int allow_jitter) {
 
     int64_t diff; // do not change to unsigned
+
+    // clear any incoming flags (their handling is not suppoted yet)
+    stamp = (stamp >> 4) << 4;
+
+    // are the 8 bits between time stamp and flags reset? this relies on flags being cleared above
+    if(stamp << 52) {
+        traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp with middle bits set.");
+        return 0; // failure
+    }
 
     // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
     diff = stamp - time_stamp();
@@ -639,28 +646,24 @@ int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp, int
     diff = (diff < 0 ? -diff : diff);
     if(diff >= TIME_STAMP_FRAME) {
         traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp out of allowed frame.");
-        return (0); // failure
+        return 0; // failure
     }
 
     // if applicable: is it higher than previous time stamp (including allowed deviation of TIME_STAMP_JITTER)?
     if(NULL != previous_stamp) {
-        // always reset lowest three (random) nybbles -- important in case of no jitter, do not if() to avoid jumping
-        stamp = (stamp >> 12) << 12;
-        *previous_stamp = (*previous_stamp >> 12) << 12;
-
         diff = stamp - *previous_stamp;
-        if (allow_jitter) {
+        if(allow_jitter) {
             diff += TIME_STAMP_JITTER;
         }
 
         if(diff <= 0) {
             traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp too old compared to previous.");
-            return (0); // failure
+            return 0; // failure
         }
         // for not allowing to exploit the allowed TIME_STAMP_JITTER to "turn the clock backwards",
         // set the higher of the values
         *previous_stamp = (stamp > *previous_stamp ? stamp : *previous_stamp);
     }
 
-    return (1); // success
+    return 1; // success
 }

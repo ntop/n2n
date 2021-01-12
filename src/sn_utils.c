@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -698,9 +698,9 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
                 traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
                            sock_to_cstr(sockbuf, &(peer->sock)));
 
-                packet_header_encrypt(pktbuf, idx, comm->header_encryption_ctx,
-                                      comm->header_iv_ctx,
-                                      time_stamp(), pearson_hash_16(pktbuf, idx));
+                packet_header_encrypt(pktbuf, idx, idx,
+                                      comm->header_encryption_ctx, comm->header_iv_ctx,
+                                      time_stamp());
 
                 /* sent = */ sendto_sock(sss, &(peer->sock), pktbuf, idx);
             }
@@ -954,17 +954,14 @@ static int process_udp (n2n_sn_t * sss,
             if(comm->header_encryption == HEADER_ENCRYPTION_NONE) {
                 continue;
             }
-            uint16_t checksum = 0;
-            if((ret = packet_header_decrypt(udp_buf, udp_size, comm->community, comm->header_encryption_ctx,
-                                            comm->header_iv_ctx,
-                                            &stamp, &checksum))) {
+            if((ret = packet_header_decrypt(udp_buf, udp_size,
+                                            comm->community,
+                                            comm->header_encryption_ctx, comm->header_iv_ctx,
+                                            &stamp))) {
                 // time stamp verification follows in the packet specific section as it requires to determine the
                 // sender from the hash list by its MAC, this all depends on packet type and packet structure
                 // (MAC is not always in the same place)
-                if(checksum != pearson_hash_16(udp_buf, udp_size)) {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped packet due to checksum error.");
-                    return -1;
-                }
+
                 if(comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
                     traceEvent(TRACE_INFO, "process_udp locked community '%s' to using "
                                "encrypted headers.", comm->community);
@@ -1068,9 +1065,9 @@ static int process_udp (n2n_sn_t * sss,
                 encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    packet_header_encrypt(rec_buf, oldEncx, comm->header_encryption_ctx,
-                                          comm->header_iv_ctx,
-                                          time_stamp(), pearson_hash_16(rec_buf, encx));
+                    packet_header_encrypt(rec_buf, oldEncx, encx,
+                                          comm->header_encryption_ctx, comm->header_iv_ctx,
+                                          time_stamp());
                 }
             } else {
                 /* Already from a supernode. Nothing to modify, just pass to
@@ -1082,9 +1079,9 @@ static int process_udp (n2n_sn_t * sss,
                 encx = udp_size;
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    packet_header_encrypt(rec_buf, idx, comm->header_encryption_ctx,
-                                          comm->header_iv_ctx,
-                                          time_stamp(), pearson_hash_16(rec_buf, udp_size));
+                    packet_header_encrypt(rec_buf, idx, encx,
+                                          comm->header_encryption_ctx, comm->header_iv_ctx,
+                                          time_stamp());
                 }
             }
 
@@ -1154,9 +1151,9 @@ static int process_udp (n2n_sn_t * sss,
                 }
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    packet_header_encrypt(rec_buf, encx, comm->header_encryption_ctx,
-                                          comm->header_iv_ctx,
-                                          time_stamp(), pearson_hash_16(rec_buf, encx));
+                    packet_header_encrypt(rec_buf, encx, encx,
+                                          comm->header_encryption_ctx, comm->header_iv_ctx,
+                                          time_stamp());
                 }
                 try_forward(sss, comm, &cmn, reg.dstMac, from_supernode, rec_buf, encx); /* unicast only */
             } else {
@@ -1331,9 +1328,9 @@ static int process_udp (n2n_sn_t * sss,
                     encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
 
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        packet_header_encrypt(ackbuf, encx, comm->header_encryption_ctx,
-                                              comm->header_iv_ctx,
-                                              time_stamp(), pearson_hash_16(ackbuf, encx));
+                        packet_header_encrypt(ackbuf, encx, encx,
+                                              comm->header_encryption_ctx, comm->header_iv_ctx,
+                                              time_stamp());
                     }
                     sendto(sss->sock, ackbuf, encx, 0,
                            (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
@@ -1354,9 +1351,9 @@ static int process_udp (n2n_sn_t * sss,
                         encode_REGISTER_SUPER(ackbuf, &encx, &cmn2, &reg);
 
                         if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                            packet_header_encrypt(ackbuf, encx, comm->header_encryption_ctx,
-                                                  comm->header_iv_ctx,
-                                                  time_stamp(), pearson_hash_16(ackbuf, encx));
+                            packet_header_encrypt(ackbuf, encx, encx,
+                                                  comm->header_encryption_ctx, comm->header_iv_ctx,
+                                                  time_stamp());
                         }
 
                         try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
@@ -1367,9 +1364,9 @@ static int process_udp (n2n_sn_t * sss,
                         encode_REGISTER_SUPER_ACK(ackbuf, &encx, &cmn2, &ack, payload_buf);
 
                         if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                            packet_header_encrypt(ackbuf, encx, comm->header_encryption_ctx,
-                                                  comm->header_iv_ctx,
-                                                  time_stamp(), pearson_hash_16(ackbuf, encx));
+                            packet_header_encrypt(ackbuf, encx, encx,
+                                                  comm->header_encryption_ctx, comm->header_iv_ctx,
+                                                  time_stamp());
                         }
 
                         sendto(sss->sock, ackbuf, encx, 0,
@@ -1621,9 +1618,9 @@ static int process_udp (n2n_sn_t * sss,
 
                 if(comm) {
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        packet_header_encrypt(encbuf, encx, comm->header_encryption_ctx,
+                        packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx,
                                               comm->header_iv_ctx,
-                                              time_stamp(), pearson_hash_16(encbuf, encx));
+                                              time_stamp());
                     }
                 }
 
@@ -1653,9 +1650,9 @@ static int process_udp (n2n_sn_t * sss,
                     encode_PEER_INFO(encbuf, &encx, &cmn2, &pi);
 
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        packet_header_encrypt(encbuf, encx, comm->header_encryption_ctx,
+                        packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx,
                                               comm->header_iv_ctx,
-                                              time_stamp(), pearson_hash_16(encbuf, encx));
+                                              time_stamp());
                     }
 
                     if(cmn.flags & N2N_FLAGS_SOCKET) {
@@ -1687,9 +1684,9 @@ static int process_udp (n2n_sn_t * sss,
                         encode_QUERY_PEER(encbuf, &encx, &cmn2, &query);
 
                         if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                            packet_header_encrypt(encbuf, encx, comm->header_encryption_ctx,
+                            packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx,
                                                   comm->header_iv_ctx,
-                                                  time_stamp(), pearson_hash_16(encbuf, encx));
+                                                  time_stamp());
                         }
 
                         try_broadcast(sss, NULL, &cmn, query.srcMac, from_supernode, encbuf, encx);

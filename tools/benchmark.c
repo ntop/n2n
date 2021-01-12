@@ -1,5 +1,5 @@
 /*
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -255,17 +255,17 @@ static void run_hashing_benchmark(void) {
   ssize_t tdiff = 0; // microseconds
   size_t num_packets = 0;
 
-  uint32_t hash;
+  uint64_t hash;
 
   printf("(%s)\t%s\t%.1f sec\t(%u bytes)",
-	 "prs32", "hash", target_sec, (unsigned int)sizeof(PKT_CONTENT));
+	 "prs64", "hash", target_sec, (unsigned int)sizeof(PKT_CONTENT));
   fflush(stdout);
 
   gettimeofday( &t1, NULL );
-  nw = 4;
+  nw = 8;
 
   while(tdiff < target_usec) {
-    hash = pearson_hash_32 (PKT_CONTENT, sizeof(PKT_CONTENT));
+    hash = pearson_hash_64(PKT_CONTENT, sizeof(PKT_CONTENT));
     hash++; // clever compiler finds out that we do no use the variable
     num_packets++;
     if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
