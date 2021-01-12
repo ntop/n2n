@@ -1,4 +1,4 @@
-﻿# Supernode Federation
+# Supernode Federation
 
 ## Idea
 To enhance resilience in terms of backup and fail-over, also for load-balancing, multiple supernodes can easily interconnect and form a special community, called **federation**.
@@ -33,3 +33,5 @@ Once edges have saved those informations, it is up to them choosing the supernod
 An edge connects to the supernode with the lowest work-load and it is re-considered from time to time, with each re-registration. We used a stickyness factor to avoid too much jumping between supernodes.
 
 Thanks to this last feature, n2n is now able to handle security attacks (e.g., DoS against supernodes) and it can redistribute the entire load of the network in a fair manner between all the supernodes.
+
+To serve scenarios in which an edge is supposed to select the supernode by round trip time, i.e. choosing the "closest" one, a [compile-time option](Building.md) is offered. Note, that workload distribution among supernodes is not so fair then.
