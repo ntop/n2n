@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,13 +16,13 @@
  *
  */
 
+
 #include "n2n.h"
 
 
 static SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_read (n2n_edge_t *eee);
 static int sn_selection_criterion_sort (peer_info_t *a, peer_info_t *b);
 
-/* ****************************************************************************** */
 
 /* Initialize selection_criterion field in peer_info structure*/
 int sn_selection_criterion_init (peer_info_t *peer) {
@@ -34,6 +34,7 @@ int sn_selection_criterion_init (peer_info_t *peer) {
     return 0; /* OK */
 }
 
+
 /* Set selection_criterion field to default value according to selected strategy. */
 int sn_selection_criterion_default (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
 
@@ -41,6 +42,7 @@ int sn_selection_criterion_default (SN_SELECTION_CRITERION_DATA_TYPE *selection_
 
     return 0; /* OK */
 }
+
 
 /* Take data from PEER_INFO payload and transform them into a selection_criterion.
  * This function is highly dependant of the chosen selection criterion.
@@ -51,6 +53,8 @@ int sn_selection_criterion_calculate (n2n_edge_t *eee, peer_info_t *peer, SN_SEL
     int sum = 0;
 
     common_data = sn_selection_criterion_common_read(eee);
+
+#ifndef SN_SELECTION_RTT
     peer->selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(be32toh(*data) + common_data);
 
     /* Mitigation of the real supernode load in order to see less oscillations.
@@ -61,13 +65,18 @@ int sn_selection_criterion_calculate (n2n_edge_t *eee, peer_info_t *peer, SN_SEL
         sum = HASH_COUNT(eee->known_peers) + HASH_COUNT(eee->pending_peers);
         peer->selection_criterion = peer->selection_criterion * sum / (sum + 1);
     }
+#else
+    peer->selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(time_stamp() >> 22) - common_data;
+#endif
 
     return 0; /* OK */
 }
 
+
 /* Set sn_selection_criterion_common_data field to default value. */
 int sn_selection_criterion_common_data_default (n2n_edge_t *eee) {
 
+#ifndef SN_SELECTION_RTT
     SN_SELECTION_CRITERION_DATA_TYPE tmp = 0;
 
     tmp = HASH_COUNT(eee->pending_peers);
@@ -75,9 +84,13 @@ int sn_selection_criterion_common_data_default (n2n_edge_t *eee) {
         tmp *= 2;
     }
     eee->sn_selection_criterion_common_data = tmp / HASH_COUNT(eee->conf.supernodes);
+#else
+    eee->sn_selection_criterion_common_data = (SN_SELECTION_CRITERION_DATA_TYPE)(time_stamp() >> 22);
+#endif
 
     return 0; /* OK */
 }
+
 
 /* Return the value of sn_selection_criterion_common_data field. */
 static SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_read (n2n_edge_t *eee) {
@@ -85,12 +98,14 @@ static SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_read (n2n_
     return eee->sn_selection_criterion_common_data;
 }
 
+
 /* Function that compare two selection_criterion fields and sorts them in ascending order. */
 static int sn_selection_criterion_sort (peer_info_t *a, peer_info_t *b) {
 
     // comparison function for sorting supernodes in ascending order of their selection_criterion.
     return (a->selection_criterion - b->selection_criterion);
 }
+
 
 /* Function that sorts peer_list using sn_selection_criterion_sort. */
 int sn_selection_sort (peer_info_t **peer_list) {
@@ -100,15 +115,20 @@ int sn_selection_sort (peer_info_t **peer_list) {
     return 0; /* OK */
 }
 
-/* Function that gathers requested data on a supernode. */
+
+/* Function that gathers requested data on a supernode.
+ * it remains unaffected by SN_SELECT_RTT macro because it refers to edge behaviour only
+ */
 SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_gather_data (n2n_sn_t *sss) {
 
     SN_SELECTION_CRITERION_DATA_TYPE data = 0, tmp = 0;
     struct sn_community *comm, *tmp_comm;
 
     HASH_ITER(hh, sss->communities, comm, tmp_comm) {
-        tmp = HASH_COUNT(comm->edges) + 1; /* number of nodes in the community + the community itself. */
-        if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) { /*double-count encrypted communities (and their nodes): they exert more load on supernode. */
+        // number of nodes in the community + the community itself
+        tmp = HASH_COUNT(comm->edges) + 1;
+        if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+            // double-count encrypted communities (and their nodes): they exert more load on supernode
             tmp *= 2;
         }
         data += tmp;
@@ -124,7 +144,17 @@ extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_in
         return NULL;
     }
     memset(out, 0, SN_SELECTION_CRITERION_BUF_SIZE);
-    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE - 1,    "ld = %d", (short int)(peer->selection_criterion));
+
+#ifndef SN_SELECTION_RTT
+    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE - 1,
+                  (int16_t)(peer->selection_criterion) != -1 ? "ld = %7d" :
+                                                               "ld = _______", peer->selection_criterion);
+#else
+    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE - 1,
+                  (int16_t)(peer->selection_criterion) != -1 ? "rtt %5d ms" :
+                                                               "rtt _____ ms", peer->selection_criterion);
+
+#endif
 
     return out;
 }
