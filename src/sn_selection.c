@@ -137,6 +137,7 @@ SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_gather_data (n2n_sn_t *s
     return htobe32(data);
 }
 
+
 /* Convert selection_criterion field in a string for management port output. */
 extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_info_t *peer) {
 
