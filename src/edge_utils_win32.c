@@ -48,5 +48,65 @@ HANDLE startTunReadThread (struct tunread_arg *arg) {
                         0,             /* thread creation flags */
                         &dwThreadId)); /* thread id out */
 }
+
+
+
+int get_best_interface_ip(n2n_edge_t * eee, dec_ip_str_t ip_addr){
+    DWORD interface_index = -1;
+    DWORD dwRetVal = 0;
+    PIP_ADAPTER_INFO pAdapterInfo = NULL, pAdapter = NULL;
+    macstr_t mac_buf;
+    ULONG ulOutBufLen = sizeof(IP_ADAPTER_INFO);
+
+    dwRetVal = GetBestInterface(*(IPAddr*)(&eee->curr_sn->sock.addr.v4), &interface_index);
+    if(dwRetVal != NO_ERROR) return -1;
+
+    pAdapterInfo = (PIP_ADAPTER_INFO)malloc(ulOutBufLen);
+    if (pAdapterInfo == NULL) {
+        traceEvent(TRACE_INFO, "Error allocating memory needed to call GetAdaptersInfo\n");
+        return -1;
+    }
+
+    dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
+    if(dwRetVal == ERROR_BUFFER_OVERFLOW){
+        pAdapterInfo = (PIP_ADAPTER_INFO)realloc(pAdapterInfo, ulOutBufLen);
+        if (pAdapterInfo == NULL) {
+            traceEvent(TRACE_INFO, "Error allocating memory needed to call GetAdaptersInfo\n");
+            return -1;
+        }
+    }
+
+    dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
+//    hexdump((uint8_t*)pAdapterInfo, ulOutBufLen);
+    if (dwRetVal == NO_ERROR) {
+        for(pAdapter = pAdapterInfo; pAdapter != NULL; pAdapter = pAdapter->Next){
+            if (pAdapter->Index != interface_index) continue;
+
+            traceEvent(TRACE_DEBUG, "Adapter Index: %ld\n", pAdapter->Index);
+            traceEvent(TRACE_DEBUG, "Combo Index:   %ld\n", pAdapter->ComboIndex);
+            traceEvent(TRACE_DEBUG, "Adapter Name:  %s\n", pAdapter->AdapterName);
+            traceEvent(TRACE_DEBUG, "Adapter Desc:  %s\n", pAdapter->Description);
+            traceEvent(TRACE_DEBUG, "Adapter Type:  %u\n", pAdapter->Type);
+            macaddr_str(mac_buf, pAdapter->Address);
+            traceEvent(TRACE_DEBUG, "Adapter Addr:  %s\n", mac_buf);
+            traceEvent(TRACE_DEBUG, "DHCP Enabled:  %u\n", pAdapter->DhcpEnabled);
+            traceEvent(TRACE_DEBUG, "DHCP Server:   %s\n", pAdapter->DhcpServer.IpAddress.String);
+            traceEvent(TRACE_DEBUG, "IP Address:    %s\n", pAdapter->IpAddressList.IpAddress.String);
+            traceEvent(TRACE_DEBUG, "IP Mask:       %s\n", pAdapter->IpAddressList.IpMask.String);
+            traceEvent(TRACE_DEBUG, "Gateway:       %s\n", pAdapter->GatewayList.IpAddress.String);
+            strncpy(ip_addr, pAdapter->IpAddressList.IpAddress.String, sizeof(dec_ip_str_t)-1);
+        }
+    }
+    else {
+        traceEvent(TRACE_WARNING, "GetAdaptersInfo failed with error: %d\n", dwRetVal);
+    }
+    if (pAdapterInfo != NULL){
+        free(pAdapterInfo);
+        pAdapterInfo = NULL;
+    }
+    return 0;
+}
+
+
 #endif
 

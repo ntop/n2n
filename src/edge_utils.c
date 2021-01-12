@@ -718,6 +718,9 @@ static ssize_t sendto_sock (int fd, const void * buf,
     if(sent < 0) {
         char * c = strerror(errno);
         traceEvent(TRACE_ERROR, "sendto failed (%d) %s", errno, c);
+#ifdef WIN32
+        traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
     } else {
         traceEvent(TRACE_DEBUG, "sendto sent=%d to ", (signed int)sent);
     }
@@ -734,7 +737,13 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
     if(!eee->multicast_joined) {
         struct ip_mreq mreq;
         mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
+#ifdef WIN32
+        dec_ip_str_t ip_addr;
+        get_best_interface_ip(eee, ip_addr);
+        mreq.imr_interface.s_addr = inet_addr(ip_addr);
+#else
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+#endif
 
         if(setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
             traceEvent(TRACE_WARNING, "Failed to bind to local multicast group %s:%u [errno %u]",

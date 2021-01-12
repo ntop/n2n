@@ -7,13 +7,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # N2n release information
 set(N2N_VERSION "2.9.0")
-set(N2N_OSNAME ${CMAKE_SYSTEM})
+set(N2N_OSNAME ${CMAKE_SYSTEM_NAME})
 execute_process(
-        COMMAND git --version
+        COMMAND git status
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_EXIST
+        OUTPUT_VARIABLE GIT_OUTPUT
+        RESULT_VARIABLE GIT_ERROR_CODE
 )
-if (GIT_EXIST)
+if (GIT_ERROR_CODE EQUAL 0)
 execute_process(
         COMMAND git rev-list --count HEAD
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -28,7 +29,7 @@ string(REGEX REPLACE "\n$" "" GIT_REV "${GIT_REV}")
 string(REGEX REPLACE "\n$" "" GIT_ID "${GIT_ID}")
 set(N2N_VERSION "${N2N_VERSION}.r${GIT_REV}.${GIT_ID}")
 MESSAGE(STATUS "Build from git rev: ${N2N_VERSION}")
-endif (GIT_EXIST)
+endif (GIT_ERROR_CODE EQUAL 0)
 
 add_definitions(-DCMAKE_BUILD)
 add_definitions(-DGIT_RELEASE="${N2N_VERSION}" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${N2N_OSNAME}")
@@ -142,7 +143,7 @@ endif(N2N_OPTION_USE_ZSTD)
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
   add_subdirectory(win32)
-  target_link_libraries(n2n edge_utils_win32 n2n_win32 )
+  target_link_libraries(n2n edge_utils_win32 n2n_win32 iphlpapi)
 endif(DEFINED WIN32)
 
 add_executable(edge src/edge.c)
@@ -164,7 +165,7 @@ if(N2N_OPTION_USE_PCAPLIB AND (NOT DEFINED WIN32))
   # Linux Capabilities
   find_library(CAP_LIB cap)
   if(CAP_LIB)
-    target_link_libraries(edge cap)
+    target_link_libraries(edge cap.a)
     set(CMAKE_REQUIRED_LIBRARIES ${CAP_LIB})
     ADD_DEFINITIONS("-DHAVE_LIBCAP")
   endif()
