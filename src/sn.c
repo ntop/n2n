@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -455,10 +455,11 @@ static char *trim (char *s) {
 /* parse the configuration file */
 static int loadFromFile (const char *path, n2n_sn_t *sss) {
 
-    char buffer[4096], *line, *key, *value;
-    u_int line_len, opt_name_len;
+    char buffer[4096], *line;
+    char *line_vec[3];
+    int tmp;
+
     FILE *fd;
-    const struct option *opt;
 
     fd = fopen(path, "r");
 
@@ -467,55 +468,31 @@ static int loadFromFile (const char *path, n2n_sn_t *sss) {
         return -1;
     }
 
+    // we mess around with optind, better save it
+    tmp = optind;
+
     while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
-
         line = trim(line);
-        value = NULL;
 
-        if((line_len = strlen(line)) < 2 || line[0] == '#') {
+        if(strlen(line) < 2 || line[0] == '#') {
             continue;
         }
 
-        if(!strncmp(line, "--", 2)) { /* long opt */
-            key = &line[2], line_len -= 2;
+        // executable, cannot be omitted, content can be anything
+        line_vec[0] = line;
+        // first token, e.g. `-p`, eventually followed by a whitespace or '=' delimiter
+        line_vec[1] = strtok(line, "\t =");
+        // separate parameter option, if present
+        line_vec[2] = strtok(NULL, "\t ");
 
-            opt = long_options;
-            while(opt->name != NULL) {
-	        opt_name_len = strlen(opt->name);
-
-	        if(!strncmp(key, opt->name, opt_name_len)
-	           && (line_len <= opt_name_len
-	           || key[opt_name_len] == '\0'
-	           || key[opt_name_len] == ' '
-	           || key[opt_name_len] == '=')) {
-	            if(line_len > opt_name_len) {
-                  key[opt_name_len] = '\0';
-              }
-	            if(line_len > opt_name_len + 1) {
-                  value = trim(&key[opt_name_len + 1]);
-              }
-
-	            // traceEvent(TRACE_NORMAL, "long key: %s value: %s", key, value);
-	            setOption(opt->val, value, sss);
-	            break;
-	        }
-
-	        opt++;
-            }
-        } else if(line[0] == '-') { /* short opt */
-            key = &line[1], line_len--;
-            if(line_len > 1) key[1] = '\0';
-            if(line_len > 2) value = trim(&key[2]);
-
-            // traceEvent(TRACE_NORMAL, "key: %c value: %s", key[0], value);
-            setOption(key[0], value, sss);
-        } else {
-            traceEvent(TRACE_WARNING, "Skipping unrecognized line: %s", line);
-            continue;
-        }
+        // not to duplicate the option parser code, call loadFromCLI and pretend we have no option read yet
+        optind = 1;
+        // if separate second token present (optional argument, not part of first), then announce 3 vector members
+        loadFromCLI(line_vec[2] ? 3 : 2, line_vec, sss);
     }
 
     fclose(fd);
+    optind = tmp;
 
     return 0;
 }
@@ -624,9 +601,9 @@ int main (int argc, char * const argv[]) {
     } else if(argc > 1) {
         rc = loadFromCLI(argc, argv, &sss_node);
     } else
-      
+
 #ifdef WIN32
-        /* Load from current directory */
+        // load from current directory
         rc = loadFromFile("supernode.conf", &sss_node);
 #else
         rc = -1;
@@ -635,7 +612,6 @@ int main (int argc, char * const argv[]) {
     if(rc < 0) {
         help();
     }
-
 
 #if defined(N2N_HAVE_DAEMON)
     if(sss_node.daemon) {
