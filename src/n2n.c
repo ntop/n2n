@@ -25,10 +25,6 @@
 #include <assert.h>
 
 
-static const uint8_t broadcast_addr[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-static const uint8_t multicast_addr[6] = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
-static const uint8_t ipv6_multicast_addr[6] = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
-static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /* ************************************** */
 
@@ -321,11 +317,11 @@ int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
 
 /* ************************************** */
 
-struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n_sock_t *sock, n2n_mac_t *mac, int *skip_add) {
+struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n_sock_t *sock, const n2n_mac_t mac, int *skip_add) {
 
     struct peer_info *scan, *tmp, *peer = NULL;
 
-    if(memcmp(mac, null_mac, sizeof(n2n_mac_t)) != 0) { /* not zero MAC */
+    if(!is_null_mac(mac)) { /* not zero MAC */
         HASH_FIND_PEER(*sn_list, mac, peer);
     }
 
@@ -333,7 +329,7 @@ struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n
         HASH_ITER(hh, *sn_list, scan, tmp) {
             if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t)) == 0) {
                 HASH_DEL(*sn_list, scan);
-                memcpy(&(scan->mac_addr), mac, sizeof(n2n_mac_t));
+                memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
                 HASH_ADD_PEER(*sn_list, scan);
                 peer = scan;
                 break;
@@ -345,7 +341,7 @@ struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n
             if(peer) {
                 sn_selection_criterion_default(&(peer->selection_criterion));
                 memcpy(&(peer->sock), sock, sizeof(n2n_sock_t));
-                memcpy(&(peer->mac_addr), mac, sizeof(n2n_mac_t));
+                memcpy(peer->mac_addr, mac, sizeof(n2n_mac_t));
                 HASH_ADD_PEER(*sn_list, peer);
                 *skip_add = SN_ADD_ADDED;
             }
@@ -357,16 +353,33 @@ struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n
 
 /* ************************************************ */
 
-uint8_t is_multi_broadcast (const uint8_t * dest_mac) {
 
-    int is_broadcast = (memcmp(broadcast_addr, dest_mac, 6) == 0);
-    int is_multicast = (memcmp(multicast_addr, dest_mac, 3) == 0);
-    int is_ipv6_multicast = (memcmp(ipv6_multicast_addr, dest_mac, 2) == 0);
+/* http://www.faqs.org/rfcs/rfc908.html */
+uint8_t is_multi_broadcast (const n2n_mac_t dest_mac) {
+
+    int is_broadcast = (memcmp(broadcast_mac, dest_mac, N2N_MAC_SIZE) == 0);
+    //REVISIT: multicast has bit #24 reset, test!
+    int is_multicast = (memcmp(multicast_mac, dest_mac,            3) == 0);
+    int is_ipv6_multicast = (memcmp(ipv6_multicast_mac, dest_mac,  2) == 0);
 
     return is_broadcast || is_multicast || is_ipv6_multicast;
 }
 
-/* http://www.faqs.org/rfcs/rfc908.html */
+
+uint8_t is_broadcast (const n2n_mac_t dest_mac) {
+
+    int is_broadcast = (memcmp(broadcast_mac, dest_mac, N2N_MAC_SIZE) == 0);
+
+    return is_broadcast;
+}
+
+
+uint8_t is_null_mac (const n2n_mac_t dest_mac) {
+
+    int is_null_mac = (memcmp(null_mac, dest_mac, N2N_MAC_SIZE) == 0);
+
+    return is_null_mac;
+}
 
 
 /* *********************************************** */

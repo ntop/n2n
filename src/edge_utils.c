@@ -645,8 +645,6 @@ int is_empty_ip_address (const n2n_sock_t * sock) {
 
 /* ************************************** */
 
-static const n2n_mac_t broadcast_mac = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /** Check if a known peer socket has changed and possibly register again.
  */
@@ -765,7 +763,7 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
 
 /** Send a QUERY_PEER packet to the current supernode. */
 static void send_query_peer (n2n_edge_t * eee,
-                             const n2n_mac_t dstMac) {
+                             const n2n_mac_t dst_mac) {
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
@@ -783,12 +781,12 @@ static void send_query_peer (n2n_edge_t * eee,
     encode_mac(query.srcMac, &idx, eee->device.mac_addr);
 
     idx = 0;
-    encode_mac(query.targetMac, &idx, dstMac);
+    encode_mac(query.targetMac, &idx, dst_mac);
 
     idx = 0;
     encode_QUERY_PEER(pktbuf, &idx, &cmn, &query);
 
-    if(memcmp(dstMac, null_mac, sizeof(n2n_mac_t)) != 0) {
+    if(is_null_mac(dst_mac)) {
 
         traceEvent(TRACE_DEBUG, "send QUERY_PEER to supernode");
 
@@ -1320,7 +1318,7 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
 
     strncpy(buf, "0.0.0.0", N2N_NETMASK_STR_SIZE - 1);
 
-    if(0 == memcmp(null_mac, req_mac, sizeof(n2n_mac_t))) {
+    if(is_null_mac(req_mac)) {
         traceEvent(TRACE_DEBUG, "MAC address is null.");
         return buf;
     }
@@ -2022,7 +2020,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 if(is_valid_peer_sock(&reg.sock))
                     orig_sender = &(reg.sock);
 
-                via_multicast = !memcmp(reg.dstMac, null_mac, N2N_MAC_SIZE);
+                via_multicast = is_null_mac(reg.dstMac);
 
                 if(via_multicast && !memcmp(reg.srcMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
                     traceEvent(TRACE_DEBUG, "Skipping REGISTER from self");
@@ -2130,7 +2128,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
 
                         for(i = 0; i < ra.num_sn; i++) {
                             skip_add = SN_ADD;
-                            sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), &(payload->mac), &skip_add);
+                            sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), payload->mac, &skip_add);
 
                             if(skip_add == SN_ADD_ADDED) {
                                 sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
@@ -2198,7 +2196,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 decode_REGISTER_SUPER_NAK(&nak, &cmn, udp_buf, &rem, &idx);
                 traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_NAK");
 
-                if((memcmp(&(nak.srcMac), &(eee->device.mac_addr), sizeof(n2n_mac_t))) == 0) {
+                if((memcmp(nak.srcMac, eee->device.mac_addr, sizeof(n2n_mac_t))) == 0) {
                     traceEvent(TRACE_ERROR, "%s is already used. Stopping the program.", macaddr_str(mac_buf1, nak.srcMac));
                     exit(1);
                 } else {
@@ -2237,9 +2235,9 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                     break;
                 }
 
-                if(memcmp(pi.mac, null_mac, sizeof(n2n_mac_t)) == 0) {
+                if(is_null_mac(pi.mac)) {
                     skip_add = SN_ADD_SKIP;
-                    scan = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &sender, &pi.srcMac, &skip_add);
+                    scan = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &sender, pi.srcMac, &skip_add);
                     if(scan != NULL) {
                         scan->last_seen = now;
                         /* The data type depends on the actual selection strategy that has been chosen. */
@@ -2994,7 +2992,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
     }
 
     skip_add = SN_ADD;
-    sn = add_sn_to_list_by_mac_or_sock(&(conf->supernodes), sock, (n2n_mac_t *)null_mac, &skip_add);
+    sn = add_sn_to_list_by_mac_or_sock(&(conf->supernodes), sock, null_mac, &skip_add);
 
     if(sn != NULL) {
         sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
@@ -3002,7 +3000,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
         if(sn->ip_addr != NULL) {
             strncpy(sn->ip_addr, ip_and_port, N2N_EDGE_SN_HOST_SIZE - 1);
             memcpy(&(sn->sock), sock, sizeof(n2n_sock_t));
-            memcpy(&(sn->mac_addr), null_mac, sizeof(n2n_mac_t));
+            memcpy(sn->mac_addr, null_mac, sizeof(n2n_mac_t));
             sn->purgeable = SN_UNPURGEABLE;
             sn->last_valid_time_stamp = initial_time_stamp();
         }

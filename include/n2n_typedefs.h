@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,13 @@ typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
 typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
 typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
 typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
+
+// those are definitely not typedefs (with a view to the filename) but neither are they defines
+static const n2n_mac_t broadcast_mac      = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+static const n2n_mac_t multicast_mac      = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
+static const n2n_mac_t ipv6_multicast_mac = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
+static const n2n_mac_t null_mac           = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #include "getopt.h"

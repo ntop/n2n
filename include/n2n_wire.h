@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ int encode_mac (uint8_t * base,
                 size_t * idx,
                 const n2n_mac_t m);
 
-int decode_mac (uint8_t * out, /* of size N2N_MAC_SIZE. This clearer than passing a n2n_mac_t */
+int decode_mac (n2n_mac_t out,
                 const uint8_t * base,
                 size_t * rem,
                 size_t * idx);
