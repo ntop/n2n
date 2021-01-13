@@ -24,7 +24,6 @@
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
 static n2n_sn_t sss_node;
-static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /** Load the list of allowed communities. Existing/previous ones will be removed
  *
@@ -285,14 +284,14 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             if(sss->federation != NULL) {
 
                 skip_add = SN_ADD;
-                anchor_sn = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), socket, (n2n_mac_t*) null_mac, &skip_add);
+                anchor_sn = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), socket, null_mac, &skip_add);
 
                 if(anchor_sn != NULL) {
                     anchor_sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
                     if(anchor_sn->ip_addr) {
                         strncpy(anchor_sn->ip_addr, _optarg, N2N_EDGE_SN_HOST_SIZE - 1);
 	                      memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
-                        memcpy(&(anchor_sn->mac_addr), null_mac, sizeof(n2n_mac_t));
+                        memcpy(anchor_sn->mac_addr, null_mac, sizeof(n2n_mac_t));
                         anchor_sn->purgeable = SN_UNPURGEABLE;
                         anchor_sn->last_valid_time_stamp = initial_time_stamp();
 

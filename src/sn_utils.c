@@ -75,7 +75,6 @@ static int process_udp (n2n_sn_t *sss,
                         size_t udp_size,
                         time_t now);
 
-static const n2n_mac_t null_mac = {0, 0, 0, 0, 0, 0};
 
 /* ************************************** */
 
@@ -393,7 +392,7 @@ static int update_edge (n2n_sn_t *sss,
             if(iter->dev_addr.net_addr == reg->dev_addr.net_addr) {
                 scan = iter;
                 HASH_DEL(comm->edges, scan);
-                memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
+                memcpy(scan->mac_addr, reg->edgeMac, sizeof(n2n_mac_t));
                 HASH_ADD_PEER(comm->edges, scan);
                 break;
             }
@@ -908,7 +907,6 @@ static int process_udp (n2n_sn_t * sss,
     char                buf[32];
     struct sn_community *comm, *tmp;
     uint64_t            stamp;
-    const n2n_mac_t     null_mac = {0, 0, 0, 0, 0, 0}; /* 00:00:00:00:00:00 */
 
     traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
                udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -1258,9 +1256,9 @@ static int process_udp (n2n_sn_t * sss,
                 memcpy(&(ack.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
 
                 if(comm->is_federation == IS_FEDERATION) {
-                    memcpy(&(ack.edgeMac), &(sss->mac_addr), sizeof(n2n_mac_t));
+                    memcpy(ack.edgeMac, sss->mac_addr, sizeof(n2n_mac_t));
                 } else {
-                    memcpy(&(ack.edgeMac), &(reg.edgeMac), sizeof(n2n_mac_t));
+                    memcpy(ack.edgeMac, reg.edgeMac, sizeof(n2n_mac_t));
                 }
 
                 if((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
@@ -1279,7 +1277,7 @@ static int process_udp (n2n_sn_t * sss,
                 /* Add sender's data to federation (or update it) */
                 if(comm->is_federation == IS_FEDERATION) {
                     skip_add = SN_ADD;
-                    p = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(ack.sock), &(reg.edgeMac), &skip_add);
+                    p = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(ack.sock), reg.edgeMac, &skip_add);
                 }
 
                 // REVISIT: consider adding last_seen
@@ -1302,7 +1300,7 @@ static int process_udp (n2n_sn_t * sss,
                                                                                       * their SN_ACTIVE time before they get re-registred to. */
                     if(((++num)*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE) > REG_SUPER_ACK_PAYLOAD_SPACE) break; /* no more space available in REGISTER_SUPER_ACK payload */
                     memcpy(&(payload->sock), &(peer->sock), sizeof(n2n_sock_t));
-                    memcpy(&(payload->mac), &(peer->mac_addr), sizeof(n2n_mac_t));
+                    memcpy(payload->mac, peer->mac_addr, sizeof(n2n_mac_t));
                     // shift to next payload entry
                     payload++;
                 }
@@ -1312,7 +1310,7 @@ static int process_udp (n2n_sn_t * sss,
                            macaddr_str(mac_buf, reg.edgeMac),
                            sock_to_cstr(sockbuf, &(ack.sock)));
 
-                if(memcmp(reg.edgeMac, &null_mac, N2N_MAC_SIZE) != 0) {
+                if(!is_null_mac(reg.edgeMac)) {
                     if(cmn.flags & N2N_FLAGS_SOCKET) {
                         ret_value = update_edge(sss, &reg, comm, &(ack.sock), SN_ADD_SKIP, now);
                     } else {
@@ -1323,7 +1321,7 @@ static int process_udp (n2n_sn_t * sss,
                 if(ret_value == update_edge_auth_fail) {
                     cmn2.pc = n2n_register_super_nak;
                     memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
-                    memcpy(&(nak.srcMac), &(reg.edgeMac), sizeof(n2n_mac_t));
+                    memcpy(nak.srcMac, reg.edgeMac, sizeof(n2n_mac_t));
 
                     encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
 
@@ -1479,7 +1477,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm->is_federation == IS_FEDERATION) {
                 skip_add = SN_ADD_SKIP;
-                scan = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &sender, &(ack.edgeMac), &skip_add);
+                scan = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &sender, ack.edgeMac, &skip_add);
                 if(scan != NULL) {
                     scan->last_seen = now;
                 } else {
@@ -1492,7 +1490,7 @@ static int process_udp (n2n_sn_t * sss,
 
             for(i = 0; i < ack.num_sn; i++) {
                 skip_add = SN_ADD;
-                tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), &(payload->mac), &skip_add);
+                tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), payload->mac, &skip_add);
 
                 if(skip_add == SN_ADD_ADDED) {
                     tmp->last_seen = now - LAST_SEEN_SN_NEW;
@@ -1597,7 +1595,7 @@ static int process_udp (n2n_sn_t * sss,
                 }
             }
 
-            if(memcmp(query.targetMac, null_mac, sizeof(n2n_mac_t)) == 0) {
+            if(is_null_mac(query.targetMac)) {
                 traceEvent(TRACE_DEBUG, "Rx PING from %s.",
                            macaddr_str(mac_buf, query.srcMac));
 

@@ -1,5 +1,5 @@
 /**
- * (C) 2007-20 - ntop.org and contributors
+ * (C) 2007-21 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -193,7 +193,9 @@ uint8_t mask2bitlen (uint32_t mask);
 char* macaddr_str (macstr_t buf, const n2n_mac_t mac);
 int str2mac (uint8_t * outmac /* 6 bytes */, const char * s);
 int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn);
-uint8_t is_multi_broadcast (const uint8_t * dest_mac);
+uint8_t is_multi_broadcast (const n2n_mac_t dest_mac);
+uint8_t is_broadcast (const n2n_mac_t dest_mac);
+uint8_t is_null_mac (const n2n_mac_t dest_mac);
 char* msg_type2str (uint16_t msg_type);
 void hexdump (const uint8_t * buf, size_t len);
 void print_n2n_version ();
@@ -248,7 +250,7 @@ int comm_init (struct sn_community *comm, char *cmn);
 int sn_init (n2n_sn_t *sss);
 void sn_term (n2n_sn_t *sss);
 int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn);
-struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n_sock_t *sock, n2n_mac_t *mac, int *skip_add);
+struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n_sock_t *sock, const n2n_mac_t mac, int *skip_add);
 int run_sn_loop (n2n_sn_t *sss, int *keep_running);
 int assign_one_ip_subnet (n2n_sn_t *sss, struct sn_community *comm);
 const char* compression_str (uint8_t cmpr);
