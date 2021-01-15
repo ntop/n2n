@@ -786,7 +786,7 @@ static void send_query_peer (n2n_edge_t * eee,
     idx = 0;
     encode_QUERY_PEER(pktbuf, &idx, &cmn, &query);
 
-    if(is_null_mac(dst_mac)) {
+    if(!is_null_mac(dst_mac)) {
 
         traceEvent(TRACE_DEBUG, "send QUERY_PEER to supernode");
 
