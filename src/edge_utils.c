@@ -816,7 +816,7 @@ static void send_query_peer (n2n_edge_t * eee,
 /* ******************************************************** */
 
 /** Send a REGISTER_SUPER packet to the current supernode. */
-static void send_register_super (n2n_edge_t *eee) {
+void send_register_super (n2n_edge_t *eee) {
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
     size_t idx;
