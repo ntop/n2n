@@ -42,6 +42,8 @@ static cap_value_t cap_values[] = {
 int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
 #endif
 
+void send_register_super (n2n_edge_t *eee);
+
 /* ***************************************************** */
 
 /** Find the address and IP mode for the tuntap device.
@@ -804,14 +806,25 @@ int main (int argc, char* argv[]) {
     } else {
         traceEvent(TRACE_NORMAL, "Automatically assign IP address by supernode.");
         eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
+
+        // REVISIT: integrate into the (to be created) bootstrap, maybe even as part of a more stateful main loop
+        eee->sn_wait = 1;
         do {
             fd_set socket_mask;
             struct timeval wait_time;
 
-            update_supernode_reg(eee, time(NULL));
+            // next supernode
+            if (eee->curr_sn->hh.next)
+                eee->curr_sn = eee->curr_sn->hh.next;
+            else
+                eee->curr_sn = eee->conf.supernodes;
+            memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
+
+            send_register_super(eee);
+
             FD_ZERO(&socket_mask);
             FD_SET(eee->udp_sock, &socket_mask);
-            wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS;
+            wait_time.tv_sec = (SOCKET_TIMEOUT_INTERVAL_SECS / 10) + 1;
             wait_time.tv_usec = 0;
 
             if(select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
