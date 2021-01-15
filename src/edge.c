@@ -609,8 +609,8 @@ static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_pri
         line_vec[1] = strtok(line, "\t =");
         // separate parameter option, if present
         line_vec[2] = strtok(NULL, "\t ");
-        // not to duplicate the option parser code, call loadFromCLI and pretend we have no option read yet
-        optind = 1;
+        // not to duplicate the option parser code, call loadFromCLI and pretend we have no option read yet at all
+        optind = 0;
         // if second token present (optional argument, not part of first), then announce 3 vector members
         loadFromCLI(line_vec[2] ? 3 : 2, line_vec, conf, ec);
     }
