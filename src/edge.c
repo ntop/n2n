@@ -818,7 +818,6 @@ int main (int argc, char* argv[]) {
                 eee->curr_sn = eee->curr_sn->hh.next;
             else
                 eee->curr_sn = eee->conf.supernodes;
-            memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
 
             send_register_super(eee);
 

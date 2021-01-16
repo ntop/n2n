@@ -502,7 +502,7 @@ static void register_with_new_peer (n2n_edge_t *eee,
                 /* Normal STUN */
                 send_register(eee, &(scan->sock), mac);
             }
-            send_register(eee, &(eee->supernode), mac);
+            send_register(eee, &(eee->curr_sn->sock), mac);
         } else {
             /* P2P register, send directly */
             send_register(eee, &(scan->sock), mac);
@@ -796,7 +796,7 @@ static void send_query_peer (n2n_edge_t * eee,
                                   time_stamp ());
         }
 
-        sendto_sock(eee->udp_sock, pktbuf, idx, &(eee->supernode));
+        sendto_sock(eee->udp_sock, pktbuf, idx, &(eee->curr_sn->sock));
 
     } else {
         traceEvent(TRACE_DEBUG, "send PING to supernodes");
@@ -907,7 +907,6 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
         send_unregister_super(eee);
 
         eee->curr_sn = eee->conf.supernodes;
-        memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
         eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
         traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
@@ -1103,7 +1102,6 @@ void update_supernode_reg (n2n_edge_t * eee, time_t nowTime) {
         sn_selection_criterion_default(&(eee->curr_sn->selection_criterion));
         sn_selection_sort(&(eee->conf.supernodes));
         eee->curr_sn = eee->conf.supernodes;
-        memcpy(&eee->supernode, &(eee->curr_sn->sock), sizeof(n2n_sock_t));
 
         traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
 
@@ -1124,7 +1122,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t nowTime) {
         --(eee->sup_attempts);
     }
 
-    if(supernode2sock(&(eee->supernode), eee->curr_sn->ip_addr) == 0) {
+    if(supernode2sock(&(eee->curr_sn->sock), eee->curr_sn->ip_addr) == 0) {
         traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
                    supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
@@ -1574,7 +1572,7 @@ static int check_query_peer_info (n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
     }
 
     if(now - scan->last_sent_query > eee->conf.register_interval) {
-        send_register(eee, &(eee->supernode), mac);
+        send_register(eee, &(eee->curr_sn->sock), mac);
         send_query_peer(eee, scan->mac_addr);
         scan->last_sent_query = now;
         return(0);
@@ -1598,7 +1596,7 @@ static int find_peer_destination (n2n_edge_t * eee,
 
     if(!memcmp(mac_address, broadcast_mac, N2N_MAC_SIZE)) {
         traceEvent(TRACE_DEBUG, "Broadcast destination peer, using supernode");
-        memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
+        memcpy(destination, &(eee->curr_sn->sock), sizeof(struct sockaddr_in));
         return(0);
     }
 
@@ -1624,7 +1622,7 @@ static int find_peer_destination (n2n_edge_t * eee,
     }
 
     if(retval == 0) {
-        memcpy(destination, &(eee->supernode), sizeof(struct sockaddr_in));
+        memcpy(destination, &(eee->curr_sn->sock), sizeof(struct sockaddr_in));
         traceEvent(TRACE_DEBUG, "P2P Peer [MAC=%02X:%02X:%02X:%02X:%02X:%02X] not found, using supernode",
                    mac_address[0] & 0xFF, mac_address[1] & 0xFF, mac_address[2] & 0xFF,
                    mac_address[3] & 0xFF, mac_address[4] & 0xFF, mac_address[5] & 0xFF);

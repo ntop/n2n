@@ -628,7 +628,7 @@ struct n2n_edge {
     SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_data;
 
     /* Sockets */
-    n2n_sock_t                       supernode;
+    /* supernode socket is in        eee->curr_sn->sock (of type n2n_sock_t) */
     int                              udp_sock;
     int                              udp_mgmt_sock;                      /**< socket for status info. */
 
