@@ -624,7 +624,6 @@ struct n2n_edge {
     n2n_route_t                      *sn_route_to_clean;                 /**< Supernode route to clean */
     n2n_edge_callbacks_t cb;                                             /**< API callbacks */
     void                             *user_data;                         /**< Can hold user data */
-    uint64_t                         sn_last_valid_time_stamp;           /**< last valid time stamp from supernode */
     SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_data;
 
     /* Sockets */

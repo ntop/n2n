@@ -625,14 +625,17 @@ int assign_one_ip_subnet (n2n_sn_t *sss,
  * and verify it (and also update, if applicable).
  */
 static int find_edge_time_stamp_and_verify (struct peer_info * edges,
-                                            int from_supernode, n2n_mac_t mac,
+                                            peer_info_t *sn, n2n_mac_t mac,
                                             uint64_t stamp, int allow_jitter) {
 
-    uint64_t * previous_stamp = NULL;
+    uint64_t *previous_stamp = NULL;
 
-    if(!from_supernode) {
+    if(sn) {
+        previous_stamp = &(sn->last_valid_time_stamp);
+    } else {
         struct peer_info *edge;
         HASH_FIND_PEER(edges, mac, edge);
+
         if(edge) {
             // time_stamp_verify_and_update allows the pointer a previous stamp to be NULL
             // if it is a (so far) unknown edge
@@ -641,8 +644,9 @@ static int find_edge_time_stamp_and_verify (struct peer_info * edges,
     }
 
     // failure --> 0;    success --> 1
-    return (time_stamp_verify_and_update(stamp, previous_stamp, allow_jitter));
+    return time_stamp_verify_and_update(stamp, previous_stamp, allow_jitter);
 }
+
 
 static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community *comm, time_t *p_last_re_reg_and_purge, time_t now) {
 
@@ -901,12 +905,15 @@ static int process_udp (n2n_sn_t * sss,
     size_t              idx;
     size_t              msg_type;
     uint8_t             from_supernode;
+    peer_info_t         *sn = NULL;
+    n2n_sock_t          sender;
     macstr_t            mac_buf;
     macstr_t            mac_buf2;
     n2n_sock_str_t      sockbuf;
     char                buf[32];
     struct sn_community *comm, *tmp;
     uint64_t            stamp;
+    int                 skip_add;
 
     traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
                udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -998,7 +1005,26 @@ static int process_udp (n2n_sn_t * sss,
     }
 
     msg_type = cmn.pc; /* packet code */
+
+    /* REVISIT: when UDP/IPv6 is supported we will need a flag to indicate which
+     * IP transport version the packet arrived on. May need to UDP sockets. */
+
+    memset(&sender, 0, sizeof(n2n_sock_t));
+
+    sender.family = AF_INET; /* UDP socket was opened PF_INET v4 */
+    sender.port = ntohs(sender_sock->sin_port);
+    memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+
     from_supernode = cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
+    if(from_supernode) {
+        skip_add = SN_ADD_SKIP;
+        sn = add_sn_to_list_by_mac_or_sock (&(sss->federation->edges), &sender, null_mac, &skip_add);
+        // only REGISTER_SUPER allowed from unknown supernodes
+        if((!sn) && (msg_type != MSG_TYPE_REGISTER_SUPER)) {
+            traceEvent(TRACE_DEBUG, "process_udp dropped incoming data from unknown supernode.");
+            return -1;
+        }
+    }
 
     if(cmn.ttl < 1) {
         traceEvent(TRACE_WARNING, "Expired TTL");
@@ -1030,7 +1056,7 @@ static int process_udp (n2n_sn_t * sss,
 
             // already checked for valid comm
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                if(!find_edge_time_stamp_and_verify(comm->edges, from_supernode, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                if(!find_edge_time_stamp_and_verify(comm->edges, sn, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
                     traceEvent(TRACE_DEBUG, "process_udp dropped PACKET due to time stamp error.");
                     return -1;
                 }
@@ -1112,7 +1138,7 @@ static int process_udp (n2n_sn_t * sss,
 
             // already checked for valid comm
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                if(!find_edge_time_stamp_and_verify(comm->edges, from_supernode, reg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                if(!find_edge_time_stamp_and_verify(comm->edges, sn, reg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                     traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER due to time stamp error.");
                     return -1;
                 }
@@ -1183,7 +1209,6 @@ static int process_udp (n2n_sn_t * sss,
             int                                    match_length = 0;
             n2n_ip_subnet_t                        ipaddr;
             int                                    num = 0;
-            int                                    skip_add;
             int                                    skip;
             int                                    ret_value;
 
@@ -1197,7 +1222,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_edge_time_stamp_and_verify(comm->edges, from_supernode, reg.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_edge_time_stamp_and_verify(comm->edges, sn, reg.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER due to time stamp error.");
                         return -1;
                     }
@@ -1404,7 +1429,7 @@ static int process_udp (n2n_sn_t * sss,
             decode_UNREGISTER_SUPER(&unreg, &cmn, udp_buf, &rem, &idx);
 
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                if(!find_edge_time_stamp_and_verify (comm->edges, sn, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                     traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER due to time stamp error.");
                     return -1;
                 }
@@ -1437,7 +1462,6 @@ static int process_udp (n2n_sn_t * sss,
             n2n_mac_t                        *tmp_mac;
             int                              i;
             uint8_t                          dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
-            int                              skip_add;
             n2n_REGISTER_SUPER_ACK_payload_t *payload;
 
             memset(&sender, 0, sizeof(n2n_sock_t));
@@ -1463,7 +1487,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, ack.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_edge_time_stamp_and_verify (comm->edges, sn, ack.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to time stamp error.");
                         return -1;
                     }
@@ -1527,7 +1551,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, nak.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_edge_time_stamp_and_verify (comm->edges, sn, nak.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_NAK due to time stamp error.");
                         return -1;
                     }
@@ -1588,7 +1612,7 @@ static int process_udp (n2n_sn_t * sss,
             // already checked for valid comm
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_edge_time_stamp_and_verify (comm->edges, from_supernode, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                    if(!find_edge_time_stamp_and_verify (comm->edges, sn, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
                         traceEvent(TRACE_DEBUG, "process_udp dropped QUERY_PEER due to time stamp error.");
                         return -1;
                     }

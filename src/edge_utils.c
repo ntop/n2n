@@ -211,7 +211,6 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     eee->known_peers        = NULL;
     eee->pending_peers    = NULL;
     eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
-    eee->sn_last_valid_time_stamp = initial_time_stamp ();
     sn_selection_criterion_common_data_default(eee);
 
     pearson_hash_init();
@@ -354,7 +353,6 @@ static int is_valid_peer_sock (const n2n_sock_t *sock) {
 
 /* ***************************************************** */
 
-static const int definitely_from_supernode = 1;
 
 /***
  *
@@ -362,14 +360,14 @@ static const int definitely_from_supernode = 1;
  * and verify it (and also update, if applicable).
  */
 static int find_peer_time_stamp_and_verify (n2n_edge_t * eee,
-                                            int from_supernode, const n2n_mac_t mac,
+                                            peer_info_t *sn, const n2n_mac_t mac,
                                             uint64_t stamp, int allow_jitter) {
 
-    uint64_t * previous_stamp = NULL;
+    uint64_t *previous_stamp = NULL;
 
-    if(from_supernode) {
+    if(sn) {
         // from supernode
-        previous_stamp = &(eee->sn_last_valid_time_stamp);
+        previous_stamp = &(sn->last_valid_time_stamp);
     } else {
         // from (peer) edge
         struct peer_info *peer;
@@ -386,8 +384,9 @@ static int find_peer_time_stamp_and_verify (n2n_edge_t * eee,
     }
 
     // failure --> 0;    success --> 1
-    return (time_stamp_verify_and_update(stamp, previous_stamp, allow_jitter));
+    return time_stamp_verify_and_update(stamp, previous_stamp, allow_jitter);
 }
+
 
 /* ************************************** */
 
@@ -1887,12 +1886,14 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
     size_t                idx;
     size_t                msg_type;
     uint8_t               from_supernode;
+    peer_info_t           *sn = NULL;
     struct sockaddr_in    sender_sock;
     n2n_sock_t            sender;
     n2n_sock_t *          orig_sender = NULL;
     time_t                now = 0;
     uint64_t              stamp = 0;
     size_t                i;
+    int                   skip_add = 0;
 
     i = sizeof(sender_sock);
     recvlen = recvfrom(in_sock, udp_buf, N2N_PKT_BUF_SIZE, 0/*flags*/,
@@ -1953,7 +1954,19 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
     now = time(NULL);
 
     msg_type = cmn.pc; /* packet code */
+
+    // check if packet is from supernode and find the corresponding supernode in list
     from_supernode = cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
+    if(from_supernode) {
+        skip_add = SN_ADD_SKIP;
+        sn = add_sn_to_list_by_mac_or_sock (&(eee->conf.supernodes), &sender, null_mac, &skip_add);
+        // a REGISTER_SUPER_NAK could come from some supernode we do not know yet, especially not
+        // too soon after start-up -- so, we accept it no matter from what supernode
+        if((!sn) && (msg_type != MSG_TYPE_REGISTER_SUPER_NAK)) {
+            traceEvent(TRACE_DEBUG, "readFromIPSocket dropped incoming data from unknown supernode.");
+            return;
+        }
+    }
 
     if(0 == memcmp(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE)) {
         switch(msg_type) {
@@ -1964,7 +1977,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, from_supernode, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify (eee, sn, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET due to time stamp error.");
                         return;
                     }
@@ -2011,7 +2024,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 via_multicast = is_null_mac(reg.dstMac);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, from_supernode, reg.srcMac, stamp,
+                    if(!find_peer_time_stamp_and_verify (eee, sn, reg.srcMac, stamp,
                                                          via_multicast ? TIME_STAMP_ALLOW_JITTER : TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER due to time stamp error.");
                         return;
@@ -2060,7 +2073,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 decode_REGISTER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, !definitely_from_supernode, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify (eee, sn, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_ACK due to time stamp error.");
                         return;
                     }
@@ -2102,7 +2115,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                     decode_REGISTER_SUPER_ACK(&ra, &cmn, udp_buf, &rem, &idx, tmpbuf);
 
                     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        if(!find_peer_time_stamp_and_verify (eee, definitely_from_supernode, null_mac, stamp, TIME_STAMP_NO_JITTER)) {
+                        if(!find_peer_time_stamp_and_verify (eee, sn, null_mac, stamp, TIME_STAMP_NO_JITTER)) {
                             traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_SUPER_ACK due to time stamp error.");
                             return;
                         }
@@ -2139,7 +2152,6 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                                 }
                                 sn_selection_criterion_default(&(sn->selection_criterion));
                                 sn->last_seen = now - LAST_SEEN_SN_NEW;
-                                sn->last_valid_time_stamp = initial_time_stamp();
                                 traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
                             }
                             // shfiting to the next payload entry
@@ -2221,7 +2233,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 decode_PEER_INFO(&pi, &cmn, udp_buf, &rem, &idx);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, definitely_from_supernode, null_mac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify (eee, sn, null_mac, stamp, TIME_STAMP_ALLOW_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PEER_INFO due to time stamp error.");
                         return;
                     }
@@ -3001,7 +3013,6 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
             memcpy(&(sn->sock), sock, sizeof(n2n_sock_t));
             memcpy(sn->mac_addr, null_mac, sizeof(n2n_mac_t));
             sn->purgeable = SN_UNPURGEABLE;
-            sn->last_valid_time_stamp = initial_time_stamp();
         }
     }
 
