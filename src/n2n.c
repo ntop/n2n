@@ -328,9 +328,12 @@ struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n
     if(peer == NULL) { /* zero MAC, search by socket */
         HASH_ITER(hh, *sn_list, scan, tmp) {
             if(memcmp(&(scan->sock), sock, sizeof(n2n_sock_t)) == 0) {
-                HASH_DEL(*sn_list, scan);
-                memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
-                HASH_ADD_PEER(*sn_list, scan);
+                // update mac if appropriate, needs to be deleted first because it is key to the hash list
+                if(!is_null_mac(mac)) {
+                    HASH_DEL(*sn_list, scan);
+                    memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
+                    HASH_ADD_PEER(*sn_list, scan);
+                }
                 peer = scan;
                 break;
             }
