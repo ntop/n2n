@@ -915,11 +915,11 @@ static int process_udp (n2n_sn_t * sss,
     /* check if header is unencrypted. the following check is around 99.99962 percent reliable.
      * it heavily relies on the structure of packet's common part
      * changes to wire.c:encode/decode_common need to go together with this code */
-    if(udp_size < 20) {
+    if(udp_size < 24) {
         traceEvent(TRACE_DEBUG, "process_udp dropped a packet too short to be valid.");
         return -1;
     }
-    if((udp_buf[19] == (uint8_t)0x00) // null terminated community name
+    if((udp_buf[23] == (uint8_t)0x00) // null terminated community name
        && (udp_buf[00] == N2N_PKT_VERSION) // correct packet version
        && ((be16toh(*(uint16_t*)&(udp_buf[02])) & N2N_FLAGS_TYPE_MASK) <= MSG_TYPE_MAX_TYPE) // message type
        && ( be16toh(*(uint16_t*)&(udp_buf[02])) < N2N_FLAGS_OPTIONS) // flags

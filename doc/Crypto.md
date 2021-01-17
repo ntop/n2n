@@ -89,13 +89,15 @@ The COMMON section is built as follows:
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    ! Version = 3   ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- 4 ! Community                                                     :
+ 4 ! Community ...                                                  :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  8 ! ... Community ...                                             :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 12 ! ... Community ...                                             :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-16 ! ... Community                                                 !
+16 ! ... Community ...                                             :
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+20 ! ... Community                                                 !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
@@ -104,29 +106,29 @@ In case of a PACKET-type, it is succeeded by the fields depicted below:
 ```
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-20 ! Source MAC Address                                            :
+24 ! Source MAC Address                                            :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-24 :                               ! Destination MAC Address       :
+28 :                               ! Destination MAC Address       :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-28 :                                                               !
+32 :                                                               !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-32 ! Socket Flags (v=IPv4)         ! Destination UDP Port          !
+36 ! Socket Flags (v=IPv4)         ! Destination UDP Port          !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-36 ! Destination IPv4 Address                                      !
+40 ! Destination IPv4 Address                                      !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-40 ! Compress'n ID !  Transform ID ! Payload ...                   !
+44 ! Compress'n ID !  Transform ID ! Payload ...                   !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               +
-44 !                                                               !
+48 !                                                               !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+...
 ```
 
 ### Encryption
 
-If enabled (`-H`), all fields but the payload (which is handled seperately as outlined above) get encrypted using SPECK in CTR mode. As packet headers need to be decryptable by the supernode and we do not want to add another key (to keep it a simple interface), the community name serves as key (keep it secret!) because it is already known to the supernode. The community name consists of up to 16 characters (well, 15 + `0x00`), so key size of 128 bit is a reasonable choice here.
+If enabled (`-H`), all fields but the payload (which is handled seperately as outlined above) get encrypted using SPECK in CTR mode. As packet headers need to be decryptable by the supernode and we do not want to add another key (to keep it a simple interface), the community name serves as key (keep it secret!) because it is already known to the supernode. The community name consists of up to 20 characters (well, 19 + `0x00`), so key size of 128 bit is a reasonable choice here.
 
 The scheme applied tries to maintain compatibility with current packet format and works as follows:
 
-- First line of 4 bytes (Version, TTL, Flags) goes to fifth line:
+- First line of 4 bytes (Version, TTL, Flags) goes to sixth line:
 
 ```
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -137,14 +139,16 @@ The scheme applied tries to maintain compatibility with current packet format an
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  8 ! ... Community ...                                             :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-12 ! ... Community                                                 !
+12 ! ... Community ...                                             :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-16 ! Version = 3   ! TTL           ! Flags                         !
+16 ! ... Community                                                 !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+20 ! Version = 3   ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
-- To be able to identify a correctly decrpyted header later on, a magic number is stamped in fourth line starting at byte number 12. We use "n2" string and add the 16-bit header length to be able to stop header decryption right before an eventually following ethernet data payload begins – in case of PACKET-type, header-length does not equal packet-length. 16-bit length is required because REGISTER_SUPER_ACK packets consist of header only and could grow quite large due to their payload (other supernodes of federation) – don't mix up this kind of payload (part of the header) with the ethernet data payload of PACKET messages.
+- To be able to identify a correctly decrpyted header later on, a magic number is stamped in fourth line starting at byte number 16. We use "n2" string and add the 16-bit header length to be able to stop header decryption right before an eventually following ethernet data payload begins – in case of PACKET-type, header-length does not equal packet-length. 16-bit length is required because REGISTER_SUPER_ACK packets consist of header only and could grow quite large due to their payload (other supernodes of federation) – don't mix up this kind of payload (part of the header) with the ethernet data payload of PACKET messages.
 
-- The rest of the community field, namely the first 12 bytes, is reframed towards a 96-bit IV for the header encryption.
+- The rest of the community field, namely the first 16 bytes, is reframed towards a 128-bit IV for the header encryption.
 
 ```
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -153,19 +157,21 @@ The scheme applied tries to maintain compatibility with current packet format an
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  4 ! ... IV ...                                                    :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- 8 ! ... IV                                                        :
+ 8 ! ... IV ...                                                    :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-12 ! Magic Number "n2" = 0x6E32    ! Header Length                 !
+12 ! ... IV                                                        !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-16 ! Version = 3   ! TTL           ! Flags                         !
+16 ! Magic Number "n2" = 0x6E32    ! Header Length                 !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+20 ! Version = 3   ! TTL           ! Flags                         !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-- As we use a stream cipher, the IV should be a nonce. The IV plays an additional role sketched later, see the following sections on checksum and replay protection. For use in header encryption and decryption, four bytes reading ASCII "n2n!" are appended to the transmitted 96-bit IV hereby internally making it a full 128-bit IV.
+- As we use a stream cipher, the IV should be a nonce. The IV plays an additional role sketched later, see the following sections on checksum and replay protection.
 
 - To make a less predictable use of the key space – just think of the typically reset MSB of ASCII characters of community names – we actually use a hash of the community name as key.
 
-- Encryption starts at byte number 12 and ends at header's end. It does not comprise PACKET's ethernet data payload which eventually has its own encryption scheme as chosen with the `-A_` options.
+- Encryption starts at byte number 16 and ends at header's end. It does not comprise PACKET's ethernet data payload which eventually has its own encryption scheme as chosen with the `-A_` options.
 
 Decryption checks all known communities (several in case of supernode, only one at edge) as keys. On success, the emerging magic number along with a reasonable header's length value will reveal the correct community whose name will be copied back to the original fields allowing for regular packet handling.
 
@@ -173,37 +179,38 @@ Thus, header encryption will only work with previously determined community name
 
 ### Checksum
 
-The whole packet including the eventually present payload is checksummed using a Person block hashing scheme. It might seem a little short compared to usual message tags of 96 up to 128 bit, especially when using a stream cipher which easily allows for bit-flips. So, the 64-bit checksum is exclusive-ored with a 64-bit time stamp and filled up with 32 more random bits to obtain a 96-bit pre-IV. This pre-IV gets encrypted using a single block-cipher step to get the pseudo-random looking IV. This way, the checksum resists targeted bit-flips (to header, payload, and IV) as any change to the whole 96-bit IV would render the header un-decryptable. Also, as explained below, the checksum comes along with a time stamp minimizing opportunities for random attacks.
+The whole packet including the eventually present payload is checksummed using a Person block hashing scheme. The 64-bit checksum is exclusive-ored with a (shifted by 32 bit) 64-bit time stamp and filled up with 32 more random bits to obtain a 128-bit pre-IV. This pre-IV gets encrypted using a single block-cipher step to get the pseudo-random looking IV. This way, the checksum resists targeted bit-flips (to header, payload, and IV) as any change to the whole 128-bit IV would render the header un-decryptable. Also, as explained below, the checksum comes along with a time stamp minimizing opportunities for random attacks.
 
-The single block-cipher step employs SPECK because it is fast and it offers a 96-bit version. The key is derived from the header key – a hash of the hash.
+The single block-cipher step employs SPECK because it is quite fast and it offers a 128-bit block cipher version. The key is derived from the header key – a hash of the hash.
 
 The checksum is calculated by the edges and the supernode. Changes to the payload will cause a different locally calculated checksum. Extracting the time stamp by exclusive-oring an errorneous checksum will lead to an invalid timestamp. So, checksum errors are indirectly detected when checking for a valid time stamp.
 
 ### Replay Protection
 
-The aforementioned 96-bit pre-IV can be depicted as follows:
+The aforementioned 128-bit pre-IV can be depicted as follows:
 
 ```
-    012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345
-   +------------------------------------------------------------------------------------------------+
-   ! 64-bit checksum of the whole packet                            !                               !
-   + - - - - - - - - - - - - - - - - - - - - - - - XOR - - - - - - -! 32 pseudo-random bits         !
-   ! 52-bit time stamp with microsecond-accuracy       ! 0x00   ! F !                               !
-   +------------------------------------------------------------------------------------------------+
+    01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
+   +----------------------------------------------------------------+-------------------------------+-------------------------------+
+   ! 64-bit checksum of the whole packet                            ! 0x00                          !                               !
+   + - - - - - - - - - - - - - - - - - - - - - - - XOR - - - - - - - - - - - - - - - - - - - - - - -! 32 pseudo-random bits         !
+   ! 0x00                          ! 52-bit time stamp with microsecond-accuracy       ! resrvd ! F !                               !
+   +------------------------------------------------------------------------------------------------+-------------------------------+
+
 ```
 
-The time stamp consists of the 52-bit microsecond value, a 4-bit flag field F (accuracy indicator, other header encryption features – still under development), and is filled up with 8 zero-bits in between.
+The time stamp consists of the 52-bit microsecond value, a still reserved field for additional accuracy information such as a counter (still under development), a 4-bit flag field F (accuracy indicator, other header encryption features – still under development, too).
 
 Encrypting this pre-IV using a block cipher step will generate a pseudo-random looking IV which gets written to the packet and used for the header encryption.
 
 Due to the time-stamp encoded, the IV will more likely be unique, close to a real nonce.
 
-Upon receival, the time stamp as well as the checksum can be extracted from the IV by performing a 96-bit block-cipher decryption step. Verification of the time stamp happens in two steps:
+Upon receival, the time stamp as well as the checksum can be extracted from the IV by performing a 128-bit block-cipher decryption step. Verification of the time stamp happens in two steps:
 
 - The (remote) time stamp is checked against the local clock. It may not deviate more than plus/minus 16 seconds. So, edges and supernode need to keep a somewhat current time. This limit can be adjusted by changing the `TIME_STAMP_FRAME` definition. It is time-zone indifferent as UTC is used.
 
 - Valid (remote) time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit can be adjusted by changing the `TIME_STAMP_JITTER` definition.
 
-- However, the systemic packets such as REGISTER_SUPER are not allowed any time stamp jitter because n2n relies on the actual sender's socket. A replay from another IP within any allowed jitter time frame would deviate the traffic which shall be prevented (even if it remains undecryptable). Under absolutely rare (!) circumstances, this might cause a re-registration requirement which happens automatically but might cause a small delay – security (including network availability) first!
+- However, the systemic packets such as REGISTER_SUPER are not allowed any time stamp jitter because n2n relies on the actual sender's socket. A replay from another IP within any allowed jitter time frame would deviate the traffic which shall be prevented (even if it remains undecryptable). Under absolutely rare (!) circumstances, this might cause a re-registration requirement which happens automatically but might cause a small delay – security (including network availability) first! REGISTER packets from the local multicast environment are excempt from the very strict no-jitter requirement because they indeed regularily can show some deviation if compared to time stamps in packets received on the regular socket. As these packets are incoming on different sockets, their processing is more likely to no take place in the order these packets were sent.
 
 The way the IV is used for replay protection and for checksumming makes enabled header encryption a prerequisite for these features.

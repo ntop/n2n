@@ -2,9 +2,9 @@
 
 --------
 
-This program and document is free software; you can redistribute 
-it and/or modify it under the terms of the GNU General Public License 
-as published by the Free Software Foundation; either version 3 of the 
+This program and document is free software; you can redistribute
+it and/or modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 3 of the
 License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -212,25 +212,27 @@ Version 3
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 12 ! ... Community ...                                             :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-16 ! ... Community ...                                             !
+16 ! ... Community ...                                             :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-20 ! Source MAC Address                                            :
+20 ! ... Community ...                                             !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-24 :                               ! Destination MAC Address       :
+24 ! Source MAC Address                                            :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-28 :                                                               !
+28 :                               ! Destination MAC Address       :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-32 ! Socket Flags (v=IPv4)         ! Destination UDP Port          !
+32 :                                                               !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-36 ! Destination IPv4 Address                                      !
+36 ! Socket Flags (v=IPv4)         ! Destination UDP Port          !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-40 ! Compress'n ID !  Transform ID !
+40 ! Destination IPv4 Address                                      !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+44 ! Compress'n ID !  Transform ID !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-44 ! Payload
+48 ! Payload
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-So each n2n PACKET has a 44 byte overhead. For a 1500 byte ethernet packet this
+So each n2n PACKET has a 48 byte overhead. For a 1500 byte ethernet packet this
 is roughly 3%.
 
 Socket flags provides support for IPv6. In this case the PACKET message ends as
@@ -238,19 +240,19 @@ follows:
 
 ```
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-32 ! Socket Flags (v=IPv6)         ! Destination UDP Port          !
+36 ! Socket Flags (v=IPv6)         ! Destination UDP Port          !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-36 ! Destination IPv6 Address                                      :
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-40 :                                                               :
+40 ! Destination IPv6 Address                                      :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 44 :                                                               :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-48 :                                                               !
+48 :                                                               :
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-52 ! Compress'n ID !  Transform ID !
+52 :                                                               !
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+56 ! Compress'n ID !  Transform ID !
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-56 ! Encapsulated ethernet payload
+60 ! Encapsulated ethernet payload
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 

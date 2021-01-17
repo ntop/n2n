@@ -626,7 +626,6 @@ uint64_t time_stamp (void) {
     // micro_seconds = ((uint64_t)(tod.tv_sec) * 1000000ULL + tod.tv_usec) << 12;
 
     // note that the lower 4 bits remain unset (flags, for later use)
-
     return micro_seconds;
 }
 
