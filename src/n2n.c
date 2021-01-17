@@ -340,6 +340,7 @@ struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n
             peer = (struct peer_info*)calloc(1, sizeof(struct peer_info));
             if(peer) {
                 sn_selection_criterion_default(&(peer->selection_criterion));
+                peer->last_valid_time_stamp = initial_time_stamp();
                 memcpy(&(peer->sock), sock, sizeof(n2n_sock_t));
                 memcpy(peer->mac_addr, mac, sizeof(n2n_mac_t));
                 HASH_ADD_PEER(*sn_list, peer);
