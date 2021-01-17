@@ -2008,8 +2008,11 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
 
                 decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
+                via_multicast = is_null_mac(reg.dstMac);
+
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, from_supernode, reg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify (eee, from_supernode, reg.srcMac, stamp,
+                                                         via_multicast ? TIME_STAMP_ALLOW_JITTER : TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER due to time stamp error.");
                         return;
                     }
@@ -2017,8 +2020,6 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
 
                 if(is_valid_peer_sock(&reg.sock))
                     orig_sender = &(reg.sock);
-
-                via_multicast = is_null_mac(reg.dstMac);
 
                 if(via_multicast && !memcmp(reg.srcMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
                     traceEvent(TRACE_DEBUG, "Skipping REGISTER from self");

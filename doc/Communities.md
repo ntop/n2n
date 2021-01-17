@@ -3,9 +3,9 @@
 
 ## Names
 
-As communities designate virtual networks, they must be distingushable from each other. Its their name that makes them distinguishable and which therefore should be unique per network. The community name is composed of 15 byte-sized characters and it internally always is terminated by an additional zero character totalling up to 16 characters. Hence, the zero character cannot be part of the regular community name. There are some other characters that cannot be used, namely `. * + ? [ ] \`.
+As communities designate virtual networks, they must be distingushable from each other. Its their name that makes them distinguishable and which therefore should be unique per network. The community name is composed of 19 byte-sized characters and it internally always is terminated by an additional zero character totalling up to 20 characters. Hence, the zero character cannot be part of the regular community name. There are some other characters that cannot be used, namely `. * + ? [ ] \`.
 
-To make full use of character space, hex values could be used, e.g. from Linux bash applying the `edge … -c $(echo -en '\x3a\x3b\x4a\x6a\xfa') …` command line syntax. If used with a configuration file, the bytes must be directly filled as characters into a corresponding `-c=:;Jjþ` line.
+To make full use of character space, hex values could be used, e.g. from Linux bash applying the `edge … -c $(echo -en '\x3a\x3b\x4a\x6a\xfa') …` command line syntax. If used with a configuration file, the bytes must be directly filled as characters into a corresponding `-c :;Jjþ` line.
 
 
 ## Restrict Supernode Access

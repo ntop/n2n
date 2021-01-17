@@ -638,7 +638,6 @@ static int speck_encrypt (u64 *u, u64 *v, speck_context_t *ctx, int numrounds) {
 
     for(i = 0; i < numrounds; i++)
         R(x, y, ctx->key[i]);
-
     *u = x; *v = y;
 
     return 0;
@@ -764,73 +763,30 @@ int speck_deinit (speck_context_t *ctx) {
 // ----------------------------------------------------------------------------------------------------------------
 
 
-// cipher SPECK -- 96 bit block size -- 96 bit key size -- ECB mode
+// cipher SPECK -- 128 bit block size -- 128 bit key size -- ECB mode (decrypt only)
 // follows endianess rules as used in official implementation guide and NOT as in original 2013 cipher presentation
-// used for IV in header encryption, thus the in/postfix 'he_iv'
+// used for IV in header encryption (one block); encrytion via speck_ctr with null_block as data
 // for now: just plain C -- probably no need for AVX, SSE, NEON
 
 
-// prerequisite: lower 16 bit reset
-#define ROTL48(x,r) (((((x)<<(r)) | (x>>(48-(r)))) >> 16) << 16)
-#define ROTR48(x,r) (((((x)>>(r)) | ((x)<<(48-(r)))) >> 16) << 16)
-#define ER96(x,y,k) (x=ROTR48(x,8), x+=y, x^=k, y=ROTL48(y,3), y^=x)
-#define DR96(x,y,k) (y^=x, y=ROTR48(y,3), x^=k, x-=y, x=ROTL48(x,8))
+#define ROTL64(x,r) (((x)<<(r))|((x)>>(64-(r))))
+#define ROTR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
+#define DR128(x,y,k) (y^=x, y=ROTR64(y,3), x^=k, x-=y, x=ROTL64(x,8))
 
 
-int speck_96_encrypt (unsigned char *inout, speck_context_t *ctx) {
+int speck_128_decrypt (unsigned char *inout, speck_context_t *ctx) {
 
     u64 x, y;
     int i;
 
-    x = htole64( *(u64*)&inout[0] ); x <<= 16;
-    y = htole64( *(u64*)&inout[4] ); y >>= 16; y <<= 16;
+    x = le64toh( *(u64*)&inout[8] );
+    y = le64toh( *(u64*)&inout[0] );
 
-    for(i = 0; i < 28; i++)
-        ER96(y, x, ctx->key[i]);
+    for(i = 31; i >= 0; i--)
+        DR128(x, y, ctx->key[i]);
 
-    x >>= 16; x |= y << 32;
-    y >>= 32;
-
-    ((u64*)inout)[0] = le64toh(x);
-    ((u32*)inout)[2] = le32toh(y);
+    ((u64*)inout)[1] = htole64(x);
+    ((u64*)inout)[0] = htole64(y);
 
     return 0;
-}
-
-
-int speck_96_decrypt (unsigned char *inout, speck_context_t *ctx) {
-
-    u64 x, y;
-    int i;
-
-    x = htole64( *(u64*)&inout[0] ); x <<= 16;
-    y = htole64( *(u64*)&inout[4] ); y >>= 16; y <<= 16;
-
-    for(i = 27; i >= 0; i--)
-        DR96(y, x, ctx->key[i]);
-
-    x >>= 16; x |= y << 32;
-    y >>= 32;
-
-    ((u64*)inout)[0] = le64toh(x);
-    ((u32*)inout)[2] = le32toh(y);
-
-    return 0;
-}
-
-
-int speck_96_expand_key (speck_context_t *ctx, const unsigned char *k) {
-
-    u64 A, B;
-    int i;
-
-    A = htole64( *(u64 *)&k[0] ); A <<= 16;
-    B = htole64( *(u64 *)&k[4] ); B >>= 16; B <<= 16;
-
-    for(i = 0; i < 28; i++) {
-        ctx->key[i] = A;
-        ER96(B, A, i << 16);
-    }
-
-    return 1;
 }
