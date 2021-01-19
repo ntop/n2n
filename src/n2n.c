@@ -616,20 +616,78 @@ int gettimeofday (struct timeval *tp, void *tzp) {
 #endif
 
 
-// returns a time stamp for use with replay protection
+// stores the previously issued time stamp
+static uint64_t previously_issued_time_stamp = 0;
+
+
+// returns a time stamp for use with replay protection (branchless code)
+//
+// depending on the self-detected accuracy, it has the following format
+//
+// MMMMMMMMCCCCCCCF or
+//
+// MMMMMMMMSSSSSCCF
+//
+// with M being the 32-bit second time stamp
+//      S       the 20-bit sub-second (microsecond) time stamp part, if applicable
+//      C       a counter (8 bit or 24 bit) reset to 0 with every MMMMMMMM(SSSSS) turn-over
+//      F       a 4-bit flag field with
+//      ...c    being the accuracy indicator (if set, only counter and no sub-second accuracy)
+//
 uint64_t time_stamp (void) {
 
     struct timeval tod;
     uint64_t micro_seconds;
+    uint64_t co, mask_lo, mask_hi, hi_unchanged, counter, new_co;
 
     gettimeofday(&tod, NULL);
 
-    // (roughly) calculate the microseconds since 1970, note that the 8 bits between time stamp and flags remain unset
+    // (roughly) calculate the microseconds since 1970, leftbound
     micro_seconds = ((uint64_t)(tod.tv_sec) << 32) + ((uint64_t)tod.tv_usec << 12);
     // more exact but more costly due to the multiplication:
     // micro_seconds = ((uint64_t)(tod.tv_sec) * 1000000ULL + tod.tv_usec) << 12;
 
-    // note that the lower 4 bits remain unset (flags, for later use)
+    // extract "counter only" flag (lowest bit)
+    co = (previously_issued_time_stamp << 63) >> 63;
+    // set mask accordingly
+    mask_lo   = -co;
+    mask_lo >>= 32;
+    // either 0x00000000FFFFFFFF (if co flag set) or 0x0000000000000000 (if co flag not set)
+
+    mask_lo  |= (~mask_lo) >> 52;
+    // either 0x00000000FFFFFFFF (unchanged)      or 0x0000000000000FFF (lowest 12 bit set)
+
+    mask_hi   = ~mask_lo;
+
+    hi_unchanged = ((previously_issued_time_stamp & mask_hi) == (micro_seconds & mask_hi));
+    // 0 if upper bits unchanged (compared to previous stamp), 1 otherwise
+
+    // read counter and shift right for flags
+    counter   = (previously_issued_time_stamp & mask_lo) >> 4;
+
+    counter  += hi_unchanged;
+    counter  &= -hi_unchanged;
+    // either counter++ if upper part of timestamp unchanged, 0 otherwise
+
+    // back to time stamp format
+    counter <<= 4;
+
+    // set new co flag if counter overflows while upper bits unchanged or if it was set before
+    new_co  |= (((counter & mask_lo) == 0) & hi_unchanged) | co;
+
+    // in case co flag changed, masks need to be recalculated
+    mask_lo   = -new_co;
+    mask_lo >>= 32;
+    mask_lo  |= (~mask_lo) >> 52;
+    mask_hi   = ~mask_lo;
+
+    // assemble new timestamp
+    micro_seconds &= mask_hi;
+    micro_seconds |= counter;
+    micro_seconds |= new_co;
+
+    previously_issued_time_stamp = micro_seconds;
+
     return micro_seconds;
 }
 
@@ -645,16 +703,10 @@ uint64_t initial_time_stamp (void) {
 // and, in case of validity, updates the "last valid time stamp"
 int time_stamp_verify_and_update (uint64_t stamp, uint64_t *previous_stamp, int allow_jitter) {
 
-    int64_t diff; // do not change to unsigned
+    int64_t diff; /* do not change to unsigned */
+    uint64_t co;  /* counter only mode (for sub-seconds) */
 
-    // clear any incoming flags (their handling is not suppoted yet)
-    stamp = (stamp >> 4) << 4;
-
-    // are the 8 bits between time stamp and flags reset? this relies on flags being cleared above
-    if(stamp << 52) {
-        traceEvent(TRACE_DEBUG, "time_stamp_verify_and_update found a timestamp with middle bits set.");
-        return 0; // failure
-    }
+    co = (stamp << 63) >> 63;
 
     // is it around current time (+/- allowed deviation TIME_STAMP_FRAME)?
     diff = stamp - time_stamp();
@@ -669,7 +721,8 @@ int time_stamp_verify_and_update (uint64_t stamp, uint64_t *previous_stamp, int 
     if(NULL != previous_stamp) {
         diff = stamp - *previous_stamp;
         if(allow_jitter) {
-            diff += TIME_STAMP_JITTER;
+            // 8 times higher jitter allowed for counter-only flagged timestamps ( ~ 1.25 sec with 160 ms default jitter)
+            diff += TIME_STAMP_JITTER << (co << 3);
         }
 
         if(diff <= 0) {

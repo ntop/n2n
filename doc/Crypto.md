@@ -194,12 +194,12 @@ The aforementioned 128-bit pre-IV can be depicted as follows:
    +----------------------------------------------------------------+-------------------------------+-------------------------------+
    ! 64-bit checksum of the whole packet                            ! 0x00                          !                               !
    + - - - - - - - - - - - - - - - - - - - - - - - XOR - - - - - - - - - - - - - - - - - - - - - - -! 32 pseudo-random bits         !
-   ! 0x00                          ! 52-bit time stamp with microsecond-accuracy       ! resrvd ! F !                               !
+   ! 0x00                          ! 52-bit time stamp with microsecond-accuracy       ! countr ! F !                               !
    +------------------------------------------------------------------------------------------------+-------------------------------+
 
 ```
 
-The time stamp consists of the 52-bit microsecond value, a still reserved field for additional accuracy information such as a counter (still under development), a 4-bit flag field F (accuracy indicator, other header encryption features – still under development, too).
+The time stamp consists of the 52-bit microsecond value, a 8-bit counter in case of equal following time stamps and, a 4-bit flag field F (accuracy indicator in last bit). edge and supernode monitor their own time stamps for doublets which would indicate an accuracy issue. If the counter overflows on the same time stamp, the sub-second part of the time stamp will also become counter. In this case, the whole stamp carries the accurcy bit flag (lowest bit) set so other edges and supernodes can handle this stamp appropriately.
 
 Encrypting this pre-IV using a block cipher step will generate a pseudo-random looking IV which gets written to the packet and used for the header encryption.
 
@@ -209,7 +209,7 @@ Upon receival, the time stamp as well as the checksum can be extracted from the 
 
 - The (remote) time stamp is checked against the local clock. It may not deviate more than plus/minus 16 seconds. So, edges and supernode need to keep a somewhat current time. This limit can be adjusted by changing the `TIME_STAMP_FRAME` definition. It is time-zone indifferent as UTC is used.
 
-- Valid (remote) time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit can be adjusted by changing the `TIME_STAMP_JITTER` definition.
+- Valid (remote) time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit is set with the `TIME_STAMP_JITTER` definition. If the accuracy flag is set, the time stamp will be allowed a jitter eight times as high, corresponding to 1.25 seconds by default.
 
 - However, the systemic packets such as REGISTER_SUPER are not allowed any time stamp jitter because n2n relies on the actual sender's socket. A replay from another IP within any allowed jitter time frame would deviate the traffic which shall be prevented (even if it remains undecryptable). Under absolutely rare (!) circumstances, this might cause a re-registration requirement which happens automatically but might cause a small delay – security (including network availability) first! REGISTER packets from the local multicast environment are excempt from the very strict no-jitter requirement because they indeed regularily can show some deviation if compared to time stamps in packets received on the regular socket. As these packets are incoming on different sockets, their processing is more likely to no take place in the order these packets were sent.
 
