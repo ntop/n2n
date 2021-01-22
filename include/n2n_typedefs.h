@@ -267,20 +267,18 @@ typedef enum n2n_pc {
 #define IPV4_SIZE                        4
 #define IPV6_SIZE                        16
 
-
 #define N2N_AUTH_TOKEN_SIZE              32  /* bytes */
-
 
 #define N2N_EUNKNOWN                     -1
 #define N2N_ENOTIMPL                     -2
 #define N2N_EINVAL                       -3
 #define N2N_ENOSPACE                     -4
 
+
 typedef struct n2n_ip_subnet {
     uint32_t	    net_addr;       /* Host order IP address. */
     uint8_t         net_bitlen;     /* Subnet prefix. */
 } n2n_ip_subnet_t;
-
 
 typedef struct n2n_sock {
     uint8_t         family;            /* AF_INET or AF_INET6; or 0 if invalid */
@@ -300,7 +298,7 @@ typedef enum {
     update_edge_no_change =   0,
     update_edge_sock_change = 1,
     update_edge_new_sn =      2,
-    update_edge_auth_fail =   -1
+    update_edge_auth_fail =  -1
 } update_edge_ret_value_t;
 
 typedef struct n2n_auth {
@@ -361,6 +359,7 @@ typedef struct n2n_REGISTER_SUPER_ACK {
     n2n_ip_subnet_t    dev_addr;    /**< Assign an IP address to the tuntap adapter of edge. */
     uint16_t           lifetime;    /**< How long the registration will live */
     n2n_sock_t         sock;        /**< Sending sockets associated with edgeMac */
+    n2n_auth_t         auth;        /**< Authentication scheme and tokens */
 
     /** The packet format provides additional supernode definitions here.
      * uint8_t count, then for each count there is one
