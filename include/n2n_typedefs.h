@@ -617,6 +617,7 @@ struct n2n_edge {
     /* Status */
     struct peer_info                 *curr_sn;                           /**< Currently active supernode. */
     uint8_t                          sn_wait;                            /**< Whether we are waiting for a supernode response. */
+    uint8_t                          sn_pong;                            /**< Whether we have seen a PONG since last time reset. */
     size_t                           sup_attempts;                       /**< Number of remaining attempts to this supernode. */
     tuntap_dev                       device;                             /**< All about the TUNTAP device */
     n2n_trans_op_t                   transop;                            /**< The transop to use when encoding */

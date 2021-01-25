@@ -1365,22 +1365,30 @@ static int process_udp (n2n_sn_t * sss,
                     traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
                                macaddr_str(mac_buf, reg.edgeMac));
                 } else {
+                    // if this is not already forwarded from a supernode, ...
                     if(!(cmn.flags & N2N_FLAGS_SOCKET)) {
-                        reg.sock.family = AF_INET;
-                        reg.sock.port = ntohs(sender_sock->sin_port);
-                        memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+                        // ... forward to all other supernodes (note try_broadcast()'s behavior with
+                        //     NULL comm and from_supernode parameter)
 
-                        cmn2.pc = n2n_register_super;
-                        encode_REGISTER_SUPER(ackbuf, &encx, &cmn2, &reg);
+                        // exception: do not forward auto ip draw
+                        if(!is_null_mac(reg.edgeMac)) {
+                            reg.sock.family = AF_INET;
+                            reg.sock.port = ntohs(sender_sock->sin_port);
+                            memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
 
-                        if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                            packet_header_encrypt(ackbuf, encx, encx,
-                                                  comm->header_encryption_ctx, comm->header_iv_ctx,
-                                                  time_stamp());
+                            cmn2.pc = n2n_register_super;
+                            encode_REGISTER_SUPER(ackbuf, &encx, &cmn2, &reg);
+
+                            if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                                packet_header_encrypt(ackbuf, encx, encx,
+                                                      comm->header_encryption_ctx, comm->header_iv_ctx,
+                                                      time_stamp());
+                            }
+
+                            try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
                         }
 
-                        try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
-
+                        // send REGISTER_SUPER_ACK
                         encx = 0;
                         cmn2.pc = n2n_register_super_ack;
 

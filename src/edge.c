@@ -42,7 +42,10 @@ static cap_value_t cap_values[] = {
 int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
 #endif
 
+// forward declaration for use in main()
 void send_register_super (n2n_edge_t *eee);
+void send_query_peer (n2n_edge_t * eee, const n2n_mac_t dst_mac);
+
 
 /* ***************************************************** */
 
@@ -704,10 +707,17 @@ BOOL WINAPI term_handler(DWORD sig)
 int main (int argc, char* argv[]) {
 
     int rc;
-    tuntap_dev tuntap;        /* a tuntap device */
-    n2n_edge_t *eee;            /* single instance for this program */
-    n2n_edge_conf_t conf; /* generic N2N edge config */
-    n2n_tuntap_priv_config_t ec; /* config used for standalone program execution */
+    tuntap_dev tuntap;            /* a tuntap device */
+    n2n_edge_t *eee;              /* single instance for this program */
+    n2n_edge_conf_t conf;         /* generic N2N edge config */
+    n2n_tuntap_priv_config_t ec;  /* config used for standalone program execution */
+    uint8_t runlevel = 0;         /* bootstrap: runlevel */
+    uint8_t seek_answer = 1;      /*            expecting answer from supernode */
+    time_t now_time, last_action; /*            timeout */
+    macstr_t mac_buf;             /*            output mac address */
+    fd_set socket_mask;           /*            for supernode answer */
+    struct timeval wait_time;     /*            timeout for sn answer */
+
 #ifndef WIN32
     struct passwd *pw = NULL;
 #endif
@@ -806,24 +816,120 @@ int main (int argc, char* argv[]) {
     } else {
         traceEvent(TRACE_NORMAL, "Automatically assign IP address by supernode.");
         eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
+    }
 
-        // REVISIT: integrate into the (to be created) bootstrap, maybe even as part of a more stateful main loop
-        eee->sn_wait = 1;
-        do {
-            fd_set socket_mask;
-            struct timeval wait_time;
+    // mini main loop for bootstrap, not using main loop code because some of its mechanisms do not fit in here
+    // for the sake of quickly establishing connection. REVISIT when a more elegant way to re-use main loop code
+    // is found
 
-            // next supernode
-            if (eee->curr_sn->hh.next)
-                eee->curr_sn = eee->curr_sn->hh.next;
-            else
+    // if more than one supernode given, find at least one who is alive to faster establish connection
+    if(HASH_COUNT(eee->conf.supernodes) <= 1) {
+        // skip the initial supernode ping
+        traceEvent(TRACE_DEBUG, "Skip PING to supernode.");
+        runlevel = 2;
+    }
+
+    eee->last_sup = 1; /* to prevent gratuitous arp packet */
+    eee->curr_sn = eee->conf.supernodes;
+
+    while(runlevel < 5) {
+
+        now_time = time(NULL);
+
+        // we do not use switch-case because we also check for 'greater than'
+
+        if(runlevel == 0) { /* PING to all known supernodes */
+            last_action = now_time;
+            eee->sn_pong = 0;
+            send_query_peer(eee, null_mac);
+            traceEvent(TRACE_NORMAL, "Send PING to supernodes.");
+            runlevel++;
+        }
+
+        if(runlevel == 1) { /* PING has been sent to all known supernodes */
+            if(eee->sn_pong) {
+                // first answer
+                eee->sn_pong = 0;
+                sn_selection_sort(&(eee->conf.supernodes));
                 eee->curr_sn = eee->conf.supernodes;
+                traceEvent(TRACE_NORMAL, "Received first PONG from supernode [%s].", eee->curr_sn->ip_addr);
+                runlevel++;
+            }
+            if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+                // timeout
+                runlevel--;
+                // skip waiting for answer to direcly go to send PING again
+                seek_answer = 0;
+                traceEvent(TRACE_DEBUG, "PONG timeout.");
+            }
+        }
 
-            send_register_super(eee);
+        // by the way, have every later PONG cause the remaining (!) list to be sorted because the entries
+        // before have already been tried; as opposed to initial PONG, do not change curr_sn
+        if(runlevel > 1) {
+            if(eee->sn_pong) {
+                eee->sn_pong = 0;
+                if(eee->curr_sn->hh.next) {
+                    sn_selection_sort((peer_info_t**)&(eee->curr_sn->hh.next));
+                    traceEvent(TRACE_DEBUG, "Received additional PONG from supernode.");
+                    // here, it is hard to detemine from which one, so no details to output
+                }
+            }
+        }
 
+        if(runlevel == 2) { /* send REGISTER_SUPER to get auto ip address from a supernode */
+            if(eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
+                last_action = now_time;
+                eee->sn_wait = 1;
+                send_register_super(eee);
+                runlevel++;
+                traceEvent(TRACE_NORMAL, "Send REGISTER_SUPER to supernode [%s] asking for IP address.",
+                                         eee->curr_sn->ip_addr);
+            } else {
+                runlevel += 2; /* skip waiting for TUNTAP IP address */
+                traceEvent(TRACE_DEBUG, "Skip auto IP address asignment.");
+            }
+        }
+
+        if(runlevel == 3) { /* REGISTER_SUPER to get auto ip address from a sn has been sent */
+            if(!eee->sn_wait) { /* TUNTAP IP address received */
+                runlevel++;
+                traceEvent(TRACE_NORMAL, "Received REGISTER_SUPER_ACK from supernode for IP address asignment.");
+                // it should be from curr_sn, but we can't determine definitely here, so no details to output
+            }
+            if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+                // timeout, so try next supernode
+                if(eee->curr_sn->hh.next)
+                    eee->curr_sn = eee->curr_sn->hh.next;
+                else
+                    eee->curr_sn = eee->conf.supernodes;
+                runlevel--;
+                // skip waiting for answer to direcly go to send REGISTER_SUPER again
+                seek_answer = 0;
+                traceEvent(TRACE_DEBUG, "REGISTER_SUPER_ACK timeout.");
+            }
+        }
+
+        if(runlevel == 4) { /* configure the TUNTAP device */
+            if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
+                           eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
+                           eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0)
+                exit(1);
+            memcpy(&eee->device, &tuntap, sizeof(tuntap));
+            traceEvent(TRACE_NORMAL, "Created local tap device IP: %s, Mask: %s, MAC: %s",
+                                     eee->tuntap_priv_conf.ip_addr,
+                                     eee->tuntap_priv_conf.netmask,
+                                     macaddr_str(mac_buf, eee->device.mac_addr));
+            runlevel = 5;
+            // no more answers required
+            seek_answer = 0;
+        }
+
+        // we usually wait for some answer, there however are exceptions when going back to a previous runlevel
+        if(seek_answer) {
             FD_ZERO(&socket_mask);
             FD_SET(eee->udp_sock, &socket_mask);
-            wait_time.tv_sec = (SOCKET_TIMEOUT_INTERVAL_SECS / 10) + 1;
+            wait_time.tv_sec = BOOTSTRAP_TIMEOUT;
             wait_time.tv_usec = 0;
 
             if(select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
@@ -831,17 +937,12 @@ int main (int argc, char* argv[]) {
                     readFromIPSocket(eee, eee->udp_sock);
                 }
             }
-        } while(eee->sn_wait);
-        eee->last_register_req = 0;
+        }
+        seek_answer = 1;
     }
-
-    if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
-                   eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
-                   eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0) exit(1);
-    traceEvent(TRACE_NORMAL, "Local tap IP: %s, Mask: %s",
-               eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask);
-    memcpy(&eee->device, &tuntap, sizeof(tuntap));
-    //hexdump((unsigned char*)&tuntap,sizeof(tuntap_dev));
+    eee->sn_wait = 1;
+    eee->last_register_req = 0;
+    eee->last_sup = 0; /* to allow gratuitous arp packet after regular REGISTER_SUPER_ACK */
 
 #ifndef WIN32
     if(eee->tuntap_priv_conf.daemon) {

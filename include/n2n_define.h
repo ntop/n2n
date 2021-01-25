@@ -38,6 +38,7 @@
 /* Space needed to store socket and MAC address of a supernode */
 #define REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE (sizeof(n2n_REGISTER_SUPER_ACK_payload_t))
 
+#define BOOTSTRAP_TIMEOUT                 3
 #define PURGE_REGISTRATION_FREQUENCY     30
 #define RE_REG_AND_PURGE_FREQUENCY       10
 #define REGISTRATION_TIMEOUT             60
