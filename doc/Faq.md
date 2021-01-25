@@ -53,6 +53,7 @@ So, please make sure that all edges **and** the supernode have the exact same bu
 
 ## Edge
 
+
 ### How can I know if peer-to-peer connection has successfully been established?
 
 The edge also offers a local udp management port at which it provides some information about connected _peers_ allowing a peer-to-peer connection, and _pending peers_ whose connections are forwarded through the supernode.
@@ -62,3 +63,14 @@ The edge's management port defaults to 5644 and can be changed using edge's `-t`
 `netcat -u localhost 5644`
 
 answers every new line, i.e. pressing [ENTER] key, with current information. The edge even understands some simple commands, try `help`.
+
+
+### The edge surprisingly stops – throwing an "Authentication error. MAC or IP address already in use or not released yet by supernode" message. What is wrong?
+
+The edge encountered n2n's protection against spoofing. It prevents that one edge's identity, MAC and IP address, can be impersonated by some other while the original one is still online, see some [details](Authentication.md). Mostly, there are two situations which can trigger this:
+
+If you use a MAC or IP address that already is in use, just change those parameters.
+
+If the edge prematurely has ended in a non-regular way, i.e. by killing it using `kill -9 ...` or `kill -SIGKILL ...`, it did not have a chance to un-register with the supernode which still counts the edge for online. A re-registration with the same MAC or IP address will be unsuccessful then. After two minutes or so the supernode will have forgotten. A new registration with the same parameters will be possible then. So, either wait two minutes or chose different parameters to restart with.
+
+And, as a matter of principal, always end an edge by either pressing `CTRL` + `C` or by sending SIGTERM or SIGINT by using `kill -SIGTERM ...` or `kill -SIGINT ...`! A plain `kill ...` without `-9` will do, too. And finally, a `stop` command to the management port peacefully ends the edge as well.
