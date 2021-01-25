@@ -65,7 +65,7 @@ The edge's management port defaults to 5644 and can be changed using edge's `-t`
 answers every new line, i.e. pressing [ENTER] key, with current information. The edge even understands some simple commands, try `help`.
 
 
-### The edge stops throwing an "Authentication error. MAC or IP address already in use or not released yet by supernode" message. What is wrong?
+### The edge stops while throwing an "Authentication error. MAC or IP address already in use or not released yet by supernode" message. What is wrong?
 
 The edge encountered n2n's protection against spoofing. It prevents that one edge's identity, MAC and IP address, can be impersonated by some other while the original one is still online, see some [details](Authentication.md). Mostly, there are two situations which can trigger this:
 
