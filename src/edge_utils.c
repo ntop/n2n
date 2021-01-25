@@ -761,7 +761,7 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
 /* ************************************** */
 
 /** Send a QUERY_PEER packet to the current supernode. */
-static void send_query_peer (n2n_edge_t * eee,
+void send_query_peer (n2n_edge_t * eee,
                              const n2n_mac_t dst_mac) {
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
@@ -903,6 +903,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
     struct peer_info *scan, *tmp;
 
     if(eee->curr_sn != eee->conf.supernodes) {
+        // have not been connected to the best/top one
         send_unregister_super(eee);
 
         eee->curr_sn = eee->conf.supernodes;
@@ -920,7 +921,6 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
             // this routine gets periodically called
             // it sorts supernodes in ascending order of their selection_criterion fields
             sn_selection_sort(&(eee->conf.supernodes));
-
         }
 
         HASH_ITER(hh, eee->conf.supernodes, scan, tmp) {
@@ -928,8 +928,12 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
         }
         sn_selection_criterion_common_data_default(eee);
 
+        // send PING to all the supernodes
         send_query_peer(eee, null_mac);
         eee->last_sweep = now;
+
+        // no answer yet (so far, unused in regular edge code; mainly used during bootstrap loading)
+        eee->sn_pong = 0;
     }
 
     return 0; /* OK */
@@ -2104,13 +2108,6 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
 
                 memset(&ra, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
-                // Indicates successful connection between the edge and SN nodes
-                static int bTrace = 1;
-                if(bTrace) {
-                    traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
-                    bTrace = 0;
-                }
-
                 if(eee->sn_wait) {
                     decode_REGISTER_SUPER_ACK(&ra, &cmn, udp_buf, &rem, &idx, tmpbuf);
 
@@ -2122,7 +2119,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                     }
 
                     if(is_valid_peer_sock(&ra.sock))
-                            orig_sender = &(ra.sock);
+                        orig_sender = &(ra.sock);
 
                     traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s). Attempts %u",
                                macaddr_str(mac_buf1, ra.edgeMac),
@@ -2130,6 +2127,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                                sock_to_cstr(sockbuf2, orig_sender),
                                (unsigned int)eee->sup_attempts);
 
+                    // this even holds true for auto ip assignment as own mac is null_mac
                     if(memcmp(ra.edgeMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
                         traceEvent(TRACE_INFO, "readFromIPSocket dropped REGISTER_SUPER_ACK due to wrong addressing.");
                         return;
@@ -2173,19 +2171,23 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                             }
                         }
 
-                        if(!eee->last_sup) // send gratuitous ARP only upon first registration with supernode
+                        if(!eee->last_sup) {
+                            // indicates successful connection between the edge and a supernode
+                            traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
+                            // send gratuitous ARP only upon first registration with supernode
                             send_grat_arps(eee);
+                        }
 
                         eee->last_sup = now;
                         eee->sn_wait = 0;
                         eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
-                        if(eee->cb.sn_registration_updated)
-                            eee->cb.sn_registration_updated(eee, now, &sender);
-
                         /* NOTE: the register_interval should be chosen by the edge node
                          * based on its NAT configuration. */
                         //eee->conf.register_interval = ra.lifetime;
+
+                        if(eee->cb.sn_registration_updated && !is_null_mac(ra.edgeMac))
+                            eee->cb.sn_registration_updated(eee, now, &sender);
 
                     } else {
                         traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
@@ -2247,15 +2249,18 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 }
 
                 if(is_null_mac(pi.mac)) {
+                    // PONG - answer to PING (QUERY_PEER_INFO with null mac)
                     skip_add = SN_ADD_SKIP;
                     scan = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &sender, pi.srcMac, &skip_add);
                     if(scan != NULL) {
+                        eee->sn_pong = 1;
                         scan->last_seen = now;
                         /* The data type depends on the actual selection strategy that has been chosen. */
                         sn_selection_criterion_calculate(eee, scan, &pi.data);
                         break;
                     }
                 } else {
+                    // regular PEER_INFO
                     HASH_FIND_PEER(eee->pending_peers, pi.mac, scan);
 
                     if(scan) {
@@ -2423,10 +2428,10 @@ int run_edge_loop (n2n_edge_t * eee, int *keep_running) {
                 eee->cb.ip_address_changed(eee, old_ip, eee->device.ip_addr);
         }
 
+        sort_supernodes(eee, nowTime);
+
         if(eee->cb.main_loop_period)
             eee->cb.main_loop_period(eee, nowTime);
-
-        sort_supernodes(eee, nowTime);
 
     } /* while */
 
