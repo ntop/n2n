@@ -613,7 +613,9 @@ static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_pri
         // first token, e.g. `-p` or `-A3', eventually followed by a whitespace or '=' delimiter
         line_vec[1] = strtok(line, "\t =");
         // separate parameter option, if present
-        line_vec[2] = strtok(NULL, "\t ");
+        line_vec[2] = strtok(NULL, "");
+        if(line_vec[2])
+            line_vec[2] = trim(line_vec[2]);
         // not to duplicate the option parser code, call loadFromCLI and pretend we have no option read yet at all
         optind = 0;
         // if second token present (optional argument, not part of first), then announce 3 vector members
