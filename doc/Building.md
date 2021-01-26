@@ -105,7 +105,7 @@ So far, the following portions of n2n's code benefit from hardware features:
 ```
 AES:               AES-NI
 ChaCha20:          SSE2, SSSE3
-SPECK:             SSE2, SSSE3, AVX2, NEON
+SPECK:             SSE2, SSSE3, AVX2, (NEON)
 Pearson Hashing:   AES-NI
 Random Numbers:    RDSEED, RDRND (not faster but more random seed)
 ```
@@ -147,3 +147,13 @@ If used with multiple supernodes, by default, an edge choses the least loaded su
 which of course can be combined with the compiler optimizations mentioned above…
 
 Note that the activation of this strategy requires a sufficiently accurate local day-of-time clock. It probably will fail on smaller systems using `uclibc` (instead of `glibc`) whose day-of-time clock is said to not provide sub-second accuracy.
+
+## SPECK – ARM NEON Hardware Acceleration
+
+By default, SPECK does not take advantage of ARM NEON hardware acceleration even if compiled with `-march=native`. The reason is that the NEON implementation proved to be slower than the 64-bit scalar code on Raspberry Pi 3B+, see [here](https://github.com/ntop/n2n/issues/563).
+
+Your specific ARM mileage may vary, so it can be enabled by configuring the definition of the `SPECK_ARM_NEON` macro:
+
+`./configure CFLAGS="-DSPECK_ARM_NEON"`
+
+Just make sure that the correct architecture is set, too. `-march=native` usually works quite well.

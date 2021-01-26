@@ -72,7 +72,7 @@ typedef struct {
 } speck_context_t;
 
 
-#elif defined (__ARM_NEON) // NEON support ------------------------------------------------------------------------
+#elif defined (__ARM_NEON) && defined (SPECK_ARM_NEON)      // NEON support ---------------------------------------
 
 
 #include <arm_neon.h>
