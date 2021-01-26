@@ -485,7 +485,7 @@ static int loadFromFile (const char *path, n2n_sn_t *sss) {
         line_vec[2] = strtok(NULL, "\t ");
 
         // not to duplicate the option parser code, call loadFromCLI and pretend we have no option read yet
-        optind = 1;
+        optind = 0;
         // if separate second token present (optional argument, not part of first), then announce 3 vector members
         loadFromCLI(line_vec[2] ? 3 : 2, line_vec, sss);
     }
