@@ -201,6 +201,9 @@ static void help () {
     printf("-R <rule_str>            | Drop or accept packets by rules. Can be set multiple times. \n");
     printf("                         | Rule format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/- \n");
     printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
+#ifdef WIN32
+    printf("-x <metric>              | Set network interface metric (default=0 [auto]).\n");
+#endif
 
     printf("\nEnvironment variables:\n");
     printf("    N2N_KEY              | Encryption key (ASCII). Not with -k.\n");
@@ -517,6 +520,13 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
+#ifdef WIN32
+        case 'x': {
+            conf->metric = atoi(optargument);
+            break;
+        }
+#endif
+
         default: {
             traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
             return(-1);
@@ -746,6 +756,7 @@ int main (int argc, char* argv[]) {
 
 #ifdef WIN32
     ec.tuntap_dev_name[0] = '\0';
+    ec.metric = 0;
 #else
     snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), N2N_EDGE_DEFAULT_DEV_NAME);
 #endif
@@ -913,6 +924,9 @@ int main (int argc, char* argv[]) {
         }
 
         if(runlevel == 4) { /* configure the TUNTAP device */
+#ifdef WIN32
+            tuntap.metric =  eee->tuntap_priv_conf.metric;
+#endif
             if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
                            eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
                            eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0)

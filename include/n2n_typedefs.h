@@ -599,6 +599,7 @@ typedef struct n2n_edge_conf {
     int                mgmt_port;
     n2n_auth_t         auth;
     filter_rule_t      *network_traffic_filter_rules;
+    int                metric;                /**< Network interface metric (Windows only). */
 } n2n_edge_conf_t;
 
 

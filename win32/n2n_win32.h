@@ -74,6 +74,7 @@ typedef struct tuntap_dev {
 	uint32_t        ip_addr;
 	uint32_t        device_mask;
 	unsigned int    mtu;
+	unsigned int    metric;
 } tuntap_dev;
 
 #define index(a, b) strchr(a, b)

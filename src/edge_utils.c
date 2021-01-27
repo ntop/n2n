@@ -2965,6 +2965,8 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         conf->encrypt_key = strdup(getenv("N2N_KEY"));
         conf->transop_id = N2N_TRANSFORM_ID_AES;
     }
+
+    conf->metric = 0;
 }
 
 /* ************************************** */

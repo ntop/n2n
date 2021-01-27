@@ -299,14 +299,14 @@ int open_wintap(struct tuntap_dev *device,
 
   /* ****************** */
 
-  /* MTU */
+  /* MTU and network metric */
   _snprintf(cmd, sizeof(cmd),
-    "netsh interface ipv4 set subinterface \"%s\" mtu=%d store=persistent > nul",
-    device->ifName, mtu);
+    "netsh interface ipv4 set subinterface \"%s\" mtu=%d metric=%d store=persistent > nul",
+    device->ifName, mtu, device->metric);
 
   if(system(cmd) != 0)
-    printf("WARNING: Unable to set device %s MTU [%s]\n",
-      device->ifName, cmd);
+    printf("WARNING: Unable to set device %s parameters MTU=%d metric=%d store=persistent [%s]\n",
+      device->ifName, mtu, device->metric, cmd);
 
   /* set driver media status to 'connected' (i.e. set the interface up) */
   if (!DeviceIoControl (device->device_handle, TAP_IOCTL_SET_MEDIA_STATUS,
