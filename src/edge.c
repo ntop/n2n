@@ -117,98 +117,194 @@ static int scan_address (char * ip_addr, size_t addr_size,
 
 /* *************************************************** */
 
-static void help () {
+static void help (int level) {
+
+    printf("\n");
     print_n2n_version();
 
-    printf("edge <config file> (see edge.conf)\n"
-                 "or\n"
-                 );
-    printf("edge "
-#if defined(N2N_CAN_NAME_IFACE)
-                 "-d <tap device> "
-#endif /* #if defined(N2N_CAN_NAME_IFACE) */
-                 "-a [static:|dhcp:]<tap IP address>[/nn] "
-                 "-c <community> "
-                 "[-k <encrypt key>]\n"
-                 "        "
-#ifndef WIN32
-                 "[-u <uid> -g <gid>]"
-#endif /* #ifndef WIN32 */
+    if(level == 0) /* short help */ {
 
-#ifndef WIN32
-                 "[-f]"
-#endif /* #ifndef WIN32 */
+        printf("   basic usage:  edge <config file> (see edge.conf)\n"
+               "\n"
+               "            or   edge "
+               " -c <community name> "
+               "\n                      "
+               " -l <supernode host>:<port> "
+               "\n                      "
+               "[-a <tap IP address>] "
+               "\n                      "
+#if defined(N2N_CAN_NAME_IFACE)
+               "[-d <tap device name>] "
+               "\n                      "
+#endif
+               "[-k <encryption key>] "
+               "\n"
+               "\n  -h    shows a quick reference including all available options"
+               "\n --help gives a detailed parameter description"
+               "\n   man  files for n2n, edge, and superndode contain in-depth information"
+               "\n\n");
+
+    } else if(level == 1) /* quick reference */ {
+
+        printf(" general usage:  edge <config file> (see edge.conf)\n"
+           "\n"
+               "            or   edge "
+               " -c <community name>"
+               " -l <supernode host:port>"
+            "\n                      "
+               "[-p <local port>] "
 #ifdef __linux__
-                 "[-T <tos>]"
+               "[-T <type of service>] "
 #endif
-                 "[-n cidr:gateway] "
-                 "[-m <MAC address>] "
-                 "-l <supernode host:port>\n"
-                 "        "
-                 "[-p <local port>] [-M <mtu>] "
 #ifndef __APPLE__
-                 "[-D] "
+               "[-D] "
 #endif
-                 "[-r] [-E] [-v] [-i <reg_interval>] [-L <reg_ttl>] [-t <mgmt port>] [-A[<cipher>]] [-H] [-z[<compression algo>]] "
-                 "[-R <rule_str>] "
-                 "[-h]\n\n");
-
+               "[-S] "
+            "\n options for under-   "
+               "[-i <registration interval>]"
+               "[-L <registration ttl>]"
+            "\n lying connection     "
+               "[-k <key>] "
+               "[-A<cipher>] "
+               "[-H] "
+               "[-z<compression>]"
+          "\n\n tap device and       "
+               "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
+            "\n overlay network      "
+               "[-m <tap MAC address>] "
 #if defined(N2N_CAN_NAME_IFACE)
-    printf("-d <tap device>          | tap device name\n");
+               "[-d <tap device name>] "
 #endif
+            "\n configuration        "
+               "[-M <tap MTU>] "
+               "[-r] "
+               "[-E] "
+               "[-I <edge description>] "
+            "\n                      "
+               "[-R <rule string>] "
+          "\n\n local options        "
+#ifndef WIN32
+               "[-f] "
+#endif
+               "[-t <management port>] "
+               "[-v] "
+               "[-n <cidr:gateway>] "
+#ifndef WIN32
+            "\n                      "
+               "[-u <numerical user id>]"
+               "[-g <numerical group id>]"
+#endif
+          "\n\n environment          "
+               "N2N_KEY   instead of [-k <key>]"
+          "\n variables            "
+          "\n                      "
 
-    printf("-a [mode:]<address>[/nn] | Interface address and optional subnet (cidr, default /24). For DHCP use '-r -a dhcp:0.0.0.0'\n");
-    printf("-c <community>           | n2n community name the edge belongs to.\n");
-    printf("-k <encrypt key>         | Encryption key (ASCII) - also N2N_KEY=<encrypt key>.\n");
-    printf("-l <supernode host:port> | Supernode IP:port\n");
-    printf("-i <reg_interval>        | Registration interval, for NAT hole punching (default 20 seconds)\n");
-    printf("-I <device description>  | Annotate the edge's description (hint), identified in the manage port\n");
-    printf("-L <reg_ttl>             | TTL for registration packet when UDP NAT hole punching through supernode (default 0 for not set )\n");
-    printf("-p <local port>          | Fixed local UDP port.\n");
-#ifndef WIN32
-    printf("-u <UID>                 | User ID (numeric) to use when privileges are dropped.\n");
-    printf("-g <GID>                 | Group ID (numeric) to use when privileges are dropped.\n");
-#endif /* ifndef WIN32 */
-#ifndef WIN32
-    printf("-f                       | Do not fork and run as a daemon; rather run in foreground.\n");
-#endif /* #ifndef WIN32 */
-    printf("-m <MAC address>         | Fix MAC address for the TAP interface (otherwise it may be random)\n"
-           "                         | eg. -m 01:02:03:04:05:06\n");
-    printf("-M <mtu>                 | Specify n2n MTU of edge interface (default %d).\n", DEFAULT_MTU);
+          "\n meaning of the       "
 #ifndef __APPLE__
-    printf("-D                       | Enable PMTU discovery. PMTU discovery can reduce fragmentation but\n"
-           "                         | causes connections stall when not properly supported.\n");
+                                  "[-D]  enable PMTU discovery"
 #endif
-    printf("-r                       | Enable packet forwarding through n2n community.\n");
-    printf("-A1                      | Disable payload encryption. Do not use with key (defaulting to AES then).\n");
-    printf("-A2 ... -A5 or -A        | Choose a cipher for payload encryption, requires a key: -A2 = Twofish,\n");
-    printf("                         | -A3 or -A (deprecated) = AES (default), "
-           "-A4 = ChaCha20, "
-           "-A5 = Speck-CTR.\n");
-    printf("-H                       | Enable full header encryption. Requires supernode with fixed community.\n");
-    printf("-z1 ... -z2 or -z        | Enable compression for outgoing data packets: -z1 or -z = lzo1x"
+          "\n flag options         [-S]  do not connect p2p, always use supernode"
+          "\n                      [-H]  enable header encryption"
+          "\n                      [-r]  enable packet forwarding through n2n community"
+          "\n                      [-E]  accept multicast MAC addresses"
+#ifndef WIN32
+          "\n                      [-f]  do not fork but run in foreground"
+#endif
+          "\n                      [-v]  make more verbose, repeat as required"
+          "\n                      "
+
+          "\n  -h    shows this quick reference including all available options"
+          "\n --help gives a detailed parameter description"
+          "\n   man  files for n2n, edge, and superndode contain in-depth information"
+          "\n\n");
+
+    } else /* long help */ {
+
+        printf(" general usage:  edge <config file> (see edge.conf)\n"
+               "\n"
+               "            or   edge  -c <community name> -l <supernode host:port>\n"
+               "                      [further optional command line parameters]\n\n"
+        );
+        printf (" OPTIONS FOR THE UNDERLYING NETWORK CONNECTION\n");
+        printf (" ---------------------------------------------\n\n");
+        printf(" -c <community>    | n2n community name the edge belongs to\n");
+        printf(" -l <host:port>    | supernode ip address or name, and port\n");
+        printf(" -p <local port>   | fixed local UDP port\n");
+#ifdef __linux__
+        printf(" -T <tos>          | TOS for packets, e.g. 0x48 for SSH like priority\n");
+#endif
+#ifndef __APPLE__
+        printf(" -D                | enable PMTU discovery, it can reduce fragmentation but\n"
+               "                   | causes connections to stall if not properly supported\n");
+#endif
+        printf(" -S                | do not connect p2p, always use the supernode\n");
+        printf(" -i <reg_interval> | registration interval, for NAT hole punching (default\n"
+               "                   | 20 seconds)\n");
+        printf(" -L <reg_ttl>      | TTL for registration packet for NAT hole punching through\n"
+               "                   | supernode (default 0 for not set)\n");
+        printf(" -k <key>          | encryption key (ASCII) - also N2N_KEY=<key>\n");
+        printf(" -A1               | disable payload encryption, do not use with key, defaults\n"
+               "                   | to AES then\n");
+        printf(" -A2 ... -A5 or -A | choose a cipher for payload encryption, requires a key,\n"
+               "                   | -A2 = Twofish, -A3 or -A (deprecated) = AES (default),\n"
+               "                   | -A4 = ChaCha20, -A5 = Speck-CTR\n");
+        printf(" -H                | use header encryption, supernode needs fixed community\n");
+        printf(" -z1 ... -z2 or -z | compress outgoing data packets, -z1 or -z lzo1x,\n"
+               "                   | "
 #ifdef N2N_HAVE_ZSTD
-           ", -z2 = zstd"
+                                     "-z2 = zstd, "
 #endif
-           " (default=disabled).\n");
-    printf("-E                       | Accept multicast MAC addresses (default=drop).\n");
-    printf("-S                       | Do not connect P2P. Always use the supernode.\n");
-#ifdef __linux__
-    printf("-T <tos>                 | TOS for packets (e.g. 0x48 for SSH like priority)\n");
+                                     "disabled by default\n");
+        printf ("\n");
+        printf (" TAP DEVICE AND OVERLAY NETWORK CONFIGURATION\n");
+        printf (" --------------------------------------------\n\n");
+        printf(" -a [mode]<ip>[/n] | interface address and optional CIDR subnet, default '/24',\n"
+               "                   | mode = [static|dhcp]:, for DHCP use '-r -a dhcp:0.0.0.0',\n"
+               "                   | edge draws IP address from supernode if no '-a ...' given\n");
+        printf(" -m <mac>          | fixed MAC address for the TAP interface, e.g.\n"
+               "                   | '-m 10:20:30:40:50:60', random otherwise\n");
+#if defined(N2N_CAN_NAME_IFACE)
+        printf(" -d <device>       | TAP device name\n");
 #endif
-    printf("-n <cidr:gateway>        | Route an IPv4 network via the gw. Use 0.0.0.0/0 for the default gw. Can be set multiple times.\n");
-    printf("-v                       | Make more verbose. Repeat as required.\n");
-    printf("-R <rule_str>            | Drop or accept packets by rules. Can be set multiple times. \n");
-    printf("                         | Rule format: src_ip/len:[b_port,e_port],dst_ip/len:[s_port,e_port],TCP+/-,UDP+/-,ICMP+/- \n");
-    printf("-t <port>                | Management UDP Port (for multiple edges on a machine).\n");
-
-    printf("\nEnvironment variables:\n");
-    printf("    N2N_KEY              | Encryption key (ASCII). Not with -k.\n");
-
+        printf(" -M <mtu>          | specify n2n MTU of TAP interface, default %d\n", DEFAULT_MTU);
+        printf(" -r                | enable packet forwarding through n2n community\n");
+        printf(" -E                | accept multicast MAC addresses, drop by default\n");
+        printf(" -I <description>  | annotate the edge's description used for easier\n"
+               "                   | identification in management port output\n");
+        printf(" -R <rule>         | drop or accept packets by rules, can be set multiple times\n");
+        printf("                   | rule format:    'src_ip/n:[s_port,e_port],...\n"
+               "                   |    |on same|  ...dst_ip/n:[s_port,e_port],...\n"
+               "                   |    | line  |  ...TCP+/-,UDP+/-,ICMP+/-'\n");
+        printf ("\n");
+        printf (" LOCAL OPTIONS\n");
+        printf (" -------------\n\n");
+#ifndef WIN32
+        printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
+#endif
+        printf(" -t <port>         | management UDP port, for multiple edges on a machine\n");
+        printf(" -v                | make more verbose, repeat as required\n");
+        printf(" -n <cidr:gateway> | route an IPv4 network via the gateway, use 0.0.0.0/0 for\n"
+               "                   | the default gateway, can be set multiple times\n");
+#ifndef WIN32
+        printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
+        printf(" -g <GID>          | numeric group ID to use when privileges are dropped\n");
+#endif
+        printf ("\n");
+        printf (" ENVIRONMENT VARIABLES\n");
+        printf (" ---------------------\n\n");
+        printf("     N2N_KEY       | encryption key (ASCII), not with '-k ...'\n");
 #ifdef WIN32
-    printf("\nAvailable TAP adapters:\n");
-    win_print_available_adapters();
+        printf ("\n");
+        printf (" AVAILABLE TAP ADAPTERS\n");
+        printf (" ----------------------\n\n");
+        win_print_available_adapters();
 #endif
+        printf ("\n"
+                "\n  -h    shows a quick reference including all available options"
+                "\n --help gives this detailed parameter description"
+                "\n   man  files for n2n, edge, and superndode contain in-depth information"
+                "\n\n");
+    }
 
     exit(0);
 }
@@ -494,8 +590,13 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
-        case 'h': /* help */ {
-            help();
+        case 'h': /* quick reference */ {
+            help(1);
+            break;
+        }
+
+        case '@': /* long help */ {
+            help(2);
             break;
         }
 
@@ -528,6 +629,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
 /* *********************************************** */
 
+
 static const struct option long_options[] =
     {
         { "community",         required_argument, NULL, 'c' },
@@ -535,7 +637,7 @@ static const struct option long_options[] =
         { "tap-device",        required_argument, NULL, 'd' },
         { "euid",              required_argument, NULL, 'u' },
         { "egid",              required_argument, NULL, 'g' },
-        { "help"     ,         no_argument,       NULL, 'h' },
+        { "help"     ,         no_argument,       NULL, '@' }, /* special character '@' to identify long help case */
         { "verbose",           no_argument,       NULL, 'v' },
         { NULL,                0,                 NULL,  0  }
     };
@@ -775,10 +877,10 @@ int main (int argc, char* argv[]) {
     }
 
     if(rc < 0)
-        help();
+        help(0); /* short help */
 
     if(edge_verify_conf(&conf) != 0)
-        help();
+        help(0); /* short help */
 
     traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
