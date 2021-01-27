@@ -174,57 +174,110 @@ static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
 /* *************************************************** */
 
 /** Help message to print if the command line arguments are not valid. */
-static void help () {
+static void help (int level) {
 
+    printf("\n");
     print_n2n_version();
 
-    printf("supernode <config file> (see supernode.conf)\n"
-	   "or\n"
-	   );
-    printf("supernode ");
-    printf("-p <local port> ");
-    printf("-c <path> ");
-    printf("-l <supernode:port> ");
-  
-#if defined(N2N_HAVE_DAEMON)
-    printf("[-f] ");
-#endif
-    printf("[-F <federation_name>] ");
-#if 0
-    printf("[-m <mac_address>] ");
-#endif
-#ifndef WIN32
-    printf("[-u <uid> -g <gid>] ");
-#endif /* ifndef WIN32 */
-    printf("[-t <mgmt port>] ");
-    printf("[-a <net-net/bit>] ");
-    printf("[-v] ");
-    printf("\n\n");
+    if(level == 0) /* short help */ {
 
-    printf("-p <port>         | Set UDP main listen port to <port>\n");
-    printf("-c <path>         | File containing the allowed communities.\n");
-    printf("-l <sn host:port> | Name/IP of a known supernode:port.\n");
-#if defined(N2N_HAVE_DAEMON)
-    printf("-f                | Run in foreground.\n");
-#endif /* #if defined(N2N_HAVE_DAEMON) */
-    printf("-F <fed_name>     | Name of the supernodes federation (otherwise use '%s' by default)\n", (char *)FEDERATION_NAME);
-#if 0
-    printf("-m <mac_addr>     | Fix MAC address for the supernode (otherwise it may be random)\n"
-           "                  | eg. -m 01:02:03:04:05:06\n");
-#endif /* #if 0 */
-#ifndef WIN32
-    printf("-u <UID>          | User ID (numeric) to use when privileges are dropped.\n");
-    printf("-g <GID>          | Group ID (numeric) to use when privileges are dropped.\n");
-#endif /* ifndef WIN32 */
-    printf("-t <port>         | Management UDP Port (for multiple supernodes on a machine).\n");
-    printf("-a <net-net/bit>  | Subnet range for auto ip address service, e.g.\n");
-    printf("                  | -a 192.168.0.0-192.168.255.0/24, defaults to 10.128.255.0-10.255.255.0/24\n");
-    printf("-v                | Increase verbosity. Can be used multiple times.\n");
-    printf("-h                | This help message.\n");
-    printf("\n");
+        printf("   basic usage:  supernode <config file> (see supernode.conf)\n"
+               "\n"
+               "            or   supernode "
+               " -p <local port> "
+               "\n                      "
+               "\n  -h    shows a quick reference including all available options"
+               "\n --help gives a detailed parameter description"
+               "\n   man  files for n2n, edge, and superndode contain in-depth information"
+               "\n\n");
 
-    exit(1);
+    } else if(level == 1) /* quick reference */ {
+
+        printf(" general usage:  supernode <config file> (see supernode.conf)\n"
+           "\n"
+               "            or   supernode "
+               " -p <local port>"
+            "\n                           "
+               "[-F <federation name>] "
+            "\n options for under-        "
+               "[-l <supernode host:port>] "
+            "\n lying connection          "
+#ifdef SN_MANUAL_MAC
+               "[-m <mac address>] "
+#endif
+          "\n\n overlay network           "
+               "[-c <community list file>] "
+            "\n configuration             "
+               "[-a <net ip>-<net ip>/<cidr suffix>] "
+          "\n\n local options             "
+#if defined(N2N_HAVE_DAEMON)
+               "[-f] "
+#endif
+               "[-t <management port>] "
+               "[-v] "
+#ifndef WIN32
+            "\n                           "
+               "[-u <numerical user id>]"
+               "[-g <numerical group id>]"
+#endif
+          "\n\n meaning of the            "
+#if defined(N2N_HAVE_DAEMON)
+                "[-f]  do not fork but run in foreground"
+#endif
+            "\n flag options              "
+                "[-v]  make more verbose, repeat as required"
+            "\n                           "
+
+          "\n  -h    shows this quick reference including all available options"
+          "\n --help gives a detailed parameter description"
+          "\n   man  files for n2n, edge, and superndode contain in-depth information"
+          "\n\n");
+
+    } else /* long help */ {
+
+        printf(" general usage:  supernode <config file> (see supernode.conf)\n"
+               "\n"
+               "            or   supernode  -p <local port>\n"
+               "                           [further optional command line parameters]\n\n"
+        );
+        printf (" OPTIONS FOR THE UNDERLYING NETWORK CONNECTION\n");
+        printf (" ---------------------------------------------\n\n");
+        printf(" -p <local port>   | fixed local UDP port\n");
+        printf(" -F <fed name>     | name of the supernode's federation, defaults to\n"
+               "                   | '%s'\n", (char *)FEDERATION_NAME);
+        printf(" -l <host:port>    | ip address or name, and port of known supernode\n");
+#ifdef SN_MANUAL_MAC
+        printf(" -m <mac>          | fixed MAC address for the supernode, e.g.\n"
+               "                   | '-m 10:20:30:40:50:60', random otherwise\n");
+#endif
+        printf ("\n");
+        printf (" TAP DEVICE AND OVERLAY NETWORK CONFIGURATION\n");
+        printf (" --------------------------------------------\n\n");
+        printf(" -c <path>         | file containing the allowed communities\n");
+        printf(" -a <net-net/n>    | subnet range for auto ip address service, e.g.\n"
+               "                   | '-a 192.168.0.0-192.168.255.0/24', defaults\n"
+               "                   | to '10.128.255.0-10.255.255.0/24'\n");
+        printf ("\n");
+        printf (" LOCAL OPTIONS\n");
+        printf (" -------------\n\n");
+#if defined(N2N_HAVE_DAEMON)
+        printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
+#endif
+        printf(" -t <port>         | management UDP port, for multiple supernodes on a machine\n");
+        printf(" -v                | make more verbose, repeat as required\n");
+#ifndef WIN32
+        printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
+        printf(" -g <GID>          | numeric group ID to use when privileges are dropped\n");
+#endif
+        printf("\n  -h    shows a quick reference including all available options"
+                "\n --help gives this detailed parameter description"
+                "\n   man  files for n2n, edge, and superndode contain in-depth information"
+                "\n\n");
+    }
+
+    exit(0);
 }
+
 
 /* *************************************************** */
 
@@ -344,7 +397,6 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 
             break;
         }
-
 #ifndef WIN32
         case 'u': /* unprivileged uid */
             sss->userid = atoi(_optarg);
@@ -354,7 +406,6 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             sss->groupid = atoi(_optarg);
             break;
 #endif
-
         case 'F': { /* federation name */
 
             snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1 ,"*%s", _optarg);
@@ -362,24 +413,26 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 
             break;
         }
-
-#if 0
+#ifdef SN_MANUAL_MAC
         case 'm': {/* MAC address */
             str2mac(sss->mac_addr,_optarg);
             break;
         }
-#endif /* #if 0 */
-
+#endif
         case 'c': /* community file */
             load_allowed_sn_community(sss, _optarg);
             break;
-
+#if defined(N2N_HAVE_DAEMON)
         case 'f': /* foreground */
             sss->daemon = 0;
             break;
+#endif
+        case 'h': /* quick reference */
+            help(1);
+            break;
 
-        case 'h': /* help */
-            help();
+        case '@': /* long help */
+            help(2);
             break;
 
         case 'v': /* verbose */
@@ -399,11 +452,13 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 
 static const struct option long_options[] = {
     {"communities", required_argument, NULL, 'c'},
+#if defined(N2N_HAVE_DAEMON)
     {"foreground",  no_argument,       NULL, 'f'},
+#endif
     {"local-port",  required_argument, NULL, 'p'},
     {"mgmt-port",   required_argument, NULL, 't'},
     {"autoip",      required_argument, NULL, 'a'},
-    {"help",        no_argument,       NULL, 'h'},
+    {"help",        no_argument,       NULL, '@'}, /* special character '@' to identify long help case */
     {"verbose",     no_argument,       NULL, 'v'},
     {NULL,          0,                 NULL, 0}
 };
@@ -415,8 +470,19 @@ static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
 
     u_char c;
 
-    while((c = getopt_long(argc, argv, "fp:l:u:g:t:a:c:F:m:vh",
-			     long_options, NULL)) != '?') {
+    while((c = getopt_long(argc, argv,
+                           "p:l:t:a:c:F:vh"
+#ifdef SN_MANUAL_MAC
+                           "m:"
+#endif
+#if defined(N2N_HAVE_DAEMON)
+                           "f"
+#endif
+#ifndef WIN32
+                           "u:g:"
+#endif
+                            ,
+			    long_options, NULL)) != '?') {
         if(c == 255) {
             break;
         }
@@ -609,7 +675,7 @@ int main (int argc, char * const argv[]) {
 #endif
 
     if(rc < 0) {
-        help();
+        help(0); /* short help */
     }
 
 #if defined(N2N_HAVE_DAEMON)
