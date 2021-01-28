@@ -280,7 +280,7 @@ static void help (int level) {
                "                   |    | line  |  ...TCP+/-,UDP+/-,ICMP+/-'\n");
 #ifdef WIN32
         printf(" -x <metric>       | set TAP interface metric, defaults to 0 (auto),\n"
-               "                   | disables multicast local peer-discovery if set\n");
+               "                   | e.g. set to 1 for better multiplayer game detection\n");
 #endif
         printf ("\n");
         printf (" LOCAL OPTIONS\n");
