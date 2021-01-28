@@ -103,7 +103,7 @@ static void iterate_win_network_adapters(
 /* ***************************************************** */
 
 static int print_adapter_callback(struct win_adapter_info *adapter, struct tuntap_dev *device) {
-  printf("  %s - %s\n", adapter->adapterid, adapter->adaptername);
+  printf(" %s - %s\n", adapter->adapterid, adapter->adaptername);
 
   /* continue */
   return(1);
