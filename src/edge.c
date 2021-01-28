@@ -627,6 +627,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 #ifdef WIN32
         case 'x': {
             conf->metric = atoi(optargument);
+            ec->metric = atoi(optargument);
             break;
         }
 #endif
