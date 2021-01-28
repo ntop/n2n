@@ -705,6 +705,7 @@ typedef struct n2n_sn {
     gid_t                                  groupid;
 #endif
     int                                    lock_communities; /* If true, only loaded and matching communities can be used. */
+    char                                   *community_file;
     struct sn_community                    *communities;
     struct sn_community_regular_expression *rules;
     struct sn_community                    *federation;
