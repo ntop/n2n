@@ -1098,9 +1098,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t nowTime) {
     } else if(nowTime < (eee->last_register_req + eee->conf.register_interval))
         return; /* Too early */
 
-    // skip multicast peer detection if TAP has manually set metric
-    if(eee->conf.metric)
-        check_join_multicast_group(eee);
+    check_join_multicast_group(eee);
 
     if(0 == eee->sup_attempts) {
         /* Give up on that supernode and try the next one. */
