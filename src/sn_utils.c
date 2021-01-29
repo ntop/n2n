@@ -1430,8 +1430,8 @@ static int process_udp (n2n_sn_t * sss,
                 return -1;
             }
 
-            if((from_supernode == 0) != (comm->is_federation == IS_NO_FEDERATION)) {
-                traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER: from_supernode value doesn't correspond to the internal federation marking.");
+            if((from_supernode == 1) || (comm->is_federation == IS_FEDERATION)) {
+                traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER: should not come from a supernode or federation.");
                 return -1;
             }
 
@@ -1486,8 +1486,8 @@ static int process_udp (n2n_sn_t * sss,
                 return -1;
             }
 
-            if((from_supernode == 0) != (comm->is_federation == IS_NO_FEDERATION)) {
-                traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK: from_supernode value doesn't correspond to the internal federation marking.");
+            if((from_supernode == 0) || (comm->is_federation == IS_NO_FEDERATION)) {
+                traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK: should not come from an edge or regular community.");
                 return -1;
             }
 
