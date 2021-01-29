@@ -28,14 +28,14 @@ static n2n_sn_t sss_node;
 /** Load the list of allowed communities. Existing/previous ones will be removed
  *
  */
-static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
+static int load_allowed_sn_community (n2n_sn_t *sss) {
 
     char buffer[4096], *line, *cmn_str, net_str[20];
     dec_ip_str_t ip_str = {'\0'};
     uint8_t bitlen;
     in_addr_t net;
     uint32_t mask;
-    FILE *fd = fopen(path, "r");
+    FILE *fd = fopen(sss->community_file, "r");
     struct sn_community *s, *tmp;
     uint32_t num_communities = 0;
     struct sn_community_regular_expression *re, *tmp_re;
@@ -43,7 +43,7 @@ static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
     int has_net;
 
     if(fd == NULL) {
-        traceEvent(TRACE_WARNING, "File %s not found", path);
+        traceEvent(TRACE_WARNING, "File %s not found", sss->community_file);
         return -1;
     }
 
@@ -154,15 +154,15 @@ static int load_allowed_sn_community (n2n_sn_t *sss, char *path) {
     fclose(fd);
 
     if((num_regex + num_communities) == 0) {
-        traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", path);
+        traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", sss->community_file);
         return -1;
     }
 
     traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
-	             num_communities, path);
+	             num_communities, sss->community_file);
 
     traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
-	             num_regex, path);
+	             num_regex, sss->community_file);
 
     /* No new communities will be allowed */
     sss->lock_communities = 1;
@@ -420,7 +420,9 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
         }
 #endif
         case 'c': /* community file */
-            load_allowed_sn_community(sss, _optarg);
+            sss->community_file = calloc(1, strlen(_optarg) + 1);
+            if(sss->community_file)
+                strcpy(sss->community_file, _optarg);
             break;
 #if defined(N2N_HAVE_DAEMON)
         case 'f': /* foreground */
@@ -677,6 +679,9 @@ int main (int argc, char * const argv[]) {
     if(rc < 0) {
         help(0); /* short help */
     }
+
+    if(sss_node.community_file)
+        load_allowed_sn_community(&sss_node);
 
 #if defined(N2N_HAVE_DAEMON)
     if(sss_node.daemon) {
