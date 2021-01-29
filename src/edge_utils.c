@@ -2104,7 +2104,6 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                 n2n_REGISTER_SUPER_ACK_payload_t *payload;
                 int i;
                 int skip_add;
-                struct peer_info *sn;
 
                 memset(&ra, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
