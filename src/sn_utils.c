@@ -339,7 +339,8 @@ void sn_term (n2n_sn_t *sss) {
         free(re);
     }
 
-    free(sss->community_file);
+    if(sss->community_file)
+        free(sss->community_file);
 #ifdef WIN32
     destroyWin32();
 #endif
