@@ -182,6 +182,9 @@ static void help (int level) {
                "[-I <edge description>] "
             "\n                      "
                "[-R <rule string>] "
+#ifdef WIN32
+               "[-x <metric>] "
+#endif
           "\n\n local options        "
 #ifndef WIN32
                "[-f] "
@@ -275,6 +278,10 @@ static void help (int level) {
         printf("                   | rule format:    'src_ip/n:[s_port,e_port],...\n"
                "                   |    |on same|  ...dst_ip/n:[s_port,e_port],...\n"
                "                   |    | line  |  ...TCP+/-,UDP+/-,ICMP+/-'\n");
+#ifdef WIN32
+        printf(" -x <metric>       | set TAP interface metric, defaults to 0 (auto),\n"
+               "                   | e.g. set to 1 for better multiplayer game detection\n");
+#endif
         printf ("\n");
         printf (" LOCAL OPTIONS\n");
         printf (" -------------\n\n");
@@ -617,7 +624,13 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             }
             break;
         }
-
+#ifdef WIN32
+        case 'x': {
+            conf->metric = atoi(optargument);
+            ec->metric = atoi(optargument);
+            break;
+        }
+#endif
         default: {
             traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
             return(-1);
@@ -653,6 +666,9 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
                             "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:R:"
 #ifdef __linux__
                             "T:"
+#endif
+#ifdef WIN32
+                            "x:"
 #endif
                             ,
                             long_options, NULL)) != '?') {
@@ -848,6 +864,7 @@ int main (int argc, char* argv[]) {
 
 #ifdef WIN32
     ec.tuntap_dev_name[0] = '\0';
+    ec.metric = 0;
 #else
     snprintf(ec.tuntap_dev_name, sizeof(ec.tuntap_dev_name), N2N_EDGE_DEFAULT_DEV_NAME);
 #endif
@@ -1015,6 +1032,9 @@ int main (int argc, char* argv[]) {
         }
 
         if(runlevel == 4) { /* configure the TUNTAP device */
+#ifdef WIN32
+            tuntap.metric =  eee->tuntap_priv_conf.metric;
+#endif
             if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
                            eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
                            eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu) < 0)
