@@ -673,7 +673,7 @@ uint64_t time_stamp (void) {
     counter <<= 4;
 
     // set new co flag if counter overflows while upper bits unchanged or if it was set before
-    new_co  |= (((counter & mask_lo) == 0) & hi_unchanged) | co;
+    new_co   = (((counter & mask_lo) == 0) & hi_unchanged) | co;
 
     // in case co flag changed, masks need to be recalculated
     mask_lo   = -new_co;
