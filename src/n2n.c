@@ -439,18 +439,19 @@ void print_n2n_version () {
 
 /* *********************************************** */
 
-size_t purge_expired_registrations (struct peer_info ** peer_list, time_t* p_last_purge, int timeout) {
+size_t purge_expired_nodes (struct peer_info **peer_list, time_t *p_last_purge,
+                            int frequency, int timeout) {
 
     time_t now = time(NULL);
     size_t num_reg = 0;
 
-    if((now - (*p_last_purge)) < timeout) {
+    if((now - (*p_last_purge)) < frequency) {
         return 0;
     }
 
     traceEvent(TRACE_DEBUG, "Purging old registrations");
 
-    num_reg = purge_peer_list(peer_list, now - REGISTRATION_TIMEOUT);
+    num_reg = purge_peer_list(peer_list, now - timeout);
 
     (*p_last_purge) = now;
     traceEvent(TRACE_DEBUG, "Remove %ld registrations", num_reg);

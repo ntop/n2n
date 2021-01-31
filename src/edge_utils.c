@@ -451,7 +451,7 @@ static void register_with_new_peer (n2n_edge_t *eee,
 
     HASH_FIND_PEER(eee->pending_peers, mac, scan);
 
-    /* NOTE: pending_peers are purged periodically with purge_expired_registrations */
+    /* NOTE: pending_peers are purged periodically with purge_expired_nodes */
     if(scan == NULL) {
         scan = calloc(1, sizeof(struct peer_info));
 
@@ -2133,6 +2133,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                     }
 
                     if(0 == memcmp(ra.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
+
                         payload = (n2n_REGISTER_SUPER_ACK_payload_t*)tmpbuf;
 
                         for(i = 0; i < ra.num_sn; i++) {
@@ -2151,7 +2152,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                                 sn->last_seen = now - LAST_SEEN_SN_NEW;
                                 traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
                             }
-                            // shfiting to the next payload entry
+                            // shift to next payload entry
                             payload++;
                         }
 
@@ -2406,8 +2407,10 @@ int run_edge_loop (n2n_edge_t * eee, int *keep_running) {
         /* Finished processing select data. */
         update_supernode_reg(eee, nowTime);
 
-        numPurged =  purge_expired_registrations(&eee->known_peers, &last_purge_known, PURGE_REGISTRATION_FREQUENCY);
-        numPurged += purge_expired_registrations(&eee->pending_peers, &last_purge_pending, PURGE_REGISTRATION_FREQUENCY);
+        numPurged =  purge_expired_nodes(&eee->known_peers, &last_purge_known,
+                                         PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
+        numPurged += purge_expired_nodes(&eee->pending_peers, &last_purge_pending,
+                                         PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
 
         if(numPurged > 0) {
             traceEvent(TRACE_INFO, "%u peers removed. now: pending=%u, operational=%u",

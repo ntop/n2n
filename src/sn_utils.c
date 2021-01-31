@@ -403,7 +403,7 @@ static int update_edge (n2n_sn_t *sss,
     if(NULL == scan) {
     /* Not known */
         if(skip_add == SN_ADD) {
-            scan = (struct peer_info *) calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_registrations */
+            scan = (struct peer_info *) calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_nodes */
             memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
             scan->dev_addr.net_addr = reg->dev_addr.net_addr;
             scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
@@ -658,66 +658,65 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
         return 0;
     }
 
+    // purge long-time-not-seen supernodes
+    purge_expired_nodes(&(comm->edges), p_last_re_reg_and_purge,
+                        RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
+
     if(comm != NULL) {
         HASH_ITER(hh,comm->edges,peer,tmp) {
+
             time = now - peer->last_seen;
+
             if(time <= LAST_SEEN_SN_ACTIVE) {
                 continue;
             }
 
-            if((time < LAST_SEEN_SN_INACTIVE)
-               || (peer->purgeable == SN_UNPURGEABLE)) {
-                /* re-regitser (send REGISTER_SUPER) */
-                uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
-                size_t idx;
-                /* ssize_t sent; */
-                n2n_common_t cmn;
-                n2n_cookie_t cookie;
-                n2n_REGISTER_SUPER_t reg;
-                n2n_sock_str_t sockbuf;
+            /* re-register (send REGISTER_SUPER) */
+            uint8_t pktbuf[N2N_PKT_BUF_SIZE] = {0};
+            size_t idx;
+            /* ssize_t sent; */
+            n2n_common_t cmn;
+            n2n_cookie_t cookie;
+            n2n_REGISTER_SUPER_t reg;
+            n2n_sock_str_t sockbuf;
 
-                memset(&cmn, 0, sizeof(cmn));
-                memset(&reg, 0, sizeof(reg));
+            memset(&cmn, 0, sizeof(cmn));
+            memset(&reg, 0, sizeof(reg));
 
-                cmn.ttl = N2N_DEFAULT_TTL;
-                cmn.pc = n2n_register_super;
-                cmn.flags = N2N_FLAGS_FROM_SUPERNODE;
-                memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
+            cmn.ttl = N2N_DEFAULT_TTL;
+            cmn.pc = n2n_register_super;
+            cmn.flags = N2N_FLAGS_FROM_SUPERNODE;
+            memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
 
-                for(idx = 0; idx < N2N_COOKIE_SIZE; ++idx) {
-                    cookie[idx] = n2n_rand() % 0xff;
-                }
-
-                memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
-                reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
-                reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
-                memcpy(&(reg.auth), &(sss->auth), sizeof(n2n_auth_t));
-
-                idx = 0;
-                encode_mac(reg.edgeMac, &idx, sss->mac_addr);
-
-                idx = 0;
-                encode_REGISTER_SUPER(pktbuf, &idx, &cmn, &reg);
-
-                traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
-                           sock_to_cstr(sockbuf, &(peer->sock)));
-
-                packet_header_encrypt(pktbuf, idx, idx,
-                                      comm->header_encryption_ctx, comm->header_iv_ctx,
-                                      time_stamp());
-
-                /* sent = */ sendto_sock(sss, &(peer->sock), pktbuf, idx);
+            for(idx = 0; idx < N2N_COOKIE_SIZE; ++idx) {
+                cookie[idx] = n2n_rand() % 0xff;
             }
-            if(time >= LAST_SEEN_SN_INACTIVE) {
-                purge_expired_registrations(&(comm->edges), &time, LAST_SEEN_SN_INACTIVE); /* purge not-seen-long-time supernodes*/
-            }
+
+            memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
+            reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
+            reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
+            memcpy(&(reg.auth), &(sss->auth), sizeof(n2n_auth_t));
+
+            idx = 0;
+            encode_mac(reg.edgeMac, &idx, sss->mac_addr);
+
+            idx = 0;
+            encode_REGISTER_SUPER(pktbuf, &idx, &cmn, &reg);
+
+            traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
+                                     sock_to_cstr(sockbuf, &(peer->sock)));
+
+            packet_header_encrypt(pktbuf, idx, idx,
+                                  comm->header_encryption_ctx, comm->header_iv_ctx,
+                                  time_stamp());
+
+            /* sent = */ sendto_sock(sss, &(peer->sock), pktbuf, idx);
         }
     }
 
-    (*p_last_re_reg_and_purge) = now;
-
     return 0; /* OK */
 }
+
 
 static int purge_expired_communities (n2n_sn_t *sss,
                                       time_t* p_last_purge,
@@ -733,6 +732,10 @@ static int purge_expired_communities (n2n_sn_t *sss,
     traceEvent(TRACE_DEBUG, "Purging old communities and edges");
 
     HASH_ITER(hh, sss->communities, comm, tmp) {
+        // federation is taken care of in re_register_and_purge_supernodes()
+        if(comm->is_federation == IS_FEDERATION)
+            continue;
+
         num_reg += purge_peer_list(&comm->edges, now - REGISTRATION_TIMEOUT);
         if((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
             traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
@@ -1304,9 +1307,10 @@ static int process_udp (n2n_sn_t * sss,
                 if(comm->is_federation == IS_FEDERATION) {
                     skip_add = SN_ADD;
                     p = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(ack.sock), reg.edgeMac, &skip_add);
+                    // do NOT update p->last_seen, because this sn might not send any more REGISTER_SUPERs to p then
+                    // as we receive p's next REGISTER_SUPER before last_seen times out; thus, update last_seen
+                    // only on arriving REGISTER_SUPER_ACK
                 }
-
-                // REVISIT: consider adding last_seen
 
                 /* Skip random numbers of supernodes before payload assembling, calculating an appropriate random_number.
                  * That way, all supernodes have a chance to be propagated with REGISTER_SUPER_ACK. */
@@ -1321,9 +1325,9 @@ static int process_udp (n2n_sn_t * sss,
                         continue;
                     }
                     if(memcmp(&(peer->sock), &(ack.sock), sizeof(n2n_sock_t)) == 0) continue; /* a supernode doesn't add itself to the payload */
-                    if((now - peer->last_seen) >= (2*LAST_SEEN_SN_ACTIVE)) continue; /* skip long-time-not-seen supernodes.
-                                                                                      * We need to allow for a little extra time because supernodes sometimes exceed
-                                                                                      * their SN_ACTIVE time before they get re-registred to. */
+                    if((now - peer->last_seen) >= LAST_SEEN_SN_NEW) continue; /* skip long-time-not-seen supernodes.
+                                                                                * We need to allow for a little extra time because supernodes sometimes exceed
+                                                                                * their SN_ACTIVE time before they get re-registred to. */
                     if(((++num)*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE) > REG_SUPER_ACK_PAYLOAD_SPACE) break; /* no more space available in REGISTER_SUPER_ACK payload */
                     memcpy(&(payload->sock), &(peer->sock), sizeof(n2n_sock_t));
                     memcpy(payload->mac, peer->mac_addr, sizeof(n2n_mac_t));
