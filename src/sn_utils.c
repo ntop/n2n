@@ -1307,9 +1307,6 @@ static int process_udp (n2n_sn_t * sss,
                 if(comm->is_federation == IS_FEDERATION) {
                     skip_add = SN_ADD;
                     p = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(ack.sock), reg.edgeMac, &skip_add);
-                    // do NOT update p->last_seen, because this sn might not send any more REGISTER_SUPERs to p then
-                    // as we receive p's next REGISTER_SUPER before last_seen times out; thus, update last_seen
-                    // only on arriving REGISTER_SUPER_ACK
                 }
 
                 /* Skip random numbers of supernodes before payload assembling, calculating an appropriate random_number.
