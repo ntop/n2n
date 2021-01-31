@@ -52,8 +52,7 @@
  * values should be at least 3*SOCKET_TIMEOUT_INTERVAL_SECS apart. */
 #define LAST_SEEN_SN_ACTIVE              20 /* sec, indicates supernodes that are proven to be active */
 #define LAST_SEEN_SN_INACTIVE            90 /* sec, indicates supernodes that are proven to be inactive: they will be purged */
-#define LAST_SEEN_SN_NEW                 (LAST_SEEN_SN_INACTIVE - LAST_SEEN_SN_ACTIVE) / 2 /* sec, indicates supernodes with unsure status, must be tested to check if they are active */
-
+#define LAST_SEEN_SN_NEW                 (LAST_SEEN_SN_INACTIVE - 3 * RE_REG_AND_PURGE_FREQUENCY) /* sec, indicates supernodes with unsure status, must be tested to check if they are active */
 
 #define IFACE_UPDATE_INTERVAL            (30) /* sec. How long it usually takes to get an IP lease. */
 #define TRANSOP_TICK_INTERVAL            (10) /* sec */
