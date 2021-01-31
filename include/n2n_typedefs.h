@@ -524,6 +524,7 @@ typedef struct n2n_tuntap_priv_config {
     dec_ip_str_t    netmask;
     char            device_mac[N2N_MACNAMSIZ];
     int             mtu;
+    int             metric;
     uint8_t         daemon;
 #ifndef WIN32
     uid_t           userid;
