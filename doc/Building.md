@@ -36,7 +36,7 @@ In order to build on Windows the following tools should be installed:
 
   NOTE: To statically link OpenSSL, add the `-DOPENSSL_USE_STATIC_LIBS=true` option to the `cmake` command below.
 
-- If compilation throws a "conig.h: No such file or directory" error, an `include/config.h` file needs to be obtained from an already configured Linux compilation and put into the `include/` directory as discussed [here](https://github.com/ntop/n2n/issues/366).
+- If compilation throws a "config.h: No such file or directory" error, an `include/config.h` file needs to be obtained from an already configured Linux compilation and put into the `include/` directory as discussed [here](https://github.com/ntop/n2n/issues/366).
 
 In order to run n2n, you will need the following:
 
