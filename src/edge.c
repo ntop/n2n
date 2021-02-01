@@ -962,6 +962,8 @@ int main (int argc, char* argv[]) {
         if(runlevel == 0) { /* PING to all known supernodes */
             last_action = now_time;
             eee->sn_pong = 0;
+            // (re-)initialize the number of max concurrent pings (decreases by calling send_query_peer)
+            eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
             send_query_peer(eee, null_mac);
             traceEvent(TRACE_NORMAL, "Send PING to supernodes.");
             runlevel++;
@@ -975,8 +977,7 @@ int main (int argc, char* argv[]) {
                 eee->curr_sn = eee->conf.supernodes;
                 traceEvent(TRACE_NORMAL, "Received first PONG from supernode [%s].", eee->curr_sn->ip_addr);
                 runlevel++;
-            }
-            if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+            } else if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
                 // timeout
                 runlevel--;
                 // skip waiting for answer to direcly go to send PING again
@@ -1017,8 +1018,7 @@ int main (int argc, char* argv[]) {
                 runlevel++;
                 traceEvent(TRACE_NORMAL, "Received REGISTER_SUPER_ACK from supernode for IP address asignment.");
                 // it should be from curr_sn, but we can't determine definitely here, so no details to output
-            }
-            if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+            } else if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
                 // timeout, so try next supernode
                 if(eee->curr_sn->hh.next)
                     eee->curr_sn = eee->curr_sn->hh.next;
@@ -1065,6 +1065,11 @@ int main (int argc, char* argv[]) {
         }
         seek_answer = 1;
     }
+    // allow a higher number of pings for first regular round of ping
+    // to quicker get an inital 'supernode selection criterion overview'
+    eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
+    // do not immediately ping again, allow some time
+    eee->last_sweep = now_time - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
     eee->sn_wait = 1;
     eee->last_register_req = 0;
     eee->last_sup = 0; /* to allow gratuitous arp packet after regular REGISTER_SUPER_ACK */

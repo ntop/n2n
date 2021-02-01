@@ -48,6 +48,9 @@
 #define SWEEP_TIME                       30 /* sec, indicates the value after which we have to sort the hash list of supernodes in edges
                                              * and when we send out packets to query selection-relevant informations from supernodes. */
 
+#define NUMBER_SN_PINGS_INITIAL          15 /* number of supernodes to concurrently ping during bootstrap and immediately afterwards */
+#define NUMBER_SN_PINGS_REGULAR           5 /* number of supernodes to concurrently ping during regular edge operation */
+
 /* Timeouts used in re_register_and_purge_supernodes. LAST_SEEN_SN_ACTIVE and LAST_SEEN_SN_INACTIVE
  * values should be at least 3*SOCKET_TIMEOUT_INTERVAL_SECS apart. */
 #define LAST_SEEN_SN_ACTIVE              20 /* sec, indicates supernodes that are proven to be active */
