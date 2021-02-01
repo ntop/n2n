@@ -770,6 +770,10 @@ void send_query_peer (n2n_edge_t * eee,
     n2n_QUERY_PEER_t query = {{0}};
     struct peer_info *peer, *tmp;
     uint8_t tmp_pkt[N2N_PKT_BUF_SIZE];
+    int n_o_pings = 0;
+    int n_o_top_sn = 0;
+    int n_o_rest_sn = 0;
+    int n_o_skip_sn = 0;
 
     cmn.ttl = N2N_DEFAULT_TTL;
     cmn.pc = n2n_query_peer;
@@ -806,7 +810,32 @@ void send_query_peer (n2n_edge_t * eee,
                                   time_stamp ());
         }
 
+        n_o_pings = eee->conf.number_max_sn_pings;
+        eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_REGULAR;
+
+        // ping the 'floor(n/2)' top supernodes and 'ceiling(n/2)' of the remaining
+        n_o_top_sn  = n_o_pings >> 1;
+        n_o_rest_sn = (n_o_pings + 1) >> 1;
+
+        // skip a random number of supernodes between top and remaining
+        n_o_skip_sn = HASH_COUNT(eee->conf.supernodes) - n_o_pings;
+        n_o_skip_sn = (n_o_skip_sn < 0) ? 0 : n2n_rand_sqr(n_o_skip_sn);
+
         HASH_ITER(hh, eee->conf.supernodes, peer, tmp) {
+            if(n_o_top_sn) {
+                n_o_top_sn--;
+                // fall through (send to top supernode)
+            } else if(n_o_skip_sn) {
+                n_o_skip_sn--;
+                // skip (do not send)
+                continue;
+            } else if(n_o_rest_sn) {
+                n_o_rest_sn--;
+                // fall through (send to remaining supernode)
+            } else {
+                // done with the remaining (do not send anymore)
+                break;
+            }
             sendto_sock(eee->udp_sock, pktbuf, idx, &(peer->sock));
         }
     }

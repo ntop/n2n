@@ -601,6 +601,7 @@ typedef struct n2n_edge_conf {
     n2n_auth_t         auth;
     filter_rule_t      *network_traffic_filter_rules;
     int                metric;                /**< Network interface metric (Windows only). */
+    uint8_t            number_max_sn_pings;   /**< Number of maximum concurrently allowed supernode pings. */
 } n2n_edge_conf_t;
 
 
