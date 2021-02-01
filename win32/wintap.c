@@ -315,16 +315,17 @@ int open_wintap(struct tuntap_dev *device,
 
   /* metric */
 
-  device->metric = metric;
+  if(metric) { /* try to change only if a value has been given, otherwise leave with default or as set before */
+    device->metric = metric;
 
-  _snprintf(cmd, sizeof(cmd),
-    "netsh interface ipv4 set interface \"%s\" metric=%d > nul",
-    device->ifName, device->metric);
+    _snprintf(cmd, sizeof(cmd),
+      "netsh interface ipv4 set interface \"%s\" metric=%d > nul",
+      device->ifName, device->metric);
 
-  if(system(cmd) != 0)
-    printf("WARNING: Unable to set device %s parameters metric=%d [%s]\n",
-      device->ifName, device->metric, cmd);
-
+    if(system(cmd) != 0)
+      printf("WARNING: Unable to set device %s parameters metric=%d [%s]\n",
+        device->ifName, device->metric, cmd);
+  }
 
   /* ****************** */
 
