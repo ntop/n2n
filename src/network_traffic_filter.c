@@ -156,7 +156,7 @@ void collect_packet_info (packet_address_proto_info_t* out_info, unsigned char *
         out_info->proto = FPP_UNKNOWN;
         break;
     default:
-        printf("EtherType 0x%04X", ether_type);
+        traceEvent(TRACE_DEBUG, "collect_packet_info stumbled across the unknown ether type 0x%04X", ether_type);
     };
 }
 
