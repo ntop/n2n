@@ -165,7 +165,7 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #endif
 
 #define SN_SELECTION_CRITERION_DATA_TYPE    uint32_t
-#define SN_SELECTION_CRITERION_BUF_SIZE     14
+#define SN_SELECTION_CRITERION_BUF_SIZE     16
 
 #define N2N_TRANSFORM_ID_USER_START         64
 #define N2N_TRANSFORM_ID_MAX                65535

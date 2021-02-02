@@ -820,7 +820,6 @@ void send_query_peer (n2n_edge_t * eee,
         // skip a random number of supernodes between top and remaining
         n_o_skip_sn = HASH_COUNT(eee->conf.supernodes) - n_o_pings;
         n_o_skip_sn = (n_o_skip_sn < 0) ? 0 : n2n_rand_sqr(n_o_skip_sn);
-
         HASH_ITER(hh, eee->conf.supernodes, peer, tmp) {
             if(n_o_top_sn) {
                 n_o_top_sn--;
@@ -1387,6 +1386,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     time_t now;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
+    char time_buf[10]; /* 9 digits + 1 terminating zero */
     /* dec_ip_bit_str_t ip_bit_str = {'\0'}; */
     /* dec_ip_str_t ip_str = {'\0'}; */
     in_addr_t net;
@@ -1467,47 +1467,53 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     msg_len = 0;
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "community: %s\n",
+                        "community: %s\n\n",
                         eee->conf.community_name);
+   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+                        "  id    tun_tap          MAC                edge                   hint             last_seen\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "    id    tun_tap          MAC                edge                 hint               last_seen\n");
-    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "-----------------------------------------------------------------------------------------------\n");
+                        "=============================================================================================\n");
 
+    // dump nodes with forwarding through supernodes
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "supernode_forward:\n");
     num = 0;
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
         ++num_pending_peers;
-        if(peer->dev_addr.net_addr == 0) continue;
         net = htonl(peer->dev_addr.net_addr);
+        sprintf (time_buf, "%9u", now - peer->last_seen);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "    %-4u  %-15s  %-17s  %-21s %-15s    %lu\n",
-                            ++num, inet_ntoa(*(struct in_addr *) &net),
+                            "  %4u  %-15s  %-17s  %-21s  %-15s  %9s\n",
+                            ++num,
+                            (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
                             macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
                             peer->dev_desc,
-                            now - peer->last_seen);
+                            (peer->last_seen) ? time_buf : "");
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
         msg_len = 0;
     }
 
+    // dump peer-to-peer nodes
+    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+                        "---------------------------------------------------------------------------------------------\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "peer_to_peer:\n");
     num = 0;
     HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
         ++num_known_peers;
-        if(peer->dev_addr.net_addr == 0) continue;
         net = htonl(peer->dev_addr.net_addr);
+        sprintf (time_buf, "%9u", now - peer->last_seen);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "    %-4u  %-15s  %-17s  %-21s %-15s    %lu\n",
-                            ++num, inet_ntoa(*(struct in_addr *) &net),
+                            "  %4u  %-15s  %-17s  %-21s  %-15s  %9s\n",
+                            ++num,
+                            (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
                             macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
                             peer->dev_desc,
-                            now - peer->last_seen);
+                            (peer->last_seen) ? time_buf : "");
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1516,30 +1522,31 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     // dump supernodes
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "-----------------------------------------------------------------------------------------------\n");
+                        "---------------------------------------------------------------------------------------------\n");
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "supernodes:\n");
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
+        sprintf (time_buf, "%9u", now - peer->last_seen);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "    %-4u  %-15s  %-17s  %-21s %-14s    %lu\n",
+                            "  %4u  %-15s  %-17s  %-21s  %-15s  %9s\n",
                             ++num,
-                            (peer->purgeable == SN_UNPURGEABLE) ? "-l " : "    ",
-                            macaddr_str(mac_buf, peer->mac_addr),
+                            (peer->purgeable == SN_UNPURGEABLE) ? "-l" : "",
+                            is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
                             sn_selection_criterion_str(sel_buf, peer),
-                            now - peer->last_seen);
+                            (peer->last_seen) ? time_buf : "");
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
         msg_len = 0;
     }
-// end dump supernodes
 
+    // further stats
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "-----------------------------------------------------------------------------------------------\n");
+                        "=============================================================================================\n");
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "uptime %lu | ",
@@ -2178,7 +2185,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                                     sprintf (sn->ip_addr, "%s:%u", sn->ip_addr, (uint16_t)(payload->sock.port));
                                 }
                                 sn_selection_criterion_default(&(sn->selection_criterion));
-                                sn->last_seen = now - LAST_SEEN_SN_NEW;
+                                sn->last_seen = 0; /* as opposed to payload handling in supernode */
                                 traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
                             }
                             // shift to next payload entry
