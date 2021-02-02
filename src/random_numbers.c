@@ -155,17 +155,14 @@ uint64_t n2n_seed (void) {
     }
 #endif
 
-// the following WIN32 code is still untested and thus commented
-/*
 #ifdef WIN32
     HCRYPTPROV crypto_provider;
-    CryptAcquireContext (&crypto_provider, NULL, (LPCWSTR)L"Microsoft Base Cryptographic Provider v1.0",
+    CryptAcquireContext (&crypto_provider, NULL, NULL,
                          PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
     CryptGenRandom (crypto_provider, 8, &seed);
     CryptReleaseContext (crypto_provider, 0);
     ret += seed;
 #endif
-*/
 
     seed  = time(NULL);             /* UTC in seconds */
     ret  += seed;

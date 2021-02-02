@@ -43,12 +43,9 @@
 #include <immintrin.h>  /* _rdrand64_step, rdseed4_step */
 #endif
 
-// the WIN32 code is still untested and thus commented, also see random_numbers.c
-/*
 #if defined (WIN32)
 #include <Wincrypt.h>   // HCTYPTPROV, Crypt*-functions
 #endif
-*/
 
 
 typedef struct rn_generator_state_t {
