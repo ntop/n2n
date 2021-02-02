@@ -8,7 +8,7 @@ For MacOS and Windows there are specific instructions; please see the [Building]
 
 If the OS specific driver allows **naming** the virtual Ethernet device created by n2n, the `-d <device>` command-line option can be used to give a name, e.g. `-d n2n0`. This device name makes the virtual ethernet device easily accessible to all `ip` command activity, `iptables`, `tcpdump` and any other of your preferred network tools. It defaults to `edge0` if not provided through `-d`.
 
-One exception applies to Windows: As the installed TAP driver(s) come with fixed names, `-d <device>` is used to **choose** the device and pass its name to n2n. This is only required if more than one TAP devices are present. To help with it, `edge --help` lists the available TAP adapters at the bottom of its output (Windows only).
+One exception applies to Windows: As the installed TAP driver(s) come with fixed names, `-d <device>` **selects** the appropriate device by name out of the present ones. This is only required if more than one TAP devices are present. To help with it, `edge --help` lists the available TAP adapters at the bottom of its output (Windows only).
 
 ## MAC
 
@@ -28,7 +28,7 @@ The netmask in CIDR notation can optionally be appended to the address, e.g. `-a
 
 If `-a` is omitted, the supernode assigns an IP address to the node. This feature uses different IP address pools on a per-community basis. So, all edges of the same community will find themselves in the same sub-network.
 
-By default, `/24`-sized IP address sub-network pools from the upper half of the `10.0.0.0` class A network will be used, that is from `10.128.0.0/24` … `10.255.255.0/24`. The supernode can be configured to assign addresses from a different network range: `-d 10.0.0.0-10.255.0.0/16` would the supernode make use of the complete `10.0.0.0` class A range but handle `/16`-sized sub-networks. Also, named communities could be pre-assigned certain sub-networks, please see the explanatory comments in the `community.list` file.
+By default, `/24`-sized IP address sub-network pools from the upper half of the `10.0.0.0` class A network will be used, that is from `10.128.0.0/24` … `10.255.255.0/24`. The supernode can be configured to assign addresses from a different network range: `-a 10.0.0.0-10.255.0.0/16` would the supernode make use of the complete `10.0.0.0` class A range but handle `/16`-sized sub-networks. Also, named communities could be pre-assigned certain sub-networks, please see the explanatory comments in the `community.list` file.
 
 ### DHCP
 
@@ -49,7 +49,7 @@ on hostA:
 `[hostA] $ /sbin/ip -6 addr add fc00:abcd:1234::7/48 dev n2n0`
 
 on hostB:
-`[hostB] $ /sbin/ip -6 addr add fc00​:abcd:​1234::6/48 dev n2n0`
+`[hostB] $ /sbin/ip -6 addr add fc00:abcd:1234::6/48 dev n2n0`
 
 You may find it useful to make use of `tunctl` from the uml-utilities
 package. `tunctl` allows you to bring up a TAP interface and configure addressing
@@ -117,14 +117,16 @@ specify the MTU (`-M <mtu>`) and re-enable PMTU discovery (`-D`) via the command
 
 ## Interface Metric and Broadcasts
 
-On Windows, broadcasts are only sent out to the network interface with the lowest metric only. This usually is the
+On Windows, broadcasts are sent out to the network interface with the lowest metric only. This usually is the
 WAN interface with its default metric of `25`. The `-x <metric>` option could be used to configure the TAP with a
 lower interface metric and hence facilitate service and online game server detection over n2n.
 
 Linux and others do not require this feature as broadcasts are sent to all network interfaces by default, also to the
 virtual ones.
 
-However, n2n does not transmit broadcast packets by default. It can be enabled by edge's `-E` command-line parameter.
+## Multicast
+
+n2n does not transmit multicast packets by default. It can be enabled by edge's `-E` command-line parameter.
 
 ## Egde Description
 
@@ -133,12 +135,11 @@ fed to the edge by the optional `-I <edge description>` command-line parameter. 
 hostname by default.
 
 A description field's hash value is used to choose an auto IP address. So, just be aware that changing the hostname
-can lead to assigning a different auto IP address on next edge start-up – if auto IP is used.
+can lead to assigning a different auto IP address on next edge start-up – if auto IP address is used.
 
 ## Routing
 
-n2n supports routing the traffic through its network. `-r` enables an edge to accept packets at its TAP interface which are destined to IP addresses of other networks as well.
-As there is more to routing than just this one command-line option, please refer to the dedicated [Routing](Routing.md) document
+n2n supports routing the traffic through its network. `-r` enables an edge to accept packets at its TAP interface not originating from the local IP address or not destined to the local IP address. As there is more to routing than just this one command-line option, please refer to the dedicated [Routing](Routing.md) document
 explaining it all in detail.
 
 ## Traffic Filter
