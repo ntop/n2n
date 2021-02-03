@@ -266,20 +266,18 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     if(eee->transop.no_encryption)
         traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
+    // setup authenitcation scheme
+    eee->conf.auth.scheme = n2n_auth_simple_id;
+    for(idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx) {
+        eee->conf.auth.token[idx] = n2n_rand() % 0xff;
+    }
+    eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
+
     // first time calling edge_init_sockets needs -1 in the sockets for it does throw an error
     // on trying to close them (open_sockets does so for also being able to RE-open the sockets
     // if called in-between, see "Supernode not responding" in update_supernode_reg(...)
     eee->udp_sock = -1;
     eee->udp_mgmt_sock = -1;
-
-    eee->conf.auth.scheme = n2n_auth_simple_id;
-
-    for(idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx) {
-        eee->conf.auth.token[idx] = n2n_rand() % 0xff;
-    }
-
-    eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
-
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
     eee->udp_multicast_sock = -1;
 #endif
@@ -616,6 +614,27 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
         traceEvent(TRACE_DEBUG, "Failed to find sender in pending_peers.");
 }
 
+
+// provides the current / a new local auth token
+// REVISIT: behavior should depend on some local auth scheme setting (to be implemented)
+static int get_local_auth (n2n_edge_t *eee, n2n_auth_t *auth) {
+
+    // n2n_auth_simple_id scheme
+    memcpy(auth, &(eee->conf.auth), sizeof(n2n_auth_t));
+
+    return 0;
+}
+
+
+// handles an returning (remote) auth token, takes action as required by auth scheme, and
+// REVISIT: behavior should depend on some local auth scheme setting (to be implemented)
+static int handle_remote_auth (n2n_edge_t *eee, struct peer_info *peer, const n2n_auth_t *remote_auth) {
+
+    // n2n_auth_simple_id scheme: no action required
+    return 0;
+}
+
+
 /* ************************************** */
 
 int is_empty_ip_address (const n2n_sock_t * sock) {
@@ -869,7 +888,7 @@ void send_register_super (n2n_edge_t *eee) {
     reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
     reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
     memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
-    memcpy(&(reg.auth), &(eee->conf.auth), sizeof(n2n_auth_t));
+    get_local_auth(eee, &(reg.auth));
 
     idx = 0;
     encode_mac(reg.edgeMac, &idx, eee->device.mac_addr);
@@ -905,8 +924,7 @@ static void send_unregister_super (n2n_edge_t *eee) {
     cmn.pc = n2n_unregister_super;
     cmn.flags = 0;
     memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
-
-    memcpy(&(unreg.auth), &(eee->conf.auth), sizeof(n2n_auth_t));
+    get_local_auth(eee, &(unreg.auth));
 
     idx = 0;
     encode_mac(unreg.srcMac, &idx, eee->device.mac_addr);
@@ -2163,8 +2181,11 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
 
                     if(0 == memcmp(ra.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
 
+                        handle_remote_auth(eee, sn, &(ra.auth));
+
                         payload = (n2n_REGISTER_SUPER_ACK_payload_t*)tmpbuf;
 
+                        // from here on, 'sn' gets used differently
                         for(i = 0; i < ra.num_sn; i++) {
                             skip_add = SN_ADD;
                             sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), payload->mac, &skip_add);
