@@ -1467,23 +1467,23 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     msg_len = 0;
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "community: %s\n\n",
+                        "COMMUNITY '%s'\n\n",
                         eee->conf.community_name);
    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "  id    tun_tap          MAC                edge                   hint             last_seen\n");
+                        " ### | TAP             | MAC               | EDGE                  | HINT            | LAST SEEN\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "=============================================================================================\n");
+                        "================================================================================================\n");
 
     // dump nodes with forwarding through supernodes
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "supernode_forward:\n");
+                        "SUPERNODE FORWARD\n");
     num = 0;
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
         ++num_pending_peers;
         net = htonl(peer->dev_addr.net_addr);
         sprintf (time_buf, "%9u", now - peer->last_seen);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "  %4u  %-15s  %-17s  %-21s  %-15s  %9s\n",
+                            "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
                             (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
                             macaddr_str(mac_buf, peer->mac_addr),
@@ -1498,16 +1498,16 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     // dump peer-to-peer nodes
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "---------------------------------------------------------------------------------------------\n");
+                        "------------------------------------------------------------------------------------------------\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "peer_to_peer:\n");
+                        "PEER TO PEER\n");
     num = 0;
     HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
         ++num_known_peers;
         net = htonl(peer->dev_addr.net_addr);
         sprintf (time_buf, "%9u", now - peer->last_seen);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "  %4u  %-15s  %-17s  %-21s  %-15s  %9s\n",
+                            "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
                             (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
                             macaddr_str(mac_buf, peer->mac_addr),
@@ -1522,16 +1522,16 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     // dump supernodes
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "---------------------------------------------------------------------------------------------\n");
+                        "------------------------------------------------------------------------------------------------\n");
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "supernodes:\n");
+                        "SUPERNODES\n");
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
         sprintf (time_buf, "%9u", now - peer->last_seen);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "  %4u  %-15s  %-17s  %-21s  %-15s  %9s\n",
+                            "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
                             (peer->purgeable == SN_UNPURGEABLE) ? "-l" : "",
                             is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
@@ -1546,7 +1546,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     // further stats
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "=============================================================================================\n");
+                        "================================================================================================\n");
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "uptime %lu | ",
