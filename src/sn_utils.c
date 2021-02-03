@@ -52,6 +52,7 @@ static int update_edge (n2n_sn_t *sss,
                         const n2n_REGISTER_SUPER_t* reg,
                         struct sn_community *comm,
                         const n2n_sock_t *sender_sock,
+                        n2n_auth_t *answer_auth,
                         int skip_add,
                         time_t now);
 
@@ -288,11 +289,9 @@ int sn_init(n2n_sn_t *sss) {
 
     /* Random auth token */
     sss->auth.scheme = n2n_auth_simple_id;
-
     for(idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx) {
         sss->auth.token[idx] = n2n_rand() % 0xff;
     }
-
     sss->auth.toksize = sizeof(sss->auth.token);
 
     /* Random MAC address */
@@ -357,15 +356,52 @@ static uint16_t reg_lifetime (n2n_sn_t *sss) {
     return 15;
 }
 
+
 /** Compare two authentication tokens. It is called by update_edge
     * and in UNREGISTER_SUPER handling to compare the stored auth token
     * with the one received from the packet.
     */
-static int auth_edge (const n2n_auth_t *auth1, const n2n_auth_t *auth2) {
+static int auth_edge (const n2n_auth_t *auth1, const n2n_auth_t *auth2, n2n_auth_t *answer_auth) {
 
-    /* 0 = success (tokens are equal). */
-    return (memcmp(auth1, auth2, sizeof(n2n_auth_t)));
+    if((auth1->scheme == n2n_auth_simple_id) && (auth2->scheme == n2n_auth_simple_id)) {
+        // n2n_auth_simple_id scheme: if required, zero_token answer (not for NAK)
+        if(answer_auth)
+            memset(answer_auth, 0, sizeof(n2n_auth_t));
+
+        // 0 = success (tokens are equal)
+        return (memcmp(auth1, auth2, sizeof(n2n_auth_t)));
+    }
+
+   // if not successful earlier: failure
+   return -1;
 }
+
+
+// provides the current / a new local auth token
+// REVISIT: behavior should depend on some local auth scheme setting (to be implemented)
+static int get_local_auth (n2n_sn_t *sss, n2n_auth_t *auth) {
+
+    // n2n_auth_simple_id scheme
+    memcpy(auth, &(sss->auth), sizeof(n2n_auth_t));
+
+    return 0;
+}
+
+
+// handles an incoming (remote) auth token, takes action as required by auth scheme, and
+// could provide an answer auth token for use in REGISTER_SUPER_ACK
+// REVISIT: behavior should depend on some local auth scheme setting (to be implemented)
+static int handle_remote_auth (n2n_sn_t *sss, struct peer_info *peer, const n2n_auth_t *remote_auth,
+                                                                            n2n_auth_t *answer_auth) {
+
+    // n2n_auth_simple_id scheme: store the arrived token
+    memcpy(&(peer->auth), remote_auth, sizeof(n2n_auth_t));
+    // n2n_auth_simple_id scheme: zero_token answer
+    memset(answer_auth, 0, sizeof(n2n_auth_t));
+
+    return 0;
+}
+
 
 /** Update the edge table with the details of the edge which contacted the
  *    supernode. */
@@ -373,6 +409,7 @@ static int update_edge (n2n_sn_t *sss,
                         const n2n_REGISTER_SUPER_t* reg,
                         struct sn_community *comm,
                         const n2n_sock_t *sender_sock,
+                        n2n_auth_t *answer_auth,
                         int skip_add,
                         time_t now) {
 
@@ -411,7 +448,7 @@ static int update_edge (n2n_sn_t *sss,
             memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
             memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
             memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
-            memcpy(&(scan->auth), &(reg->auth), sizeof(n2n_auth_t));
+            handle_remote_auth(sss, scan, &(reg->auth), answer_auth);
             scan->last_valid_time_stamp = initial_time_stamp();
 
             HASH_ADD_PEER(comm->edges, scan);
@@ -424,7 +461,7 @@ static int update_edge (n2n_sn_t *sss,
     } else {
         /* Known */
         if(!sock_equal(sender_sock, &(scan->sock))) {
-            if((auth = auth_edge(&(scan->auth), &(reg->auth))) == 0) {
+            if((auth = auth_edge(&(scan->auth), &(reg->auth), answer_auth)) == 0) {
                 memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
                 memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
 
@@ -696,7 +733,7 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
             memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
             reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
             reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
-            memcpy(&(reg.auth), &(sss->auth), sizeof(n2n_auth_t));
+            get_local_auth(sss, &(reg.auth));
 
             idx = 0;
             encode_mac(reg.edgeMac, &idx, sss->mac_addr);
@@ -1340,9 +1377,9 @@ static int process_udp (n2n_sn_t * sss,
 
                 if(!is_null_mac(reg.edgeMac)) {
                     if(cmn.flags & N2N_FLAGS_SOCKET) {
-                        ret_value = update_edge(sss, &reg, comm, &(ack.sock), SN_ADD_SKIP, now);
+                        ret_value = update_edge(sss, &reg, comm, &(ack.sock), &(ack.auth), SN_ADD_SKIP, now);
                     } else {
-                        ret_value = update_edge(sss, &reg, comm, &(ack.sock), SN_ADD, now);
+                        ret_value = update_edge(sss, &reg, comm, &(ack.sock), &(ack.auth), SN_ADD, now);
                     }
                 }
 
@@ -1451,7 +1488,7 @@ static int process_udp (n2n_sn_t * sss,
 
             HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
             if(peer != NULL) {
-                if((auth = auth_edge(&(peer->auth), &unreg.auth)) == 0) {
+                if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL)) == 0) {
                     HASH_DEL(comm->edges, peer);
                 }
             }
