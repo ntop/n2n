@@ -735,11 +735,7 @@ int main (int argc, char * const argv[]) {
     }
 
     HASH_ITER(hh, sss_node.federation->edges, scan, tmp)
-{
-printf("!!! socket %u   ", scan->socket_fd);
         scan->socket_fd = sss_node.sock;
-printf("!!! socket %u\n", scan->socket_fd);
-}
 
 #ifndef WIN32
     if(((pw = getpwnam ("n2n")) != NULL) || ((pw = getpwnam ("nobody")) != NULL)) {
