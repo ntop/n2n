@@ -44,8 +44,9 @@ int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
 
 // forward declaration for use in main()
 void send_register_super (n2n_edge_t *eee);
-void send_query_peer (n2n_edge_t * eee, const n2n_mac_t dst_mac);
-
+void send_query_peer (n2n_edge_t *eee, const n2n_mac_t dst_mac);
+int supernode_connect (n2n_edge_t *eee);
+int supernode_disconnect (n2n_edge_t *eee);
 
 /* ***************************************************** */
 
@@ -159,7 +160,6 @@ static void help (int level) {
 #ifndef __APPLE__
                "[-D] "
 #endif
-               "[-S] "
             "\n options for under-   "
                "[-i <registration interval>]"
                "[-L <registration ttl>]"
@@ -168,6 +168,8 @@ static void help (int level) {
                "[-A<cipher>] "
                "[-H] "
                "[-z<compression>]"
+            "\n                      "
+               "[-S<level of solitude>]"
           "\n\n tap device and       "
                "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
             "\n overlay network      "
@@ -206,8 +208,7 @@ static void help (int level) {
 #ifndef __APPLE__
                                   "[-D]  enable PMTU discovery"
 #endif
-          "\n flag options         [-S]  do not connect p2p, always use supernode"
-          "\n                      [-H]  enable header encryption"
+          "\n flag options         [-H]  enable header encryption"
           "\n                      [-r]  enable packet forwarding through n2n community"
           "\n                      [-E]  accept multicast MAC addresses"
 #ifndef WIN32
@@ -240,7 +241,8 @@ static void help (int level) {
         printf(" -D                | enable PMTU discovery, it can reduce fragmentation but\n"
                "                   | causes connections to stall if not properly supported\n");
 #endif
-        printf(" -S                | do not connect p2p, always use the supernode\n");
+        printf(" -S1 ... -S2 or -S | -S1 or -S do not connect p2p, always use the supernode\n"
+               "                   | -S2 connects through TCP and only to the supernode\n");
         printf(" -i <reg_interval> | registration interval, for NAT hole punching (default\n"
                "                   | 20 seconds)\n");
         printf(" -L <reg_ttl>      | TTL for registration packet for NAT hole punching through\n"
@@ -593,7 +595,13 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 
         case 'S': {
-            conf->allow_p2p = 0;
+            int solitude_level = 1;
+            if(optargument)
+                solitude_level = atoi(optargument);
+            if(solitude_level >= 1)
+                conf->allow_p2p = 0;
+            if(solitude_level == 2)
+                conf->connect_tcp = 1;
             break;
         }
 
@@ -663,7 +671,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
     u_char c;
 
     while ((c = getopt_long(argc, argv,
-                            "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:R:"
+                            "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:S::DL:z::A::Hn:R:"
 #ifdef __linux__
                             "T:"
 #endif
@@ -944,7 +952,7 @@ int main (int argc, char* argv[]) {
     // is found
 
     // if more than one supernode given, find at least one who is alive to faster establish connection
-    if(HASH_COUNT(eee->conf.supernodes) <= 1) {
+    if((HASH_COUNT(eee->conf.supernodes) <= 1) || (eee->conf.connect_tcp)) {
         // skip the initial supernode ping
         traceEvent(TRACE_DEBUG, "Skip PING to supernode.");
         runlevel = 2;
@@ -952,6 +960,7 @@ int main (int argc, char* argv[]) {
 
     eee->last_sup = 0; /* if it wasn't zero yet */
     eee->curr_sn = eee->conf.supernodes;
+    supernode_connect(eee);
 
     while(runlevel < 5) {
 
@@ -974,7 +983,9 @@ int main (int argc, char* argv[]) {
                 // first answer
                 eee->sn_pong = 0;
                 sn_selection_sort(&(eee->conf.supernodes));
+                supernode_disconnect(eee);
                 eee->curr_sn = eee->conf.supernodes;
+                supernode_connect(eee);
                 traceEvent(TRACE_NORMAL, "Received first PONG from supernode [%s].", eee->curr_sn->ip_addr);
                 runlevel++;
             } else if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {

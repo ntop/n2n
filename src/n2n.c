@@ -28,13 +28,13 @@
 
 /* ************************************** */
 
-SOCKET open_socket (int local_port, int bind_any) {
+SOCKET open_socket (int local_port, int bind_any, int type /* 0 = UDP, TCP otherwise */) {
 
     SOCKET sock_fd;
     struct sockaddr_in local_address;
     int sockopt;
 
-    if((sock_fd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+    if((sock_fd = socket(PF_INET, ((type == 0) ? SOCK_DGRAM : SOCK_STREAM) , 0)) < 0) {
         traceEvent(TRACE_ERROR, "Unable to create socket [%s][%d]\n",
                    strerror(errno), sock_fd);
         return(-1);
@@ -59,6 +59,7 @@ SOCKET open_socket (int local_port, int bind_any) {
 
     return(sock_fd);
 }
+
 
 static int traceLevel = 2 /* NORMAL */;
 static int useSyslog = 0, syslog_opened = 0;
@@ -439,7 +440,9 @@ void print_n2n_version () {
 
 /* *********************************************** */
 
-size_t purge_expired_nodes (struct peer_info **peer_list, time_t *p_last_purge,
+size_t purge_expired_nodes (struct peer_info **peer_list,
+                            SOCKET socket_not_to_close,
+                            time_t *p_last_purge,
                             int frequency, int timeout) {
 
     time_t now = time(NULL);
@@ -451,7 +454,7 @@ size_t purge_expired_nodes (struct peer_info **peer_list, time_t *p_last_purge,
 
     traceEvent(TRACE_DEBUG, "Purging old registrations");
 
-    num_reg = purge_peer_list(peer_list, now - timeout);
+    num_reg = purge_peer_list(peer_list, socket_not_to_close, now - timeout);
 
     (*p_last_purge) = now;
     traceEvent(TRACE_DEBUG, "Remove %ld registrations", num_reg);
@@ -459,8 +462,10 @@ size_t purge_expired_nodes (struct peer_info **peer_list, time_t *p_last_purge,
     return num_reg;
 }
 
-/** Purge old items from the peer_list and return the number of items that were removed. */
+/** Purge old items from the peer_list, eventually close the related socket, and
+  * return the number of items that were removed. */
 size_t purge_peer_list (struct peer_info ** peer_list,
+                        SOCKET socket_not_to_close,
                         time_t purge_before) {
 
     struct peer_info *scan, *tmp;
@@ -468,6 +473,10 @@ size_t purge_peer_list (struct peer_info ** peer_list,
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
         if((scan->purgeable == SN_PURGEABLE) && (scan->last_seen < purge_before)) {
+            if((scan->socket_fd >=0) && (scan->socket_fd != socket_not_to_close)) {
+                shutdown(scan->socket_fd, SHUT_RDWR);
+                closesocket(scan->socket_fd);
+            }
             HASH_DEL(*peer_list, scan);
             retval++;
             free(scan);

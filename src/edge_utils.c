@@ -36,7 +36,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
                                             const n2n_desc_t *dev_desc,
                                             const n2n_sock_t *peer);
 
-static int edge_init_sockets (n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos);
+static int edge_init_sockets (n2n_edge_t *eee);
 static int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
 static void edge_cleanup_routes (n2n_edge_t *eee);
 
@@ -182,6 +182,73 @@ static int is_ip6_discovery (const void * buf, size_t bufsize) {
 
 /* ************************************** */
 
+// in case of TCP, 'connect()' is required
+int supernode_connect(n2n_edge_t *eee) {
+
+    int sockopt;
+
+    if(eee->udp_sock >= 0) {
+        shutdown(eee->udp_sock, SHUT_RDWR);
+        closesocket(eee->udp_sock);
+        eee->udp_sock = -1;
+    }
+
+    if(eee->conf.local_port > 0)
+        traceEvent(TRACE_NORMAL, "Binding to local port %d", eee->conf.local_port);
+
+    eee->udp_sock = open_socket(eee->conf.local_port, 1 /* bind ANY */, eee->conf.connect_tcp);
+
+    if(eee->udp_sock < 0) {
+        traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", eee->conf.local_port);
+        return -1;
+    }
+
+    struct sockaddr_in sock;
+    sock.sin_family = AF_INET;
+    sock.sin_port = htons(eee->curr_sn->sock.port);
+    memcpy(&(sock.sin_addr.s_addr), &(eee->curr_sn->sock.addr.v4), IPV4_SIZE);
+
+    if (eee->conf.connect_tcp) {
+        if(connect(eee->udp_sock, (struct sockaddr*)&(sock), sizeof(struct sockaddr)) < 0) {
+            eee->udp_sock = -1;
+            return -1;
+        }
+    }
+
+    if(eee->conf.tos) {
+        /* https://www.tucny.com/Home/dscp-tos */
+        sockopt = eee->conf.tos;
+
+        if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_TOS, (char *)&sockopt, sizeof(sockopt)) == 0)
+            traceEvent(TRACE_NORMAL, "TOS set to 0x%x", eee->conf.tos);
+        else
+            traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", eee->conf.tos, errno, strerror(errno));
+    }
+
+#ifdef IP_PMTUDISC_DO
+    sockopt = (eee->conf.disable_pmtu_discovery) ? IP_PMTUDISC_DONT : IP_PMTUDISC_DO;
+
+    if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_MTU_DISCOVER, &sockopt, sizeof(sockopt)) < 0)
+        traceEvent(TRACE_WARNING, "Could not %s PMTU discovery[%d]: %s",
+                   (eee->conf.disable_pmtu_discovery) ? "disable" : "enable", errno, strerror(errno));
+    else
+        traceEvent(TRACE_DEBUG, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
+#endif
+}
+
+
+void supernode_disconnect(n2n_edge_t *eee) {
+
+    if(eee->udp_sock >= 0) {
+        shutdown(eee->udp_sock, SHUT_RDWR);
+        closesocket(eee->udp_sock);
+        eee->udp_sock = -1;
+    }
+}
+
+
+/* ************************************** */
+
 /** Initialise an edge to defaults.
  *
  *    This also initialises the NULL transform operation opstruct.
@@ -282,7 +349,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
     eee->udp_multicast_sock = -1;
 #endif
-    if(edge_init_sockets(eee, eee->conf.local_port, eee->conf.mgmt_port, eee->conf.tos) < 0) {
+    if(edge_init_sockets(eee) < 0) {
         traceEvent(TRACE_ERROR, "socket setup failed");
         goto edge_init_error;
     }
@@ -725,6 +792,10 @@ static ssize_t sendto_sock (int fd, const void * buf,
         // Invalid socket
         return 0;
 
+    if(fd < 0)
+        // invalid socket file descriptor, e.g. TCP unconnected has fd of '-1'
+        return 0;
+
     fill_sockaddr((struct sockaddr *) &peer_addr,
                   sizeof(peer_addr),
                   dest);
@@ -952,8 +1023,9 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
     if(eee->curr_sn != eee->conf.supernodes) {
         // have not been connected to the best/top one
         send_unregister_super(eee);
-
+        supernode_disconnect(eee);
         eee->curr_sn = eee->conf.supernodes;
+        supernode_connect(eee);
         eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
         traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
@@ -1149,11 +1221,12 @@ void update_supernode_reg (n2n_edge_t * eee, time_t nowTime) {
 
     if(0 == eee->sup_attempts) {
         /* Give up on that supernode and try the next one. */
-        sn_selection_criterion_default(&(eee->curr_sn->selection_criterion));
+        sn_selection_criterion_bad(&(eee->curr_sn->selection_criterion));
         sn_selection_sort(&(eee->conf.supernodes));
+        supernode_disconnect(eee);
         eee->curr_sn = eee->conf.supernodes;
-
         traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
+        supernode_connect(eee);
 
         eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
@@ -1163,9 +1236,10 @@ void update_supernode_reg (n2n_edge_t * eee, time_t nowTime) {
         // privileges. as we are not able to check for sufficent privileges here, we only do it
         // if port is sufficently high or unset. uncovered: privileged port and sufficent privileges
         if((eee->conf.local_port == 0) || (eee->conf.local_port > 1024)) {
-            if(edge_init_sockets(eee, eee->conf.local_port, eee->conf.mgmt_port, eee->conf.tos) < 0) {
+            if(edge_init_sockets(eee) < 0) {
                 traceEvent(TRACE_ERROR, "socket re-initiliaization failed");
             }
+            supernode_connect(eee);
         }
 
     } else {
@@ -1972,18 +2046,28 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
         return; /* failed to receive data from UDP */
     }
 
+    // TCP recvlen == 0 means connection ended, e.g. supernode ended
+    if((recvlen == 0) && (eee->conf.connect_tcp)) {
+        supernode_disconnect(eee);
+    }
+
     /* REVISIT: when UDP/IPv6 is supported we will need a flag to indicate which
      * IP transport version the packet arrived on. May need to UDP sockets. */
 
     memset(&sender, 0, sizeof(n2n_sock_t));
 
-    sender.family = AF_INET; /* UDP socket was opened PF_INET v4 */
-    sender.port = ntohs(sender_sock.sin_port);
-    memcpy(&(sender.addr.v4), &(sender_sock.sin_addr.s_addr), IPV4_SIZE);
-
+    if(eee->conf.connect_tcp)
+        // TCP expects that we know our comm partner and does not deliver the sender
+        memcpy(&sender, &(eee->curr_sn->sock), sizeof(sender_sock));
+    else {
+        sender.family = AF_INET; /* UDP socket was opened PF_INET v4 */
+        sender.port = ntohs(sender_sock.sin_port);
+        memcpy(&(sender.addr.v4), &(sender_sock.sin_addr.s_addr), IPV4_SIZE);
+    }
     /* The packet may not have an orig_sender socket spec. So default to last
      * hop as sender. */
     orig_sender = &sender;
+
 
     traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
                (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
@@ -2402,10 +2486,12 @@ int run_edge_loop (n2n_edge_t * eee, int *keep_running) {
         time_t nowTime;
 
         FD_ZERO(&socket_mask);
-        FD_SET(eee->udp_sock, &socket_mask);
         FD_SET(eee->udp_mgmt_sock, &socket_mask);
-        max_sock = max(eee->udp_sock, eee->udp_mgmt_sock);
-
+        max_sock = eee->udp_mgmt_sock;
+        if(eee->udp_sock >= 0) {
+            FD_SET(eee->udp_sock, &socket_mask);
+            max_sock = max(eee->udp_sock, eee->udp_mgmt_sock);
+        }
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
         FD_SET(eee->udp_multicast_sock, &socket_mask);
         max_sock = max(eee->udp_sock, eee->udp_multicast_sock);
@@ -2431,7 +2517,7 @@ int run_edge_loop (n2n_edge_t * eee, int *keep_running) {
 
         if(rc > 0) {
             /* Any or all of the FDs could have input; check them all. */
-
+if(eee->udp_sock >= 0)
             if(FD_ISSET(eee->udp_sock, &socket_mask)) {
                 /* Read a cooked socket from the internet socket (unicast). Writes on the TAP
                  * socket. */
@@ -2469,9 +2555,13 @@ int run_edge_loop (n2n_edge_t * eee, int *keep_running) {
         /* Finished processing select data. */
         update_supernode_reg(eee, nowTime);
 
-        numPurged =  purge_expired_nodes(&eee->known_peers, &last_purge_known,
+        numPurged =  purge_expired_nodes(&eee->known_peers,
+                                         eee->udp_sock,
+                                         &last_purge_known,
                                          PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
-        numPurged += purge_expired_nodes(&eee->pending_peers, &last_purge_pending,
+        numPurged += purge_expired_nodes(&eee->pending_peers,
+                                         eee->udp_sock,
+                                         &last_purge_pending,
                                          PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
 
         if(numPurged > 0) {
@@ -2543,12 +2633,10 @@ void edge_term (n2n_edge_t * eee) {
 
 /* ************************************** */
 
-static int edge_init_sockets (n2n_edge_t *eee, int udp_local_port, int mgmt_port, uint8_t tos) {
+
+static int edge_init_sockets (n2n_edge_t *eee) {
 
     int sockopt;
-
-    if(eee->udp_sock >= 0)
-        closesocket(eee->udp_sock);
 
     if(eee->udp_mgmt_sock >= 0)
         closesocket(eee->udp_mgmt_sock);
@@ -2558,38 +2646,9 @@ static int edge_init_sockets (n2n_edge_t *eee, int udp_local_port, int mgmt_port
         closesocket(eee->udp_multicast_sock);
 #endif
 
-    if(udp_local_port > 0)
-        traceEvent(TRACE_NORMAL, "Binding to local port %d", udp_local_port);
-
-    eee->udp_sock = open_socket(udp_local_port, 1 /* bind ANY */);
-    if(eee->udp_sock < 0) {
-        traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", udp_local_port);
-        return(-1);
-    }
-
-    if(tos) {
-        /* https://www.tucny.com/Home/dscp-tos */
-        sockopt = tos;
-
-        if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_TOS, (char *)&sockopt, sizeof(sockopt)) == 0)
-            traceEvent(TRACE_NORMAL, "TOS set to 0x%x", tos);
-        else
-            traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", tos, errno, strerror(errno));
-    }
-
-#ifdef IP_PMTUDISC_DO
-    sockopt = (eee->conf.disable_pmtu_discovery) ? IP_PMTUDISC_DONT : IP_PMTUDISC_DO;
-
-    if(setsockopt(eee->udp_sock, IPPROTO_IP, IP_MTU_DISCOVER, &sockopt, sizeof(sockopt)) < 0)
-        traceEvent(TRACE_WARNING, "Could not %s PMTU discovery[%d]: %s",
-                   (eee->conf.disable_pmtu_discovery) ? "disable" : "enable", errno, strerror(errno));
-    else
-        traceEvent(TRACE_DEBUG, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
-#endif
-
-    eee->udp_mgmt_sock = open_socket(mgmt_port, 0 /* bind LOOPBACK */);
+    eee->udp_mgmt_sock = open_socket(eee->conf.mgmt_port, 0 /* bind LOOPBACK */, 0 /* UDP */);
     if(eee->udp_mgmt_sock < 0) {
-        traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", mgmt_port);
+        traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", eee->conf.mgmt_port);
         return(-2);
     }
 
@@ -2602,7 +2661,7 @@ static int edge_init_sockets (n2n_edge_t *eee, int udp_local_port, int mgmt_port
     eee->multicast_peer.addr.v4[2] = 0;
     eee->multicast_peer.addr.v4[3] = 68;
 
-    eee->udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */);
+    eee->udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */, 0 /* UDP */);
     if(eee->udp_multicast_sock < 0)
         return(-3);
     else {
@@ -3029,7 +3088,6 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         conf->encrypt_key = strdup(getenv("N2N_KEY"));
         conf->transop_id = N2N_TRANSFORM_ID_AES;
     }
-
     conf->metric = 0;
 }
 

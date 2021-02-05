@@ -207,7 +207,7 @@ void print_edge_stats (const n2n_edge_t *eee);
 char* sock_to_cstr (n2n_sock_str_t out,
                     const n2n_sock_t * sock);
 char * ip_subnet_to_str (dec_ip_bit_str_t buf, const n2n_ip_subnet_t *ipaddr);
-SOCKET open_socket (int local_port, int bind_any);
+SOCKET open_socket (int local_port, int bind_any, int type);
 int sock_equal (const n2n_sock_t * a,
                 const n2n_sock_t * b);
 
@@ -218,9 +218,14 @@ int time_stamp_verify_and_update (uint64_t stamp, uint64_t * previous_stamp, int
 
 /* Operations on peer_info lists. */
 size_t purge_peer_list (struct peer_info ** peer_list,
+                        SOCKET socket_not_to_close,
                         time_t purge_before);
 size_t clear_peer_list (struct peer_info ** peer_list);
-size_t purge_expired_nodes (struct peer_info **peer_list, time_t *p_last_purge, int frequency, int timeout);
+
+size_t purge_expired_nodes (struct peer_info **peer_list,
+                            SOCKET socket_not_to_close,
+                            time_t *p_last_purge,
+                            int frequency, int timeout);
 
 /* Edge conf */
 void edge_init_conf_defaults (n2n_edge_conf_t *conf);
