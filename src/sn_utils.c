@@ -1838,7 +1838,10 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         ssize_t bread;
         int max_sock;
         fd_set socket_mask;
-        n2n_tcp_connection_t *conn, *tmp;
+        n2n_tcp_connection_t *conn, *tmp_conn;
+        struct sn_community *comm, *tmp_comm;
+        struct peer_info *edge, *tmp_edge;
+
         SOCKET tmp_sock;
         n2n_sock_str_t sockbuf;
         struct timeval wait_time;
@@ -1853,7 +1856,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         max_sock = MAX(MAX(sss->sock, sss->mgmt_sock), sss->tcp_sock);
 
         // add the tcp connections' sockets
-        HASH_ITER(hh, sss->tcp_connections, conn, tmp) {
+        HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {
             //socket descriptor
             FD_SET(conn->socket_fd, &socket_mask);
             if(conn->socket_fd > max_sock)
@@ -1901,7 +1904,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
             }
 
             // the so far known tcp connections
-            HASH_ITER(hh, sss->tcp_connections, conn, tmp) {
+            HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {
                 if(FD_ISSET(conn->socket_fd, &socket_mask)) {
                     struct sockaddr_in sender_sock;
                     socklen_t i;
@@ -1910,26 +1913,33 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     bread = recvfrom(conn->socket_fd, pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
 
+                    // error
                     if((bread < 0)
 #ifdef WIN32
                        && (WSAGetLastError() != WSAECONNRESET)
 #endif
                       ) {
-                        /* For TCP bread of zero just means connection terminated */
-// !!! DELETE FROM TCP_CONNECTIONS HASH LIST
-// !!! CAN WE SET SOCKET_FD OF PEER_INFO TO -1 ?
-// !!!
                         traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
                         traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
                         *keep_running = 0;
                         break;
-                    }
 
-                    /* We have a datagram to process */
-                    if(bread > 0) {
-                        /* And the datagram has data (not just a header) */
+                    // for TCP bread of zero just means connection terminated
+                    } else if(bread == 0) {
+                        HASH_ITER(hh, sss->communities, comm, tmp_comm)
+                            HASH_ITER(hh, comm->edges, edge, tmp_edge) {
+                                if(edge->socket_fd == conn->socket_fd)
+                                    edge->socket_fd = -1;
+                            }
+                        shutdown(conn->socket_fd, SHUT_RDWR);
+                        closesocket(conn->socket_fd);
+                        HASH_DEL(sss->tcp_connections, conn);
+
+                    // bread > 0: we have a datagram to process...
+                    } else {
+                        // ...and the datagram has data (not just a header)
                         process_udp(sss, &sender_sock, conn->socket_fd, pktbuf, bread, now);
                     }
                 }
@@ -1946,7 +1956,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     conn = (n2n_tcp_connection_t*)malloc(sizeof(n2n_tcp_connection_t));
                     if(conn) {
                         conn->socket_fd = tmp_sock;
-                        HASH_ADD_PTR(sss->tcp_connections, socket_fd, conn);
+                        HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
                         traceEvent(TRACE_DEBUG, "run_sn_loop accepted incoming TCP connection from %s",
                                                 sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                     }
