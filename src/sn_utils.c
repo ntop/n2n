@@ -1525,10 +1525,22 @@ static int process_udp (n2n_sn_t * sss,
             traceEvent(TRACE_DEBUG, "Rx UNREGISTER_SUPER from %s",
                        macaddr_str(mac_buf, unreg.srcMac));
 
+// !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
+            n2n_tcp_connection_t *conn;
             HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
             if(peer != NULL) {
                 if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL)) == 0) {
+                    if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
+                        shutdown(peer->socket_fd, SHUT_RDWR);
+                        closesocket(peer->socket_fd);
+                        HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
+                        if(conn) {
+                            HASH_DEL(sss->tcp_connections, conn);
+                            free(conn);
+                        }
+                    }
                     HASH_DEL(comm->edges, peer);
+                    free(peer);
                 }
             }
 
@@ -1654,15 +1666,25 @@ static int process_udp (n2n_sn_t * sss,
             HASH_FIND_PEER(comm->edges, nak.srcMac, peer);
             if(comm->is_federation == IS_NO_FEDERATION) {
                 if(peer != NULL) {
-                    if((peer->socket_fd >= 0) && (peer->socket_fd != sss->sock)) {
-                        shutdown(peer->socket_fd, SHUT_RDWR);
-                        closesocket(peer->socket_fd);
-                    }
+// !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
+// !!! GIVE IT ITS OWN FUNCTION?
+                    n2n_tcp_connection_t *conn;
+                    if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL)) == 0) {
+                        if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
+                            shutdown(peer->socket_fd, SHUT_RDWR);
+                            closesocket(peer->socket_fd);
+                            HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
+                            if(conn) {
+                                HASH_DEL(sss->tcp_connections, conn);
+                                free(conn);
+                            }
+                        }
 // !!! THIS IS WHERE THE NAK MUST BE FORWARDED TO ORIGINATING SUPERNODE
-                    HASH_DEL(comm->edges, peer);
+                        HASH_DEL(comm->edges, peer);
+                        free(peer);
+                    }
                 }
             }
-
             break;
         }
 
@@ -1915,26 +1937,29 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     i = sizeof(sender_sock);
                     bread = recvfrom(conn->socket_fd, pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
-                    // error
-                    if((bread < 0)
+
+                    // error and
+                    // for TCP bread of zero just means connection terminated
+                    if((bread <= 0)
 #ifdef WIN32
-                       && (WSAGetLastError() != WSAECONNRESET)
+// !!! CONNECTION RESET SHALL NOT BE IGNORED
+// !!!                    && (WSAGetLastError() != WSAECONNRESET)
 #endif
                       ) {
                         traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
                         traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
-                        *keep_running = 0;
-                        break;
 
-                    // for TCP bread of zero just means connection terminated
-                    } else if(bread == 0) {
+                        // forget about this peer...
                         HASH_ITER(hh, sss->communities, comm, tmp_comm)
                             HASH_ITER(hh, comm->edges, edge, tmp_edge) {
-                                if(edge->socket_fd == conn->socket_fd)
-                                    edge->socket_fd = -1;
+                                if(edge->socket_fd == conn->socket_fd) {
+                                    HASH_DEL(comm->edges, edge);
+                                    free(edge);
+                                }
                             }
+                        // ...and the connection
                         shutdown(conn->socket_fd, SHUT_RDWR);
                         closesocket(conn->socket_fd);
                         HASH_DEL(sss->tcp_connections, conn);
