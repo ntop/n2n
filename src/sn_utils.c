@@ -1669,20 +1669,18 @@ static int process_udp (n2n_sn_t * sss,
 // !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
 // !!! GIVE IT ITS OWN FUNCTION?
                     n2n_tcp_connection_t *conn;
-                    if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL)) == 0) {
-                        if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
-                            shutdown(peer->socket_fd, SHUT_RDWR);
-                            closesocket(peer->socket_fd);
-                            HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
-                            if(conn) {
-                                HASH_DEL(sss->tcp_connections, conn);
-                                free(conn);
-                            }
+                    if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
+                        shutdown(peer->socket_fd, SHUT_RDWR);
+                        closesocket(peer->socket_fd);
+                        HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
+                        if(conn) {
+                            HASH_DEL(sss->tcp_connections, conn);
+                            free(conn);
                         }
-// !!! THIS IS WHERE THE NAK MUST BE FORWARDED TO ORIGINATING SUPERNODE
-                        HASH_DEL(comm->edges, peer);
-                        free(peer);
                     }
+// !!! THIS IS WHERE THE NAK MUST BE FORWARDED TO ORIGINATING SUPERNODE
+                    HASH_DEL(comm->edges, peer);
+                    free(peer);
                 }
             }
             break;
