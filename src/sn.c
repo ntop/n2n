@@ -719,7 +719,8 @@ int main (int argc, char * const argv[]) {
     } else {
         traceEvent(TRACE_NORMAL, "supernode opened TCP %u (aux)", sss_node.lport);
     }
-    if(-1 == listen(sss_node.tcp_sock, 1 /* !!! check this value !!! */)) {
+// !!! CHECK THE VALUE OF 'number of allowed connections': 1 OR 3?
+    if(-1 == listen(sss_node.tcp_sock, 3)) {
         traceEvent(TRACE_ERROR, "Failed to listen on auxiliary TCP socket. %s", strerror(errno));
         exit(-2);
     } else {

@@ -1379,6 +1379,8 @@ static int process_udp (n2n_sn_t * sss,
                 if(comm->is_federation == IS_FEDERATION) {
                     skip_add = SN_ADD;
                     p = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(ack.sock), reg.edgeMac, &skip_add);
+// !!! OTHER SUPERNODES COMMUNICATE VIA STANDARD UDP SOCKET
+                    p->socket_fd = sss->sock;
                 }
 
                 /* Skip random numbers of supernodes before payload assembling, calculating an appropriate random_number.
@@ -1600,7 +1602,8 @@ static int process_udp (n2n_sn_t * sss,
             for(i = 0; i < ack.num_sn; i++) {
                 skip_add = SN_ADD;
                 tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), payload->mac, &skip_add);
-                tmp->socket_fd = -1;
+// !!! OTHER SUPERNODES COMMUNICATE VIA STANDARD UDP SOCKET
+                tmp->socket_fd = sss->sock;
 
                 if(skip_add == SN_ADD_ADDED) {
                     tmp->last_seen = now - LAST_SEEN_SN_NEW;
@@ -1912,7 +1915,6 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     i = sizeof(sender_sock);
                     bread = recvfrom(conn->socket_fd, pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
-
                     // error
                     if((bread < 0)
 #ifdef WIN32
@@ -1936,11 +1938,13 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                         shutdown(conn->socket_fd, SHUT_RDWR);
                         closesocket(conn->socket_fd);
                         HASH_DEL(sss->tcp_connections, conn);
+                        free(conn);
 
                     // bread > 0: we have a datagram to process...
                     } else {
                         // ...and the datagram has data (not just a header)
-                        process_udp(sss, &sender_sock, conn->socket_fd, pktbuf, bread, now);
+                        process_udp(sss, (struct sockaddr_in*)&(conn->sock), conn->socket_fd, pktbuf, bread, now);
+
                     }
                 }
             }
@@ -1952,10 +1956,11 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
 
                 i = sizeof(sender_sock);
                 tmp_sock = accept(sss->tcp_sock, (struct sockaddr *)&sender_sock, (socklen_t *)&i);
-                if(tmp_sock > 0) {
+                if(tmp_sock >= 0) {
                     conn = (n2n_tcp_connection_t*)malloc(sizeof(n2n_tcp_connection_t));
                     if(conn) {
                         conn->socket_fd = tmp_sock;
+                        memcpy(&(conn->sock), &sender_sock, sizeof(struct sockaddr));
                         HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
                         traceEvent(TRACE_DEBUG, "run_sn_loop accepted incoming TCP connection from %s",
                                                 sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));

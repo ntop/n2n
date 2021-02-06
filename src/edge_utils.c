@@ -188,7 +188,8 @@ int supernode_connect(n2n_edge_t *eee) {
     int sockopt;
 
     if(eee->udp_sock >= 0) {
-        shutdown(eee->udp_sock, SHUT_RDWR);
+// !!! DO NOT SHUTDOWN CLIENT SOCKET?
+// !!!  shutdown(eee->udp_sock, SHUT_RDWR);
         closesocket(eee->udp_sock);
         eee->udp_sock = -1;
     }
@@ -208,8 +209,11 @@ int supernode_connect(n2n_edge_t *eee) {
     sock.sin_port = htons(eee->curr_sn->sock.port);
     memcpy(&(sock.sin_addr.s_addr), &(eee->curr_sn->sock.addr.v4), IPV4_SIZE);
 
+// !!! SET SOCKET TO O_NONBLOCK SO CONNECT DOES NOT HANG. REQUIRES CHECKING THE SOCKET FOR READINESS BEFORE SENDING
     if (eee->conf.connect_tcp) {
-        if(connect(eee->udp_sock, (struct sockaddr*)&(sock), sizeof(struct sockaddr)) < 0) {
+        fcntl(eee->udp_sock, F_SETFL, O_NONBLOCK);
+        if((connect(eee->udp_sock, (struct sockaddr*)&(sock), sizeof(struct sockaddr)) < 0)
+           && (errno != EINPROGRESS)) {
             eee->udp_sock = -1;
             return -1;
         }
@@ -224,7 +228,6 @@ int supernode_connect(n2n_edge_t *eee) {
         else
             traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", eee->conf.tos, errno, strerror(errno));
     }
-
 #ifdef IP_PMTUDISC_DO
     sockopt = (eee->conf.disable_pmtu_discovery) ? IP_PMTUDISC_DONT : IP_PMTUDISC_DO;
 
@@ -234,13 +237,16 @@ int supernode_connect(n2n_edge_t *eee) {
     else
         traceEvent(TRACE_DEBUG, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
 #endif
+
+    return 0;
 }
 
 
 void supernode_disconnect(n2n_edge_t *eee) {
 
     if(eee->udp_sock >= 0) {
-        shutdown(eee->udp_sock, SHUT_RDWR);
+// !!! DO NOT SHUTDOWN CLIENT SOCKET?
+// !!!  shutdown(eee->udp_sock, SHUT_RDWR);
         closesocket(eee->udp_sock);
         eee->udp_sock = -1;
     }
@@ -782,7 +788,7 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
 /* ************************************** */
 
 /** Send a datagram to a socket defined by a n2n_sock_t */
-static ssize_t sendto_sock (int fd, const void * buf,
+static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
                             size_t len, const n2n_sock_t * dest) {
 
     struct sockaddr_in peer_addr;
@@ -792,7 +798,7 @@ static ssize_t sendto_sock (int fd, const void * buf,
         // Invalid socket
         return 0;
 
-    if(fd < 0)
+    if(eee->udp_sock < 0)
         // invalid socket file descriptor, e.g. TCP unconnected has fd of '-1'
         return 0;
 
@@ -800,7 +806,22 @@ static ssize_t sendto_sock (int fd, const void * buf,
                   sizeof(peer_addr),
                   dest);
 
-    sent = sendto(fd, buf, len, 0/*flags*/,
+// !!! WAIT UNTIL WRITABLE (SOCKET IS SET TO O_NONBLOCK, COULD REQUIRE WAIT TIME DIRECTLY AFTER (RE-)OPENING
+int rc = 1;
+if(eee->conf.connect_tcp) {
+fd_set socket_mask;
+struct timeval wait_time;
+
+FD_ZERO(&socket_mask);
+FD_SET(eee->udp_sock, &socket_mask);
+wait_time.tv_sec = 0;
+wait_time.tv_usec = 500000;
+rc = select(eee->udp_sock + 1, NULL, &socket_mask, NULL, &wait_time);
+}
+if (rc>0){
+// !!! END WAIT
+
+    sent = sendto(eee->udp_sock, buf, len, 0/*flags*/,
                   (struct sockaddr *)&peer_addr, sizeof(struct sockaddr_in));
 
     if(sent < 0) {
@@ -814,6 +835,12 @@ static ssize_t sendto_sock (int fd, const void * buf,
     }
 
     return sent;
+
+// !!! IF WAITING NOT SUCCESSFUL OR ERROR IN SENDING: RESET CONNECTION
+} else
+supernode_connect(eee);
+return -1;
+// !!! END ELSE
 }
 
 /* ************************************** */
@@ -890,7 +917,7 @@ void send_query_peer (n2n_edge_t * eee,
                                   time_stamp ());
         }
 
-        sendto_sock(eee->udp_sock, pktbuf, idx, &(eee->curr_sn->sock));
+        sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
 
     } else {
         traceEvent(TRACE_DEBUG, "send PING to supernodes");
@@ -926,7 +953,7 @@ void send_query_peer (n2n_edge_t * eee,
                 // done with the remaining (do not send anymore)
                 break;
             }
-            sendto_sock(eee->udp_sock, pktbuf, idx, &(peer->sock));
+            sendto_sock(eee, pktbuf, idx, &(peer->sock));
         }
     }
 }
@@ -975,7 +1002,7 @@ void send_register_super (n2n_edge_t *eee) {
                               eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, &(eee->curr_sn->sock));
+    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
 }
 
 
@@ -1011,7 +1038,7 @@ static void send_unregister_super (n2n_edge_t *eee) {
                               eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, &(eee->curr_sn->sock));
+    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
 
 }
 
@@ -1108,7 +1135,7 @@ static void send_register (n2n_edge_t * eee,
                               eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
+    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
 }
 
 /* ************************************** */
@@ -1153,7 +1180,7 @@ static void send_register_ack (n2n_edge_t * eee,
                               eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee->udp_sock, pktbuf, idx, remote_peer);
+    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
 }
 
 /* ************************************** */
@@ -1801,7 +1828,7 @@ static int send_packet (n2n_edge_t * eee,
                sock_to_cstr(sockbuf, &destination),
                macaddr_str(mac_buf, dstMac), pktlen);
 
-    /* s = */ sendto_sock(eee->udp_sock, pktbuf, pktlen, &destination);
+    /* s = */ sendto_sock(eee, pktbuf, pktlen, &destination);
 
     return 0;
 }
@@ -2049,6 +2076,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
     // TCP recvlen == 0 means connection ended, e.g. supernode ended
     if((recvlen == 0) && (eee->conf.connect_tcp)) {
         supernode_disconnect(eee);
+        return;
     }
 
     /* REVISIT: when UDP/IPv6 is supported we will need a flag to indicate which
@@ -2067,7 +2095,6 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
     /* The packet may not have an orig_sender socket spec. So default to last
      * hop as sender. */
     orig_sender = &sender;
-
 
     traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
                (signed int)recvlen, sock_to_cstr(sockbuf1, &sender));
