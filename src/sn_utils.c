@@ -835,42 +835,55 @@ static int process_mgmt (n2n_sn_t *sss,
     char resbuf[N2N_SN_PKTBUF_SIZE];
     size_t ressize = 0;
     uint32_t num_edges = 0;
+    uint32_t num_comm = 0;
     uint32_t num = 0;
     struct sn_community *community, *tmp;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
+    char time_buf[10]; /* 9 digits + 1 terminating zero */
     dec_ip_bit_str_t ip_bit_str = {'\0'};
 
     traceEvent(TRACE_DEBUG, "process_mgmt");
 
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "    id    tun_tap             MAC                edge                 hint              last_seen\n");
+                        " ### | TAP                 | MAC               | EDGE                  | HINT            | LAST SEEN\n");
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "-------------------------------------------------------------------------------------------------\n");
+                        "====================================================================================================\n");
     HASH_ITER(hh, sss->communities, community, tmp) {
+        if(num_comm)
+            ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
+                                "----------------------------------------------------------------------------------------------------\n");
+        num_comm++;
         num_edges += HASH_COUNT(community->edges);
+
         ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                            "community: %s\n", community->community);
+                            "%s '%s'\n",
+                            (community->is_federation) ? "FEDERATION" :
+                                                                      ((community->purgeable == COMMUNITY_UNPURGEABLE) ? "FIXED NAME COMMUNITY" : "COMMUNITY"),
+                            community->community);
         sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
         ressize = 0;
 
         num = 0;
         HASH_ITER(hh, community->edges, peer, tmpPeer) {
+            sprintf (time_buf, "%9u", now - peer->last_seen);
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                                "    %-4u  %-18s  %-17s  %-21s %-15s    %lu\n",
-                                ++num, ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
+                                "%4u | %-19s | %-17s | %-21s | %-15s | %9s\n",
+                                ++num,
+                                (peer->dev_addr.net_addr == 0) ? ((peer->purgeable == SN_UNPURGEABLE) ? "-l" : "") :
+                                                                   ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                                 macaddr_str(mac_buf, peer->mac_addr),
                                 sock_to_cstr(sockbuf, &(peer->sock)),
                                 peer->dev_desc,
-                                now - peer->last_seen);
+                                (peer->last_seen) ? time_buf : "");
 
             sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
             ressize = 0;
         }
     }
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "----------------------------------------------------------------------------------------------------\n");
+                        "====================================================================================================\n");
 
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "uptime %lu | ", (now - sss->start_time));

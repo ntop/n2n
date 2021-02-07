@@ -1487,7 +1487,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "COMMUNITY '%s'\n\n",
                         eee->conf.community_name);
-   msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         " ### | TAP             | MAC               | EDGE                  | HINT            | LAST SEEN\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "================================================================================================\n");
