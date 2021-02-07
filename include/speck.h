@@ -39,7 +39,24 @@
 #define SPECK_KEY_BYTES       (256/8)
 
 
-#if defined (__AVX2__) // AVX support -----------------------------------------------------------------------------
+#if defined (__AVX512F__) // AVX512 support -----------------------------------------------------------------------
+
+
+#include <immintrin.h>
+#include <string.h>    /* memcpy() */
+
+#define u512 __m512i
+
+#define SPECK_ALIGNED_CTX	64
+
+typedef struct {
+    u512 rk[34];
+    u64 key[34];
+    u32 keysize;
+} speck_context_t;
+
+
+#elif defined (__AVX2__) // AVX2 support --------------------------------------------------------------------------
 
 
 #include <immintrin.h>

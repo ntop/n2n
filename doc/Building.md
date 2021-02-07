@@ -42,7 +42,7 @@ In order to run n2n, you will need the following:
 
 - The TAP drivers should be installed into the system. They can be installed from
   http://build.openvpn.net/downloads/releases, search for "tap-windows".
-  
+
 - If OpenSSL has been linked dynamically, the corresponding `.dll` file should be available
   onto the target computer.
 
@@ -113,7 +113,7 @@ So far, the following portions of n2n's code benefit from hardware features:
 ```
 AES:               AES-NI
 ChaCha20:          SSE2, SSSE3
-SPECK:             SSE2, SSSE3, AVX2, (NEON)
+SPECK:             SSE2, SSSE3, AVX2, AVX512, (NEON)
 Pearson Hashing:   AES-NI
 Random Numbers:    RDSEED, RDRND (not faster but more random seed)
 ```
