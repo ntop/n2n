@@ -156,13 +156,13 @@ extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_in
     memset(out, 0, SN_SELECTION_CRITERION_BUF_SIZE);
 
 #ifndef SN_SELECTION_RTT
-    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE - 1,
-                  (int16_t)(peer->selection_criterion) >= 0 ? "ld = %7d" :
-                                                              "ld = _______", peer->selection_criterion);
+    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE,
+                  (int16_t)(peer->selection_criterion) >= 0 ? "load = %8d" :
+                                                              "", peer->selection_criterion);
 #else
-    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE - 1,
-                  (int16_t)(peer->selection_criterion) >= 0 ? "rtt %5d ms" :
-                                                              "rtt _____ ms", peer->selection_criterion);
+    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE,
+                  (int16_t)(peer->selection_criterion) >= 0 ? "rtt = %6d ms" :
+                                                              "", peer->selection_criterion);
 #endif
 
     return out;
