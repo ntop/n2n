@@ -32,7 +32,7 @@ By default, `/24`-sized IP address sub-network pools from the upper half of the 
 
 ### DHCP
 
-If an edge of the community runs a DHCP server, the others could draw their IP addresses from there. It requires the new edges to start-up with the `-r -a dhcp:0.0.0.0` parameters (literally).
+If an edge of the community runs a DHCP server, the others could draw their IP addresses from there. It requires the new edges to start-up with the `-r -a dhcp:0.0.0.0` parameters (literally). More details can be found [at this discussion](https://github.com/ntop/n2n/issues/629).
 
 ### IPv6
 
