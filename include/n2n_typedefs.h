@@ -633,7 +633,7 @@ struct n2n_edge {
 
     /* Sockets */
     /* supernode socket is in        eee->curr_sn->sock (of type n2n_sock_t) */
-    int                              udp_sock;
+    int                              sock;
     int                              udp_mgmt_sock;                      /**< socket for status info. */
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY

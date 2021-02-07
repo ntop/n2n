@@ -152,6 +152,11 @@ static ssize_t sendto_sock (n2n_sn_t *sss,
 
         return sendto((peer->socket_fd >= 0) ? peer->socket_fd : sss->sock, pktbuf, pktsize, 0,
                       (const struct sockaddr *)&udpsock, sizeof(struct sockaddr_in));
+// !!! IF SENDTO FAILS DUE TO BROKEN CONNECTION, THIS REQUIRES HANDLING
+// !!! I.E. REMOVE PEER, CLOSE SOCKET AND REMOVE FROM TCP_CONNECTIONS LIST
+// !!! THIS NEEDS TO BE DONE FOR ALL SENDTO WHICH BETTER GET REPLACED BY
+// !!! SENDTOSOCK
+// !!!
     } else {
         /* AF_INET6 not implemented */
         errno = EAFNOSUPPORT;
@@ -1919,9 +1924,9 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     break;
                 }
 
-                /* We have a datagram to process */
+                // we have a datagram to process...
                 if(bread > 0) {
-                    /* And the datagram has data (not just a header) */
+                    // ...and the datagram has data (not just a header)
                     process_udp(sss, &sender_sock, sss->sock, pktbuf, bread, now);
                 }
             }
@@ -1980,13 +1985,18 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 i = sizeof(sender_sock);
                 tmp_sock = accept(sss->tcp_sock, (struct sockaddr *)&sender_sock, (socklen_t *)&i);
                 if(tmp_sock >= 0) {
-                    conn = (n2n_tcp_connection_t*)malloc(sizeof(n2n_tcp_connection_t));
-                    if(conn) {
-                        conn->socket_fd = tmp_sock;
-                        memcpy(&(conn->sock), &sender_sock, sizeof(struct sockaddr));
-                        HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
-                        traceEvent(TRACE_DEBUG, "run_sn_loop accepted incoming TCP connection from %s",
-                                                sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
+                    if((HASH_COUNT(sss->tcp_connections) + 4) < FD_SETSIZE) {
+                        conn = (n2n_tcp_connection_t*)malloc(sizeof(n2n_tcp_connection_t));
+                        if(conn) {
+                            conn->socket_fd = tmp_sock;
+                            memcpy(&(conn->sock), &sender_sock, sizeof(struct sockaddr));
+                            HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
+                            traceEvent(TRACE_DEBUG, "run_sn_loop accepted incoming TCP connection from %s",
+                                                    sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
+                        }
+                    } else {
+                        // no space to store the socket for a new connection, close immediately
+                        closesocket(tmp_sock);
                     }
                 }
             }
@@ -2006,7 +2016,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     break;
                 }
 
-                /* We have a datagram to process */
+                // we have a datagram to process
                 process_mgmt(sss, &sender_sock, pktbuf, bread, now);
             }
 

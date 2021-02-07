@@ -983,7 +983,6 @@ int main (int argc, char* argv[]) {
                 // first answer
                 eee->sn_pong = 0;
                 sn_selection_sort(&(eee->conf.supernodes));
-                supernode_disconnect(eee);
                 eee->curr_sn = eee->conf.supernodes;
                 supernode_connect(eee);
                 traceEvent(TRACE_NORMAL, "Received first PONG from supernode [%s].", eee->curr_sn->ip_addr);
@@ -1035,6 +1034,7 @@ int main (int argc, char* argv[]) {
                     eee->curr_sn = eee->curr_sn->hh.next;
                 else
                     eee->curr_sn = eee->conf.supernodes;
+                supernode_connect(eee);
                 runlevel--;
                 // skip waiting for answer to direcly go to send REGISTER_SUPER again
                 seek_answer = 0;
@@ -1064,13 +1064,13 @@ int main (int argc, char* argv[]) {
         // we usually wait for some answer, there however are exceptions when going back to a previous runlevel
         if(seek_answer) {
             FD_ZERO(&socket_mask);
-            FD_SET(eee->udp_sock, &socket_mask);
+            FD_SET(eee->sock, &socket_mask);
             wait_time.tv_sec = BOOTSTRAP_TIMEOUT;
             wait_time.tv_usec = 0;
 
-            if(select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
-                if(FD_ISSET(eee->udp_sock, &socket_mask)) {
-                    readFromIPSocket(eee, eee->udp_sock);
+            if(select(eee->sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
+                if(FD_ISSET(eee->sock, &socket_mask)) {
+                    readFromIPSocket(eee, eee->sock);
                 }
             }
         }
