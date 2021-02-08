@@ -184,9 +184,12 @@ static void help (int level) {
         printf("   basic usage:  supernode <config file> (see supernode.conf)\n"
                "\n"
                "            or   supernode "
-               " -p <local port> "
+               "[optional parameters, at least one] "
                "\n                      "
-               "\n  -h    shows a quick reference including all available options"
+               "\n technically, all parameters are optional, but the supernode executable"
+               "\n requires at least one parameter to run, .e.g. -v or -f, as otherwise this"
+               "\n short help text is displayed"
+             "\n\n  -h    shows a quick reference including all available options"
                "\n --help gives a detailed parameter description"
                "\n   man  files for n2n, edge, and superndode contain in-depth information"
                "\n\n");
@@ -196,7 +199,7 @@ static void help (int level) {
         printf(" general usage:  supernode <config file> (see supernode.conf)\n"
            "\n"
                "            or   supernode "
-               " -p <local port>"
+               "[-p <local port>] "
             "\n                           "
                "[-F <federation name>] "
             "\n options for under-        "
@@ -227,8 +230,10 @@ static void help (int level) {
             "\n flag options              "
                 "[-v]  make more verbose, repeat as required"
             "\n                           "
-
-          "\n  -h    shows this quick reference including all available options"
+          "\n technically, all parameters are optional, but the supernode executable"
+          "\n requires at least one parameter to run, .e.g. -v or -f, as otherwise a"
+          "\n short help text is displayed"
+        "\n\n  -h    shows this quick reference including all available options"
           "\n --help gives a detailed parameter description"
           "\n   man  files for n2n, edge, and superndode contain in-depth information"
           "\n\n");
@@ -237,12 +242,11 @@ static void help (int level) {
 
         printf(" general usage:  supernode <config file> (see supernode.conf)\n"
                "\n"
-               "            or   supernode  -p <local port>\n"
-               "                           [further optional command line parameters]\n\n"
+               "            or   supernode [optional parameters, at least one]\n\n"
         );
         printf (" OPTIONS FOR THE UNDERLYING NETWORK CONNECTION\n");
         printf (" ---------------------------------------------\n\n");
-        printf(" -p <local port>   | fixed local UDP port\n");
+        printf(" -p <local port>   | fixed local UDP port, defaults to 7654\n");
         printf(" -F <fed name>     | name of the supernode's federation, defaults to\n"
                "                   | '%s'\n", (char *)FEDERATION_NAME);
         printf(" -l <host:port>    | ip address or name, and port of known supernode\n");
@@ -263,16 +267,20 @@ static void help (int level) {
 #if defined(N2N_HAVE_DAEMON)
         printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
 #endif
-        printf(" -t <port>         | management UDP port, for multiple supernodes on a machine\n");
+        printf(" -t <port>         | management UDP port, for multiple supernodes on a machine,\n"
+               "                   | defaults to 5645\n");
         printf(" -v                | make more verbose, repeat as required\n");
 #ifndef WIN32
         printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
         printf(" -g <GID>          | numeric group ID to use when privileges are dropped\n");
 #endif
-        printf("\n  -h    shows a quick reference including all available options"
-                "\n --help gives this detailed parameter description"
-                "\n   man  files for n2n, edge, and superndode contain in-depth information"
-                "\n\n");
+        printf("\n technically, all parameters are optional, but the supernode executable"
+               "\n requires at least one parameter to run, .e.g. -v or -f, as otherwise a"
+               "\n short help text is displayed"
+             "\n\n  -h    shows a quick reference including all available options"
+               "\n --help gives this detailed parameter description"
+               "\n   man  files for n2n, edge, and superndode contain in-depth information"
+               "\n\n");
     }
 
     exit(0);
