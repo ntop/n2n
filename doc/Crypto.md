@@ -60,7 +60,7 @@ ChaCha20 usually performs faster than AES-CTS.
 
 SPECK is recommended by the NSA for offical use in case AES implementation is not feasible due to system constraints (performance, size, …). The block cipher is used in CTR mode making it a stream cipher. The random full 128-bit IV is transmitted in plain.
 
-On modern Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4 or AVX2 if available. On Raspberry's ARM CPU, it is second place behind ChaCha20 and before Twofish.
+On modern Intel CPUs, SPECK performs even faster than openSSL's ChaCha20 as it takes advantage of SSE4, AVX2, or AVX512 if available. On Raspberry's ARM CPU, it is second place behind ChaCha20 and before Twofish.
 
 ### Random Numbers
 
