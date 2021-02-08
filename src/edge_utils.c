@@ -2229,14 +2229,18 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                             }
                         }
 
-                        if(!eee->last_sup) {
-                            // indicates successful connection between the edge and a supernode
-                            traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
-                            // send gratuitous ARP only upon first registration with supernode
-                            send_grat_arps(eee);
+                        // update last_sup only on 'real' REGISTER_SUPER_ACKs, not on bootstrap ones (null_mac)
+                        // this allows reliable in/out PACKET drop if not really registered with a supernode yet
+                        if(!is_null_mac(ra.edgeMac)) {
+                            if(!eee->last_sup) {
+                                // indicates successful connection between the edge and a supernode
+                                traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
+                                // send gratuitous ARP only upon first registration with supernode
+                                send_grat_arps(eee);
+                            }
+                            eee->last_sup = now;
                         }
 
-                        eee->last_sup = now;
                         eee->sn_wait = 0;
                         eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 

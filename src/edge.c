@@ -950,7 +950,7 @@ int main (int argc, char* argv[]) {
         runlevel = 2;
     }
 
-    eee->last_sup = 1; /* to prevent gratuitous arp packet */
+    eee->last_sup = 0; /* if it wasn't zero yet */
     eee->curr_sn = eee->conf.supernodes;
 
     while(runlevel < 5) {
@@ -1072,7 +1072,6 @@ int main (int argc, char* argv[]) {
     eee->last_sweep = now_time - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
     eee->sn_wait = 1;
     eee->last_register_req = 0;
-    eee->last_sup = 0; /* to allow gratuitous arp packet after regular REGISTER_SUPER_ACK */
 
 #ifndef WIN32
     if(eee->tuntap_priv_conf.daemon) {
