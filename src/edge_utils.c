@@ -55,8 +55,12 @@ int edge_verify_conf (const n2n_edge_conf_t *conf) {
     if(conf->community_name[0] == 0)
         return(-1);
 
+    // REVISIT: are the following two conditions equal? if so, remove one. but note that sn_num is used elsewhere
     if(conf->sn_num == 0)
         return(-2);
+
+    if(HASH_COUNT(conf->supernodes) == 0)
+        return(-5);
 
     if(conf->register_interval < 1)
         return(-3);
@@ -64,9 +68,6 @@ int edge_verify_conf (const n2n_edge_conf_t *conf) {
     if(((conf->encrypt_key == NULL) && (conf->transop_id != N2N_TRANSFORM_ID_NULL)) ||
        ((conf->encrypt_key != NULL) && (conf->transop_id == N2N_TRANSFORM_ID_NULL)))
         return(-4);
-
-    if(HASH_COUNT(conf->supernodes) == 0)
-        return(-5);
 
     return(0);
 }
@@ -3064,7 +3065,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
     rv = supernode2sock(sock, ip_and_port);
 
     if(rv != 0) {
-        traceEvent(TRACE_WARNING, "Invalid socket");
+        traceEvent(TRACE_WARNING, "Invalid supernode address");
         free(sock);
         return(1);
     }

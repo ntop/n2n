@@ -497,14 +497,14 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
-        case 'l': /* supernode-list */
+        case 'l': /* supernode-list */ {
             if(optargument) {
                 if(edge_conf_add_supernode(conf, optargument) != 0) {
-                    traceEvent(TRACE_WARNING, "Too many supernodes!");
-                    exit(1);
+                    traceEvent(TRACE_WARNING, "Failed to add supernode '%s'", optargument);
                 }
-                break;
             }
+            break;
+        }
 
         case 'i': /* supernode registration interval */
             conf->register_interval = atoi(optargument);
