@@ -290,7 +290,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
 
     eee->known_peers        = NULL;
     eee->pending_peers    = NULL;
-    eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
+    eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS;
     sn_selection_criterion_common_data_default(eee);
 
     pearson_hash_init();
@@ -814,7 +814,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
                   dest);
 
     rc = 1;
-// !!! WAIT UNTIL WRITABLE (SOCKET IS SET TO O_NONBLOCK, COULD REQUIRE WAIT TIME DIRECTLY AFTER (RE-)OPENING
+// !!! IF REQUIRED, WAIT UNTIL WRITABLE (SOCKET IS SET TO O_NONBLOCK, COULD REQUIRE WAIT TIME DIRECTLY AFTER (RE-)OPENING
     if(eee->conf.connect_tcp) {
         fd_set socket_mask;
         struct timeval wait_time;
@@ -826,7 +826,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
         rc = select(eee->sock + 1, NULL, &socket_mask, NULL, &wait_time);
     }
 
-    if (rc>0) {
+    if (rc > 0) {
         sent = sendto(eee->sock, buf, len, 0/*flags*/,
                       (struct sockaddr *)&peer_addr, sizeof(struct sockaddr_in));
 
@@ -836,13 +836,17 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 #ifdef WIN32
             traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
+            if(eee->conf.connect_tcp) {
+                supernode_disconnect(eee);
+                eee->sn_wait = 1;
+            }
         } else {
             traceEvent(TRACE_DEBUG, "sendto sent=%d to ", (signed int)sent);
         }
 
         return sent;
 
-// !!! IF WAITING NOT SUCCESSFUL OR ERROR IN SENDING: RESET CONNECTION
+// !!! IF WAITING NOT SUCCESSFUL OR ERROR IN SENDING (ABOVE): RESET CONNECTION
     } else {
         supernode_disconnect(eee);
         eee->sn_wait = 1;
@@ -1067,8 +1071,8 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
             // we have not been connected to the best/top one
             send_unregister_super(eee);
             eee->curr_sn = eee->conf.supernodes;
+            eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS;
             supernode_connect(eee);
-            eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
 
             traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
                        supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
@@ -1262,7 +1266,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t nowTime) {
         traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
         supernode_connect(eee);
 
-        eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
+        eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS;
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
         // closing and re-opening the socket(s) allows for re-establishing communication
@@ -2080,18 +2084,14 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
 #endif
             }
 
-        supernode_disconnect(eee);
-        eee->sn_wait = 1;
+        // TCP especially recvlen == 0 but also error < 0 mean connection ended,
+        // e.g. supernode ended
+        if(eee->conf.connect_tcp) {
+            supernode_disconnect(eee);
+            eee->sn_wait = 1;
+        }
 
-        return; /* failed to receive data from UDP */
-    }
-
-    // TCP recvlen == 0 means connection ended, e.g. supernode ended
-    if((recvlen == 0) && (eee->conf.connect_tcp)) {
-        supernode_disconnect(eee);
-        eee->sn_wait = 1;
-
-        return;
+        return; /* failed to receive data */
     }
 
     /* REVISIT: when UDP/IPv6 is supported we will need a flag to indicate which
@@ -2368,7 +2368,7 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                         }
 
                         eee->sn_wait = 0;
-                        eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
+                        eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
 
                         /* NOTE: the register_interval should be chosen by the edge node
                          * based on its NAT configuration. */
