@@ -28,7 +28,7 @@ static int try_forward (n2n_sn_t * sss,
                         const uint8_t * pktbuf,
                         size_t pktsize);
 
-static ssize_t sendto_sock (n2n_sn_t *sss,
+static ssize_t sendto_peer (n2n_sn_t *sss,
                             const struct peer_info *peer,
                             const uint8_t *pktbuf,
                             size_t pktsize);
@@ -97,7 +97,7 @@ static int try_forward (n2n_sn_t * sss,
 
     if(NULL != scan) {
         int data_sent_len;
-        data_sent_len = sendto_sock(sss, scan, pktbuf, pktsize);
+        data_sent_len = sendto_peer(sss, scan, pktbuf, pktsize);
 
         if(data_sent_len == pktsize) {
             ++(sss->stats.fwd);
@@ -128,11 +128,63 @@ static int try_forward (n2n_sn_t * sss,
     return(0);
 }
 
-/** Send a datagram to the destination embodied in a n2n_sock_t.
+/** Send a datagram to a network order socket of type struct sockaddr.
  *
  *    @return -1 on error otherwise number of bytes sent
  */
-static ssize_t sendto_sock (n2n_sn_t *sss,
+static ssize_t sendto_sock(n2n_sn_t *sss,
+                           SOCKET socket_fd,
+                           const struct sockaddr *socket,
+                           const uint8_t *pktbuf,
+                           size_t pktsize) {
+
+    size_t sent;
+
+    struct sn_community *comm, *tmp_comm;
+    struct peer_info *edge, *tmp_edge;
+    n2n_tcp_connection_t *conn;
+
+    sent = sendto(socket_fd, pktbuf, pktsize, 0,
+                  socket, sizeof(struct sockaddr_in));
+
+        if(sent < 0) {
+            char * c = strerror(errno);
+            traceEvent(TRACE_ERROR, "sendto_sock failed (%d) %s", errno, c);
+#ifdef WIN32
+            traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
+            // if the erroneous connection is tcp, i.e. not the regular sock...
+            if((socket_fd >= 0) && (socket_fd != sss->sock)) {
+                // ...forget about the corresponding peer...
+                HASH_ITER(hh, sss->communities, comm, tmp_comm)
+                    HASH_ITER(hh, comm->edges, edge, tmp_edge) {
+                        if(edge->socket_fd == socket_fd) {
+                            HASH_DEL(comm->edges, edge);
+                            free(edge);
+                        }
+                }
+                // ...and the connection
+                shutdown(socket_fd, SHUT_RDWR);
+                closesocket(socket_fd);
+                HASH_FIND_INT(sss->tcp_connections, &socket_fd, conn);
+                if(conn) {
+                    HASH_DEL(sss->tcp_connections, conn);
+                    free(conn);
+                }
+            }
+        } else {
+            traceEvent(TRACE_DEBUG, "sendto_sock sent=%d to ", (signed int)sent);
+        }
+
+        return sent;
+}
+
+/** Send a datagram to a peer whose destination socket is embodied in its sock field of type n2n_sock_t.
+ *  It calls sendto_sock to do the final send.
+ *
+ *    @return -1 on error otherwise number of bytes sent
+ */
+static ssize_t sendto_peer (n2n_sn_t *sss,
                             const struct peer_info *peer,
                             const uint8_t *pktbuf,
                             size_t pktsize) {
@@ -140,23 +192,20 @@ static ssize_t sendto_sock (n2n_sn_t *sss,
     n2n_sock_str_t sockbuf;
 
     if(AF_INET == peer->sock.family) {
-        struct sockaddr_in udpsock;
+        struct sockaddr_in socket;
 
-        udpsock.sin_family = AF_INET;
-        udpsock.sin_port = htons(peer->sock.port);
-        memcpy(&(udpsock.sin_addr.s_addr), &(peer->sock.addr.v4), IPV4_SIZE);
+        // network order socket
+        socket.sin_family = AF_INET;
+        socket.sin_port = htons(peer->sock.port);
+        memcpy(&(socket.sin_addr.s_addr), &(peer->sock.addr.v4), IPV4_SIZE);
 
-        traceEvent(TRACE_DEBUG, "sendto_sock %lu to [%s]",
+        traceEvent(TRACE_DEBUG, "sendto_peer %lu to [%s]",
                    pktsize,
                    sock_to_cstr(sockbuf, &(peer->sock)));
 
-        return sendto((peer->socket_fd >= 0) ? peer->socket_fd : sss->sock, pktbuf, pktsize, 0,
-                      (const struct sockaddr *)&udpsock, sizeof(struct sockaddr_in));
-// !!! IF SENDTO FAILS DUE TO BROKEN CONNECTION, THIS REQUIRES HANDLING
-// !!! I.E. REMOVE PEER, CLOSE SOCKET AND REMOVE FROM TCP_CONNECTIONS LIST
-// !!! THIS NEEDS TO BE DONE FOR ALL SENDTO WHICH BETTER GET REPLACED BY
-// !!! SENDTOSOCK
-// !!!
+        return sendto_sock(sss,
+                           (peer->socket_fd >= 0) ? peer->socket_fd : sss->sock,
+                           (const struct sockaddr *)&socket, pktbuf, pktsize);
     } else {
         /* AF_INET6 not implemented */
         errno = EAFNOSUPPORT;
@@ -192,7 +241,7 @@ static int try_broadcast (n2n_sn_t * sss,
         HASH_ITER(hh, sss->federation->edges, scan, tmp) {
             int data_sent_len;
 
-            data_sent_len = sendto_sock(sss, scan, pktbuf, pktsize);
+            data_sent_len = sendto_peer(sss, scan, pktbuf, pktsize);
 
             if(data_sent_len != pktsize) {
                 ++(sss->stats.errors);
@@ -217,7 +266,7 @@ static int try_broadcast (n2n_sn_t * sss,
                 /* REVISIT: exclude if the destination socket is where the packet came from. */
                 int data_sent_len;
 
-                data_sent_len = sendto_sock(sss, scan, pktbuf, pktsize);
+                data_sent_len = sendto_peer(sss, scan, pktbuf, pktsize);
 
                 if(data_sent_len != pktsize) {
                     ++(sss->stats.errors);
@@ -773,7 +822,7 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
                                   comm->header_encryption_ctx, comm->header_iv_ctx,
                                   time_stamp());
 
-            /* sent = */ sendto_sock(sss, peer, pktbuf, idx);
+            /* sent = */ sendto_peer(sss, peer, pktbuf, idx);
         }
     }
 
@@ -872,13 +921,13 @@ static int process_mgmt (n2n_sn_t *sss,
     traceEvent(TRACE_DEBUG, "process_mgmt");
 
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        " ### | TAP                 | MAC               | EDGE                  | HINT            | LAST SEEN\n");
+                        " ### | TAP                 | MAC               | EDGE                      | HINT            | LAST SEEN\n");
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "====================================================================================================\n");
+                        "========================================================================================================\n");
     HASH_ITER(hh, sss->communities, community, tmp) {
         if(num_comm)
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                                "----------------------------------------------------------------------------------------------------\n");
+                                "--------------------------------------------------------------------------------------------------------\n");
         num_comm++;
         num_edges += HASH_COUNT(community->edges);
 
@@ -894,12 +943,13 @@ static int process_mgmt (n2n_sn_t *sss,
         HASH_ITER(hh, community->edges, peer, tmpPeer) {
             sprintf (time_buf, "%9u", now - peer->last_seen);
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                                "%4u | %-19s | %-17s | %-21s | %-15s | %9s\n",
+                                "%4u | %-19s | %-17s | %-21s %-3s | %-15s | %9s\n",
                                 ++num,
                                 (peer->dev_addr.net_addr == 0) ? ((peer->purgeable == SN_UNPURGEABLE) ? "-l" : "") :
                                                                    ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                                 macaddr_str(mac_buf, peer->mac_addr),
                                 sock_to_cstr(sockbuf, &(peer->sock)),
+                                ((peer->socket_fd >= 0) && (peer->socket_fd != sss->sock)) ? "TCP" : "",
                                 peer->dev_desc,
                                 (peer->last_seen) ? time_buf : "");
 
@@ -908,7 +958,7 @@ static int process_mgmt (n2n_sn_t *sss,
         }
     }
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
-                        "====================================================================================================\n");
+                        "========================================================================================================\n");
 
     ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                         "uptime %lu | ", (now - sss->start_time));
@@ -958,7 +1008,7 @@ static int sendto_mgmt (n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
                         const uint8_t *mgmt_buf,
                         size_t mgmt_size) {
-  
+
     ssize_t r = sendto(sss->mgmt_sock, mgmt_buf, mgmt_size, 0 /*flags*/,
                        (struct sockaddr *)sender_sock, sizeof (struct sockaddr_in));
 
@@ -1436,14 +1486,13 @@ static int process_udp (n2n_sn_t * sss,
                                               comm->header_encryption_ctx, comm->header_iv_ctx,
                                               time_stamp());
                     }
-                    sendto(socket_fd, ackbuf, encx, 0,
-                           (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+                    sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, ackbuf, encx);
 
 // !!! THIS NEEDS TO BE REWRITTEN TO FORWARD THROUGH ORIGINATING SUPERNODE AS
 // !!! FINAL RECIPIENT MIGHT ONLY ACCEPT PACKETS FROM THERE
 // !!!
 // !!!                    if(cmn.flags & N2N_FLAGS_SOCKET) {
-// !!!                        sendto_sock(sss, &reg.sock, ackbuf, encx);
+// !!!                        sendto_peer(sss, &reg.sock, ackbuf, encx);
 // !!!                    }
 
                     traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
@@ -1484,8 +1533,7 @@ static int process_udp (n2n_sn_t * sss,
                                                   time_stamp());
                         }
 
-                        sendto(socket_fd, ackbuf, encx, 0,
-                               (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+                        sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, ackbuf, encx);
 
                         traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
                                    macaddr_str(mac_buf, reg.edgeMac),
@@ -1765,8 +1813,7 @@ static int process_udp (n2n_sn_t * sss,
                     }
                 }
 
-                sendto(socket_fd, encbuf, encx, 0,
-                       (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+                sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, encbuf, encx);
 
                 traceEvent(TRACE_DEBUG, "Tx PONG to %s",
                            macaddr_str(mac_buf, query.srcMac));
@@ -1801,10 +1848,9 @@ static int process_udp (n2n_sn_t * sss,
 // !!! FINAL RECIPIENT MIGHT ONLY ACCEPT PACKETS FROM THERE, INCLUDES PEER_INFO
 // !!! FORWARDING CODE IN SN_UTILS.C (NO HANDLING OF INCOMING PEER_INFO YET
 // !!!
-// !!!                        sendto_sock(sss, &query.sock, encbuf, encx);
+// !!!                        sendto_peer(sss, &query.sock, encbuf, encx);
                     } else {
-                        sendto(socket_fd, encbuf, encx, 0,
-                               (struct sockaddr *)sender_sock, sizeof(struct sockaddr_in));
+                        sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, encbuf, encx);
                     }
                     traceEvent(TRACE_DEBUG, "Tx PEER_INFO to %s",
                                macaddr_str(mac_buf, query.srcMac));

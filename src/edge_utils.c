@@ -1055,25 +1055,26 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
 
     struct peer_info *scan, *tmp;
 
-    if(eee->curr_sn != eee->conf.supernodes) {
-        // have not been connected to the best/top one
-        send_unregister_super(eee);
-        eee->curr_sn = eee->conf.supernodes;
-        supernode_connect(eee);
-        eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
-
-        traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
-                   supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
-
-        send_register_super(eee);
-        eee->sn_wait = 1;
-    }
-
     if(now - eee->last_sweep > SWEEP_TIME) {
+        // this routine gets periodically called
+
         if(eee->sn_wait == 0) {
-            // this routine gets periodically called
-            // it sorts supernodes in ascending order of their selection_criterion fields
+            // sort supernodes in ascending order of their selection_criterion fields
             sn_selection_sort(&(eee->conf.supernodes));
+        }
+
+        if(eee->curr_sn != eee->conf.supernodes) {
+            // we have not been connected to the best/top one
+            send_unregister_super(eee);
+            eee->curr_sn = eee->conf.supernodes;
+            supernode_connect(eee);
+            eee->sup_attempts = N2N_EDGE_SUP_ATTEMPTS;
+
+            traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
+                       supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
+
+            send_register_super(eee);
+            eee->sn_wait = 1;
         }
 
         HASH_ITER(hh, eee->conf.supernodes, scan, tmp) {
@@ -1658,9 +1659,10 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
         net = htonl(peer->dev_addr.net_addr);
         sprintf (time_buf, "%9u", now - peer->last_seen);
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
+                            "%4u | %-3s %-11s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
                             (peer->purgeable == SN_UNPURGEABLE) ? "-l" : "",
+                            (peer == eee->curr_sn) ? (eee->sn_wait ? ">>..." : ">>>>>" ) : "",
                             is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
                             sn_selection_criterion_str(sel_buf, peer),
@@ -2444,6 +2446,9 @@ void readFromIPSocket (n2n_edge_t * eee, int in_sock) {
                         scan->last_seen = now;
                         /* The data type depends on the actual selection strategy that has been chosen. */
                         sn_selection_criterion_calculate(eee, scan, &pi.data);
+                        traceEvent(TRACE_INFO, "Rx PONG from supernode '%s'",
+                                   macaddr_str(mac_buf1, pi.srcMac));
+
                         break;
                     }
                 } else {
