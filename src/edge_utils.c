@@ -1889,7 +1889,11 @@ void edge_read_from_tap (n2n_edge_t * eee) {
         sleep(3);
         tuntap_close(&(eee->device));
         tuntap_open(&(eee->device), eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode, eee->tuntap_priv_conf.ip_addr,
-                    eee->tuntap_priv_conf.netmask, eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu);
+                    eee->tuntap_priv_conf.netmask, eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu
+#ifdef WIN32
+				   ,eee->tuntap_priv_conf.metric
+#endif                    
+                    );
     } else {
         const uint8_t * mac = eth_pkt;
         traceEvent(TRACE_DEBUG, "### Rx TAP packet (%4d) for %s",
@@ -3124,7 +3128,11 @@ int quick_edge_init (char *device_name, char *community_name,
     /* Open the tuntap device */
     if(tuntap_open(&tuntap, device_name, "static",
                    local_ip_address, "255.255.255.0",
-                   device_mac, DEFAULT_MTU) < 0)
+                   device_mac, DEFAULT_MTU
+#ifdef WIN32
+				 , 0
+#endif                   
+                   ) < 0)
         return(-2);
 
     /* Init edge */

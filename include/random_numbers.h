@@ -44,7 +44,7 @@
 #endif
 
 #if defined (WIN32)
-#include <Wincrypt.h>   // HCTYPTPROV, Crypt*-functions
+#include <wincrypt.h>   // HCTYPTPROV, Crypt*-functions
 #endif
 
 
