@@ -138,7 +138,7 @@ static void close_tcp_connection(n2n_sn_t *sss, n2n_tcp_connection_t *conn) {
     if(!conn)
         return;
 
-    // find peer by file descriptor if not given by parameter
+    // find peer by file descriptor
     HASH_ITER(hh, sss->communities, comm, tmp_comm) {
         HASH_ITER(hh, comm->edges, edge, tmp_edge) {
             if(edge->socket_fd == conn->socket_fd) {
@@ -180,7 +180,7 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
 
     if(sent <= 0) {
         char * c = strerror(errno);
-        traceEvent(TRACE_ERROR, "sendto_sock failed (%d) %s", errno, c);
+        traceEvent(TRACE_ERROR, "sendto_fd failed (%d) %s", errno, c);
 #ifdef WIN32
         traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
@@ -189,9 +189,10 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
             // ...forget about the corresponding peer and the connection
             HASH_FIND_INT(sss->tcp_connections, &socket_fd, conn);
             close_tcp_connection(sss, conn);
+            return -1;
         }
     } else {
-            traceEvent(TRACE_DEBUG, "sendto_sock sent=%d to ", (signed int)sent);
+            traceEvent(TRACE_DEBUG, "sendto_fd sent=%d to ", (signed int)sent);
     }
 
     return sent;
@@ -208,7 +209,7 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
                            const uint8_t *pktbuf,
                            size_t pktsize) {
 
-    size_t sent = 0;
+    ssize_t sent = 0;
 
     // if the connection is tcp, i.e. not the regular sock...
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
@@ -1074,7 +1075,7 @@ static int sendto_mgmt (n2n_sn_t *sss,
  *
  */
 static int process_udp (n2n_sn_t * sss,
-                        const struct sockaddr_in * sender_sock,
+                        const struct sockaddr_in *sender_sock,
                         const SOCKET socket_fd,
                         uint8_t * udp_buf,
                         size_t udp_size,
@@ -2021,8 +2022,13 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
             }
 
             // the so far known tcp connections
-            HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {
+            // do NOT use 'HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {' to iterate because
+            // deletion of OTHER connections (that can happen if forwarding to another edge node fails)
+            // may rsult in seg faults if using HASH ITER which is only safe to use if deleting current item
+            for(conn = sss->tcp_connections; conn != NULL; conn = conn->hh.next  ) {
+
                 if(FD_ISSET(conn->socket_fd, &socket_mask)) {
+
                     struct sockaddr_in sender_sock;
                     socklen_t i;
 
@@ -2030,6 +2036,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     bread = recvfrom(conn->socket_fd,
                                      conn->buffer + conn->position, conn->expected - conn->position, 0 /*flags*/,
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
+
                     if(bread <= 0) {
                         traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
@@ -2061,7 +2068,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 }
             }
 
-           // accept new incoming tcp connection
+            // accept new incoming tcp connection
             if(FD_ISSET(sss->tcp_sock, &socket_mask)) {
                 struct sockaddr_in sender_sock;
                 socklen_t i;
