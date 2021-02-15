@@ -163,11 +163,11 @@ static void close_tcp_connection(n2n_sn_t *sss, n2n_tcp_connection_t *conn) {
  *
  *    @return -1 on error otherwise number of bytes sent
  */
-static ssize_t sendto_fd(n2n_sn_t *sss,
-                         SOCKET socket_fd,
-                         const struct sockaddr *socket,
-                         const uint8_t *pktbuf,
-                         size_t pktsize) {
+static ssize_t sendto_fd (n2n_sn_t *sss,
+                          SOCKET socket_fd,
+                          const struct sockaddr *socket,
+                          const uint8_t *pktbuf,
+                          size_t pktsize) {
 
     ssize_t sent = 0;
     struct sn_community *comm, *tmp_comm;
@@ -1959,7 +1959,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         SOCKET tmp_sock;
         n2n_sock_str_t sockbuf;
         struct timeval wait_time;
-        time_t now = 0;
+        time_t before, now = 0;
 
         FD_ZERO(&socket_mask);
 
@@ -1979,6 +1979,8 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
 
         wait_time.tv_sec = 10;
         wait_time.tv_usec = 0;
+
+        before = time(NULL);
 
         rc = select(max_sock + 1, &socket_mask, NULL, NULL, &wait_time);
 
@@ -2105,7 +2107,14 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
             }
 
         } else {
-            traceEvent(TRACE_DEBUG, "timeout");
+            if((now - before) < wait_time.tv_sec) {
+                // this is no real timeout, something went wrong with one of the tcp connections (probably)
+                // close them all, edges will re-open if they detect closure
+                HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn)
+                    close_tcp_connection(sss, conn);
+                traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming issue with tcp connection, closing them all");
+            } else
+                traceEvent(TRACE_DEBUG, "timeout");
         }
 
         re_register_and_purge_supernodes(sss, sss->federation, &last_re_reg_and_purge, now);
