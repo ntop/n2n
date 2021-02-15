@@ -1137,6 +1137,7 @@ int main (int argc, char* argv[]) {
 #endif
 
 #ifdef __linux__
+    signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, term_handler);
     signal(SIGINT,  term_handler);
 #endif

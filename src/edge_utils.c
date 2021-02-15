@@ -836,7 +836,6 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
         traceEvent(TRACE_DEBUG, "sendto_fd disconnected supernode due to select() timeout");
         return -1;
     }
-
     return sent;
 }
 
@@ -2033,36 +2032,37 @@ void edge_read_from_tap (n2n_edge_t * eee) {
             is_ethMulticast(eth_pkt, len))) {
                 traceEvent(TRACE_INFO, "Dropping TX multicast");
         } else {
-                if(!eee->last_sup) {
-                    // drop packets before first registration with supernode
-                    traceEvent(TRACE_DEBUG, "DROP packet before first registration with supernode");
+            if(!eee->last_sup) {
+                // drop packets before first registration with supernode
+                traceEvent(TRACE_DEBUG, "DROP packet before first registration with supernode");
+                return;
+            }
+
+            if(eee->network_traffic_filter) {
+                if(eee->network_traffic_filter->filter_packet_from_tap(eee->network_traffic_filter, eee, eth_pkt,
+                                                                           len) == N2N_DROP) {
+                    traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)len);
                     return;
                 }
-
-                if(eee->network_traffic_filter) {
-                    if(eee->network_traffic_filter->filter_packet_from_tap(eee->network_traffic_filter, eee, eth_pkt,
-                                                                           len) == N2N_DROP) {
-                        traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)len);
-                        return;
-                    }
-                }
-
-                if(eee->cb.packet_from_tap) {
-                    uint16_t tmp_len = len;
-                    if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
-                        traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)len);
-
-                        return;
-                    }
-                    len = tmp_len;
-                }
-
-                edge_send_packet2net(eee, eth_pkt, len);
             }
+
+            if(eee->cb.packet_from_tap) {
+                uint16_t tmp_len = len;
+                if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
+                    traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)len);
+                    return;
+                }
+                len = tmp_len;
+            }
+
+            edge_send_packet2net(eee, eth_pkt, len);
         }
+    }
 }
 
+
 /* ************************************** */
+
 
 /** handle a datagram from the main UDP socket to the internet. */
 void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const SOCKET in_sock,
@@ -2603,6 +2603,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
      */
 
     while(*keep_running) {
+
         int rc, max_sock = 0;
         fd_set socket_mask;
         struct timeval wait_time;
@@ -2632,7 +2633,6 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
         wait_time.tv_sec = (eee->sn_wait) ? (SOCKET_TIMEOUT_INTERVAL_SECS / 10 + 1) : (SOCKET_TIMEOUT_INTERVAL_SECS);
         wait_time.tv_usec = 0;
-
         rc = select(max_sock + 1, &socket_mask, NULL, NULL, &wait_time);
         now = time(NULL);
 
@@ -2653,6 +2653,15 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                                                             now)) {
                     *keep_running = 0;
                     break;
+                }
+                if(eee->conf.connect_tcp) {
+                    if((expected >= N2N_PKT_BUF_SIZE) || (position >= N2N_PKT_BUF_SIZE)) {
+                        // something went wrong, e.g. connection failure in the middle of transmission
+                        supernode_disconnect(eee);
+                        eee->sn_wait = 1;
+                        expected = sizeof(uint16_t);
+                        position = 0;
+                    }
                 }
             }
 
@@ -2682,7 +2691,6 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                 edge_read_from_tap(eee);
             }
 #endif
-
         }
 
         // finished processing select data

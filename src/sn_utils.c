@@ -112,6 +112,7 @@ static int try_forward (n2n_sn_t * sss,
                        sock_to_cstr(sockbuf, &(scan->sock)),
                        macaddr_str(mac_buf, scan->mac_addr),
                        errno, strerror(errno));
+            return -1;
         }
     } else {
         if(!from_supernode) {
@@ -121,11 +122,11 @@ static int try_forward (n2n_sn_t * sss,
         } else {
             traceEvent(TRACE_DEBUG, "try_forward unknown MAC. Dropping the packet.");
             /* Not a known MAC so drop. */
-            return(-2);
+            return -2;
         }
     }
 
-    return(0);
+    return 0;
 }
 
 
@@ -2112,7 +2113,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 // close them all, edges will re-open if they detect closure
                 HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn)
                     close_tcp_connection(sss, conn);
-                traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming issue with tcp connection, closing them all");
+                traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming program end or issue with tcp connection, closing them all");
             } else
                 traceEvent(TRACE_DEBUG, "timeout");
         }

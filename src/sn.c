@@ -763,6 +763,7 @@ int main (int argc, char * const argv[]) {
     traceEvent(TRACE_NORMAL, "supernode started");
 
 #ifdef __linux__
+    signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, term_handler);
     signal(SIGINT,  term_handler);
     signal(SIGHUP,  dump_registrations);
