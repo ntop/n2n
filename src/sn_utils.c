@@ -128,6 +128,75 @@ static int try_forward (n2n_sn_t * sss,
     return(0);
 }
 
+
+static void close_tcp_connection(n2n_sn_t *sss, n2n_tcp_connection_t *conn) {
+
+    struct sn_community *comm, *tmp_comm;
+    struct peer_info *edge, *tmp_edge;
+
+    if(!conn)
+        return;
+
+    // find peer by file descriptor if not given by parameter
+    HASH_ITER(hh, sss->communities, comm, tmp_comm) {
+        HASH_ITER(hh, comm->edges, edge, tmp_edge) {
+            if(edge->socket_fd == conn->socket_fd) {
+                // remove peer
+                HASH_DEL(comm->edges, edge);
+                free(edge);
+                goto close_conn; /* break - level 2 */
+            }
+        }
+    }
+
+ close_conn:
+    // close the connection
+    shutdown(conn->socket_fd, SHUT_RDWR);
+    closesocket(conn->socket_fd);
+    // forget about the connection
+    HASH_DEL(sss->tcp_connections, conn);
+    free(conn);
+}
+
+
+/** Send a datagram to a file descriptor socket.
+ *
+ *    @return -1 on error otherwise number of bytes sent
+ */
+static ssize_t sendto_fd(n2n_sn_t *sss,
+                         SOCKET socket_fd,
+                         const struct sockaddr *socket,
+                         const uint8_t *pktbuf,
+                         size_t pktsize) {
+
+    ssize_t sent = 0;
+    struct sn_community *comm, *tmp_comm;
+    struct peer_info *edge, *tmp_edge;
+    n2n_tcp_connection_t *conn;
+
+    sent = sendto(socket_fd, pktbuf, pktsize, 0 /* flags */,
+                  socket, sizeof(struct sockaddr_in));
+
+    if(sent <= 0) {
+        char * c = strerror(errno);
+        traceEvent(TRACE_ERROR, "sendto_sock failed (%d) %s", errno, c);
+#ifdef WIN32
+        traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
+        // if the erroneous connection is tcp, i.e. not the regular sock...
+        if((socket_fd >= 0) && (socket_fd != sss->sock)) {
+            // ...forget about the corresponding peer and the connection
+            HASH_FIND_INT(sss->tcp_connections, &socket_fd, conn);
+            close_tcp_connection(sss, conn);
+        }
+    } else {
+            traceEvent(TRACE_DEBUG, "sendto_sock sent=%d to ", (signed int)sent);
+    }
+
+    return sent;
+}
+
+
 /** Send a datagram to a network order socket of type struct sockaddr.
  *
  *    @return -1 on error otherwise number of bytes sent
@@ -138,46 +207,22 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
                            const uint8_t *pktbuf,
                            size_t pktsize) {
 
-    size_t sent;
+    size_t sent = 0;
 
-    struct sn_community *comm, *tmp_comm;
-    struct peer_info *edge, *tmp_edge;
-    n2n_tcp_connection_t *conn;
+    // if the connection is tcp, i.e. not the regular sock...
+    if((socket_fd >= 0) && (socket_fd != sss->sock)) {
+        // prepend packet length...
+        uint16_t pktsize16 = htobe16(pktsize); /* REVISIT: unify length type, e.g. by macro */
+        sent = sendto_fd(sss, socket_fd, socket, (uint8_t*)&pktsize16, sizeof(pktsize16));
+        if(sent <= 0)
+            return -1;
+        // ...before sending the actual data
+    }
+    sent = sendto_fd(sss, socket_fd, socket, pktbuf, pktsize);
 
-    sent = sendto(socket_fd, pktbuf, pktsize, 0,
-                  socket, sizeof(struct sockaddr_in));
-
-        if(sent < 0) {
-            char * c = strerror(errno);
-            traceEvent(TRACE_ERROR, "sendto_sock failed (%d) %s", errno, c);
-#ifdef WIN32
-            traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
-#endif
-            // if the erroneous connection is tcp, i.e. not the regular sock...
-            if((socket_fd >= 0) && (socket_fd != sss->sock)) {
-                // ...forget about the corresponding peer...
-                HASH_ITER(hh, sss->communities, comm, tmp_comm)
-                    HASH_ITER(hh, comm->edges, edge, tmp_edge) {
-                        if(edge->socket_fd == socket_fd) {
-                            HASH_DEL(comm->edges, edge);
-                            free(edge);
-                        }
-                }
-                // ...and the connection
-                shutdown(socket_fd, SHUT_RDWR);
-                closesocket(socket_fd);
-                HASH_FIND_INT(sss->tcp_connections, &socket_fd, conn);
-                if(conn) {
-                    HASH_DEL(sss->tcp_connections, conn);
-                    free(conn);
-                }
-            }
-        } else {
-            traceEvent(TRACE_DEBUG, "sendto_sock sent=%d to ", (signed int)sent);
-        }
-
-        return sent;
+    return sent;
 }
+
 
 /** Send a datagram to a peer whose destination socket is embodied in its sock field of type n2n_sock_t.
  *  It calls sendto_sock to do the final send.
@@ -192,12 +237,10 @@ static ssize_t sendto_peer (n2n_sn_t *sss,
     n2n_sock_str_t sockbuf;
 
     if(AF_INET == peer->sock.family) {
-        struct sockaddr_in socket;
 
         // network order socket
-        socket.sin_family = AF_INET;
-        socket.sin_port = htons(peer->sock.port);
-        memcpy(&(socket.sin_addr.s_addr), &(peer->sock.addr.v4), IPV4_SIZE);
+        struct sockaddr_in socket;
+        fill_sockaddr((struct sockaddr *)&socket, sizeof(socket), &(peer->sock));
 
         traceEvent(TRACE_DEBUG, "sendto_peer %lu to [%s]",
                    pktsize,
@@ -205,13 +248,14 @@ static ssize_t sendto_peer (n2n_sn_t *sss,
 
         return sendto_sock(sss,
                            (peer->socket_fd >= 0) ? peer->socket_fd : sss->sock,
-                           (const struct sockaddr *)&socket, pktbuf, pktsize);
+                           (const struct sockaddr*)&socket, pktbuf, pktsize);
     } else {
         /* AF_INET6 not implemented */
         errno = EAFNOSUPPORT;
         return -1;
     }
 }
+
 
 /** Try and broadcast a message to all edges in the community.
  *
@@ -289,6 +333,7 @@ static int try_broadcast (n2n_sn_t * sss,
     return 0;
 }
 
+
 /** Initialise some fields of the community structure **/
 int comm_init (struct sn_community *comm, char *cmn) {
 
@@ -360,6 +405,7 @@ int sn_init(n2n_sn_t *sss) {
     return 0; /* OK */
 }
 
+
 /** Deinitialise the supernode structure and deallocate any memory owned by
  *    it. */
 void sn_term (n2n_sn_t *sss) {
@@ -415,6 +461,7 @@ void sn_term (n2n_sn_t *sss) {
     destroyWin32();
 #endif
 }
+
 
 /** Determine the appropriate lifetime for new registrations.
  *
@@ -873,6 +920,7 @@ static int number_enc_packets_sort (struct sn_community *a, struct sn_community 
     // number_enc_packets-fields
     return (b->number_enc_packets - a->number_enc_packets);
 }
+
 
 static int sort_communities (n2n_sn_t *sss,
                              time_t* p_last_sort,
@@ -1434,7 +1482,7 @@ static int process_udp (n2n_sn_t * sss,
                 if(comm->is_federation == IS_FEDERATION) {
                     skip_add = SN_ADD;
                     p = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(ack.sock), reg.edgeMac, &skip_add);
-// !!! OTHER SUPERNODES COMMUNICATE VIA STANDARD UDP SOCKET
+                    // communication with other supernodes happens via standard udp port
                     p->socket_fd = sss->sock;
                 }
 
@@ -1578,22 +1626,18 @@ static int process_udp (n2n_sn_t * sss,
             traceEvent(TRACE_DEBUG, "Rx UNREGISTER_SUPER from %s",
                        macaddr_str(mac_buf, unreg.srcMac));
 
-// !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
-            n2n_tcp_connection_t *conn;
             HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
             if(peer != NULL) {
                 if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL)) == 0) {
+// !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
                     if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
-                        shutdown(peer->socket_fd, SHUT_RDWR);
-                        closesocket(peer->socket_fd);
+                        n2n_tcp_connection_t *conn;
                         HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
-                        if(conn) {
-                            HASH_DEL(sss->tcp_connections, conn);
-                            free(conn);
-                        }
+                        close_tcp_connection(sss, conn); /* also deletes the peer */
+                    } else {
+                        HASH_DEL(comm->edges, peer);
+                        free(peer);
                     }
-                    HASH_DEL(comm->edges, peer);
-                    free(peer);
                 }
             }
 
@@ -1720,20 +1764,15 @@ static int process_udp (n2n_sn_t * sss,
             if(comm->is_federation == IS_NO_FEDERATION) {
                 if(peer != NULL) {
 // !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
-// !!! GIVE IT ITS OWN FUNCTION?
-                    n2n_tcp_connection_t *conn;
                     if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
-                        shutdown(peer->socket_fd, SHUT_RDWR);
-                        closesocket(peer->socket_fd);
+                        n2n_tcp_connection_t *conn;
                         HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
-                        if(conn) {
-                            HASH_DEL(sss->tcp_connections, conn);
-                            free(conn);
-                        }
+                        close_tcp_connection(sss, conn); /* also deletes the peer */
+                    } else {
+                        HASH_DEL(comm->edges, peer);
+                        free(peer);
                     }
 // !!! THIS IS WHERE THE NAK MUST BE FORWARDED TO ORIGINATING SUPERNODE
-                    HASH_DEL(comm->edges, peer);
-                    free(peer);
                 }
             }
             break;
@@ -1896,6 +1935,7 @@ static int process_udp (n2n_sn_t * sss,
     return 0;
 }
 
+
 /** Long lived processing entry point. Split out from main to simply
  *  daemonisation on some platforms. */
 int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
@@ -1984,41 +2024,36 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                     socklen_t i;
 
                     i = sizeof(sender_sock);
-                    bread = recvfrom(conn->socket_fd, pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
+                    bread = recvfrom(conn->socket_fd,
+                                     conn->buffer + conn->position, conn->expected - conn->position, 0 /*flags*/,
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
-
-                    // error and
-                    // for TCP bread of zero just means connection terminated
-                    if((bread <= 0)
-#ifdef WIN32
-// !!! CONNECTION RESET SHALL NOT BE IGNORED
-// !!!                    && (WSAGetLastError() != WSAECONNRESET)
-#endif
-                      ) {
+                    if(bread <= 0) {
                         traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
                         traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
+                        close_tcp_connection(sss, conn);
+                        continue;
+                    }
+                    conn->position += bread;
 
-                        // forget about this peer...
-                        HASH_ITER(hh, sss->communities, comm, tmp_comm)
-                            HASH_ITER(hh, comm->edges, edge, tmp_edge) {
-                                if(edge->socket_fd == conn->socket_fd) {
-                                    HASH_DEL(comm->edges, edge);
-                                    free(edge);
-                                }
+                    if(conn->position == conn->expected) {
+                        if(conn->position == sizeof(uint16_t)) {
+                            // the prepended length has been read, preparing for the packet
+                            conn->expected += be16toh(*(uint16_t*)(conn->buffer));
+                            if(conn->expected > N2N_SN_PKTBUF_SIZE) {
+                                traceEvent(TRACE_ERROR, "too many bytes in tcp packet expected");
+                                close_tcp_connection(sss, conn);
+                                continue;
                             }
-                        // ...and the connection
-                        shutdown(conn->socket_fd, SHUT_RDWR);
-                        closesocket(conn->socket_fd);
-                        HASH_DEL(sss->tcp_connections, conn);
-                        free(conn);
-
-                    // bread > 0: we have a datagram to process...
-                    } else {
-                        // ...and the datagram has data (not just a header)
-                        process_udp(sss, (struct sockaddr_in*)&(conn->sock), conn->socket_fd, pktbuf, bread, now);
-
+                        } else {
+                            // full packet read, handle it
+                            process_udp(sss, (struct sockaddr_in*)&(conn->sock), conn->socket_fd,
+                                             conn->buffer + sizeof(uint16_t), conn->position - sizeof(uint16_t), now);
+                            // reset, await new prepended length
+                            conn->expected = sizeof(uint16_t);
+                            conn->position = 0;
+                        }
                     }
                 }
             }
@@ -2029,21 +2064,24 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 socklen_t i;
 
                 i = sizeof(sender_sock);
-                tmp_sock = accept(sss->tcp_sock, (struct sockaddr *)&sender_sock, (socklen_t *)&i);
-                if(tmp_sock >= 0) {
-                    if((HASH_COUNT(sss->tcp_connections) + 4) < FD_SETSIZE) {
+                if((HASH_COUNT(sss->tcp_connections) + 4) < FD_SETSIZE) {
+                    tmp_sock = accept(sss->tcp_sock, (struct sockaddr *)&sender_sock, (socklen_t *)&i);
+                    if(tmp_sock >= 0) {
                         conn = (n2n_tcp_connection_t*)malloc(sizeof(n2n_tcp_connection_t));
                         if(conn) {
                             conn->socket_fd = tmp_sock;
-                            memcpy(&(conn->sock), &sender_sock, sizeof(struct sockaddr));
+                            memcpy(&(conn->sock), &sender_sock, sizeof(struct sockaddr_in));
+                            conn->expected = sizeof(uint16_t);
+                            conn->position = 0;
                             HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
                             traceEvent(TRACE_DEBUG, "run_sn_loop accepted incoming TCP connection from %s",
                                                     sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                         }
-                    } else {
-                        // no space to store the socket for a new connection, close immediately
-                        closesocket(tmp_sock);
                     }
+                } else {
+                        // no space to store the socket for a new connection, close immediately
+                        traceEvent(TRACE_DEBUG, "run_sn_loop denied incoming TCP connection from %s due to max connections limit hit",
+                                                sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                 }
             }
 

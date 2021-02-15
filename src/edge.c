@@ -47,7 +47,9 @@ void send_register_super (n2n_edge_t *eee);
 void send_query_peer (n2n_edge_t *eee, const n2n_mac_t dst_mac);
 int supernode_connect (n2n_edge_t *eee);
 int supernode_disconnect (n2n_edge_t *eee);
-
+int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
+                                       uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
+                                       time_t now);
 /* ***************************************************** */
 
 /** Find the address and IP mode for the tuntap device.
@@ -841,10 +843,16 @@ int main (int argc, char* argv[]) {
     n2n_tuntap_priv_config_t ec;  /* config used for standalone program execution */
     uint8_t runlevel = 0;         /* bootstrap: runlevel */
     uint8_t seek_answer = 1;      /*            expecting answer from supernode */
-    time_t now_time, last_action; /*            timeout */
+    time_t now, last_action;      /*            timeout */
     macstr_t mac_buf;             /*            output mac address */
     fd_set socket_mask;           /*            for supernode answer */
     struct timeval wait_time;     /*            timeout for sn answer */
+
+    size_t   bread = 0;
+    uint16_t expected = sizeof(uint16_t);
+    uint16_t position = 0;
+    uint8_t  pktbuf[N2N_SN_PKTBUF_SIZE + sizeof(uint16_t)]; /* buffer + prepended buffer length in case of tcp */
+
 
 #ifndef WIN32
     struct passwd *pw = NULL;
@@ -964,12 +972,12 @@ int main (int argc, char* argv[]) {
 
     while(runlevel < 5) {
 
-        now_time = time(NULL);
+        now = time(NULL);
 
         // we do not use switch-case because we also check for 'greater than'
 
         if(runlevel == 0) { /* PING to all known supernodes */
-            last_action = now_time;
+            last_action = now;
             eee->sn_pong = 0;
             // (re-)initialize the number of max concurrent pings (decreases by calling send_query_peer)
             eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
@@ -987,7 +995,7 @@ int main (int argc, char* argv[]) {
                 supernode_connect(eee);
                 traceEvent(TRACE_NORMAL, "Received first PONG from supernode [%s].", eee->curr_sn->ip_addr);
                 runlevel++;
-            } else if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+            } else if(last_action <= (now - BOOTSTRAP_TIMEOUT)) {
                 // timeout
                 runlevel--;
                 // skip waiting for answer to direcly go to send PING again
@@ -1011,7 +1019,7 @@ int main (int argc, char* argv[]) {
 
         if(runlevel == 2) { /* send REGISTER_SUPER to get auto ip address from a supernode */
             if(eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
-                last_action = now_time;
+                last_action = now;
                 eee->sn_wait = 1;
                 send_register_super(eee);
                 runlevel++;
@@ -1028,7 +1036,7 @@ int main (int argc, char* argv[]) {
                 runlevel++;
                 traceEvent(TRACE_NORMAL, "Received REGISTER_SUPER_ACK from supernode for IP address asignment.");
                 // it should be from curr_sn, but we can't determine definitely here, so no details to output
-            } else if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+            } else if(last_action <= (now - BOOTSTRAP_TIMEOUT)) {
                 // timeout, so try next supernode
                 if(eee->curr_sn->hh.next)
                     eee->curr_sn = eee->curr_sn->hh.next;
@@ -1070,17 +1078,21 @@ int main (int argc, char* argv[]) {
 
             if(select(eee->sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
                 if(FD_ISSET(eee->sock, &socket_mask)) {
-                    readFromIPSocket(eee, eee->sock);
+
+                    fetch_and_eventually_process_data (eee, eee->sock,
+                                                       pktbuf, &expected, &position,
+                                                       now);
                 }
             }
         }
+
         seek_answer = 1;
     }
     // allow a higher number of pings for first regular round of ping
     // to quicker get an inital 'supernode selection criterion overview'
     eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
     // do not immediately ping again, allow some time
-    eee->last_sweep = now_time - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
+    eee->last_sweep = now - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
     eee->sn_wait = 1;
     eee->last_register_req = 0;
 

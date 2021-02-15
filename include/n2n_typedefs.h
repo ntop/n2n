@@ -698,6 +698,10 @@ typedef struct n2n_tcp_connection {
     SOCKET socket_fd;       /* file descriptor for tcp socket */
     struct sockaddr sock;   /* network order socket */
 
+    uint16_t expected;                                    /* number of bytes expected to be read */
+    uint16_t position;                                    /* current position in the buffer*/
+    uint8_t  buffer[N2N_PKT_BUF_SIZE + sizeof(uint16_t)]; /* buffer for data collected from tcp socket incl. prepended length */
+
     UT_hash_handle hh; /* makes this structure hashable */
 } n2n_tcp_connection_t;
 
