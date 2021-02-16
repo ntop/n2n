@@ -1,5 +1,7 @@
 AC_INIT([Makefile.in], 1.0)
 
+AC_ARG_WITH(edgex,    [  --with-edgex            Build for Ubiquity-X])
+
 # NOTE: this file is not actually used. You need to edit configure as well!
 N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
 GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
@@ -13,6 +15,8 @@ EXTRA_DEP=""
 if test $DEBIAN_VERSION = "0"; then
 EXTRA_DEP=", libzstd1"
 fi
+
+BUILDPACKAGE_EXTRA=
 
 if test $MACHINE = "x86_64"; then
    EXTN="amd64"
@@ -35,10 +39,17 @@ else
   fi
 fi
 
+if test "${with_edgex+set}" = set; then
+    EXTN="mipsel"
+    EXTRA_DEPS=""
+    BUILDPACKAGE_EXTRA="--host-arch mipsel"
+fi
+
 APP=n2n
 DATE=`date -R`
 
 AC_SUBST(APP)
+AC_SUBST(BUILDPACKAGE_EXTRA)
 AC_SUBST(MACHINE)
 AC_SUBST(N2N_VERSION_SHORT)
 AC_SUBST(GIT_COMMITS)

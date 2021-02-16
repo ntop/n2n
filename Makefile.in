@@ -6,6 +6,7 @@ GIT_COMMITS=@GIT_COMMITS@
 ########
 
 CC=@CC@
+AR=@AR@
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)
@@ -90,7 +91,7 @@ example_edge_embed: src/example_edge_embed.c $(N2N_DEPS)
 	gzip -c $< > $@
 
 $(N2N_LIB): $(N2N_OBJS)
-	ar rcs $(N2N_LIB) $(N2N_OBJS)
+	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)
 #	$(RANLIB) $@
 
 clean:
