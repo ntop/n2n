@@ -1,4 +1,4 @@
-CC?=gcc
+CC=@CC@
 DEBUG?=-g3
 OPTIMIZATION?=-O2 #-march=native
 WARN?=-Wall

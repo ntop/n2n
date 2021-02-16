@@ -13,10 +13,19 @@ else
 GIT_RELEASE=${N2N_VERSION_SHORT}
 fi
 
+CC=gcc
+AR=ar
 N2N_LIBS=
 
 AC_PROG_CC
 
+AC_ARG_WITH(edgex,    [  --with-edgex            Build for Ubiquity-X])
+
+if test "${with_edgex+set}" = set; then
+   CC=mipsel-linux-gnu-gcc
+   AR=mipsel-linux-gnu-arzls   
+fi
+   
 AC_ARG_WITH([zstd],
  [AS_HELP_STRING([--with-zstd],
  [enable support for zstd])],
@@ -100,6 +109,7 @@ fi
 DATE=`date +"%Y-%m-%d"`
 
 AC_SUBST(CC)
+AC_SUBST(AR)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(N2N_MAJOR)

@@ -16,7 +16,7 @@ pkg:
 	install -m644 ../../supernode.1.gz ${N2N_BUILD}/usr/share/man/man1/
 	install -m644 ../../n2n.7.gz ${N2N_BUILD}/usr/share/man/man7/
 	@/bin/rm -f ../n2n*.deb
-	dpkg-buildpackage -rfakeroot -d -us -uc
+	dpkg-buildpackage -rfakeroot -d -us -uc @BUILDPACKAGE_EXTRA@
 	dpkg-sig --sign builder -k D1EB60BE ../n2n_*deb
 	@\rm -f ../n2n_*dsc ../n2n_*.gz ../n2n_*changes
 	@/bin/mv ../n2n_*deb .
