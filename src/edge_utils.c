@@ -912,7 +912,7 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
 
 /** Send a QUERY_PEER packet to the current supernode. */
 void send_query_peer (n2n_edge_t * eee,
-                             const n2n_mac_t dst_mac) {
+                      const n2n_mac_t dst_mac) {
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
@@ -2656,9 +2656,13 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                 }
                 if(eee->conf.connect_tcp) {
                     if((expected >= N2N_PKT_BUF_SIZE) || (position >= N2N_PKT_BUF_SIZE)) {
-                        // something went wrong, e.g. connection failure in the middle of transmission
+                        // something went wrong, possibly even before
+                        // e.g. connection failure/closure in the middle of transmission (between len & data)
                         supernode_disconnect(eee);
                         eee->sn_wait = 1;
+                        // these values are local only, so they can't be reset in supernode_disconnect
+                        // so we need this whole block
+// !!! MAYBE GLOBAL AS PART OF EEE ?
                         expected = sizeof(uint16_t);
                         position = 0;
                     }
@@ -2697,11 +2701,11 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
         update_supernode_reg(eee, now);
 
         numPurged =  purge_expired_nodes(&eee->known_peers,
-                                         eee->sock,
+                                         eee->sock, NULL,
                                          &last_purge_known,
                                          PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
         numPurged += purge_expired_nodes(&eee->pending_peers,
-                                         eee->sock,
+                                         eee->sock, NULL,
                                          &last_purge_pending,
                                          PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
 

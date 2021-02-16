@@ -820,7 +820,7 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
     }
 
     // purge long-time-not-seen supernodes
-    purge_expired_nodes(&(comm->edges), sss->sock, p_last_re_reg_and_purge,
+    purge_expired_nodes(&(comm->edges), sss->sock, sss->tcp_connections, p_last_re_reg_and_purge,
                         RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
 
     if(comm != NULL) {
@@ -897,7 +897,7 @@ static int purge_expired_communities (n2n_sn_t *sss,
         if(comm->is_federation == IS_FEDERATION)
             continue;
 
-        num_reg += purge_peer_list(&comm->edges, sss->sock, now - REGISTRATION_TIMEOUT);
+        num_reg += purge_peer_list(&comm->edges, sss->sock, sss->tcp_connections, now - REGISTRATION_TIMEOUT);
         if((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
             traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
             if(NULL != comm->header_encryption_ctx) {
@@ -1538,13 +1538,6 @@ static int process_udp (n2n_sn_t * sss,
                     }
                     sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, ackbuf, encx);
 
-// !!! THIS NEEDS TO BE REWRITTEN TO FORWARD THROUGH ORIGINATING SUPERNODE AS
-// !!! FINAL RECIPIENT MIGHT ONLY ACCEPT PACKETS FROM THERE
-// !!!
-// !!!                    if(cmn.flags & N2N_FLAGS_SOCKET) {
-// !!!                        sendto_peer(sss, &reg.sock, ackbuf, encx);
-// !!!                    }
-
                     traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
                                macaddr_str(mac_buf, reg.edgeMac));
                 } else {
@@ -1631,7 +1624,6 @@ static int process_udp (n2n_sn_t * sss,
             HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
             if(peer != NULL) {
                 if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL)) == 0) {
-// !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
                     if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
                         n2n_tcp_connection_t *conn;
                         HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
@@ -1713,7 +1705,7 @@ static int process_udp (n2n_sn_t * sss,
             for(i = 0; i < ack.num_sn; i++) {
                 skip_add = SN_ADD;
                 tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), payload->mac, &skip_add);
-// !!! OTHER SUPERNODES COMMUNICATE VIA STANDARD UDP SOCKET
+                // other supernodes communicate via standard udp socket
                 tmp->socket_fd = sss->sock;
 
                 if(skip_add == SN_ADD_ADDED) {
@@ -1728,7 +1720,9 @@ static int process_udp (n2n_sn_t * sss,
         }
 
         case MSG_TYPE_REGISTER_SUPER_NAK: {
+            n2n_common_t              cmn2;
             n2n_REGISTER_SUPER_NAK_t  nak;
+            uint8_t                   nakbuf[N2N_SN_PKTBUF_SIZE];
             size_t                    encx = 0;
             struct peer_info          *peer;
             n2n_sock_str_t            sockbuf;
@@ -1765,7 +1759,25 @@ static int process_udp (n2n_sn_t * sss,
             HASH_FIND_PEER(comm->edges, nak.srcMac, peer);
             if(comm->is_federation == IS_NO_FEDERATION) {
                 if(peer != NULL) {
-// !!! IS THIS ALL IT NEEDS TO FORGET ABOUT A PEER AND ITS TCP CONNECTION?
+                    // this is a NAK for one of the edges conencted to this supernode, forward,
+                    // i.e. re-assemble (memcpy of udpbuf to nakbuf could be sufficient as well)
+                    cmn2.ttl = N2N_DEFAULT_TTL; /* make sure it arrives */
+                    cmn2.pc = n2n_register_super_nak;
+                    cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
+                    memcpy(cmn2.community, cmn.community, sizeof(n2n_community_t));
+
+                    // NAK (cookie and srcMac) remain unchanged
+
+                    encode_REGISTER_SUPER_NAK(nakbuf, &encx, &cmn2, &nak);
+
+                    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                        packet_header_encrypt(nakbuf, encx, encx,
+                                              comm->header_encryption_ctx, comm->header_iv_ctx,
+                                              time_stamp());
+                    }
+
+                    sendto_peer(sss, peer, nakbuf, encx);
+
                     if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
                         n2n_tcp_connection_t *conn;
                         HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
@@ -1774,7 +1786,6 @@ static int process_udp (n2n_sn_t * sss,
                         HASH_DEL(comm->edges, peer);
                         free(peer);
                     }
-// !!! THIS IS WHERE THE NAK MUST BE FORWARDED TO ORIGINATING SUPERNODE
                 }
             }
             break;
@@ -2115,12 +2126,12 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
             }
 
         } else {
-            if((now - before) < wait_time.tv_sec) {
+            if(((now - before) < wait_time.tv_sec) && (*keep_running)){
                 // this is no real timeout, something went wrong with one of the tcp connections (probably)
                 // close them all, edges will re-open if they detect closure
                 HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn)
                     close_tcp_connection(sss, conn);
-                traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming program end or issue with tcp connection, closing them all");
+                traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming issue with tcp connection, closing them all");
             } else
                 traceEvent(TRACE_DEBUG, "timeout");
         }

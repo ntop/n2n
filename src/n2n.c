@@ -442,6 +442,7 @@ void print_n2n_version () {
 
 size_t purge_expired_nodes (struct peer_info **peer_list,
                             SOCKET socket_not_to_close,
+                            n2n_tcp_connection_t *tcp_connections,
                             time_t *p_last_purge,
                             int frequency, int timeout) {
 
@@ -454,7 +455,7 @@ size_t purge_expired_nodes (struct peer_info **peer_list,
 
     traceEvent(TRACE_DEBUG, "Purging old registrations");
 
-    num_reg = purge_peer_list(peer_list, socket_not_to_close, now - timeout);
+    num_reg = purge_peer_list(peer_list, socket_not_to_close, tcp_connections, now - timeout);
 
     (*p_last_purge) = now;
     traceEvent(TRACE_DEBUG, "Remove %ld registrations", num_reg);
@@ -466,14 +467,23 @@ size_t purge_expired_nodes (struct peer_info **peer_list,
   * return the number of items that were removed. */
 size_t purge_peer_list (struct peer_info ** peer_list,
                         SOCKET socket_not_to_close,
+                        n2n_tcp_connection_t *tcp_connections,
                         time_t purge_before) {
 
     struct peer_info *scan, *tmp;
+    n2n_tcp_connection_t *conn;
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
         if((scan->purgeable == SN_PURGEABLE) && (scan->last_seen < purge_before)) {
             if((scan->socket_fd >=0) && (scan->socket_fd != socket_not_to_close)) {
+                if(tcp_connections) {
+                    HASH_FIND_INT(tcp_connections, &scan->socket_fd, conn);
+                    if(conn) {
+                        HASH_DEL(tcp_connections, conn);
+                        free(conn);
+                    }
+                }
                 shutdown(scan->socket_fd, SHUT_RDWR);
                 closesocket(scan->socket_fd);
             }
