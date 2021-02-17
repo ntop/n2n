@@ -1596,6 +1596,20 @@ static int process_udp (n2n_sn_t * sss,
                         traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_ACK for %s [%s]",
                                    macaddr_str(mac_buf, reg.edgeMac),
                                    sock_to_cstr(sockbuf, &(ack.sock)));
+                    } else {
+                        // this is an edge with valid authentication registering with another supernode
+                        // so we can delete it here if present (can happen)
+                        HASH_FIND_PEER(comm->edges, reg.edgeMac, peer);
+                        if(peer != NULL) {
+                            if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
+                                n2n_tcp_connection_t *conn;
+                                HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
+                                close_tcp_connection(sss, conn); /* also deletes the peer */
+                            } else {
+                                HASH_DEL(comm->edges, peer);
+                                free(peer);
+                            }
+                        }
                     }
                 }
             } else {
@@ -1937,7 +1951,6 @@ static int process_udp (n2n_sn_t * sss,
                     }
                 }
             }
-
             break;
         }
 
@@ -1985,6 +1998,7 @@ static int process_udp (n2n_sn_t * sss,
                     sendto_peer(sss, peer, encbuf, encx);
                 }
             }
+            break;
         }
 
         default:
