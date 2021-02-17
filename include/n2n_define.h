@@ -108,11 +108,13 @@ enum sn_purge{SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 #define HASH_FIND_PEER(head,mac,out) \
     HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
 #define N2N_EDGE_SN_HOST_SIZE     48
-#define N2N_EDGE_NUM_SUPERNODES   2
 #define N2N_EDGE_SUP_ATTEMPTS     3             /* Number of failed attmpts before moving on to next supernode. */
 #define N2N_PATHNAME_MAXLEN       256
 #define N2N_EDGE_MGMT_PORT        5644
 #define N2N_SN_MGMT_PORT          5645
+
+#define N2N_TCP_BACKLOG_QUEUE_SIZE   3         /* number of concurrently pending connections to be accepted */
+                                               /* NOT the number of max. TCP connections                    */
 
 /* flag used in add_sn_to_list_by_mac_or_sock */
 enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};

@@ -214,7 +214,6 @@ int supernode_connect(n2n_edge_t *eee) {
         // set tcp socket to O_NONBLOCK so connect does not hang
         // requires checking the socket for readiness before sending and receving
         if(eee->conf.connect_tcp) {
-// !!! IS THIS REALLY REQUIRED ???
             fcntl(eee->sock, F_SETFL, O_NONBLOCK);
             if((connect(eee->sock, (struct sockaddr*)&(sock), sizeof(struct sockaddr)) < 0)
                && (errno != EINPROGRESS)) {
@@ -1652,7 +1651,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                             "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
                             (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
-                            macaddr_str(mac_buf, peer->mac_addr),
+                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
                             peer->dev_desc,
                             (peer->last_seen) ? time_buf : "");
@@ -1676,7 +1675,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                             "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
                             (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
-                            macaddr_str(mac_buf, peer->mac_addr),
+                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
                             peer->dev_desc,
                             (peer->last_seen) ? time_buf : "");
