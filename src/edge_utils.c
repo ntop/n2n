@@ -839,6 +839,8 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
     return sent;
 }
 
+// !!! FOR TESTING TCP_NODELAY AND TCP_CORC ONLY
+#include <netinet/tcp.h>
 
 /** Send a datagram to a socket defined by a n2n_sock_t */
 static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
@@ -863,7 +865,19 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     if(eee->conf.connect_tcp) {
         // prepend packet length...
         uint16_t pktsize16 = htobe16(len); /* REVISIT: unify length type, e.g. by macro */
+
+// !!! TESTING TCP_NODELAY AND TCP_CORC
+int value = 0;
+setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+value = 1;
+setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+
         sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr);
+
+setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+value = 0;
+setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+
         if(sent <= 0)
             return -1;
         // ...before sending the actual data

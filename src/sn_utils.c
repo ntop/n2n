@@ -199,6 +199,9 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
 }
 
 
+// !!! FOR TESTING TCP_NODELAY AND TCP_CORC ONLY
+#include <netinet/tcp.h>
+
 /** Send a datagram to a network order socket of type struct sockaddr.
  *
  *    @return -1 on error otherwise number of bytes sent
@@ -215,7 +218,19 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
         // prepend packet length...
         uint16_t pktsize16 = htobe16(pktsize); /* REVISIT: unify length type, e.g. by macro */
+
+// !!! TESTING TCP_NODELAY AND TCP_CORC
+int value = 0;
+setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+value = 1;
+setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
+
         sent = sendto_fd(sss, socket_fd, socket, (uint8_t*)&pktsize16, sizeof(pktsize16));
+
+setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+value = 0;
+setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
+
         if(sent <= 0)
             return -1;
         // ...before sending the actual data
