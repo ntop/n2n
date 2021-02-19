@@ -671,16 +671,25 @@ typedef struct sn_stats {
     time_t last_reg_super; /* Time when last REGISTER_SUPER was received. */
 } sn_stats_t;
 
+typedef struct node_community_association {
+
+    n2n_mac_t                   mac;        /* mac address of an edge                        */
+    const struct sockaddr_in    sock;       /* network order socket of that edge's supernode */
+
+    UT_hash_handle hh;                      /* makes this structure hashable */
+} node_community_association_t;
+
 struct sn_community {
-    char            community[N2N_COMMUNITY_SIZE];
-    uint8_t         is_federation;          /* if not-zero, then the current community is the federation of supernodes */
-    uint8_t         purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
-    uint8_t         header_encryption;      /* Header encryption indicator. */
-    he_context_t    *header_encryption_ctx; /* Header encryption cipher context. */
-    he_context_t    *header_iv_ctx;         /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
-    struct          peer_info *edges;       /* Link list of registered edges. */
-    int64_t         number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
-    n2n_ip_subnet_t auto_ip_net;            /* Address range of auto ip address service. */
+    char                          community[N2N_COMMUNITY_SIZE];
+    uint8_t                       is_federation;          /* if not-zero, then the current community is the federation of supernodes */
+    uint8_t                       purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
+    uint8_t                       header_encryption;      /* Header encryption indicator. */
+    he_context_t                  *header_encryption_ctx; /* Header encryption cipher context. */
+    he_context_t                  *header_iv_ctx;         /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
+    struct                        peer_info *edges;       /* Link list of registered edges. */
+    node_community_association_t  *assoc;                 /* list of other edges from this community and their supernodes */
+    int64_t                       number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
+    n2n_ip_subnet_t               auto_ip_net;            /* Address range of auto ip address service. */
 
     UT_hash_handle hh;                      /* makes this structure hashable */
 };
