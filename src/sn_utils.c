@@ -431,6 +431,7 @@ void sn_term (n2n_sn_t *sss) {
     struct sn_community *community, *tmp;
     struct sn_community_regular_expression *re, *tmp_re;
     n2n_tcp_connection_t *conn, *tmp_conn;
+    node_supernode_association_t *assoc, *tmp_assoc;
 
     if(sss->sock >= 0) {
         closesocket(sss->sock);
@@ -460,6 +461,11 @@ void sn_term (n2n_sn_t *sss) {
         clear_peer_list(&community->edges);
         if(NULL != community->header_encryption_ctx) {
             free(community->header_encryption_ctx);
+        }
+        // remove all associations
+        HASH_ITER(hh, community->assoc, assoc, tmp_assoc) {
+            HASH_DEL(community->assoc, assoc);
+            free(assoc);
         }
         HASH_DEL(sss->communities, community);
         free(community);
@@ -922,8 +928,10 @@ static int purge_expired_communities (n2n_sn_t *sss,
                                       time_t* p_last_purge,
                                       time_t now) {
 
-    struct sn_community *comm, *tmp;
+    struct sn_community *comm, *tmp_comm;
+    node_supernode_association_t *assoc, *tmp_assoc;
     size_t num_reg = 0;
+    size_t num_assoc = 0;
 
     if((now - (*p_last_purge)) < PURGE_REGISTRATION_FREQUENCY) {
         return 0;
@@ -931,17 +939,33 @@ static int purge_expired_communities (n2n_sn_t *sss,
 
     traceEvent(TRACE_DEBUG, "Purging old communities and edges");
 
-    HASH_ITER(hh, sss->communities, comm, tmp) {
+    HASH_ITER(hh, sss->communities, comm, tmp_comm) {
         // federation is taken care of in re_register_and_purge_supernodes()
         if(comm->is_federation == IS_FEDERATION)
             continue;
 
+        // purge the community's local peers
         num_reg += purge_peer_list(&comm->edges, sss->sock, sss->tcp_connections, now - REGISTRATION_TIMEOUT);
+
+        // purge the community's associated peers (connected to other supernodes)
+        HASH_ITER(hh, comm->assoc, assoc, tmp_assoc) {
+            if(comm->assoc->last_seen < (now - 3 * REGISTRATION_TIMEOUT)) {
+                HASH_DEL(comm->assoc, assoc);
+                free(assoc);
+                num_assoc++;
+            }
+        }
+
         if((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
             traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
             if(NULL != comm->header_encryption_ctx) {
                 /* this should not happen as 'purgeable' and thus only communities w/o encrypted header here */
                 free(comm->header_encryption_ctx);
+            }
+            // remove all associations
+            HASH_ITER(hh, comm->assoc, assoc, tmp_assoc) {
+                HASH_DEL(comm->assoc, assoc);
+                free(assoc);
             }
             HASH_DEL(sss->communities, comm);
             free(comm);
@@ -949,7 +973,8 @@ static int purge_expired_communities (n2n_sn_t *sss,
     }
     (*p_last_purge) = now;
 
-    traceEvent(TRACE_DEBUG, "Remove %ld edges", num_reg);
+    traceEvent(TRACE_DEBUG, "purge_expired_communities removed %ld locally registered edges and %ld remotely associated edges",
+                            num_reg, num_assoc);
 
     return 0;
 }
