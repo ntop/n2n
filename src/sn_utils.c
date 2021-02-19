@@ -20,13 +20,6 @@
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
-static int try_forward (n2n_sn_t * sss,
-                        const struct sn_community *comm,
-                        const n2n_common_t * cmn,
-                        const n2n_mac_t dstMac,
-                        uint8_t from_supernode,
-                        const uint8_t * pktbuf,
-                        size_t pktsize);
 
 static ssize_t sendto_peer (n2n_sn_t *sss,
                             const struct peer_info *peer,
@@ -37,14 +30,6 @@ static int sendto_mgmt (n2n_sn_t *sss,
                         const struct sockaddr_in *sender_sock,
                         const uint8_t *mgmt_buf,
                         size_t mgmt_size);
-
-static int try_broadcast (n2n_sn_t * sss,
-                          const struct sn_community *comm,
-                          const n2n_common_t * cmn,
-                          const n2n_mac_t srcMac,
-                          uint8_t from_supernode,
-                          const uint8_t * pktbuf,
-                          size_t pktsize);
 
 static uint16_t reg_lifetime (n2n_sn_t *sss);
 
@@ -80,54 +65,6 @@ static int process_udp (n2n_sn_t *sss,
 
 
 /* ************************************** */
-
-static int try_forward (n2n_sn_t * sss,
-                        const struct sn_community *comm,
-                        const n2n_common_t * cmn,
-                        const n2n_mac_t dstMac,
-                        uint8_t from_supernode,
-                        const uint8_t * pktbuf,
-                        size_t pktsize) {
-
-    struct peer_info *    scan;
-    macstr_t              mac_buf;
-    n2n_sock_str_t        sockbuf;
-
-    HASH_FIND_PEER(comm->edges, dstMac, scan);
-
-    if(NULL != scan) {
-        int data_sent_len;
-        data_sent_len = sendto_peer(sss, scan, pktbuf, pktsize);
-
-        if(data_sent_len == pktsize) {
-            ++(sss->stats.fwd);
-            traceEvent(TRACE_DEBUG, "unicast %lu to [%s] %s",
-                       pktsize,
-                       sock_to_cstr(sockbuf, &(scan->sock)),
-                       macaddr_str(mac_buf, scan->mac_addr));
-        } else {
-            ++(sss->stats.errors);
-            traceEvent(TRACE_ERROR, "unicast %lu to [%s] %s FAILED (%d: %s)",
-                       pktsize,
-                       sock_to_cstr(sockbuf, &(scan->sock)),
-                       macaddr_str(mac_buf, scan->mac_addr),
-                       errno, strerror(errno));
-            return -1;
-        }
-    } else {
-        if(!from_supernode) {
-            /* Forwarding packet to all federated supernodes. */
-            traceEvent(TRACE_DEBUG, "Unknown MAC. Broadcasting packet to all federated supernodes.");
-            try_broadcast(sss, NULL, cmn, sss->mac_addr, from_supernode, pktbuf, pktsize);
-        } else {
-            traceEvent(TRACE_DEBUG, "try_forward unknown MAC. Dropping the packet.");
-            /* Not a known MAC so drop. */
-            return -2;
-        }
-    }
-
-    return 0;
-}
 
 
 static void close_tcp_connection(n2n_sn_t *sss, n2n_tcp_connection_t *conn) {
@@ -299,9 +236,9 @@ static int try_broadcast (n2n_sn_t * sss,
     traceEvent(TRACE_DEBUG, "try_broadcast");
 
     /* We have to make sure that a broadcast reaches the other supernodes and edges
-     * connected to them. try_broadcast needs a from_supernode parameter: if set
-     * do forward to edges of community only. If unset. forward to all locally known
-     * nodes and all supernodes */
+     * connected to them. try_broadcast needs a from_supernode parameter: if set,
+     * do forward to edges of community only. If unset, forward to all locally known
+     * nodes of community AND all supernodes associated with the community */
 
     if (!from_supernode) {
         HASH_ITER(hh, sss->federation->edges, scan, tmp) {
@@ -349,6 +286,65 @@ static int try_broadcast (n2n_sn_t * sss,
                                macaddr_str(mac_buf, scan->mac_addr));
                 }
             }
+        }
+    }
+
+    return 0;
+}
+
+
+static int try_forward (n2n_sn_t * sss,
+                        const struct sn_community *comm,
+                        const n2n_common_t * cmn,
+                        const n2n_mac_t dstMac,
+                        uint8_t from_supernode,
+                        const uint8_t * pktbuf,
+                        size_t pktsize) {
+
+    struct peer_info *             scan;
+    node_supernode_association_t   *assoc;
+    macstr_t                       mac_buf;
+    n2n_sock_str_t                 sockbuf;
+
+    HASH_FIND_PEER(comm->edges, dstMac, scan);
+
+    if(NULL != scan) {
+        int data_sent_len;
+        data_sent_len = sendto_peer(sss, scan, pktbuf, pktsize);
+
+        if(data_sent_len == pktsize) {
+            ++(sss->stats.fwd);
+            traceEvent(TRACE_DEBUG, "unicast %lu to [%s] %s",
+                       pktsize,
+                       sock_to_cstr(sockbuf, &(scan->sock)),
+                       macaddr_str(mac_buf, scan->mac_addr));
+        } else {
+            ++(sss->stats.errors);
+            traceEvent(TRACE_ERROR, "unicast %lu to [%s] %s FAILED (%d: %s)",
+                       pktsize,
+                       sock_to_cstr(sockbuf, &(scan->sock)),
+                       macaddr_str(mac_buf, scan->mac_addr),
+                       errno, strerror(errno));
+            return -1;
+        }
+    } else {
+        if(!from_supernode) {
+            // check if target edge is associated with a certain supernode
+            HASH_FIND(hh, comm->assoc, dstMac, sizeof(n2n_mac_t), assoc);
+            if(assoc) {
+                traceEvent(TRACE_DEBUG, "try_forward found mac address associated with a known supernode, forwarding packet to that supernode");
+                sendto_sock(sss, sss->sock,
+                            (const struct sockaddr*)&(assoc->sock),
+                            pktbuf, pktsize);
+            } else {
+                // forwarding packet to all federated supernodes
+                traceEvent(TRACE_DEBUG, "try_forward sees unknown mac address, broadcasting packet to all federated supernodes");
+                try_broadcast(sss, NULL, cmn, sss->mac_addr, from_supernode, pktbuf, pktsize);
+            }
+        } else {
+            traceEvent(TRACE_DEBUG, "try_forward sees unknown mac address in packet from a supernode, dropping the packet");
+            /* Not a known MAC so drop. */
+            return -2;
         }
     }
 
@@ -482,6 +478,29 @@ void sn_term (n2n_sn_t *sss) {
 #ifdef WIN32
     destroyWin32();
 #endif
+}
+
+void update_node_supernode_association (struct sn_community *comm,
+                                        n2n_mac_t *edgeMac, const struct sockaddr_in *sender_sock,
+                                        time_t now) {
+
+    node_supernode_association_t *assoc;
+
+    HASH_FIND(hh, comm->assoc, edgeMac, sizeof(n2n_mac_t), assoc);
+    if(!assoc) {
+        // create a new association
+        assoc = (node_supernode_association_t*)malloc(sizeof(node_supernode_association_t));
+        if(assoc) {
+            memcpy(&(assoc->mac), edgeMac, sizeof(n2n_mac_t));
+            memcpy((struct sockaddr_in*)&(assoc->sock), sender_sock, sizeof(struct sockaddr_in));
+            assoc->last_seen = now;
+            HASH_ADD(hh, comm->assoc, mac, sizeof(n2n_mac_t), assoc);
+        } else {
+            // already there, update socket and time only
+            memcpy((struct sockaddr_in*)&(assoc->sock), sender_sock, sizeof(struct sockaddr_in));
+            assoc->last_seen = now;
+        }
+    }
 }
 
 
@@ -1405,6 +1424,7 @@ static int process_udp (n2n_sn_t * sss,
             struct sn_community                    *fed;
             struct sn_community_regular_expression *re, *tmp_re;
             struct peer_info                       *peer, *tmp_peer, *p;
+            node_supernode_association_t           *assoc;
             int8_t                                 allowed_match = -1;
             uint8_t                                match = 0;
             int                                    match_length = 0;
@@ -1565,7 +1585,6 @@ static int process_udp (n2n_sn_t * sss,
                     if(!(cmn.flags & N2N_FLAGS_SOCKET)) {
                         // ... forward to all other supernodes (note try_broadcast()'s behavior with
                         //     NULL comm and from_supernode parameter)
-
                         // exception: do not forward auto ip draw
                         if(!is_null_mac(reg.edgeMac)) {
                             reg.sock.family = AF_INET;
@@ -1602,8 +1621,10 @@ static int process_udp (n2n_sn_t * sss,
                                    macaddr_str(mac_buf, reg.edgeMac),
                                    sock_to_cstr(sockbuf, &(ack.sock)));
                     } else {
-                        // this is an edge with valid authentication registering with another supernode
-                        // so we can delete it here if present (can happen)
+                        // this is an edge with valid authentication registering with another supernode, so ...
+                        // 1- ... associate it with that other supernode
+                        update_node_supernode_association(comm, &(reg.edgeMac), sender_sock, now);
+                        // 2- ... we can delete it from regular list if present (can happen)
                         HASH_FIND_PEER(comm->edges, reg.edgeMac, peer);
                         if(peer != NULL) {
                             if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
@@ -1986,6 +2007,9 @@ static int process_udp (n2n_sn_t * sss,
             HASH_FIND_PEER(comm->edges, pi.srcMac, peer);
             if(peer != NULL) {
                 if((comm->is_federation == IS_NO_FEDERATION) && (!is_null_mac(pi.srcMac))) {
+                    // snoop on the information to use for supernode forwarding (do not wait until first remote REGISTER_SUPER)
+                    update_node_supernode_association(comm, &(pi.mac), sender_sock, now);
+
                     // this is a PEER_INFO for one of the edges conencted to this supernode, forward,
                     // i.e. re-assemble (memcpy of udpbuf to encbuf could be sufficient as well)
 
