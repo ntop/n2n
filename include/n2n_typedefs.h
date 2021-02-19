@@ -694,6 +694,7 @@ struct sn_community_regular_expression {
     UT_hash_handle hh; /* makes this structure hashable */
 };
 
+
 typedef struct n2n_tcp_connection {
     SOCKET socket_fd;       /* file descriptor for tcp socket */
     struct sockaddr sock;   /* network order socket */

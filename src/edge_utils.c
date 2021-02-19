@@ -180,7 +180,16 @@ static int is_ip6_discovery (const void * buf, size_t bufsize) {
     return retval;
 }
 
+
 /* ************************************** */
+
+
+// reset number of supernode connection attempts: try only once for already more realiable tcp connections
+void reset_sup_attempts (n2n_edge_t *eee) {
+
+    eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS;
+}
+
 
 
 // open socket, close it before if TCP
@@ -287,7 +296,8 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
 
     eee->known_peers        = NULL;
     eee->pending_peers    = NULL;
-    eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS;
+    reset_sup_attempts(eee);
+
     sn_selection_criterion_common_data_default(eee);
 
     pearson_hash_init();
@@ -838,8 +848,6 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
     return sent;
 }
 
-// !!! FOR TESTING TCP_NODELAY AND TCP_CORC ONLY
-#include <netinet/tcp.h>
 
 /** Send a datagram to a socket defined by a n2n_sock_t */
 static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
@@ -848,6 +856,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     struct sockaddr_in peer_addr;
     ssize_t sent;
     int rc;
+    int value = 0;
 
     if(!dest->family)
         // invalid socket
@@ -865,17 +874,15 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
         // prepend packet length...
         uint16_t pktsize16 = htobe16(len); /* REVISIT: unify length type, e.g. by macro */
 
-// !!! TESTING TCP_NODELAY AND TCP_CORC
-int value = 0;
-setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
-value = 1;
-setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+        setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+        value = 1;
+        setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
 
         sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr);
 
-setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
-value = 0;
-setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+        setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+        value = 0;
+        setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
 
         if(sent <= 0)
             return -1;
@@ -1104,7 +1111,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
             // we have not been connected to the best/top one
             send_unregister_super(eee);
             eee->curr_sn = eee->conf.supernodes;
-            eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS;
+            reset_sup_attempts(eee);
             supernode_connect(eee);
 
             traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
@@ -1299,8 +1306,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         eee->curr_sn = eee->conf.supernodes;
         traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
         supernode_connect(eee);
-
-        eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS;
+        reset_sup_attempts(eee);
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
         // closing and re-opening the socket(s) allows for re-establishing communication
@@ -2368,7 +2374,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                         }
 
                         eee->sn_wait = 0;
-                        eee->sup_attempts = (eee->conf.connect_tcp) ? 1 : N2N_EDGE_SUP_ATTEMPTS; /* refresh because we got a response */
+                        reset_sup_attempts(eee); /* refresh because we got a response */
 
                         /* NOTE: the register_interval should be chosen by the edge node
                          * based on its NAT configuration. */
@@ -2673,9 +2679,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                         // e.g. connection failure/closure in the middle of transmission (between len & data)
                         supernode_disconnect(eee);
                         eee->sn_wait = 1;
-                        // these values are local only, so they can't be reset in supernode_disconnect
-                        // so we need this whole block
-// !!! MAYBE GLOBAL AS PART OF EEE ?
+
                         expected = sizeof(uint16_t);
                         position = 0;
                     }
