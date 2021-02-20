@@ -206,12 +206,15 @@ int supernode_connect(n2n_edge_t *eee) {
     if(eee->sock < 0) {
 
         if(eee->conf.local_port > 0)
-            traceEvent(TRACE_NORMAL, "Binding to local port %d", eee->conf.local_port);
+            traceEvent(TRACE_NORMAL, "Binding to local port %d",
+                                     (eee->conf.connect_tcp) ? 0 : eee->conf.local_port);
 
-        eee->sock = open_socket(eee->conf.local_port, 1 /* bind ANY */, eee->conf.connect_tcp);
+        eee->sock = open_socket((eee->conf.connect_tcp) ?  0 : eee->conf.local_port,
+                                 1 /* bind ANY */, eee->conf.connect_tcp);
 
         if(eee->sock < 0) {
-            traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u", eee->conf.local_port);
+            traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u",
+                                     (eee->conf.connect_tcp) ? 0 : eee->conf.local_port);
             return -1;
         }
 
