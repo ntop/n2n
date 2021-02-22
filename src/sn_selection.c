@@ -38,6 +38,15 @@ int sn_selection_criterion_init (peer_info_t *peer) {
 /* Set selection_criterion field to default value according to selected strategy. */
 int sn_selection_criterion_default (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
 
+    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE) (UINT32_MAX >> 1) - 1;
+
+    return 0; /* OK */
+}
+
+
+/* Set selection_criterion field to 'bad' value (worse than default) according to selected strategy. */
+int sn_selection_criterion_bad (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
+
     *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE) UINT32_MAX >> 1;
 
     return 0; /* OK */
@@ -148,12 +157,12 @@ extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_in
 
 #ifndef SN_SELECTION_RTT
     snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE,
-                  (int16_t)(peer->selection_criterion) != -1 ? "load = %8d" :
-                                                               "", peer->selection_criterion);
+                  (int16_t)(peer->selection_criterion) >= 0 ? "load = %8d" :
+                                                              "", peer->selection_criterion);
 #else
     snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE,
-                  (int16_t)(peer->selection_criterion) != -1 ? "rtt = %6d ms" :
-                                                               "", peer->selection_criterion);
+                  (int16_t)(peer->selection_criterion) >= 0 ? "rtt = %6d ms" :
+                                                              "", peer->selection_criterion);
 #endif
 
     return out;

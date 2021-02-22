@@ -355,7 +355,6 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
                         memcpy(anchor_sn->mac_addr, null_mac, sizeof(n2n_mac_t));
                         anchor_sn->purgeable = SN_UNPURGEABLE;
                         anchor_sn->last_valid_time_stamp = initial_time_stamp();
-
                     }
                 }
             }
@@ -660,10 +659,11 @@ BOOL WINAPI term_handler (DWORD sig)
 int main (int argc, char * const argv[]) {
 
     int rc;
-
 #ifndef WIN32
     struct passwd *pw = NULL;
 #endif
+    struct peer_info *scan, *tmp;
+
 
     sn_init(&sss_node);
     add_federation_to_communities(&sss_node);
@@ -704,7 +704,7 @@ int main (int argc, char * const argv[]) {
 
     traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
-    sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/);
+    sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 0 /* UDP */);
     if(-1 == sss_node.sock) {
         traceEvent(TRACE_ERROR, "Failed to open main socket. %s", strerror(errno));
         exit(-2);
@@ -712,13 +712,33 @@ int main (int argc, char * const argv[]) {
         traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (main)", sss_node.lport);
     }
 
-    sss_node.mgmt_sock = open_socket(sss_node.mport, 0 /* bind LOOPBACK */);
+#ifdef N2N_HAVE_TCP
+    sss_node.tcp_sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 1 /* TCP */);
+    if(-1 == sss_node.tcp_sock) {
+        traceEvent(TRACE_ERROR, "Failed to open auxiliary TCP socket. %s", strerror(errno));
+        exit(-2);
+    } else {
+        traceEvent(TRACE_NORMAL, "supernode opened TCP %u (aux)", sss_node.lport);
+    }
+
+    if(-1 == listen(sss_node.tcp_sock, N2N_TCP_BACKLOG_QUEUE_SIZE)) {
+        traceEvent(TRACE_ERROR, "Failed to listen on auxiliary TCP socket. %s", strerror(errno));
+        exit(-2);
+    } else {
+        traceEvent(TRACE_NORMAL, "supernode is listening on TCP %u (aux)", sss_node.lport);
+    }
+#endif
+
+    sss_node.mgmt_sock = open_socket(sss_node.mport, 0 /* bind LOOPBACK */, 0 /* UDP */);
     if(-1 == sss_node.mgmt_sock) {
         traceEvent(TRACE_ERROR, "Failed to open management socket. %s", strerror(errno));
         exit(-2);
     } else {
         traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", sss_node.mport);
     }
+
+    HASH_ITER(hh, sss_node.federation->edges, scan, tmp)
+        scan->socket_fd = sss_node.sock;
 
 #ifndef WIN32
     if(((pw = getpwnam ("n2n")) != NULL) || ((pw = getpwnam ("nobody")) != NULL)) {
@@ -745,6 +765,7 @@ int main (int argc, char * const argv[]) {
     traceEvent(TRACE_NORMAL, "supernode started");
 
 #ifdef __linux__
+    signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, term_handler);
     signal(SIGINT,  term_handler);
     signal(SIGHUP,  dump_registrations);

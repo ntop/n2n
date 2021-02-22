@@ -44,9 +44,12 @@ int num_cap = sizeof(cap_values)/sizeof(cap_value_t);
 
 // forward declaration for use in main()
 void send_register_super (n2n_edge_t *eee);
-void send_query_peer (n2n_edge_t * eee, const n2n_mac_t dst_mac);
-
-
+void send_query_peer (n2n_edge_t *eee, const n2n_mac_t dst_mac);
+int supernode_connect (n2n_edge_t *eee);
+int supernode_disconnect (n2n_edge_t *eee);
+int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
+                                       uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
+                                       time_t now);
 /* ***************************************************** */
 
 /** Find the address and IP mode for the tuntap device.
@@ -159,7 +162,6 @@ static void help (int level) {
 #ifndef __APPLE__
                "[-D] "
 #endif
-               "[-S] "
             "\n options for under-   "
                "[-i <registration interval>]"
                "[-L <registration ttl>]"
@@ -168,6 +170,8 @@ static void help (int level) {
                "[-A<cipher>] "
                "[-H] "
                "[-z<compression>]"
+            "\n                      "
+               "[-S<level of solitude>]"
           "\n\n tap device and       "
                "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
             "\n overlay network      "
@@ -206,8 +210,7 @@ static void help (int level) {
 #ifndef __APPLE__
                                   "[-D]  enable PMTU discovery"
 #endif
-          "\n flag options         [-S]  do not connect p2p, always use supernode"
-          "\n                      [-H]  enable header encryption"
+          "\n flag options         [-H]  enable header encryption"
           "\n                      [-r]  enable packet forwarding through n2n community"
           "\n                      [-E]  accept multicast MAC addresses"
 #ifndef WIN32
@@ -240,7 +243,11 @@ static void help (int level) {
         printf(" -D                | enable PMTU discovery, it can reduce fragmentation but\n"
                "                   | causes connections to stall if not properly supported\n");
 #endif
-        printf(" -S                | do not connect p2p, always use the supernode\n");
+        printf(" -S1 ... -S2 or -S | -S1 or -S do not connect p2p, always use the supernode\n"
+#ifdef N2N_HAVE_TCP
+               "                   | -S2 connects through TCP and only to the supernode\n"
+#endif
+);
         printf(" -i <reg_interval> | registration interval, for NAT hole punching (default\n"
                "                   | 20 seconds)\n");
         printf(" -L <reg_ttl>      | TTL for registration packet for NAT hole punching through\n"
@@ -593,7 +600,15 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 
         case 'S': {
-            conf->allow_p2p = 0;
+            int solitude_level = 1;
+            if(optargument)
+                solitude_level = atoi(optargument);
+            if(solitude_level >= 1)
+                conf->allow_p2p = 0;
+#ifdef N2N_HAVE_TCP
+            if(solitude_level == 2)
+                conf->connect_tcp = 1;
+#endif
             break;
         }
 
@@ -663,7 +678,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
     u_char c;
 
     while ((c = getopt_long(argc, argv,
-                            "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:SDL:z::A::Hn:R:"
+                            "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:S::DL:z::A::Hn:R:"
 #ifdef __linux__
                             "T:"
 #endif
@@ -833,10 +848,16 @@ int main (int argc, char* argv[]) {
     n2n_tuntap_priv_config_t ec;  /* config used for standalone program execution */
     uint8_t runlevel = 0;         /* bootstrap: runlevel */
     uint8_t seek_answer = 1;      /*            expecting answer from supernode */
-    time_t now_time, last_action; /*            timeout */
+    time_t now, last_action;      /*            timeout */
     macstr_t mac_buf;             /*            output mac address */
     fd_set socket_mask;           /*            for supernode answer */
     struct timeval wait_time;     /*            timeout for sn answer */
+
+    size_t   bread = 0;
+    uint16_t expected = sizeof(uint16_t);
+    uint16_t position = 0;
+    uint8_t  pktbuf[N2N_SN_PKTBUF_SIZE + sizeof(uint16_t)]; /* buffer + prepended buffer length in case of tcp */
+
 
 #ifndef WIN32
     struct passwd *pw = NULL;
@@ -944,7 +965,7 @@ int main (int argc, char* argv[]) {
     // is found
 
     // if more than one supernode given, find at least one who is alive to faster establish connection
-    if(HASH_COUNT(eee->conf.supernodes) <= 1) {
+    if((HASH_COUNT(eee->conf.supernodes) <= 1) || (eee->conf.connect_tcp)) {
         // skip the initial supernode ping
         traceEvent(TRACE_DEBUG, "Skip PING to supernode.");
         runlevel = 2;
@@ -952,15 +973,16 @@ int main (int argc, char* argv[]) {
 
     eee->last_sup = 0; /* if it wasn't zero yet */
     eee->curr_sn = eee->conf.supernodes;
+    supernode_connect(eee);
 
     while(runlevel < 5) {
 
-        now_time = time(NULL);
+        now = time(NULL);
 
         // we do not use switch-case because we also check for 'greater than'
 
         if(runlevel == 0) { /* PING to all known supernodes */
-            last_action = now_time;
+            last_action = now;
             eee->sn_pong = 0;
             // (re-)initialize the number of max concurrent pings (decreases by calling send_query_peer)
             eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
@@ -975,9 +997,10 @@ int main (int argc, char* argv[]) {
                 eee->sn_pong = 0;
                 sn_selection_sort(&(eee->conf.supernodes));
                 eee->curr_sn = eee->conf.supernodes;
+                supernode_connect(eee);
                 traceEvent(TRACE_NORMAL, "Received first PONG from supernode [%s].", eee->curr_sn->ip_addr);
                 runlevel++;
-            } else if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+            } else if(last_action <= (now - BOOTSTRAP_TIMEOUT)) {
                 // timeout
                 runlevel--;
                 // skip waiting for answer to direcly go to send PING again
@@ -1001,7 +1024,7 @@ int main (int argc, char* argv[]) {
 
         if(runlevel == 2) { /* send REGISTER_SUPER to get auto ip address from a supernode */
             if(eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
-                last_action = now_time;
+                last_action = now;
                 eee->sn_wait = 1;
                 send_register_super(eee);
                 runlevel++;
@@ -1018,12 +1041,13 @@ int main (int argc, char* argv[]) {
                 runlevel++;
                 traceEvent(TRACE_NORMAL, "Received REGISTER_SUPER_ACK from supernode for IP address asignment.");
                 // it should be from curr_sn, but we can't determine definitely here, so no details to output
-            } else if(last_action <= (now_time - BOOTSTRAP_TIMEOUT)) {
+            } else if(last_action <= (now - BOOTSTRAP_TIMEOUT)) {
                 // timeout, so try next supernode
                 if(eee->curr_sn->hh.next)
                     eee->curr_sn = eee->curr_sn->hh.next;
                 else
                     eee->curr_sn = eee->conf.supernodes;
+                supernode_connect(eee);
                 runlevel--;
                 // skip waiting for answer to direcly go to send REGISTER_SUPER again
                 seek_answer = 0;
@@ -1053,23 +1077,27 @@ int main (int argc, char* argv[]) {
         // we usually wait for some answer, there however are exceptions when going back to a previous runlevel
         if(seek_answer) {
             FD_ZERO(&socket_mask);
-            FD_SET(eee->udp_sock, &socket_mask);
+            FD_SET(eee->sock, &socket_mask);
             wait_time.tv_sec = BOOTSTRAP_TIMEOUT;
             wait_time.tv_usec = 0;
 
-            if(select(eee->udp_sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
-                if(FD_ISSET(eee->udp_sock, &socket_mask)) {
-                    readFromIPSocket(eee, eee->udp_sock);
+            if(select(eee->sock + 1, &socket_mask, NULL, NULL, &wait_time) > 0) {
+                if(FD_ISSET(eee->sock, &socket_mask)) {
+
+                    fetch_and_eventually_process_data (eee, eee->sock,
+                                                       pktbuf, &expected, &position,
+                                                       now);
                 }
             }
         }
+
         seek_answer = 1;
     }
     // allow a higher number of pings for first regular round of ping
     // to quicker get an inital 'supernode selection criterion overview'
     eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
     // do not immediately ping again, allow some time
-    eee->last_sweep = now_time - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
+    eee->last_sweep = now - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
     eee->sn_wait = 1;
     eee->last_register_req = 0;
 
@@ -1114,6 +1142,7 @@ int main (int argc, char* argv[]) {
 #endif
 
 #ifdef __linux__
+    signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, term_handler);
     signal(SIGINT,  term_handler);
 #endif
