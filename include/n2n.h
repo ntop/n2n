@@ -133,6 +133,8 @@
 #include "n2n_typedefs.h"
 
 #ifdef WIN32
+#include <winsock2.h>           /* for tcp */
+#define SHUT_RDWR      SD_BOTH  /* for tcp */
 #include "win32/wintap.h"
 #include <sys/stat.h>
 #else

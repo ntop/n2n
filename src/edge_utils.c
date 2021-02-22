@@ -226,7 +226,12 @@ int supernode_connect(n2n_edge_t *eee) {
         // set tcp socket to O_NONBLOCK so connect does not hang
         // requires checking the socket for readiness before sending and receving
         if(eee->conf.connect_tcp) {
+#ifdef WIN32
+            u_long value = 1;
+            ioctlsocket(eee->sock, FIONBIO, &value);
+#else
             fcntl(eee->sock, F_SETFL, O_NONBLOCK);
+#endif
             if((connect(eee->sock, (struct sockaddr*)&(sock), sizeof(struct sockaddr)) < 0)
                && (errno != EINPROGRESS)) {
                 eee->sock = -1;
@@ -874,24 +879,32 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
-        // prepend packet length...
-        uint16_t pktsize16 = htobe16(len); /* REVISIT: unify length type, e.g. by macro */
 
+#ifndef WIN32
         setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
         setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+#endif
 
+        // prepend packet length...
+        uint16_t pktsize16 = htobe16(len);
         sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr);
-
-        setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
-        value = 0;
-        setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
 
         if(sent <= 0)
             return -1;
         // ...before sending the actual data
     }
     sent = sendto_fd(eee, buf, len, &peer_addr);
+
+    // if the connection is tcp, i.e. not the regular sock...
+    if(eee->conf.connect_tcp) {
+#ifndef WIN32
+        value = 1;
+        setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+        value = 0;
+        setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+#endif
+    }
 
     return sent;
 }

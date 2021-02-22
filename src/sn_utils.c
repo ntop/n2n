@@ -214,24 +214,33 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
 
     // if the connection is tcp, i.e. not the regular sock...
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
-        // prepend packet length...
-        uint16_t pktsize16 = htobe16(pktsize);
 
+#ifndef WIN32
         setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
         setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
+#endif
 
+        // prepend packet length...
+        uint16_t pktsize16 = htobe16(pktsize);
         sent = sendto_fd(sss, socket_fd, socket, (uint8_t*)&pktsize16, sizeof(pktsize16));
-
-        setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
-        value = 0;
-        setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
 
         if(sent <= 0)
             return -1;
         // ...before sending the actual data
     }
+
     sent = sendto_fd(sss, socket_fd, socket, pktbuf, pktsize);
+
+    // if the connection is tcp, i.e. not the regular sock...
+    if((socket_fd >= 0) && (socket_fd != sss->sock)) {
+#ifndef WIN32
+        value = 1; /* value should still be set to 1 */
+        setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+        value = 0;
+        setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
+    }
+#endif
 
     return sent;
 }
