@@ -45,7 +45,7 @@
 #endif
 #define N2N_CAN_NAME_IFACE 1
 #undef N2N_HAVE_DAEMON
-#undef N2N_HAVE_TCP
+#undef N2N_HAVE_TCP           /* as explained on https://github.com/ntop/n2n/pull/627#issuecomment-782093706 */
 #undef N2N_HAVE_SETUID
 #else
 #ifndef CMAKE_BUILD
