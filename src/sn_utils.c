@@ -239,8 +239,8 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
         setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 0;
         setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
-    }
 #endif
+    }
 
     return sent;
 }
