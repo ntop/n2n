@@ -880,9 +880,9 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
 
-#ifndef WIN32
         setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
+#ifndef WIN32
         setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif
 
@@ -898,9 +898,9 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
-#ifndef WIN32
-        value = 1;
+        value = 1; /* value should still be set to 1 */
         setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+#ifndef WIN32
         value = 0;
         setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif
@@ -917,28 +917,30 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 static void check_join_multicast_group (n2n_edge_t *eee) {
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-    if(!eee->multicast_joined) {
-        struct ip_mreq mreq;
-        mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
+    if(eee->conf.allow_p2p) {
+        if(!eee->multicast_joined) {
+            struct ip_mreq mreq;
+            mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
 #ifdef WIN32
-        dec_ip_str_t ip_addr;
-        get_best_interface_ip(eee, ip_addr);
-        mreq.imr_interface.s_addr = inet_addr(ip_addr);
+            dec_ip_str_t ip_addr;
+            get_best_interface_ip(eee, ip_addr);
+            mreq.imr_interface.s_addr = inet_addr(ip_addr);
 #else
-        mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+            mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 #endif
 
-        if(setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
-            traceEvent(TRACE_WARNING, "Failed to bind to local multicast group %s:%u [errno %u]",
-                       N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
+            if(setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
+                traceEvent(TRACE_WARNING, "Failed to bind to local multicast group %s:%u [errno %u]",
+                           N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
 
 #ifdef WIN32
-            traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+                traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
-        } else {
-            traceEvent(TRACE_NORMAL, "Successfully joined multicast group %s:%u",
-                       N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
-            eee->multicast_joined = 1;
+            } else {
+                traceEvent(TRACE_NORMAL, "Successfully joined multicast group %s:%u",
+                           N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
+                eee->multicast_joined = 1;
+            }
         }
     }
 #endif

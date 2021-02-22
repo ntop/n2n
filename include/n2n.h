@@ -32,6 +32,7 @@
 */
 
 #define N2N_HAVE_DAEMON /* needs to be defined before it gets undefined */
+#define N2N_HAVE_TCP    /* needs to be defined before it gets undefined */
 
 /* #define N2N_CAN_NAME_IFACE */
 
@@ -44,6 +45,7 @@
 #endif
 #define N2N_CAN_NAME_IFACE 1
 #undef N2N_HAVE_DAEMON
+#undef N2N_HAVE_TCP
 #undef N2N_HAVE_SETUID
 #else
 #ifndef CMAKE_BUILD
@@ -134,7 +136,8 @@
 
 #ifdef WIN32
 #include <winsock2.h>           /* for tcp */
-#define SHUT_RDWR      SD_BOTH  /* for tcp */
+#define SHUT_RDWR   SD_BOTH     /* for tcp */
+#define SOL_TCP     IPPROTO_TCP /* for tcp */
 #include "win32/wintap.h"
 #include <sys/stat.h>
 #else

@@ -215,9 +215,9 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
     // if the connection is tcp, i.e. not the regular sock...
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
 
-#ifndef WIN32
         setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
+#ifndef WIN32
         setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif
 
@@ -234,9 +234,9 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
 
     // if the connection is tcp, i.e. not the regular sock...
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
-#ifndef WIN32
         value = 1; /* value should still be set to 1 */
         setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+#ifndef WIN32
         value = 0;
         setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif
@@ -2043,11 +2043,14 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         FD_ZERO(&socket_mask);
 
         FD_SET(sss->sock, &socket_mask);
+#ifdef N2N_HAVE_TCP
         FD_SET(sss->tcp_sock, &socket_mask);
+#endif
         FD_SET(sss->mgmt_sock, &socket_mask);
 
         max_sock = MAX(MAX(sss->sock, sss->mgmt_sock), sss->tcp_sock);
 
+#ifdef N2N_HAVE_TCP
         // add the tcp connections' sockets
         HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {
             //socket descriptor
@@ -2055,6 +2058,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
             if(conn->socket_fd > max_sock)
                 max_sock = conn->socket_fd;
         }
+#endif
 
         wait_time.tv_sec = 10;
         wait_time.tv_usec = 0;
@@ -2098,6 +2102,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 }
             }
 
+#ifdef N2N_HAVE_TCP
             // the so far known tcp connections
             // do NOT use 'HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {' to iterate because
             // deletion of OTHER connections (that can happen if forwarding to another edge node fails)
@@ -2171,6 +2176,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                                                 sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                 }
             }
+#endif /* N2N_HAVE_TCP */
 
             // handle management port input
             if(FD_ISSET(sss->mgmt_sock, &socket_mask)) {

@@ -244,7 +244,10 @@ static void help (int level) {
                "                   | causes connections to stall if not properly supported\n");
 #endif
         printf(" -S1 ... -S2 or -S | -S1 or -S do not connect p2p, always use the supernode\n"
-               "                   | -S2 connects through TCP and only to the supernode\n");
+#ifdef N2N_HAVE_TCP
+               "                   | -S2 connects through TCP and only to the supernode\n"
+#endif
+);
         printf(" -i <reg_interval> | registration interval, for NAT hole punching (default\n"
                "                   | 20 seconds)\n");
         printf(" -L <reg_ttl>      | TTL for registration packet for NAT hole punching through\n"
@@ -602,8 +605,10 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
                 solitude_level = atoi(optargument);
             if(solitude_level >= 1)
                 conf->allow_p2p = 0;
+#ifdef N2N_HAVE_TCP
             if(solitude_level == 2)
                 conf->connect_tcp = 1;
+#endif
             break;
         }
 

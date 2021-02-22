@@ -712,6 +712,7 @@ int main (int argc, char * const argv[]) {
         traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (main)", sss_node.lport);
     }
 
+#ifdef N2N_HAVE_TCP
     sss_node.tcp_sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 1 /* TCP */);
     if(-1 == sss_node.tcp_sock) {
         traceEvent(TRACE_ERROR, "Failed to open auxiliary TCP socket. %s", strerror(errno));
@@ -726,6 +727,7 @@ int main (int argc, char * const argv[]) {
     } else {
         traceEvent(TRACE_NORMAL, "supernode is listening on TCP %u (aux)", sss_node.lport);
     }
+#endif
 
     sss_node.mgmt_sock = open_socket(sss_node.mport, 0 /* bind LOOPBACK */, 0 /* UDP */);
     if(-1 == sss_node.mgmt_sock) {
