@@ -47,7 +47,7 @@ In order to run n2n, you will need the following:
   onto the target computer.
   
 NOTE: Sticking to this tool chain ensures that resulting executables are able to communicate with Linux or other OS builds.
-Especialy MinGW builds are reported to not be compatible to other OS builds, please see #617 and #642.
+Especialy MinGW builds are reported to not be compatible to other OS builds, please see [#617](https://github.com/ntop/n2n/issues/617) and [#642](https://github.com/ntop/n2n/issues/642).
 
 ## Build (CLI)
 
