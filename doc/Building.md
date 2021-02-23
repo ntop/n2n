@@ -45,6 +45,9 @@ In order to run n2n, you will need the following:
 
 - If OpenSSL has been linked dynamically, the corresponding `.dll` file should be available
   onto the target computer.
+  
+NOTE: Sticking to this tool chain ensures that resulting executables are able to communicate with Linux or other OS builds.
+Especialy MinGW builds are reported to not be compatible to other OS builds, please see #617 and #642.
 
 ## Build (CLI)
 
