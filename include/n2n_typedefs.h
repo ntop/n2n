@@ -588,26 +588,24 @@ typedef struct n2n_trans_op {
 
 
 typedef struct n2n_resolve_ip_sock {
-#ifdef HAVE_PTHREAD
     char          *org_ip;            /* pointer to original ip/named address string (used read only) */
     n2n_sock_t    sock;               /* resolved socket */
     n2n_sock_t    *org_sock;          /* pointer to original socket where 'sock' gets copied to from time to time */
     int           error_code;         /* result of last resolution attempt */
 
     UT_hash_handle hh;                /* makes this structure hashable */
-#endif
 } n2n_resolve_ip_sock_t;
 
 
 // structure to hold resolver thread's parameters
 typedef struct n2n_resolve_parameter {
-#ifdef HAVE_PTHREAD
     n2n_resolve_ip_sock_t   *list;        /* pointer to list of to be resolved nodes */
     uint8_t                 changed;      /* indicates a change */
+#ifdef HAVE_PTHREAD
     pthread_t               id;           /* thread id */
     pthread_mutex_t         access;       /* mutex for shared access */
-    time_t                  last_checked; /* last time the resolver completed */
 #endif
+    time_t                  last_checked; /* last time the resolver completed */
 } n2n_resolve_parameter_t;
 
 
