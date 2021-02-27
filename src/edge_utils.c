@@ -1670,7 +1670,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
         ++num_pending_peers;
         net = htonl(peer->dev_addr.net_addr);
-        sprintf (time_buf, "%9u", now - peer->last_seen);
+        sprintf (time_buf, "%9u", (unsigned int)(now - peer->last_seen));
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
@@ -1694,7 +1694,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
         ++num_known_peers;
         net = htonl(peer->dev_addr.net_addr);
-        sprintf (time_buf, "%9u", now - peer->last_seen);
+        sprintf (time_buf, "%9u", (unsigned int)(now - peer->last_seen));
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%4u | %-15s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
@@ -1718,7 +1718,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
-        sprintf (time_buf, "%9u", now - peer->last_seen);
+        sprintf (time_buf, "%9u", (unsigned int)(now - peer->last_seen));
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%4u | %-3s %-11s | %-17s | %-21s | %-15s | %9s\n",
                             ++num,
