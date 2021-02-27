@@ -1055,7 +1055,7 @@ static int process_mgmt (n2n_sn_t *sss,
 
         num = 0;
         HASH_ITER(hh, community->edges, peer, tmpPeer) {
-            sprintf (time_buf, "%9u", now - peer->last_seen);
+            sprintf (time_buf, "%9u", (unsigned int)(now - peer->last_seen));
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                                 "%4u | %-19s | %-17s | %-21s %-3s | %-15s | %9s\n",
                                 ++num,
