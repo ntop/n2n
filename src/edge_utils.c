@@ -2057,7 +2057,7 @@ void edge_read_from_tap (n2n_edge_t * eee) {
                     eee->tuntap_priv_conf.netmask, eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu
 #ifdef WIN32
 				   ,eee->tuntap_priv_conf.metric
-#endif                    
+#endif
                     );
     } else {
         const uint8_t * mac = eth_pkt;
@@ -2114,6 +2114,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
     size_t                idx;
     size_t                msg_type;
     uint8_t               from_supernode;
+    uint8_t               via_multicast;
     peer_info_t           *sn = NULL;
     n2n_sock_t            sender;
     n2n_sock_t *          orig_sender = NULL;
@@ -2137,6 +2138,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
      * hop as sender. */
     orig_sender = &sender;
 
+    via_multicast = (in_sock == eee->udp_multicast_sock);
+
     traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
                (signed int)udp_size, sock_to_cstr(sockbuf1, &sender));
 
@@ -2157,8 +2160,13 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
     rem = udp_size; /* Counts down bytes of packet to protect against buffer overruns. */
     idx = 0; /* marches through packet header as parts are decoded. */
     if(decode_common(&cmn, udp_buf, &rem, &idx) < 0) {
-            traceEvent(TRACE_ERROR, "Failed to decode common section in N2N_UDP");
-            return; /* failed to decode packet */
+        if(via_multicast) {
+            // from some other edge on local network, possibly header encrypted
+            traceEvent(TRACE_DEBUG, "dropped packet arriving via multicast due to error while decoding N2N_UDP");
+        } else {
+            traceEvent(TRACE_WARNING, "failed to decode common section in N2N_UDP");
+        }
+        return; /* failed to decode packet */
     }
 
     msg_type = cmn.pc; /* packet code */
@@ -2225,11 +2233,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
             case MSG_TYPE_REGISTER: {
                 /* Another edge is registering with us */
                 n2n_REGISTER_t reg;
-                int via_multicast;
 
                 decode_REGISTER(&reg, &cmn, udp_buf, &rem, &idx);
 
-                via_multicast = is_null_mac(reg.dstMac);
+                via_multicast &= is_null_mac(reg.dstMac);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify (eee, sn, reg.srcMac, stamp,
