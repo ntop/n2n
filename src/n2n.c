@@ -256,8 +256,6 @@ char * macaddr_str (macstr_t buf,
 
 /** Resolve the supernode IP address.
  *
- *  REVISIT: This is a really bad idea. The edge will block completely while the
- *  hostname resolution is performed. This could take 15 seconds.
  */
 int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
 
