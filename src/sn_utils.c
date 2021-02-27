@@ -108,8 +108,6 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
                           size_t pktsize) {
 
     ssize_t sent = 0;
-    struct sn_community *comm, *tmp_comm;
-    struct peer_info *edge, *tmp_edge;
     n2n_tcp_connection_t *conn;
 
     sent = sendto(socket_fd, pktbuf, pktsize, 0 /* flags */,
@@ -694,7 +692,6 @@ static signed int peer_tap_ip_sort (struct peer_info *a, struct peer_info *b) {
 /** The IP address assigned to the edge by the auto ip address function of sn. */
 static int assign_one_ip_addr (struct sn_community *comm, n2n_desc_t dev_desc, n2n_ip_subnet_t *ip_addr) {
 
-    struct peer_info *peer, *tmp_peer;
     uint32_t tmp, success, net_id, mask, max_host, host_id = 1;
     dec_ip_bit_str_t ip_bit_str = {'\0'};
 
@@ -1442,14 +1439,11 @@ static int process_udp (n2n_sn_t * sss,
             n2n_REGISTER_SUPER_NAK_t               nak;
             n2n_common_t                           cmn2;
             uint8_t                                ackbuf[N2N_SN_PKTBUF_SIZE];
-            uint8_t                                *tmp_dst;
             uint8_t                                payload_buf[REG_SUPER_ACK_PAYLOAD_SPACE];
             n2n_REGISTER_SUPER_ACK_payload_t       *payload;
             size_t                                 encx = 0;
-            struct sn_community                    *fed;
             struct sn_community_regular_expression *re, *tmp_re;
             struct peer_info                       *peer, *tmp_peer, *p;
-            node_supernode_association_t           *assoc;
             int8_t                                 allowed_match = -1;
             uint8_t                                match = 0;
             int                                    match_length = 0;
@@ -1720,16 +1714,12 @@ static int process_udp (n2n_sn_t * sss,
 
         case MSG_TYPE_REGISTER_SUPER_ACK: {
             n2n_REGISTER_SUPER_ACK_t         ack;
-            size_t                           encx = 0;
-            struct sn_community              *fed;
             struct peer_info                 *scan, *tmp;
             n2n_sock_str_t                   sockbuf1;
             n2n_sock_str_t                   sockbuf2;
             macstr_t                         mac_buf1;
             n2n_sock_t                       sender;
             n2n_sock_t                       *orig_sender;
-            n2n_sock_t                       *tmp_sock;
-            n2n_mac_t                        *tmp_mac;
             int                              i;
             uint8_t                          dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
             n2n_REGISTER_SUPER_ACK_payload_t *payload;
@@ -1800,7 +1790,6 @@ static int process_udp (n2n_sn_t * sss,
         }
 
         case MSG_TYPE_REGISTER_SUPER_NAK: {
-            n2n_common_t              cmn2;
             n2n_REGISTER_SUPER_NAK_t  nak;
             uint8_t                   nakbuf[N2N_SN_PKTBUF_SIZE];
             size_t                    encx = 0;
@@ -1875,11 +1864,9 @@ static int process_udp (n2n_sn_t * sss,
             n2n_common_t                           cmn2;
             n2n_PEER_INFO_t                        pi;
             struct sn_community_regular_expression *re, *tmp_re;
-            struct peer_info                       *peer, *tmp_peer, *p;
             int8_t                                 allowed_match = -1;
             uint8_t                                match = 0;
             int                                    match_length = 0;
-            uint8_t                                *rec_buf; /* either udp_buf or encbuf */
 
             if(!comm && sss->lock_communities) {
                 HASH_ITER(hh, sss->rules, re, tmp_re) {
@@ -2081,8 +2068,6 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         int max_sock;
         fd_set socket_mask;
         n2n_tcp_connection_t *conn, *tmp_conn;
-        struct sn_community *comm, *tmp_comm;
-        struct peer_info *edge, *tmp_edge;
 
         SOCKET tmp_sock;
         n2n_sock_str_t sockbuf;

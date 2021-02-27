@@ -270,7 +270,6 @@ int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
     supernode_host = strtok(addr, ":");
 
     if(supernode_host) {
-        in_addr_t sn_addr;
         char *supernode_port = strtok(NULL, ":");
         const struct addrinfo aihints = {0, PF_INET, 0, 0, 0, NULL, NULL, NULL};
         struct addrinfo * ainfo = NULL;
