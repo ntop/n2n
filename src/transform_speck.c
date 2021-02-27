@@ -107,8 +107,6 @@ static int transop_decode_speck (n2n_trans_op_t *arg,
 
     if(((in_len - TRANSOP_SPECK_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in buffer */
      && (in_len >= TRANSOP_SPECK_PREAMBLE_SIZE)) {                  /* has at least iv */
-        size_t rem = in_len;
-        size_t idx = 0;
 
         traceEvent(TRACE_DEBUG, "decode_speck %lu bytes", in_len);
 

@@ -853,7 +853,6 @@ int main (int argc, char* argv[]) {
     fd_set socket_mask;           /*            for supernode answer */
     struct timeval wait_time;     /*            timeout for sn answer */
 
-    size_t   bread = 0;
     uint16_t expected = sizeof(uint16_t);
     uint16_t position = 0;
     uint8_t  pktbuf[N2N_SN_PKTBUF_SIZE + sizeof(uint16_t)]; /* buffer + prepended buffer length in case of tcp */

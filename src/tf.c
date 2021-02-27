@@ -476,7 +476,7 @@ int tf_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                     const unsigned char *iv, tf_context_t *ctx) {
 
     int n;                       /* number of blocks */
-    int ret = (int)in_len & 15;  /* remainder        */
+    /* int ret = (int)in_len & 15;  remainder, unused*/
 
     uint8_t ivec[TF_BLOCK_SIZE]; /* the ivec/old handling might be optimized if we */
     uint8_t old[TF_BLOCK_SIZE];  /* can be sure that in != out                     */
