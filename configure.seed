@@ -81,6 +81,13 @@ if test x$cap != x; then
   AC_DEFINE([HAVE_LIBCAP],[1],[Support for linux capabilities])
 fi
 
+AC_CHECK_LIB([pthread], [pthread_mutex_trylock], pthread=true)
+if test x$pthread != x; then
+  LDFLAGS="${LDFLAGS} -lpthread"
+  AC_DEFINE([HAVE_PTHREAD],[],[pthread is present])
+fi
+
+
 MACHINE=`uname -m`
 SYSTEM=`uname -s`
 

@@ -62,6 +62,9 @@
 
 #define SORT_COMMUNITIES_INTERVAL        90 /* sec. until supernode sorts communities' hash list again */
 
+#define N2N_RESOLVE_INTERVAL            300 /* seconds until edge/supernode try to resolve supernode names again */
+#define N2N_RESOLVE_CHECK_INTERVAL       30 /* seconds until checking in main loop for changes from resolver thread */
+
 #define ETH_FRAMESIZE 14
 #define IP4_SRCOFFSET 12
 #define IP4_DSTOFFSET 16

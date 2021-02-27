@@ -20,6 +20,8 @@
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
+int resolve_check (n2n_resolve_parameter_t *param, time_t now);
+int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
 static ssize_t sendto_peer (n2n_sn_t *sss,
                             const struct peer_info *peer,
@@ -429,6 +431,8 @@ void sn_term (n2n_sn_t *sss) {
     struct sn_community_regular_expression *re, *tmp_re;
     n2n_tcp_connection_t *conn, *tmp_conn;
     node_supernode_association_t *assoc, *tmp_assoc;
+
+    resolve_cancel_thread(sss->resolve_parameter);
 
     if(sss->sock >= 0) {
         closesocket(sss->sock);
@@ -2358,6 +2362,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         re_register_and_purge_supernodes(sss, sss->federation, &last_re_reg_and_purge, now);
         purge_expired_communities(sss, &last_purge_edges, now);
         sort_communities(sss, &last_sort_communities, now);
+        resolve_check(sss->resolve_parameter, now);
     } /* while */
 
     sn_term(sss);

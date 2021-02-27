@@ -586,6 +586,34 @@ typedef struct n2n_trans_op {
 
 /* *************************************************** */
 
+
+typedef struct n2n_resolve_ip_sock {
+#ifdef HAVE_PTHREAD
+    char          *org_ip;            /* pointer to original ip/named address string (used read only) */
+    n2n_sock_t    sock;               /* resolved socket */
+    n2n_sock_t    *org_sock;          /* pointer to original socket where 'sock' gets copied to from time to time */
+    int           error_code;         /* result of last resolution attempt */
+
+    UT_hash_handle hh;                /* makes this structure hashable */
+#endif
+} n2n_resolve_ip_sock_t;
+
+
+// structure to hold resolver thread's parameters
+typedef struct n2n_resolve_parameter {
+#ifdef HAVE_PTHREAD
+    n2n_resolve_ip_sock_t   *list;        /* pointer to list of to be resolved nodes */
+    uint8_t                 changed;      /* indicates a change */
+    pthread_t               id;           /* thread id */
+    pthread_mutex_t         access;       /* mutex for shared access */
+    time_t                  last_checked; /* last time the resolver completed */
+#endif
+} n2n_resolve_parameter_t;
+
+
+/* *************************************************** */
+
+
 typedef struct n2n_edge_conf {
     struct peer_info         *supernodes;            /**< List of supernodes */
     n2n_route_t              *routes;                /**< Networks to route through n2n */
@@ -672,6 +700,8 @@ struct n2n_edge {
 
 
     struct n2n_edge_stats            stats;                              /**< Statistics */
+
+    n2n_resolve_parameter_t          *resolve_parameter;                 /**< Pointer to name resolver's parameter block */
 
     n2n_tuntap_priv_config_t         tuntap_priv_conf;                   /**< Tuntap config */
 
@@ -773,6 +803,7 @@ typedef struct n2n_sn {
     struct sn_community                    *federation;
     n2n_private_public_key_t               private_key;       /* private federation key derived from federation name */
     n2n_auth_t                             auth;
+    n2n_resolve_parameter_t                *resolve_parameter;/*Pointer to name resolver's parameter block */
 } n2n_sn_t;
 
 
