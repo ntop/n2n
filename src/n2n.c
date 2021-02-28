@@ -482,9 +482,9 @@ size_t purge_peer_list (struct peer_info ** peer_list,
                         HASH_DEL(tcp_connections, conn);
                         free(conn);
                     }
+                    shutdown(scan->socket_fd, SHUT_RDWR);
+                    closesocket(scan->socket_fd);
                 }
-                shutdown(scan->socket_fd, SHUT_RDWR);
-                closesocket(scan->socket_fd);
             }
             HASH_DEL(*peer_list, scan);
             retval++;
