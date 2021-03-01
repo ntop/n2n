@@ -191,7 +191,6 @@ void reset_sup_attempts (n2n_edge_t *eee) {
 }
 
 
-
 // open socket, close it before if TCP
 // in case of TCP, 'connect()' is required
 int supernode_connect(n2n_edge_t *eee) {
@@ -1323,17 +1322,21 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         reset_sup_attempts(eee);
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
-        // closing and re-opening the socket(s) allows for re-establishing communication
+        // closing and re-opening the socket allows for re-establishing communication
         // this can only be done, if working on some unprivileged port and/or having sufficent
         // privileges. as we are not able to check for sufficent privileges here, we only do it
         // if port is sufficently high or unset. uncovered: privileged port and sufficent privileges
         if((eee->conf.local_port == 0) || (eee->conf.local_port > 1024)) {
-            if(edge_init_sockets(eee) < 0) {
-                traceEvent(TRACE_ERROR, "update_supernode_reg failed while trying socket re-initiliaization");
+            // do not explicitly disconnect every time as the condition descibed is rare
+            (eee->close_socket_counter)++;
+            if(eee->close_socket_counter >= N2N_CLOSE_SOCKET_COUNTER_MAX) {
+                eee->close_socket_counter = 0;
+                supernode_disconnect(eee);
+                traceEvent(TRACE_DEBUG, "update_supernode_reg disconnected supernode");
             }
-            supernode_disconnect(eee);
+
             supernode_connect(eee);
-            traceEvent(TRACE_DEBUG, "update_supernode_reg disconnected and reconnected supernode ");
+            traceEvent(TRACE_DEBUG, "update_supernode_reg reconnected to supernode");
         }
 
     } else {
