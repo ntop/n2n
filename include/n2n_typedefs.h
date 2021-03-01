@@ -633,12 +633,13 @@ struct n2n_edge {
 
     /* Sockets */
     /* supernode socket is in        eee->curr_sn->sock (of type n2n_sock_t) */
-    int                              sock;
-    int                              udp_mgmt_sock;                      /**< socket for status info. */
+    SOCKET                           sock;
+    int                              close_socket_counter;               /**< counter for close-event before re-opening */
+    SOCKET                           udp_mgmt_sock;                      /**< socket for status info. */
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
     n2n_sock_t                       multicast_peer;                     /**< Multicast peer group (for local edges) */
-    int                              udp_multicast_sock;                 /**< socket for local multicast registrations. */
+    SOCKET                           udp_multicast_sock;                 /**< socket for local multicast registrations. */
     int                              multicast_joined;                   /**< 1 if the group has been joined.*/
 #endif
 
@@ -716,6 +717,7 @@ typedef struct n2n_tcp_connection {
     UT_hash_handle hh; /* makes this structure hashable */
 } n2n_tcp_connection_t;
 
+
 typedef struct n2n_sn {
     time_t                                 start_time;      /* Used to measure uptime. */
     sn_stats_t                             stats;
@@ -723,10 +725,10 @@ typedef struct n2n_sn {
     n2n_mac_t                              mac_addr;
     uint16_t                               lport;           /* Local UDP port to bind to. */
     uint16_t                               mport;           /* Management UDP port to bind to. */
-    int                                    sock;            /* Main socket for UDP traffic with edges. */
-    int                                    tcp_sock;        /* auxiliary socket for optional TCP connections */
+    SOCKET                                 sock;            /* Main socket for UDP traffic with edges. */
+    SOCKET                                 tcp_sock;        /* auxiliary socket for optional TCP connections */
     n2n_tcp_connection_t                   *tcp_connections;/* list of established TCP connections */
-    int                                    mgmt_sock;       /* management socket. */
+    SOCKET                                 mgmt_sock;       /* management socket. */
     n2n_ip_subnet_t                        min_auto_ip_net; /* Address range of auto_ip service. */
     n2n_ip_subnet_t                        max_auto_ip_net; /* Address range of auto_ip service. */
 #ifndef WIN32

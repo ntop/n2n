@@ -116,6 +116,9 @@ enum sn_purge{SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 #define N2N_TCP_BACKLOG_QUEUE_SIZE   3         /* number of concurrently pending connections to be accepted */
                                                /* NOT the number of max. TCP connections                    */
 
+#define N2N_CLOSE_SOCKET_COUNTER_MAX 15        /* number of times of edge's reconnects to supernode after   */
+                                               /* which the socket explicitly is closed before reopening    */
+
 /* flag used in add_sn_to_list_by_mac_or_sock */
 enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
