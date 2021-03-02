@@ -831,7 +831,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
         sent = sendto(eee->sock, buf, len, 0 /*flags*/,
                       (struct sockaddr *)dest, sizeof(struct sockaddr_in));
 
-        if(sent <= 0) {
+        if((sent <= 0) && (errno)) {
             char * c = strerror(errno);
             traceEvent(TRACE_ERROR, "sendto_fd sendto failed (%d) %s", errno, c);
 #ifdef WIN32
@@ -2562,7 +2562,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
         bread = recvfrom(sock,
                          pktbuf + *position, *expected - *position, 0 /*flags*/,
                         (struct sockaddr *)&sender_sock, (socklen_t *)&i);
-        if(bread <= 0) {
+        if((bread <= 0) && (errno)) {
             traceEvent(TRACE_ERROR, "fetch_and_eventually_process_data's recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
             traceEvent(TRACE_ERROR, "fetch_and_eventually_process_data's WSAGetLastError(): %u", WSAGetLastError());
