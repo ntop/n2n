@@ -16,8 +16,8 @@ The following chart might help to make a quick comparison and decide what cipher
 | Cipher | Mode | Block Size | Key Size         | IV length |Speed | Built-In | Origin |
 | :---:  | :---:| :---:      | :---:            | :---:     |:---: | :---:    | ---    |
 |Twofish | CTS  | 128 bits   | 256 bit          | 128 bit   | -..O | Y        | Bruce Schneier |
-|AES     | CTS  | 128 bits   | 128, 192, 256 bit| 128 bit   | O..+ | N        | Joan Daemen, Vincent Rijmen, NSA-approved |
-|ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| N        | Daniel J. Bernstein |
+|AES     | CTS  | 128 bits   | 128, 192, 256 bit| 128 bit   | O..+ | Y        | Joan Daemen, Vincent Rijmen, NSA-approved |
+|ChaCha20| CTR  | Stream     | 256 bit          | 128 bit   | +..++| Y        | Daniel J. Bernstein |
 |SPECK   | CTR  | Stream     | 256 bit          | 128 bit   | ++   | Y        | NSA |
 
 The two block ciphers Twofish and AES are used in CTS mode.
