@@ -113,7 +113,7 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
     sent = sendto(socket_fd, pktbuf, pktsize, 0 /* flags */,
                   socket, sizeof(struct sockaddr_in));
 
-    if(sent <= 0) {
+    if((sent <= 0) && (errno)) {
         char * c = strerror(errno);
         traceEvent(TRACE_ERROR, "sendto_fd failed (%d) %s", errno, c);
 #ifdef WIN32
@@ -2153,7 +2153,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                                      conn->buffer + conn->position, conn->expected - conn->position, 0 /*flags*/,
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
 
-                    if(bread <= 0) {
+                    if((bread <= 0) && (errno)) {
                         traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
                         traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
