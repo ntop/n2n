@@ -426,6 +426,7 @@ struct peer_info {
     SN_SELECTION_CRITERION_DATA_TYPE selection_criterion;
     uint64_t                         last_valid_time_stamp;
     char                             *ip_addr;
+    uint8_t                          local;
 
     UT_hash_handle     hh; /* makes this structure hashable */
 };

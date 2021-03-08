@@ -31,6 +31,7 @@ static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const
 
 static void check_peer_registration_needed (n2n_edge_t *eee,
                                             uint8_t from_supernode,
+                                            uint8_t via_multicast,
                                             const n2n_mac_t mac,
                                             const n2n_ip_subnet_t *dev_addr,
                                             const n2n_desc_t *dev_desc,
@@ -42,6 +43,7 @@ static void edge_cleanup_routes (n2n_edge_t *eee);
 
 static void check_known_peer_sock_change (n2n_edge_t *eee,
                                           uint8_t from_supernode,
+                                          uint8_t via_multicast,
                                           const n2n_mac_t mac,
                                           const n2n_ip_subnet_t *dev_addr,
                                           const n2n_desc_t *dev_desc,
@@ -531,6 +533,7 @@ static struct peer_info* find_peer_by_sock (const n2n_sock_t *sock, struct peer_
  */
 static void register_with_new_peer (n2n_edge_t *eee,
                                     uint8_t from_supernode,
+                                    uint8_t via_multicast,
                                     const n2n_mac_t mac,
                                     const n2n_ip_subnet_t *dev_addr,
                                     const n2n_desc_t *dev_desc,
@@ -551,6 +554,8 @@ static void register_with_new_peer (n2n_edge_t *eee,
         scan->sock = *peer;
         scan->timeout = eee->conf.register_interval; /* TODO: should correspond to the peer supernode registration timeout */
         scan->last_valid_time_stamp = initial_time_stamp();
+        if(via_multicast)
+            scan->local = 1;
 
         HASH_ADD_PEER(eee->pending_peers, scan);
 
@@ -607,7 +612,6 @@ static void register_with_new_peer (n2n_edge_t *eee,
         memcpy(&(scan->dev_addr), dev_addr, sizeof(n2n_ip_subnet_t));
     }
     if(dev_desc) memcpy(scan->dev_desc, dev_desc, N2N_DESC_SIZE);
-
 }
 
 
@@ -616,6 +620,7 @@ static void register_with_new_peer (n2n_edge_t *eee,
 /** Update the last_seen time for this peer, or get registered. */
 static void check_peer_registration_needed (n2n_edge_t *eee,
                                             uint8_t from_supernode,
+                                            uint8_t via_multicast,
                                             const n2n_mac_t mac,
                                             const n2n_ip_subnet_t *dev_addr,
                                             const n2n_desc_t *dev_desc,
@@ -638,7 +643,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
 
     if(scan == NULL) {
         /* Not in known_peers - start the REGISTER process. */
-        register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
+        register_with_new_peer(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer);
     } else {
         /* Already in known_peers. */
         time_t now = time(NULL);
@@ -646,9 +651,12 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
         if(!from_supernode)
             scan->last_p2p = now;
 
+        if(via_multicast)
+            scan->local = 1;
+
         if((now - scan->last_seen) > 0 /* >= 1 sec */) {
             /* Don't register too often */
-            check_known_peer_sock_change(eee, from_supernode, mac, dev_addr, dev_desc, peer, now);
+            check_known_peer_sock_change(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer, now);
         }
     }
 }
@@ -761,6 +769,7 @@ int is_empty_ip_address (const n2n_sock_t * sock) {
  */
 static void check_known_peer_sock_change (n2n_edge_t *eee,
                                           uint8_t from_supernode,
+                                          uint8_t via_multicast,
                                           const n2n_mac_t mac,
                                           const n2n_ip_subnet_t *dev_addr,
                                           const n2n_desc_t *dev_desc,
@@ -796,7 +805,7 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
             HASH_DEL(eee->known_peers, scan);
             free(scan);
 
-            register_with_new_peer(eee, from_supernode, mac, dev_addr, dev_desc, peer);
+            register_with_new_peer(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer);
         } else {
             /* Don't worry about what the supernode reports, it could be seeing a different socket. */
         }
@@ -1191,7 +1200,6 @@ static void send_register (n2n_edge_t * eee,
     reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
     memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
 
-
     idx = 0;
     encode_REGISTER(pktbuf, &idx, &cmn, &reg);
 
@@ -1304,6 +1312,9 @@ static void send_grat_arps (n2n_edge_t * eee) {
  */
 void update_supernode_reg (n2n_edge_t * eee, time_t now) {
 
+    struct peer_info *peer, *tmp_peer;
+    int cnt = 0;
+
     if(eee->sn_wait && (now > (eee->last_register_req + (eee->conf.register_interval/10)))) {
         /* fall through */
         traceEvent(TRACE_DEBUG, "update_supernode_reg: doing fast retry.");
@@ -1327,12 +1338,21 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         // privileges. as we are not able to check for sufficent privileges here, we only do it
         // if port is sufficently high or unset. uncovered: privileged port and sufficent privileges
         if((eee->conf.local_port == 0) || (eee->conf.local_port > 1024)) {
-            // do not explicitly disconnect every time as the condition descibed is rare
-            (eee->close_socket_counter)++;
-            if(eee->close_socket_counter >= N2N_CLOSE_SOCKET_COUNTER_MAX) {
-                eee->close_socket_counter = 0;
-                supernode_disconnect(eee);
-                traceEvent(TRACE_DEBUG, "update_supernode_reg disconnected supernode");
+            // do not explicitly disconnect every time as the condition described is rare, so ...
+            // ... check that there are no external peers (indicating a working socket) ...
+            HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
+                if(!peer->local) {
+                   cnt++;
+                   break;
+                }
+            if(!cnt) {
+                // ... and then count the connection retries
+                (eee->close_socket_counter)++;
+                if(eee->close_socket_counter >= N2N_CLOSE_SOCKET_COUNTER_MAX) {
+                    eee->close_socket_counter = 0;
+                    supernode_disconnect(eee);
+                    traceEvent(TRACE_DEBUG, "update_supernode_reg disconnected supernode");
+                }
             }
 
             supernode_connect(eee);
@@ -1349,7 +1369,15 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
 
         send_register_super(eee);
     }
+
     register_with_local_peers(eee);
+
+    // if supernode repeatedly not responding (already waiting), safeguard the
+    // current known connections to peers by re-registering
+    if(eee->sn_wait)
+        HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
+            if((now - peer->last_seen) > REGISTER_SUPER_INTERVAL_DFL)
+                send_register(eee, &(peer->sock), peer->mac_addr);
 
     eee->sn_wait = 1;
 
@@ -1877,23 +1905,32 @@ static int send_packet (n2n_edge_t * eee,
     n2n_sock_str_t sockbuf;
     n2n_sock_t destination;
     macstr_t mac_buf;
+    struct peer_info *peer, *tmp_peer;
 
     /* hexdump(pktbuf, pktlen); */
 
     is_p2p = find_peer_destination(eee, dstMac, &destination);
 
-    if(is_p2p)
-        ++(eee->stats.tx_p2p);
-    else {
-        ++(eee->stats.tx_sup);
-
-        if(!memcmp(dstMac, broadcast_mac, N2N_MAC_SIZE))
-            ++(eee->stats.tx_sup_broadcast);
-    }
-
     traceEvent(TRACE_INFO, "Tx PACKET to %s (dest=%s) [%u B]",
                sock_to_cstr(sockbuf, &destination),
                macaddr_str(mac_buf, dstMac), pktlen);
+
+    if(is_p2p)
+        ++(eee->stats.tx_p2p);
+    else
+        ++(eee->stats.tx_sup);
+
+    if(!memcmp(dstMac, broadcast_mac, N2N_MAC_SIZE)) {
+        ++(eee->stats.tx_sup_broadcast);
+
+        // if no supernode around, foward the broadcast to all known peers
+        if(eee->sn_wait) {
+            HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
+                /* s = */ sendto_sock(eee, pktbuf, pktlen, &peer->sock);
+            return 0;
+        }
+        // fall through otherwise
+    }
 
     /* s = */ sendto_sock(eee, pktbuf, pktlen, &destination);
 
@@ -2227,7 +2264,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 }
 
                 /* Update the sender in peer table entry */
-                check_peer_registration_needed(eee, from_supernode, pkt.srcMac, NULL, NULL, orig_sender);
+                check_peer_registration_needed(eee, from_supernode, via_multicast,
+                                               pkt.srcMac, NULL, NULL, orig_sender);
 
                 handle_PACKET(eee, from_supernode, &pkt, orig_sender, udp_buf + idx, udp_size - idx);
                 break;
@@ -2280,7 +2318,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                sock_to_cstr(sockbuf1, &sender), sock_to_cstr(sockbuf2, orig_sender));
                 }
 
-                check_peer_registration_needed(eee, from_supernode, reg.srcMac, &reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender);
+                check_peer_registration_needed(eee, from_supernode, via_multicast,
+                                               reg.srcMac, &reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender);
                 break;
             }
 
@@ -2742,10 +2781,13 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
         // finished processing select data
         update_supernode_reg(eee, now);
 
-        numPurged =  purge_expired_nodes(&eee->known_peers,
-                                         eee->sock, NULL,
-                                         &last_purge_known,
-                                         PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
+        numPurged = 0;
+        // keep, i.e. do not purge, the known peers while no supernode supernode connection
+        if(!eee->sn_wait)
+            numPurged = purge_expired_nodes(&eee->known_peers,
+                                            eee->sock, NULL,
+                                            &last_purge_known,
+                                            PURGE_REGISTRATION_FREQUENCY, REGISTRATION_TIMEOUT);
         numPurged += purge_expired_nodes(&eee->pending_peers,
                                          eee->sock, NULL,
                                          &last_purge_pending,
