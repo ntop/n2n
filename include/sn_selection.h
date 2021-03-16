@@ -27,6 +27,7 @@ typedef char selection_criterion_str_t[SN_SELECTION_CRITERION_BUF_SIZE];
 int sn_selection_criterion_init (peer_info_t *peer);
 int sn_selection_criterion_default (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion);
 int sn_selection_criterion_bad (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion);
+int sn_selection_criterion_good (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion);
 int sn_selection_criterion_calculate (n2n_edge_t *eee, peer_info_t *peer, SN_SELECTION_CRITERION_DATA_TYPE *data);
 
 /* common data's functions */
