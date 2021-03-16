@@ -1104,7 +1104,7 @@ int main (int argc, char* argv[]) {
         else
             sn_selection_criterion_default(&(scan->selection_criterion));
     }
-    sn_selection_sort((peer_info_t**)&(eee->conf.supernodes));
+    sn_selection_sort(&(eee->conf.supernodes));
     // do not immediately ping again, allow some time
     eee->last_sweep = now - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
     eee->sn_wait = 1;
