@@ -345,7 +345,7 @@ typedef struct n2n_PACKET {
 typedef struct n2n_REGISTER_SUPER {
     n2n_cookie_t       cookie;      /**< Link REGISTER_SUPER and REGISTER_SUPER_ACK */
     n2n_mac_t          edgeMac;     /**< MAC to register with edge sending socket */
-    n2n_sock_t         sock;        /**< Sending socket associated with srcMac */
+    n2n_sock_t         sock;        /**< Sending socket associated with edgeMac */
     n2n_ip_subnet_t    dev_addr;    /**< IP address of the tuntap adapter. */
     n2n_desc_t         dev_desc;    /**< Hint description correlated with the edge */
     n2n_auth_t         auth;        /**< Authentication scheme and tokens */
@@ -355,10 +355,10 @@ typedef struct n2n_REGISTER_SUPER {
 /* Linked with n2n_register_super_ack in n2n_pc_t. Only from supernode to edge. */
 typedef struct n2n_REGISTER_SUPER_ACK {
     n2n_cookie_t       cookie;      /**< Return cookie from REGISTER_SUPER */
-    n2n_mac_t          edgeMac;     /**< MAC registered to edge sending socket */
+    n2n_mac_t          srcMac;      /**< MAC of answering supernode */
     n2n_ip_subnet_t    dev_addr;    /**< Assign an IP address to the tuntap adapter of edge. */
     uint16_t           lifetime;    /**< How long the registration will live */
-    n2n_sock_t         sock;        /**< Sending sockets associated with edgeMac */
+    n2n_sock_t         sock;        /**< Sending sockets associated with edge */
     n2n_auth_t         auth;        /**< Authentication scheme and tokens */
 
     /** The packet format provides additional supernode definitions here.
@@ -366,8 +366,7 @@ typedef struct n2n_REGISTER_SUPER_ACK {
      * n2n_sock_t.
      */
     uint8_t            num_sn;      /**< Number of supernodes that were send
-                                      * even if we cannot store them all. If
-                                      * non-zero then sn_bak is valid. */
+                                       * even if we cannot store them all. */
 } n2n_REGISTER_SUPER_ACK_t;
 
 

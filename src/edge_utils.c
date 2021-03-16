@@ -2233,7 +2233,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 decode_PACKET(&pkt, &cmn, udp_buf, &rem, &idx);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, sn, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify(eee, sn, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET due to time stamp error.");
                         return;
                     }
@@ -2280,8 +2280,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 via_multicast &= is_null_mac(reg.dstMac);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, sn, reg.srcMac, stamp,
-                                                         via_multicast ? TIME_STAMP_ALLOW_JITTER : TIME_STAMP_NO_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify(eee, sn, reg.srcMac, stamp,
+                                                        via_multicast ? TIME_STAMP_ALLOW_JITTER : TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER due to time stamp error.");
                         return;
                     }
@@ -2330,7 +2330,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 decode_REGISTER_ACK(&ra, &cmn, udp_buf, &rem, &idx);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, sn, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify(eee, sn, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_ACK due to time stamp error.");
                         return;
                     }
@@ -2364,7 +2364,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     decode_REGISTER_SUPER_ACK(&ra, &cmn, udp_buf, &rem, &idx, tmpbuf);
 
                     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        if(!find_peer_time_stamp_and_verify (eee, sn, null_mac, stamp, TIME_STAMP_NO_JITTER)) {
+                        if(!find_peer_time_stamp_and_verify(eee, sn, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                             traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_SUPER_ACK due to time stamp error.");
                             return;
                         }
@@ -2373,21 +2373,17 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     if(is_valid_peer_sock(&ra.sock))
                         orig_sender = &(ra.sock);
 
-                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s). Attempts %u",
-                               macaddr_str(mac_buf1, ra.edgeMac),
+                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK from MAC %s [%s] (external %s). Attempts %u",
+                               macaddr_str(mac_buf1, ra.srcMac),
                                sock_to_cstr(sockbuf1, &sender),
                                sock_to_cstr(sockbuf2, orig_sender),
                                (unsigned int)eee->sup_attempts);
 
-                    // this even holds true for auto ip assignment as own mac is null_mac
-                    if(memcmp(ra.edgeMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
-                        traceEvent(TRACE_INFO, "readFromIPSocket dropped REGISTER_SUPER_ACK due to wrong addressing.");
-                        return;
-                    }
-
                     if(0 == memcmp(ra.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
 
                         handle_remote_auth(eee, sn, &(ra.auth));
+
+                        memcpy(&eee->curr_sn->mac_addr, ra.srcMac, N2N_MAC_SIZE);
 
                         payload = (n2n_REGISTER_SUPER_ACK_payload_t*)tmpbuf;
 
@@ -2427,9 +2423,9 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                             }
                         }
 
-                        // update last_sup only on 'real' REGISTER_SUPER_ACKs, not on bootstrap ones (null_mac)
-                        // this allows reliable in/out PACKET drop if not really registered with a supernode yet
-                        if(!is_null_mac(ra.edgeMac)) {
+                        // update last_sup only on 'real' REGISTER_SUPER_ACKs, not on bootstrap ones (own MAC address
+                        // still null_mac) this allows reliable in/out PACKET drop if not really registered with a supernode yet
+                        if(!is_null_mac(eee->device.mac_addr)) {
                             if(!eee->last_sup) {
                                 // indicates successful connection between the edge and a supernode
                                 traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
@@ -2446,7 +2442,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                          * based on its NAT configuration. */
                         //eee->conf.register_interval = ra.lifetime;
 
-                        if(eee->cb.sn_registration_updated && !is_null_mac(ra.edgeMac))
+                        if(eee->cb.sn_registration_updated && !is_null_mac(eee->device.mac_addr))
                             eee->cb.sn_registration_updated(eee, now, &sender);
 
                     } else {
@@ -2495,7 +2491,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 decode_PEER_INFO(&pi, &cmn, udp_buf, &rem, &idx);
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_peer_time_stamp_and_verify (eee, sn, null_mac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                    if(!find_peer_time_stamp_and_verify(eee, sn, null_mac, stamp, TIME_STAMP_ALLOW_JITTER)) {
                         traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PEER_INFO due to time stamp error.");
                         return;
                     }
@@ -2731,9 +2727,9 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
             // external
             if(FD_ISSET(eee->sock, &socket_mask)) {
-                if (0 != fetch_and_eventually_process_data (eee, eee->sock,
-                                                            pktbuf, &expected, &position,
-                                                            now)) {
+                if (0 != fetch_and_eventually_process_data(eee, eee->sock,
+                                                           pktbuf, &expected, &position,
+                                                           now)) {
                     *keep_running = 0;
                     break;
                 }
@@ -2751,7 +2747,6 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
             }
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-
             if(FD_ISSET(eee->udp_multicast_sock, &socket_mask)) {
                 if (0 != fetch_and_eventually_process_data (eee, eee->udp_multicast_sock,
                                                             pktbuf, &expected, &position,
@@ -3412,7 +3407,7 @@ int quick_edge_init (char *device_name, char *community_name,
                    device_mac, DEFAULT_MTU
 #ifdef WIN32
 				 , 0
-#endif                   
+#endif
                    ) < 0)
         return(-2);
 

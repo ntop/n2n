@@ -896,6 +896,7 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
             }
 
             memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
+            memcpy(peer->last_cookie, cookie, N2N_COOKIE_SIZE);
             reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
             reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
             get_local_auth(sss, &(reg.auth));
@@ -1519,12 +1520,7 @@ static int process_udp (n2n_sn_t * sss,
                 memcpy(cmn2.community, cmn.community, sizeof(n2n_community_t));
 
                 memcpy(&(ack.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
-
-                if(comm->is_federation == IS_FEDERATION) {
-                    memcpy(ack.edgeMac, sss->mac_addr, sizeof(n2n_mac_t));
-                } else {
-                    memcpy(ack.edgeMac, reg.edgeMac, sizeof(n2n_mac_t));
-                }
+                memcpy(ack.srcMac, sss->mac_addr, sizeof(n2n_mac_t));
 
                 if((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
                    ((reg.dev_addr.net_addr & 0xFFFF0000) == 0xA9FE0000 /* 169.254.0.0 */)) {
@@ -1686,7 +1682,7 @@ static int process_udp (n2n_sn_t * sss,
             decode_UNREGISTER_SUPER(&unreg, &cmn, udp_buf, &rem, &idx);
 
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                if(!find_edge_time_stamp_and_verify (comm->edges, sn, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                if(!find_edge_time_stamp_and_verify(comm->edges, sn, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                     traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER due to time stamp error.");
                     return -1;
                 }
@@ -1747,21 +1743,21 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_edge_time_stamp_and_verify (comm->edges, sn, ack.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_edge_time_stamp_and_verify(comm->edges, sn, ack.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to time stamp error.");
                         return -1;
                     }
                 }
             }
 
-            traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK myMAC=%s [%s] (external %s)",
-                       macaddr_str(mac_buf1, ack.edgeMac),
+            traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK from MAC %s [%s] (external %s)",
+                       macaddr_str(mac_buf1, ack.srcMac),
                        sock_to_cstr(sockbuf1, &sender),
                        sock_to_cstr(sockbuf2, orig_sender));
 
             if(comm->is_federation == IS_FEDERATION) {
                 skip_add = SN_ADD_SKIP;
-                scan = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &sender, ack.edgeMac, &skip_add);
+                scan = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &sender, ack.srcMac, &skip_add);
                 if(scan != NULL) {
                     scan->last_seen = now;
                 } else {
@@ -1770,22 +1766,25 @@ static int process_udp (n2n_sn_t * sss,
                 }
             }
 
-            payload = (n2n_REGISTER_SUPER_ACK_payload_t *)dec_tmpbuf;
+            if(0 == memcmp(ack.cookie, scan->last_cookie, N2N_COOKIE_SIZE)) {
+                payload = (n2n_REGISTER_SUPER_ACK_payload_t *)dec_tmpbuf;
 
-            for(i = 0; i < ack.num_sn; i++) {
-                skip_add = SN_ADD;
-                tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), payload->mac, &skip_add);
-                // other supernodes communicate via standard udp socket
-                tmp->socket_fd = sss->sock;
+                for(i = 0; i < ack.num_sn; i++) {
+                    skip_add = SN_ADD;
+                    tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), payload->mac, &skip_add);
+                    // other supernodes communicate via standard udp socket
+                    tmp->socket_fd = sss->sock;
 
-                if(skip_add == SN_ADD_ADDED) {
-                    tmp->last_seen = now - LAST_SEEN_SN_NEW;
+                    if(skip_add == SN_ADD_ADDED) {
+                        tmp->last_seen = now - LAST_SEEN_SN_NEW;
+                    }
+
+                    // shift to next payload entry
+                    payload++;
                 }
-
-                // shift to next payload entry
-                payload++;
+            } else {
+                traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
             }
-
             break;
         }
 
@@ -1814,7 +1813,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_edge_time_stamp_and_verify (comm->edges, sn, nak.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
+                    if(!find_edge_time_stamp_and_verify(comm->edges, sn, nak.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
                         traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_NAK due to time stamp error.");
                         return -1;
                     }
@@ -1895,7 +1894,7 @@ static int process_udp (n2n_sn_t * sss,
             // already checked for valid comm
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    if(!find_edge_time_stamp_and_verify (comm->edges, sn, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                    if(!find_edge_time_stamp_and_verify(comm->edges, sn, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
                         traceEvent(TRACE_DEBUG, "process_udp dropped QUERY_PEER due to time stamp error.");
                         return -1;
                     }
