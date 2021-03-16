@@ -47,7 +47,15 @@ int sn_selection_criterion_default (SN_SELECTION_CRITERION_DATA_TYPE *selection_
 /* Set selection_criterion field to 'bad' value (worse than default) according to selected strategy. */
 int sn_selection_criterion_bad (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
 
-    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE) UINT32_MAX >> 1;
+    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE) (UINT32_MAX >> 1);
+
+    return 0; /* OK */
+}
+
+/* Set selection_criterion field to 'good' value (better than default) according to selected strategy. */
+int sn_selection_criterion_good (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
+
+    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE) (UINT32_MAX >> 1) - 2;
 
     return 0; /* OK */
 }

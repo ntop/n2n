@@ -50,6 +50,7 @@ int supernode_disconnect (n2n_edge_t *eee);
 int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
                                        time_t now);
+
 /* ***************************************************** */
 
 /** Find the address and IP mode for the tuntap device.
@@ -852,6 +853,7 @@ int main (int argc, char* argv[]) {
     macstr_t mac_buf;             /*            output mac address */
     fd_set socket_mask;           /*            for supernode answer */
     struct timeval wait_time;     /*            timeout for sn answer */
+    peer_info_t *scan, *scan_tmp; /*            supernode iteration */
 
     uint16_t expected = sizeof(uint16_t);
     uint16_t position = 0;
@@ -1095,6 +1097,14 @@ int main (int argc, char* argv[]) {
     // allow a higher number of pings for first regular round of ping
     // to quicker get an inital 'supernode selection criterion overview'
     eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
+    // shape supernode list; make current one the first on the list
+    HASH_ITER(hh, eee->conf.supernodes, scan, scan_tmp) {
+        if(scan == eee->curr_sn)
+            sn_selection_criterion_good(&(scan->selection_criterion));
+        else
+            sn_selection_criterion_default(&(scan->selection_criterion));
+    }
+    sn_selection_sort(&(eee->conf.supernodes));
     // do not immediately ping again, allow some time
     eee->last_sweep = now - SWEEP_TIME + 2 * BOOTSTRAP_TIMEOUT;
     eee->sn_wait = 1;

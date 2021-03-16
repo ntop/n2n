@@ -502,6 +502,7 @@ static void register_with_local_peers (n2n_edge_t * eee) {
 }
 
 /* ************************************** */
+
 static struct peer_info* find_peer_by_sock (const n2n_sock_t *sock, struct peer_info *peer_list) {
 
     struct peer_info *scan, *tmp, *ret = NULL;
@@ -1146,7 +1147,10 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
         }
 
         HASH_ITER(hh, eee->conf.supernodes, scan, tmp) {
-            sn_selection_criterion_default(&(scan->selection_criterion));
+            if(scan == eee->curr_sn)
+                sn_selection_criterion_good(&(scan->selection_criterion));
+            else
+                sn_selection_criterion_default(&(scan->selection_criterion));
         }
         sn_selection_criterion_common_data_default(eee);
 
@@ -2383,9 +2387,11 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                         handle_remote_auth(eee, sn, &(ra.auth));
 
-                        HASH_DEL(eee->conf.supernodes, eee->curr_sn);
-                        memcpy(&eee->curr_sn->mac_addr, ra.srcMac, N2N_MAC_SIZE);
-                        HASH_ADD_PEER(eee->conf.supernodes, eee->curr_sn);
+                        if(is_null_mac(eee->curr_sn->mac_addr)) {
+                            HASH_DEL(eee->conf.supernodes, eee->curr_sn);
+                            memcpy(&eee->curr_sn->mac_addr, ra.srcMac, N2N_MAC_SIZE);
+                            HASH_ADD_PEER(eee->conf.supernodes, eee->curr_sn);
+                        }
 
                         payload = (n2n_REGISTER_SUPER_ACK_payload_t*)tmpbuf;
 
