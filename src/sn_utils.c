@@ -1571,6 +1571,7 @@ static int process_udp (n2n_sn_t * sss,
                            macaddr_str(mac_buf, reg.edgeMac),
                            sock_to_cstr(sockbuf, &(ack.sock)));
 
+                ret_value = update_edge_no_change;
                 if(!is_null_mac(reg.edgeMac)) {
                     if(cmn.flags & N2N_FLAGS_SOCKET) {
                         ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), SN_ADD_SKIP, now);
@@ -1755,15 +1756,13 @@ static int process_udp (n2n_sn_t * sss,
                        sock_to_cstr(sockbuf1, &sender),
                        sock_to_cstr(sockbuf2, orig_sender));
 
-            if(comm->is_federation == IS_FEDERATION) {
-                skip_add = SN_ADD_SKIP;
-                scan = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &sender, ack.srcMac, &skip_add);
-                if(scan != NULL) {
-                    scan->last_seen = now;
-                } else {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to an unknown supernode.");
-                    break;
-                }
+            skip_add = SN_ADD_SKIP;
+            scan = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &sender, ack.srcMac, &skip_add);
+            if(scan != NULL) {
+                scan->last_seen = now;
+            } else {
+                traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to an unknown supernode.");
+                break;
             }
 
             if(0 == memcmp(ack.cookie, scan->last_cookie, N2N_COOKIE_SIZE)) {
