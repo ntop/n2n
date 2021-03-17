@@ -244,11 +244,13 @@ static void help (int level) {
         printf(" -D                | enable PMTU discovery, it can reduce fragmentation but\n"
                "                   | causes connections to stall if not properly supported\n");
 #endif
-        printf(" -S1 ... -S2 or -S | -S1 or -S do not connect p2p, always use the supernode\n"
+        printf(" -S1 ... -S2       | do not connect p2p, always use the supernode,\n"
+               "                   | -S1 = via UDP"
+
 #ifdef N2N_HAVE_TCP
-               "                   | -S2 connects through TCP and only to the supernode\n"
+                                  ", -S2 = via TCP"
 #endif
-);
+"\n");
         printf(" -i <reg_interval> | registration interval, for NAT hole punching (default\n"
                "                   | 20 seconds)\n");
         printf(" -L <reg_ttl>      | TTL for registration packet for NAT hole punching through\n"
@@ -256,11 +258,11 @@ static void help (int level) {
         printf(" -k <key>          | encryption key (ASCII) - also N2N_KEY=<key>\n");
         printf(" -A1               | disable payload encryption, do not use with key, defaults\n"
                "                   | to AES then\n");
-        printf(" -A2 ... -A5 or -A | choose a cipher for payload encryption, requires a key,\n"
-               "                   | -A2 = Twofish, -A3 or -A (deprecated) = AES (default),\n"
+        printf(" -A2 ... -A5       | choose a cipher for payload encryption, requires a key,\n"
+               "                   | -A2 = Twofish, -A3 = AES (default if key provided),\n"
                "                   | -A4 = ChaCha20, -A5 = Speck-CTR\n");
         printf(" -H                | use header encryption, supernode needs fixed community\n");
-        printf(" -z1 ... -z2 or -z | compress outgoing data packets, -z1 or -z lzo1x,\n"
+        printf(" -z1 ... -z2       | compress outgoing data packets, -z1 = lzo1x,\n"
                "                   | "
 #ifdef N2N_HAVE_ZSTD
                                      "-z2 = zstd, "
@@ -476,8 +478,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             if(optargument) {
                 cipher = atoi(optargument);
             } else {
-                traceEvent(TRACE_NORMAL, "the use of the solitary -A switch is deprecated and might not be supported in future versions. "
-                           "please use -A3 instead to choose a the AES cipher for payload encryption.");
+                traceEvent(TRACE_WARNING, "the use of the solitary -A switch is deprecated and will not be supported in future versions. "
+                           "please use -A3 instead to choose the AES cipher for payload encryption.");
 
                 cipher = N2N_TRANSFORM_ID_AES; // default, if '-A' only
             }
@@ -498,8 +500,12 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
             if(optargument) {
                 compression = atoi(optargument);
-            } else
+            } else {
+                traceEvent(TRACE_WARNING, "the use of the solitary -z switch is deprecated and will not be supported in future versions. "
+                           "please use -z1 instead to choose the LZO1X algorithm for payload compression.");
+
                 compression = 1; // default, if '-z' only, equals -z1
+            }
 
             setPayloadCompression(conf, compression);
             break;
@@ -601,13 +607,21 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 
         case 'S': {
-            int solitude_level = 1;
-            if(optargument)
-                solitude_level = atoi(optargument);
-            if(solitude_level >= 1)
+            int solitude;
+            if(optargument) {
+                solitude = atoi(optargument);
+            } else {
+                traceEvent(TRACE_WARNING, "the use of the solitary -S switch is deprecated and will not be supported in future versions. "
+                           "please use -S1 instead to choose supernode-only connection via UDP.");
+
+                solitude = 1;
+            }
+
+            // set the level
+            if(solitude >= 1)
                 conf->allow_p2p = 0;
 #ifdef N2N_HAVE_TCP
-            if(solitude_level == 2)
+            if(solitude == 2)
                 conf->connect_tcp = 1;
 #endif
             break;
