@@ -314,12 +314,11 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
 }
 
 
-static void *resolve_thread (void *p) {
+void *resolve_thread (void *p) {
 
 #ifdef HAVE_PTHREAD
     n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
-    n2n_sock_str_t          sock_buf;
 
     while(1) {
         sleep(N2N_RESOLVE_INTERVAL);
@@ -387,7 +386,7 @@ int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn
 }
 
 
-int resolve_cancel_thread (n2n_resolve_parameter_t *param) {
+void resolve_cancel_thread (n2n_resolve_parameter_t *param) {
 
 #ifdef HAVE_PTHREAD
     pthread_cancel(param->id);
@@ -396,7 +395,7 @@ int resolve_cancel_thread (n2n_resolve_parameter_t *param) {
 }
 
 
-int resolve_check (n2n_resolve_parameter_t *param, time_t now) {
+void resolve_check (n2n_resolve_parameter_t *param, time_t now) {
 
 #ifdef HAVE_PTHREAD
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
