@@ -2401,7 +2401,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                             sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), payload->mac, &skip_add);
 
                             if(skip_add == SN_ADD_ADDED) {
-                                sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
+                                sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
                                 if(sn->ip_addr != NULL) {
                                     inet_ntop(payload->sock.family,
                                               (payload->sock.family == AF_INET) ? (void*)&(payload->sock.addr.v4) : (void*)&(payload->sock.addr.v6),

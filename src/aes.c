@@ -546,7 +546,6 @@ int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
     // one block remaining
     if(n) {
         __m128i tmp = _mm_loadu_si128((__m128i*)in);
-        __m128i old_in = tmp;
 
         tmp = _mm_xor_si128           (tmp, ctx->rk_dec[ 0]);
         tmp = _mm_aesdec_si128        (tmp, ctx->rk_dec[ 1]);
@@ -566,7 +565,7 @@ int aes_cbc_decrypt (unsigned char *out, const unsigned char *in, size_t in_len,
                 tmp = _mm_aesdec_si128(tmp, ctx->rk_dec[13]);
             }
         }
-        tmp = _mm_aesdeclast_si128     (tmp, ctx->rk_enc[ 0]);
+        tmp = _mm_aesdeclast_si128    (tmp, ctx->rk_enc[ 0]);
 
         tmp = _mm_xor_si128 (tmp, ivec);
 

@@ -849,7 +849,7 @@ int main (int argc, char* argv[]) {
     n2n_tuntap_priv_config_t ec;  /* config used for standalone program execution */
     uint8_t runlevel = 0;         /* bootstrap: runlevel */
     uint8_t seek_answer = 1;      /*            expecting answer from supernode */
-    time_t now, last_action;      /*            timeout */
+    time_t now, last_action = 0;  /*            timeout */
     macstr_t mac_buf;             /*            output mac address */
     fd_set socket_mask;           /*            for supernode answer */
     struct timeval wait_time;     /*            timeout for sn answer */
