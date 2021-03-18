@@ -79,6 +79,8 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
 	        break;
             }
         }
+        // the loop above does not always determine correct 'len'
+        len = strlen(line);
 
         // cut off any IP sub-network upfront
         cmn_str = (char*)calloc(len + 1, sizeof(char));
