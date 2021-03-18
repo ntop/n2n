@@ -362,9 +362,8 @@ struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n
 uint8_t is_multi_broadcast (const n2n_mac_t dest_mac) {
 
     int is_broadcast = (memcmp(broadcast_mac, dest_mac, N2N_MAC_SIZE) == 0);
-    //REVISIT: multicast has bit #24 reset, test!
-    int is_multicast = (memcmp(multicast_mac, dest_mac,            3) == 0);
-    int is_ipv6_multicast = (memcmp(ipv6_multicast_mac, dest_mac,  2) == 0);
+    int is_multicast = (memcmp(multicast_mac, dest_mac, 3) == 0) && !(dest_mac[3] >> 7);
+    int is_ipv6_multicast = (memcmp(ipv6_multicast_mac, dest_mac, 2) == 0);
 
     return is_broadcast || is_multicast || is_ipv6_multicast;
 }
