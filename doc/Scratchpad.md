@@ -26,7 +26,7 @@ rpmbuild -bb ./n2n.spec
 - Automatic IP address assignment allows edges to draw IP addresses from the supernode (just skip `-a`)
 - Allowed community names can be restricted by regular expressions (`community.list` file)
 - Network filter for rules (`-R`) allowing and denying specific traffic to tunnel
-- Experimental TCP support (`-S2`) lets edges connect to the supernodes via TCP in case firewalls block UDP
+- Experimental TCP support (`-S2`) lets edges connect to the supernodes via TCP in case firewalls block UDP (not available on Windows yet)
 - All four supported ciphers offer integrated versions rendering OpenSSL dependency non-mandatory (optionally still available)
 - MAC and IP address spoofing prevention
 - Network interface metric can be set by command-line option `-x` (Windows only)
@@ -35,7 +35,8 @@ rpmbuild -bb ./n2n.spec
 
 ### Improvements
 
-- Fixed a compression-related memeory leak
+- Increased edges' resiliance to temporary supernode failure
+- Fixed a compression-related memory leak
 - Ciphers partly come with platform-specific hardware acceleration (check `tools/n2n-benchmark`)
 - Clean-up management port output
 - Polished benchmark tool output
