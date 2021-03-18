@@ -2065,7 +2065,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         ssize_t bread;
         int max_sock;
         fd_set socket_mask;
-        n2n_tcp_connection_t *conn, *tmp_conn;
+        n2n_tcp_connection_t *conn, *next, *tmp_conn;
 
         SOCKET tmp_sock;
         n2n_sock_str_t sockbuf;
@@ -2138,8 +2138,10 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
             // the so far known tcp connections
             // do NOT use 'HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {' to iterate because
             // deletion of OTHER connections (that can happen if forwarding to another edge node fails)
-            // may rsult in seg faults if using HASH ITER which is only safe to use if deleting current item
-            for(conn = sss->tcp_connections; conn != NULL; conn = conn->hh.next  ) {
+            // may result in seg faults if using HASH ITER which is only safe to use if deleting current item
+            for(conn = sss->tcp_connections; conn != NULL; conn = next) {
+                // conn might not be available next iteration due to its deletion so we store 'next' upfront
+                next = (n2n_tcp_connection_t*)(conn->hh.next);
 
                 if(FD_ISSET(conn->socket_fd, &socket_mask)) {
 
@@ -2171,12 +2173,19 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                                 continue;
                             }
                         } else {
-                            // full packet read, handle it
-                            process_udp(sss, (struct sockaddr_in*)&(conn->sock), conn->socket_fd,
-                                             conn->buffer + sizeof(uint16_t), conn->position - sizeof(uint16_t), now);
+                            // we cannot be sure that conn is available after process_udp again because
+                            // the connection might have been closed, so we safe the values we need for
+                            // calling process_udp() and reset the conn values upfront as well
+
                             // reset, await new prepended length
                             conn->expected = sizeof(uint16_t);
+
+                            uint16_t position = conn->position;
                             conn->position = 0;
+
+                            // full packet read, handle it
+                            process_udp(sss, (struct sockaddr_in*)&(conn->sock), conn->socket_fd,
+                                             conn->buffer + sizeof(uint16_t), position - sizeof(uint16_t), now);
                         }
                     }
                 }
