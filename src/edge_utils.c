@@ -785,7 +785,7 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
     if(is_empty_ip_address(peer))
         return;
 
-    if(!memcmp(mac, broadcast_mac, N2N_MAC_SIZE))
+    if(is_multi_broadcast(mac))
         return;
 
     /* Search the peer in known_peers */
@@ -1423,7 +1423,7 @@ static int handle_PACKET (n2n_edge_t * eee,
     /* hexdump(payload, psize); */
 
     if(from_supernode) {
-        if(!memcmp(pkt->dstMac, broadcast_mac, N2N_MAC_SIZE))
+        if(is_multi_broadcast(pkt->dstMac))
             ++(eee->stats.rx_sup_broadcast);
 
         ++(eee->stats.rx_sup);
@@ -1854,8 +1854,8 @@ static int find_peer_destination (n2n_edge_t * eee,
     int retval = 0;
     time_t now = time(NULL);
 
-    if(!memcmp(mac_address, broadcast_mac, N2N_MAC_SIZE)) {
-        traceEvent(TRACE_DEBUG, "Broadcast destination peer, using supernode");
+    if(is_multi_broadcast(mac_address)) {
+        traceEvent(TRACE_DEBUG, "Multicast or broadcast destination peer, using supernode");
         memcpy(destination, &(eee->curr_sn->sock), sizeof(struct sockaddr_in));
         return(0);
     }
@@ -1924,7 +1924,7 @@ static int send_packet (n2n_edge_t * eee,
     else
         ++(eee->stats.tx_sup);
 
-    if(!memcmp(dstMac, broadcast_mac, N2N_MAC_SIZE)) {
+    if(is_multi_broadcast(dstMac)) {
         ++(eee->stats.tx_sup_broadcast);
 
         // if no supernode around, foward the broadcast to all known peers
