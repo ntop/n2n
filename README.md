@@ -43,7 +43,7 @@ You can create your own infrastructure by setting up a supernode on a public ser
 1. Install the n2n package
 2. Edit `/etc/n2n/supernode.conf` and add the following:
    ```
-   -p=1234
+   -l=1234
    ```
 3. Start the supernode service with `sudo systemctl start supernode`
 4. Optionally enable supernode start on boot: `sudo systemctl enable supernode`
