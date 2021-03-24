@@ -150,6 +150,7 @@
 #include "aes.h"
 #include "cc20.h"
 #include "speck.h"
+#include "curve25519.h"
 #include "n2n_regex.h"
 #include "sn_selection.h"
 #include "network_traffic_filter.h"
