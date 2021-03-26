@@ -91,9 +91,8 @@ static void close_tcp_connection(n2n_sn_t *sss, n2n_tcp_connection_t *conn) {
     // close the connection
     shutdown(conn->socket_fd, SHUT_RDWR);
     closesocket(conn->socket_fd);
-    // forget about the connection
-    HASH_DEL(sss->tcp_connections, conn);
-    free(conn);
+    // forget about the connection, will be deleted later
+    conn->inactive = 1;
 }
 
 
@@ -862,7 +861,7 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
     }
 
     // purge long-time-not-seen supernodes
-    purge_expired_nodes(&(comm->edges), sss->sock, sss->tcp_connections, p_last_re_reg_and_purge,
+    purge_expired_nodes(&(comm->edges), sss->sock, &sss->tcp_connections, p_last_re_reg_and_purge,
                         RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
 
     if(comm != NULL) {
@@ -943,7 +942,7 @@ static int purge_expired_communities (n2n_sn_t *sss,
             continue;
 
         // purge the community's local peers
-        num_reg += purge_peer_list(&comm->edges, sss->sock, sss->tcp_connections, now - REGISTRATION_TIMEOUT);
+        num_reg += purge_peer_list(&comm->edges, sss->sock, &sss->tcp_connections, now - REGISTRATION_TIMEOUT);
 
         // purge the community's associated peers (connected to other supernodes)
         HASH_ITER(hh, comm->assoc, assoc, tmp_assoc) {
@@ -2136,12 +2135,16 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
 
 #ifdef N2N_HAVE_TCP
             // the so far known tcp connections
-            // do NOT use 'HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {' to iterate because
-            // deletion of OTHER connections (that can happen if forwarding to another edge node fails)
-            // may result in seg faults if using HASH ITER which is only safe to use if deleting current item
-            for(conn = sss->tcp_connections; conn != NULL; conn = next) {
-                // conn might not be available next iteration due to its deletion so we store 'next' upfront
-                next = (n2n_tcp_connection_t*)(conn->hh.next);
+
+            // beware: current conn and other items of the connection list may be found
+            // due for deletion while processing packets. Even OTHER connections, e.g. if
+            // forwarding to another edge node fails. connections due for deletion will
+            // not immediately be deleted but marked 'inactive' for later deletion
+            HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {
+                // do not process entries that have been marked inactive, those will be deleted
+                // immediately after this loop
+                if(conn->inactive)
+                    continue;
 
                 if(FD_ISSET(conn->socket_fd, &socket_mask)) {
 
@@ -2191,6 +2194,14 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 }
             }
 
+            // remove inactive / already closed tcp connections from list
+            HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn) {
+                if(conn->inactive) {
+                    HASH_DEL(sss->tcp_connections, conn);
+                    free(conn);
+                }
+            }
+
             // accept new incoming tcp connection
             if(FD_ISSET(sss->tcp_sock, &socket_mask)) {
                 struct sockaddr_in sender_sock;
@@ -2204,6 +2215,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                         if(conn) {
                             conn->socket_fd = tmp_sock;
                             memcpy(&(conn->sock), &sender_sock, sizeof(struct sockaddr_in));
+                            conn->inactive = 0;
                             conn->expected = sizeof(uint16_t);
                             conn->position = 0;
                             HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
