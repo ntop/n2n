@@ -711,8 +711,9 @@ typedef struct n2n_tcp_connection {
     struct sockaddr sock;   /* network order socket */
 
     uint16_t expected;                                    /* number of bytes expected to be read */
-    uint16_t position;                                    /* current position in the buffer*/
+    uint16_t position;                                    /* current position in the buffer */
     uint8_t  buffer[N2N_PKT_BUF_SIZE + sizeof(uint16_t)]; /* buffer for data collected from tcp socket incl. prepended length */
+    uint8_t  inactive;                                    /* connection not be handled if set, already closed and to be deleted soon */
 
     UT_hash_handle hh; /* makes this structure hashable */
 } n2n_tcp_connection_t;
