@@ -862,7 +862,7 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
     }
 
     // purge long-time-not-seen supernodes
-    purge_expired_nodes(&(comm->edges), sss->sock, sss->tcp_connections, p_last_re_reg_and_purge,
+    purge_expired_nodes(&(comm->edges), sss->sock, &sss->tcp_connections, p_last_re_reg_and_purge,
                         RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
 
     if(comm != NULL) {
@@ -943,7 +943,7 @@ static int purge_expired_communities (n2n_sn_t *sss,
             continue;
 
         // purge the community's local peers
-        num_reg += purge_peer_list(&comm->edges, sss->sock, sss->tcp_connections, now - REGISTRATION_TIMEOUT);
+        num_reg += purge_peer_list(&comm->edges, sss->sock, &sss->tcp_connections, now - REGISTRATION_TIMEOUT);
 
         // purge the community's associated peers (connected to other supernodes)
         HASH_ITER(hh, comm->assoc, assoc, tmp_assoc) {
