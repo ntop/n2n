@@ -2176,19 +2176,15 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                                 continue;
                             }
                         } else {
-                            // we cannot be sure that conn is available after process_udp again because
-                            // the connection might have been closed, so we safe the values we need for
-                            // calling process_udp() and reset the conn values upfront as well
+                            // full packet read, handle it
+                            process_udp(sss, (struct sockaddr_in*)&(conn->sock), conn->socket_fd,
+                                             conn->buffer + sizeof(uint16_t), conn->position - sizeof(uint16_t), now);
 
                             // reset, await new prepended length
                             conn->expected = sizeof(uint16_t);
-
-                            uint16_t position = conn->position;
                             conn->position = 0;
 
-                            // full packet read, handle it
-                            process_udp(sss, (struct sockaddr_in*)&(conn->sock), conn->socket_fd,
-                                             conn->buffer + sizeof(uint16_t), position - sizeof(uint16_t), now);
+
                         }
                     }
                 }
