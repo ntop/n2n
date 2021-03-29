@@ -890,7 +890,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 
         setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__APPLE__)
         setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif
 
@@ -908,7 +908,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     if(eee->conf.connect_tcp) {
         value = 1; /* value should still be set to 1 */
         setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__APPLE__)
         value = 0;
         setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif

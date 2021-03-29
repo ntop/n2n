@@ -151,7 +151,7 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
 
         setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__APPLE__)
         setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif
 
@@ -170,7 +170,7 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
         value = 1; /* value should still be set to 1 */
         setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__APPLE__)
         value = 0;
         setsockopt(socket_fd, SOL_TCP, TCP_CORK, &value, sizeof(value));
 #endif
