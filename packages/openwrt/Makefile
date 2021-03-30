@@ -1,13 +1,13 @@
 #
-# Copyright (C) 2019 - ntop.org and contributors
+# Copyright (C) 2021 - ntop.org and contributors
 #
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=n2n
 PKG_SOURCE_URL:=https://github.com/ntop/n2n.git
-PKG_SOURCE_VERSION:=fa695e9f2b5eae2523ef6c055a579006ac0bf146
-PKG_VERSION:=2.5.1_git$(PKG_SOURCE_VERSION)
+PKG_SOURCE_VERSION:=53e930db105df0e1103d8b6de9d5cb223c744d49
+PKG_VERSION:=2.9.0_dev_git$(PKG_SOURCE_VERSION)
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
