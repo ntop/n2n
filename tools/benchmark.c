@@ -296,9 +296,13 @@ static void run_ecc_benchmark(void) {
   ssize_t tdiff = 0; // microseconds
   size_t num_packets = 0;
 
-  unsigned char n[32] = { 9 };
-  unsigned char m[32] = { 8 };
-  unsigned char k[32] = { 0 };
+  unsigned char b[32];
+  unsigned char k[32];
+
+  memset(b, 0x00, 31);
+  b[31] = 9;
+
+  memset(k, 0x55, 32);
 
   printf("[%s]\t%s\t%.1f sec\t(%u bytes) ",
 	 "curve", "25519", target_sec, 32);
@@ -308,7 +312,7 @@ static void run_ecc_benchmark(void) {
   nw = 32;
 
   while(tdiff < target_usec) {
-    curve25519(k, n, m);
+    curve25519(b, k, b);
     num_packets++;
     gettimeofday( &t2, NULL );
     tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
