@@ -310,16 +310,14 @@ static void run_ecc_benchmark(void) {
   while(tdiff < target_usec) {
     curve25519(k, n, m);
     num_packets++;
-//    if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
-//    }
+    gettimeofday( &t2, NULL );
+    tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
   }
 
   float mpps = num_packets / (tdiff / 1e6) / 1e6;
 
-  printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
-	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * 32);
+  printf(" ---> (%u bytes)\t%12u ops\t%8.1f Kops/s\n",
+	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3);
   printf("\n");
 }
 
