@@ -24,13 +24,16 @@ LDFLAGS=@LDFLAGS@
 
 N2N_LIB=../libn2n.a
 
-TOOLS=n2n-benchmark
+TOOLS=n2n-benchmark n2n-keygen
 TOOLS+=@ADDITIONAL_TOOLS@
 
 .PHONY: all clean install
 all: $(TOOLS)
 
 n2n-benchmark: benchmark.c $(N2N_LIB) $(HEADERS)
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
+
+n2n-keygen: keygen.c $(N2N_LIB) $(HEADERS)
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
 
 n2n-decode: n2n_decode.c $(N2N_LIB) $(HEADERS)

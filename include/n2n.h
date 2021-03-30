@@ -154,6 +154,7 @@
 #include "n2n_regex.h"
 #include "sn_selection.h"
 #include "network_traffic_filter.h"
+#include "auth.h"
 
 /* ************************************** */
 
