@@ -888,10 +888,10 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
 
-        setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
 #ifndef WIN32
-        setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+        setsockopt(eee->sock, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
 #endif
 
         // prepend packet length...
@@ -907,10 +907,10 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
         value = 1; /* value should still be set to 1 */
-        setsockopt(eee->sock, SOL_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
 #ifndef WIN32
         value = 0;
-        setsockopt(eee->sock, SOL_TCP, TCP_CORK, &value, sizeof(value));
+        setsockopt(eee->sock, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
 #endif
     }
 
