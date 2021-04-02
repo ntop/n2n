@@ -65,7 +65,7 @@ int main(int argc, char * argv[]) {
     bin_to_ascii(asc, bin, sizeof(bin));
 
     // output
-    fprintf(stdout, "* %s %s\n", argv[1], asc);
+    fprintf(stdout, "%c %s %s\n", N2N_USER_KEY_LINE_STARTER, argv[1], asc);
 
     return 0;
 }

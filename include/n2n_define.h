@@ -154,6 +154,8 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define N2N_PKT_VERSION            3
 #define N2N_DEFAULT_TTL            2  /* can be forwarded twice at most */
 #define N2N_COMMUNITY_SIZE         20
+#define N2N_PUBLIC_KEY_SIZE        32
+#define N2N_USER_KEY_LINE_STARTER  '*'
 #define N2N_MAC_SIZE               6
 #define N2N_COOKIE_SIZE            4
 #define N2N_DESC_SIZE              16

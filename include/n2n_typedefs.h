@@ -22,6 +22,7 @@
 
 
 typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
+typedef uint8_t n2n_public_key_t[N2N_PUBLIC_KEY_SIZE];
 typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
 typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
 typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
@@ -684,6 +685,13 @@ typedef struct node_supernode_association {
     UT_hash_handle hh;                      /* makes this structure hashable */
 } node_supernode_association_t;
 
+typedef struct sn_user {
+    n2n_public_key_t   public_key;
+    n2n_desc_t         name;
+
+   UT_hash_handle hh;
+} sn_user_t;
+
 struct sn_community {
     char                          community[N2N_COMMUNITY_SIZE];
     uint8_t                       is_federation;          /* if not-zero, then the current community is the federation of supernodes */
@@ -692,7 +700,8 @@ struct sn_community {
     he_context_t                  *header_encryption_ctx; /* Header encryption cipher context. */
     he_context_t                  *header_iv_ctx;         /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
     struct                        peer_info *edges;       /* Link list of registered edges. */
-    node_supernode_association_t  *assoc;            /* list of other edges from this community and their supernodes */
+    node_supernode_association_t  *assoc;                 /* list of other edges from this community and their supernodes */
+    sn_user_t                     *allowed_users;         /* list of allowed users */
     int64_t                       number_enc_packets;     /* Number of encrypted packets handled so far, required for sorting from time to time */
     n2n_ip_subnet_t               auto_ip_net;            /* Address range of auto ip address service. */
 
