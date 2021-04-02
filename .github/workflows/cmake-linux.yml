@@ -24,6 +24,9 @@ jobs:
             TARGET: armv7-unknown-linux-musleabihf
             COMPILER: arm-linux-gnueabihf-gcc-5
             LINKER: gcc-5-arm-linux-gnueabihf
+          - os: windows-latest
+            COMPILER: cl
+            LINKER: cl
           - os: macos-latest
             TARGET: x86_64-apple-darwin
             COMPILER: clang
