@@ -34,8 +34,8 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
 
     sn_user_t *user, *tmp_user;
     n2n_desc_t user_name;
-    n2n_public_key_t public_key;
-    uint8_t ascii_public_key[(N2N_PUBLIC_KEY_SIZE * 8 + 5) / 6 + 1];
+    n2n_private_public_key_t public_key;
+    uint8_t ascii_public_key[(N2N_PRIVATE_PUBLIC_KEY_SIZE * 8 + 5) / 6 + 1];
 
     dec_ip_str_t ip_str = {'\0'};
     uint8_t bitlen;
@@ -108,9 +108,13 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
                 if(last_added_comm) { /* is there a valid community to add users to */
                     user = (sn_user_t*)calloc(1, sizeof(sn_user_t));
                     if(user) {
+                        // user name
                         memcpy(user->name, user_name, sizeof(user_name));
+                        // public key
                         ascii_to_bin(public_key, ascii_public_key);
                         memcpy(user->public_key, public_key, sizeof(public_key));
+                        // common shared secret will be calculated later
+                        // add to list
                         HASH_ADD_PTR(last_added_comm->allowed_users, public_key, user);
                         traceEvent(TRACE_INFO, "Added user '%s' with public key '%s' to community '%s'",
                                                user->name, ascii_public_key, last_added_comm->community);
@@ -461,7 +465,6 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 
             snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1 ,"*%s", _optarg);
             sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
-
             break;
         }
 #ifdef SN_MANUAL_MAC
@@ -707,6 +710,8 @@ int main (int argc, char * const argv[]) {
     struct passwd *pw = NULL;
 #endif
     struct peer_info *scan, *tmp;
+    struct sn_community *comm, *tmp_comm;
+    sn_user_t *user, *tmp_user;
 
 
     sn_init(&sss_node);
@@ -745,6 +750,22 @@ int main (int argc, char * const argv[]) {
         }
     }
 #endif /* #if defined(N2N_HAVE_DAEMON) */
+
+    // generate shared secrets for user authentication; can be done only after
+    // federation name is known (-F) and community list completely read (-c)
+    traceEvent(TRACE_INFO, "started shared secrets calculation for edge authentication");
+    generate_secret_key(sss_node.secret_key, sss_node.federation->community);
+    HASH_ITER(hh, sss_node.communities, comm, tmp_comm) {
+        if(comm->is_federation) {
+            continue;
+        }
+        HASH_ITER(hh, comm->allowed_users, user, tmp_user) {
+            // calculate common shared secret (ECDH)
+            curve25519(user->shared_secret, sss_node.secret_key, user->public_key);
+        }
+    }
+    traceEvent(TRACE_NORMAL, "calculated shared secrets for edge authentication");
+
 
     traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 

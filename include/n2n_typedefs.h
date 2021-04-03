@@ -22,7 +22,7 @@
 
 
 typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
-typedef uint8_t n2n_public_key_t[N2N_PUBLIC_KEY_SIZE];
+typedef uint8_t n2n_private_public_key_t[N2N_PRIVATE_PUBLIC_KEY_SIZE];
 typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
 typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
 typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
@@ -686,8 +686,9 @@ typedef struct node_supernode_association {
 } node_supernode_association_t;
 
 typedef struct sn_user {
-    n2n_public_key_t   public_key;
-    n2n_desc_t         name;
+    n2n_private_public_key_t   public_key;
+    n2n_private_public_key_t   shared_secret;
+    n2n_desc_t                 name;
 
    UT_hash_handle hh;
 } sn_user_t;
@@ -753,6 +754,7 @@ typedef struct n2n_sn {
     struct sn_community                    *communities;
     struct sn_community_regular_expression *rules;
     struct sn_community                    *federation;
+    n2n_private_public_key_t               secret_key;       /* private federation key derived from federation name */
     n2n_auth_t                             auth;
 } n2n_sn_t;
 

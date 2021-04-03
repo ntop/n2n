@@ -28,5 +28,7 @@ int bin_to_ascii (uint8_t *out, uint8_t *in, size_t in_len);
 
 int ascii_to_bin (uint8_t *out, uint8_t *in);
 
+int generate_secret_key(n2n_private_public_key_t key, uint8_t *in);
+
 
 #endif

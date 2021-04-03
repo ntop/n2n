@@ -96,3 +96,14 @@ int ascii_to_bin (uint8_t *out, uint8_t *in) {
 
     return 0;
 }
+
+
+int generate_secret_key(n2n_private_public_key_t key, uint8_t *in) {
+
+    // hash the 0-terminated string input twice to generate private key
+
+    pearson_hash_256(key, in, strlen(in));
+    pearson_hash_256(key, key, sizeof(n2n_private_public_key_t));
+
+    return 0;
+}
