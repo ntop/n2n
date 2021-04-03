@@ -28,6 +28,7 @@ int main(int argc, char * argv[]) {
     uint8_t bin[32];  /* 32 bytes public key binary output buffer    */
     uint8_t asc[44];  /* 43 bytes + 0-terminator ascii string output */
     size_t i = 0;
+    uint8_t fed = 0;
 
     // exactly two parameters required
     if(argc != 3) {
@@ -35,11 +36,17 @@ int main(int argc, char * argv[]) {
         fprintf(stderr, "\n"
                         "n2n-keygen tool\n\n"
                         "  usage:  n2n-keygen <username> <password>\n\n"
+                        "     or   n2n-keygen -F <federation name>\n\n"
                         "          outputs a line to insert at supernode's community file for user-and-\n"
-                        "          password authentication, please see doc/Authentication.md or the man\n"
-                        "          pages for details\n\n");
+                        "          password authentication or a command line parameter with the public\n"
+                        "          federation key for use at edge's command line, please refer to the\n"
+                        "          doc/Authentication.md document or the man pages for more details\n\n");
         return 1;
     }
+
+    // federation mode?
+    if(strcmp(argv[1], "-F") == 0)
+        fed = 1;
 
     // generator point '9' on curve
     memset(gen, 0, sizeof(gen)-1);
@@ -49,11 +56,15 @@ int main(int argc, char * argv[]) {
     // hash user name once, hash password twice (so password is bound
     // to username but username and password are not interchangeable),
     // finally xor the result
-    pearson_hash_256(tmp, (uint8_t*)argv[1], strlen(argv[1]));
+    // in federation mode: only hash federation name, twice
     pearson_hash_256(prv, (uint8_t*)argv[2], strlen(argv[2]));
     pearson_hash_256(prv, prv, sizeof(prv));
-    for(i = 0; i < sizeof(prv); i++)
-        prv[i] ^= tmp[i];
+    // hash user name only if required
+    if(!fed) {
+        pearson_hash_256(tmp, (uint8_t*)argv[1], strlen(argv[1]));
+        for(i = 0; i < sizeof(prv); i++)
+            prv[i] ^= tmp[i];
+    }
 
     // calculate the public key into binary output buffer
     curve25519(bin, prv, gen);
@@ -65,7 +76,10 @@ int main(int argc, char * argv[]) {
     bin_to_ascii(asc, bin, sizeof(bin));
 
     // output
-    fprintf(stdout, "%c %s %s\n", N2N_USER_KEY_LINE_STARTER, argv[1], asc);
+    if(fed)
+        fprintf(stdout, "-P %s\n", asc);
+    else
+        fprintf(stdout, "%c %s %s\n", N2N_USER_KEY_LINE_STARTER, argv[1], asc);
 
     return 0;
 }
