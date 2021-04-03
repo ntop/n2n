@@ -137,7 +137,6 @@
 #ifdef WIN32
 #include <winsock2.h>           /* for tcp */
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
-#define SOL_TCP     IPPROTO_TCP /* for tcp */
 #include "win32/wintap.h"
 #include <sys/stat.h>
 #else
