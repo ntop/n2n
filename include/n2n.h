@@ -137,7 +137,6 @@
 #ifdef WIN32
 #include <winsock2.h>           /* for tcp */
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
-#define SOL_TCP     IPPROTO_TCP /* for tcp */
 #include "win32/wintap.h"
 #include <sys/stat.h>
 #else
@@ -155,16 +154,10 @@
 #include "sn_selection.h"
 #include "network_traffic_filter.h"
 
+/* ************************************** */
+
 #include "header_encryption.h"
 #include "tf.h"
-
-/* ************************************** */
-
-#if !defined(SOL_TCP) && defined(IPPROTO_TCP)
-#define SOL_TCP IPPROTO_TCP
-#endif
-
-/* ************************************** */
 
 #ifndef TRACE_ERROR
 #define TRACE_ERROR       0, __FILE__, __LINE__
