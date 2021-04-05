@@ -159,19 +159,17 @@ SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_gather_data (n2n_sn_t *s
 extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_info_t *peer) {
 
     if(NULL == out) {
-        return NULL;
+      return NULL;
     }
     memset(out, 0, SN_SELECTION_CRITERION_BUF_SIZE);
-
+    
+    if(peer->selection_criterion > 0) {
 #ifndef SN_SELECTION_RTT
-    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE,
-                  (int16_t)(peer->selection_criterion) >= 0 ? "load = %8d" :
-                                                              "", peer->selection_criterion);
+      snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
 #else
-    snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE,
-                  (int16_t)(peer->selection_criterion) >= 0 ? "rtt = %6d ms" :
-                                                              "", peer->selection_criterion);
+      snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6d ms", peer->selection_criterion);
 #endif
+    }
 
     return out;
 }
