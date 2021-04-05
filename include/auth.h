@@ -28,7 +28,12 @@ int bin_to_ascii (uint8_t *out, uint8_t *in, size_t in_len);
 
 int ascii_to_bin (uint8_t *out, uint8_t *in);
 
-int generate_secret_key(n2n_private_public_key_t key, uint8_t *in);
+int generate_private_key(n2n_private_public_key_t key, uint8_t *in);
 
+int generate_public_key (n2n_private_public_key_t pub, n2n_private_public_key_t prv);
+
+int generate_shared_secret (n2n_private_public_key_t shared, n2n_private_public_key_t prv, n2n_private_public_key_t pub);
+
+int bind_private_key_to_user_name (n2n_private_public_key_t prv, uint8_t *user_name);
 
 #endif

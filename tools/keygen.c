@@ -22,12 +22,9 @@
 
 int main(int argc, char * argv[]) {
 
-    n2n_private_public_key_t tmp;  /* 32 bytes buffer                             */
     n2n_private_public_key_t prv;  /* 32 bytes private key                        */
-    n2n_private_public_key_t gen;  /* generator point '9' on curve                */
     n2n_private_public_key_t bin;  /* 32 bytes public key binary output buffer    */
     uint8_t asc[44];               /* 43 bytes + 0-terminator ascii string output */
-    size_t i = 0;
     uint8_t fed = 0;
 
     // exactly two parameters required
@@ -48,25 +45,20 @@ int main(int argc, char * argv[]) {
     if(strcmp(argv[1], "-F") == 0)
         fed = 1;
 
-    // generator point '9' on curve
-    memset(gen, 0, sizeof(gen)-1);
-    gen[sizeof(gen)-1] = 9;
-
     // derive private key from username and password:
     // hash user name once, hash password twice (so password is bound
     // to username but username and password are not interchangeable),
     // finally xor the result
     // in federation mode: only hash federation name, twice
-    generate_secret_key(prv, (uint8_t*)argv[2]);
+    generate_private_key(prv, (uint8_t*)argv[2]);
+
     // hash user name only if required
     if(!fed) {
-        pearson_hash_256(tmp, (uint8_t*)argv[1], strlen(argv[1]));
-        for(i = 0; i < sizeof(prv); i++)
-            prv[i] ^= tmp[i];
+        bind_private_key_to_user_name(prv, (uint8_t*)argv[1]);
     }
 
     // calculate the public key into binary output buffer
-    curve25519(bin, prv, gen);
+    generate_public_key(bin, prv);
 
     // clear out the private key
     memset(prv, 0, sizeof(prv));

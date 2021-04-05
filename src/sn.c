@@ -754,14 +754,14 @@ int main (int argc, char * const argv[]) {
     // generate shared secrets for user authentication; can be done only after
     // federation name is known (-F) and community list completely read (-c)
     traceEvent(TRACE_INFO, "started shared secrets calculation for edge authentication");
-    generate_secret_key(sss_node.secret_key, sss_node.federation->community);
+    generate_private_key(sss_node.private_key, sss_node.federation->community + 1); /* skip '*' federation leading character */
     HASH_ITER(hh, sss_node.communities, comm, tmp_comm) {
         if(comm->is_federation) {
             continue;
         }
         HASH_ITER(hh, comm->allowed_users, user, tmp_user) {
             // calculate common shared secret (ECDH)
-            curve25519(user->shared_secret, sss_node.secret_key, user->public_key);
+            generate_shared_secret(user->shared_secret, sss_node.private_key, user->public_key);
         }
     }
     traceEvent(TRACE_NORMAL, "calculated shared secrets for edge authentication");
