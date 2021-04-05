@@ -46,7 +46,7 @@ int main(int argc, char * argv[]) {
         fed = 1;
 
     // derive private key from username and password:
-    // hash user name once, hash password twice (so password is bound
+    // hash username once, hash password twice (so password is bound
     // to username but username and password are not interchangeable),
     // finally xor the result
     // in federation mode: only hash federation name, twice
@@ -54,7 +54,7 @@ int main(int argc, char * argv[]) {
 
     // hash user name only if required
     if(!fed) {
-        bind_private_key_to_user_name(prv, (uint8_t*)argv[1]);
+        bind_private_key_to_username(prv, (uint8_t*)argv[1]);
     }
 
     // calculate the public key into binary output buffer

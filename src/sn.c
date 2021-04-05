@@ -33,7 +33,7 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
     char buffer[4096], *line, *cmn_str, net_str[20], format[20];
 
     sn_user_t *user, *tmp_user;
-    n2n_desc_t user_name;
+    n2n_desc_t username;
     n2n_private_public_key_t public_key;
     uint8_t ascii_public_key[(N2N_PRIVATE_PUBLIC_KEY_SIZE * 8 + 5) / 6 + 1];
 
@@ -104,12 +104,12 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
 
         // user-key line for edge authentication?
         if(line[0] == N2N_USER_KEY_LINE_STARTER) { /* special first character */
-            if(sscanf(line, format, user_name, ascii_public_key) == 2) { /* correct format */
+            if(sscanf(line, format, username, ascii_public_key) == 2) { /* correct format */
                 if(last_added_comm) { /* is there a valid community to add users to */
                     user = (sn_user_t*)calloc(1, sizeof(sn_user_t));
                     if(user) {
-                        // user name
-                        memcpy(user->name, user_name, sizeof(user_name));
+                        // username
+                        memcpy(user->name, username, sizeof(username));
                         // public key
                         ascii_to_bin(public_key, ascii_public_key);
                         memcpy(user->public_key, public_key, sizeof(public_key));

@@ -286,7 +286,7 @@ static void help (int level) {
         printf(" -r                | enable packet forwarding through n2n community\n");
         printf(" -E                | accept multicast MAC addresses, drop by default\n");
         printf(" -I <description>  | annotate the edge's description used for easier\n"
-               "                   | identification in management port output or user name\n");
+               "                   | identification in management port output or username\n");
         printf(" -J <password>     | password for user-password edge authentication\n");
         printf(" -P <public key>   | federation public key for user-password authentication\n");
         printf(" -R <rule>         | drop or accept packets by rules, can be set multiple times\n");
@@ -951,7 +951,7 @@ int main (int argc, char* argv[]) {
         rc = -1;
 #endif
 
-    // additional crypto setup
+    // --- additional crypto setup
     // payload
     if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
         if(conf.encrypt_key) {
@@ -962,13 +962,23 @@ int main (int argc, char* argv[]) {
     }
     // user auth
     if(conf.shared_secret /* containing private key only so far*/) {
+        // if user-password auth and no federation public key provided, use default
+        if(!conf.federation_public_key) {
+            conf.federation_public_key = calloc(1, sizeof(n2n_private_public_key_t));
+            if(conf.federation_public_key) {
+                traceEvent(TRACE_WARNING, "Using default federation public key.");
+                generate_private_key(*(conf.federation_public_key), FEDERATION_NAME + 1);
+                generate_public_key(*(conf.federation_public_key), *(conf.federation_public_key));
+            }
+        }
+        // calculate shared secret
         if(conf.federation_public_key) {
-            bind_private_key_to_user_name(*(conf.shared_secret), conf.dev_desc);
-            // calculate shared secret
+            traceEvent(TRACE_NORMAL, "Using username and password for edge authentication.");
+
+            bind_private_key_to_username(*(conf.shared_secret), conf.dev_desc);
             generate_shared_secret(*(conf.shared_secret), *(conf.shared_secret), *(conf.federation_public_key));
         }
     }
-
 
     if(rc < 0)
         help(0); /* short help */

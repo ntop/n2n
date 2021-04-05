@@ -101,7 +101,7 @@ int ascii_to_bin (uint8_t *out, uint8_t *in) {
 }
 
 
-int generate_private_key(n2n_private_public_key_t key, uint8_t *in) {
+int generate_private_key (n2n_private_public_key_t key, uint8_t *in) {
 
     // hash the 0-terminated string input twice to generate private key
 
@@ -127,17 +127,18 @@ int generate_public_key (n2n_private_public_key_t pub, n2n_private_public_key_t 
 int generate_shared_secret (n2n_private_public_key_t shared, n2n_private_public_key_t prv, n2n_private_public_key_t pub) {
 
     curve25519(shared, prv, pub);
+    pearson_hash_256(shared, shared, sizeof(n2n_private_public_key_t));
 
     return 0;
 }
 
 
-int bind_private_key_to_user_name (n2n_private_public_key_t prv, uint8_t *user_name) {
+int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *username) {
 
     uint8_t tmp[32];
     size_t i;
 
-    pearson_hash_256(tmp, user_name, strlen(user_name));
+    pearson_hash_256(tmp, username, strlen(username));
     for(i = 0; i < sizeof(n2n_private_public_key_t); i++) {
         prv[i] ^= tmp[i];
     }

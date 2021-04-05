@@ -34,6 +34,7 @@ int generate_public_key (n2n_private_public_key_t pub, n2n_private_public_key_t 
 
 int generate_shared_secret (n2n_private_public_key_t shared, n2n_private_public_key_t prv, n2n_private_public_key_t pub);
 
-int bind_private_key_to_user_name (n2n_private_public_key_t prv, uint8_t *user_name);
+int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *username);
+
 
 #endif
