@@ -163,7 +163,7 @@ extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_in
     }
     memset(out, 0, SN_SELECTION_CRITERION_BUF_SIZE);
     
-    if(peer->selection_criterion > 0) {
+    if(peer->selection_criterion >= 0) {
 #ifndef SN_SELECTION_RTT
       snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
 #else
