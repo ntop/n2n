@@ -359,16 +359,26 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     /* Set the key schedule (context) for header encryption if enabled */
     if(conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
         traceEvent(TRACE_NORMAL, "Header encryption is enabled.");
-        packet_header_setup_key((char *)(eee->conf.community_name), &(eee->conf.header_encryption_ctx),&(eee->conf.header_iv_ctx));
+        packet_header_setup_key((char *)(eee->conf.community_name), &(eee->conf.header_encryption_ctx_static),
+                                                                    &(eee->conf.header_encryption_ctx_dynamic),
+                                                                    &(eee->conf.header_iv_ctx));
     }
 
     if(eee->transop.no_encryption)
         traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
-    // setup authenitcation scheme
-    eee->conf.auth.scheme = n2n_auth_simple_id;
-    memrnd(eee->conf.auth.token, N2N_AUTH_TOKEN_SIZE);
-    eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
+    // setup authentication scheme
+    if(!conf->shared_secret) {
+        eee->conf.auth.scheme = n2n_auth_simple_id;
+        // random authentication token
+        memrnd(eee->conf.auth.token, N2N_AUTH_TOKEN_SIZE);
+        eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
+    } else {
+        eee->conf.auth.scheme = n2n_auth_user_password;
+        // use public key as identifier
+        memcpy(&(eee->conf.auth.token), eee->conf.shared_secret, sizeof(n2n_private_public_key_t));
+        eee->conf.auth.toksize = sizeof(n2n_private_public_key_t);
+    }
 
     // first time calling edge_init_sockets needs -1 in the sockets for it does throw an error
     // on trying to close them (open_sockets does so for also being able to RE-open the sockets
@@ -992,7 +1002,7 @@ void send_query_peer (n2n_edge_t * eee,
 
         if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
             packet_header_encrypt(pktbuf, idx, idx,
-                                  eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                                  eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
                                   time_stamp ());
         }
 
@@ -1003,7 +1013,7 @@ void send_query_peer (n2n_edge_t * eee,
 
         if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
             packet_header_encrypt(pktbuf, idx, idx,
-                                  eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                                  eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
                                   time_stamp ());
         }
 
@@ -1076,7 +1086,7 @@ void send_register_super (n2n_edge_t *eee) {
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_static, eee->conf.header_iv_ctx,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
@@ -1112,7 +1122,7 @@ static void send_unregister_super (n2n_edge_t *eee) {
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
@@ -1212,7 +1222,7 @@ static void send_register (n2n_edge_t * eee,
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
@@ -1257,7 +1267,7 @@ static void send_register_ack (n2n_edge_t * eee,
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
@@ -2061,7 +2071,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, headerIdx, idx,
-                              eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
                               time_stamp());
 
 #ifdef MTU_ASSERT_VALUE
@@ -2188,9 +2198,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                (signed int)udp_size, sock_to_cstr(sockbuf1, &sender));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+// !!! also check dynamic ctx
         if(packet_header_decrypt(udp_buf, udp_size,
                                  (char *)eee->conf.community_name,
-                                 eee->conf.header_encryption_ctx, eee->conf.header_iv_ctx,
+                                 eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
                                  &stamp) == 0) {
             traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
             return;

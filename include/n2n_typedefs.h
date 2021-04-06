@@ -291,8 +291,9 @@ typedef struct n2n_sock {
 } n2n_sock_t;
 
 typedef enum {
-    n2n_auth_none =      0,
-    n2n_auth_simple_id = 1
+    n2n_auth_none =          0,
+    n2n_auth_simple_id =     1,
+    n2n_auth_user_password = 2
 } n2n_auth_scheme_t;
 
 typedef enum {
@@ -588,7 +589,8 @@ typedef struct n2n_edge_conf {
     n2n_private_public_key_t *shared_secret;         /**< shared secret derived from federation public key, username and password */
     n2n_private_public_key_t *federation_public_key; /**< federation public key provided by command line */
     uint8_t                  header_encryption;      /**< Header encryption indicator. */
-    he_context_t             *header_encryption_ctx; /**< Header encryption cipher context. */
+    he_context_t     *header_encryption_ctx_static;  /**< Header encryption cipher context. */
+    he_context_t     *header_encryption_ctx_dynamic; /**< Header encryption cipher context. */
     he_context_t             *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
     n2n_transform_t          transop_id;             /**< The transop to use. */
     uint8_t                  compression;            /**< Compress outgoing data packets before encryption */
@@ -700,7 +702,8 @@ struct sn_community {
     uint8_t                       is_federation;          /* if not-zero, then the current community is the federation of supernodes */
     uint8_t                       purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
     uint8_t                       header_encryption;      /* Header encryption indicator. */
-    he_context_t                  *header_encryption_ctx; /* Header encryption cipher context. */
+    he_context_t          *header_encryption_ctx_static;  /* Header encryption cipher context. */
+    he_context_t          *header_encryption_ctx_dynamic; /* Header encryption cipher context. */
     he_context_t                  *header_iv_ctx;         /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
     struct                        peer_info *edges;       /* Link list of registered edges. */
     node_supernode_association_t  *assoc;                 /* list of other edges from this community and their supernodes */

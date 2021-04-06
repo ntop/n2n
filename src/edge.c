@@ -951,7 +951,7 @@ int main (int argc, char* argv[]) {
         rc = -1;
 #endif
 
-    // --- additional crypto setup
+    // --- additional crypto setup; REVISIT: move to edge_init()?
     // payload
     if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
         if(conf.encrypt_key) {
@@ -966,7 +966,7 @@ int main (int argc, char* argv[]) {
         if(!conf.federation_public_key) {
             conf.federation_public_key = calloc(1, sizeof(n2n_private_public_key_t));
             if(conf.federation_public_key) {
-                traceEvent(TRACE_WARNING, "Using default federation public key.");
+                traceEvent(TRACE_WARNING, "Using default federation public key for edge authentication.");
                 generate_private_key(*(conf.federation_public_key), FEDERATION_NAME + 1);
                 generate_public_key(*(conf.federation_public_key), *(conf.federation_public_key));
             }
@@ -974,9 +974,13 @@ int main (int argc, char* argv[]) {
         // calculate shared secret
         if(conf.federation_public_key) {
             traceEvent(TRACE_NORMAL, "Using username and password for edge authentication.");
-
             bind_private_key_to_username(*(conf.shared_secret), conf.dev_desc);
             generate_shared_secret(*(conf.shared_secret), *(conf.shared_secret), *(conf.federation_public_key));
+        }
+        // force header encryption
+        if(conf.header_encryption != HEADER_ENCRYPTION_ENABLED) {
+            traceEvent(TRACE_WARNING, "Enabling header encryption for edge authentication.");
+            conf.header_encryption = HEADER_ENCRYPTION_ENABLED;
         }
     }
 
@@ -1030,8 +1034,9 @@ int main (int argc, char* argv[]) {
     // for the sake of quickly establishing connection. REVISIT when a more elegant way to re-use main loop code
     // is found
 
-    // if more than one supernode given, find at least one who is alive to faster establish connection
-    if((HASH_COUNT(eee->conf.supernodes) <= 1) || (eee->conf.connect_tcp)) {
+    // find at least one supernode alive to faster establish connection
+    // exceptions:
+    if((HASH_COUNT(eee->conf.supernodes) <= 1) || (eee->conf.connect_tcp) || (eee->conf.shared_secret)) {
         // skip the initial supernode ping
         traceEvent(TRACE_DEBUG, "Skip PING to supernode.");
         runlevel = 2;

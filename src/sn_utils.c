@@ -397,7 +397,9 @@ int sn_init(n2n_sn_t *sss) {
         /* header encryption enabled by default */
         sss->federation->header_encryption = HEADER_ENCRYPTION_ENABLED;
         /*setup the encryption key */
-        packet_header_setup_key(sss->federation->community, &(sss->federation->header_encryption_ctx), &(sss->federation->header_iv_ctx));
+        packet_header_setup_key(sss->federation->community, &(sss->federation->header_encryption_ctx_static),
+                                                            &(sss->federation->header_encryption_ctx_dynamic),
+                                                            &(sss->federation->header_iv_ctx));
         sss->federation->edges = NULL;
     }
 
@@ -452,8 +454,9 @@ void sn_term (n2n_sn_t *sss) {
 
     HASH_ITER(hh, sss->communities, community, tmp) {
         clear_peer_list(&community->edges);
-        if(NULL != community->header_encryption_ctx) {
-            free(community->header_encryption_ctx);
+        if(NULL != community->header_encryption_ctx_static) {
+            free(community->header_encryption_ctx_static);
+            free(community->header_encryption_ctx_dynamic);
         }
         // remove all associations
         HASH_ITER(hh, community->assoc, assoc, tmp_assoc) {
@@ -529,6 +532,9 @@ static int auth_edge (const n2n_auth_t *auth1, const n2n_auth_t *auth2, n2n_auth
         // 0 = success (tokens are equal)
         return (memcmp(auth1, auth2, sizeof(n2n_auth_t)));
     }
+// !!!!!!!!!
+// !!! in case of n2n_auth_user_password: is the public key still in list, if so, provide
+// !!!                                    encrypted current dynamic key just as in handle_remote_auth
 
    // if not successful earlier: failure
    return -1;
@@ -556,7 +562,10 @@ static int handle_remote_auth (n2n_sn_t *sss, struct peer_info *peer, const n2n_
     memcpy(&(peer->auth), remote_auth, sizeof(n2n_auth_t));
     // n2n_auth_simple_id scheme: zero_token answer
     memset(answer_auth, 0, sizeof(n2n_auth_t));
-
+// !!!!!!!!!
+// !!! n2n_auth_user_password scheme: check if submitted public key is in list of allowed users
+// !!!                                if so, get the shared_secret as well as the community dynamic
+// !!!                                key and encrypt the latter into answer_auth
     return 0;
 }
 
@@ -904,7 +913,7 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
                                      sock_to_cstr(sockbuf, &(peer->sock)));
 
             packet_header_encrypt(pktbuf, idx, idx,
-                                  comm->header_encryption_ctx, comm->header_iv_ctx,
+                                  comm->header_encryption_ctx_static, comm->header_iv_ctx,
                                   time_stamp());
 
             /* sent = */ sendto_peer(sss, peer, pktbuf, idx);
@@ -949,9 +958,10 @@ static int purge_expired_communities (n2n_sn_t *sss,
 
         if((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
             traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
-            if(NULL != comm->header_encryption_ctx) {
+            if(NULL != comm->header_encryption_ctx_static) {
                 /* this should not happen as 'purgeable' and thus only communities w/o encrypted header here */
-                free(comm->header_encryption_ctx);
+                free(comm->header_encryption_ctx_static);
+                free(comm->header_encryption_ctx_dynamic);
             }
             // remove all associations
             HASH_ITER(hh, comm->assoc, assoc, tmp_assoc) {
@@ -1183,7 +1193,8 @@ static int process_udp (n2n_sn_t * sss,
                            "unencrypted headers.", comm->community);
                 /* set 'no encryption' in case it is not set yet */
                 comm->header_encryption = HEADER_ENCRYPTION_NONE;
-                comm->header_encryption_ctx = NULL;
+                comm->header_encryption_ctx_static = NULL;
+                comm->header_encryption_ctx_dynamic = NULL;
             }
         }
     } else {
@@ -1195,9 +1206,10 @@ static int process_udp (n2n_sn_t * sss,
             if(comm->header_encryption == HEADER_ENCRYPTION_NONE) {
                 continue;
             }
+// !!! also check dynamic ctx
             if((ret = packet_header_decrypt(udp_buf, udp_size,
                                             comm->community,
-                                            comm->header_encryption_ctx, comm->header_iv_ctx,
+                                            comm->header_encryption_ctx_static, comm->header_iv_ctx,
                                             &stamp))) {
                 // time stamp verification follows in the packet specific section as it requires to determine the
                 // sender from the hash list by its MAC, this all depends on packet type and packet structure
@@ -1326,7 +1338,7 @@ static int process_udp (n2n_sn_t * sss,
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     packet_header_encrypt(rec_buf, oldEncx, encx,
-                                          comm->header_encryption_ctx, comm->header_iv_ctx,
+                                          comm->header_encryption_ctx_dynamic, comm->header_iv_ctx,
                                           time_stamp());
                 }
             } else {
@@ -1340,7 +1352,7 @@ static int process_udp (n2n_sn_t * sss,
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     packet_header_encrypt(rec_buf, idx, encx,
-                                          comm->header_encryption_ctx, comm->header_iv_ctx,
+                                          comm->header_encryption_ctx_dynamic, comm->header_iv_ctx,
                                           time_stamp());
                 }
             }
@@ -1412,7 +1424,7 @@ static int process_udp (n2n_sn_t * sss,
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     packet_header_encrypt(rec_buf, encx, encx,
-                                          comm->header_encryption_ctx, comm->header_iv_ctx,
+                                          comm->header_encryption_ctx_dynamic, comm->header_iv_ctx,
                                           time_stamp());
                 }
                 try_forward(sss, comm, &cmn, reg.dstMac, from_supernode, rec_buf, encx); /* unicast only */
@@ -1495,7 +1507,8 @@ static int process_udp (n2n_sn_t * sss,
                     comm_init(comm, (char *)cmn.community);
                     /* new communities introduced by REGISTERs could not have had encrypted header... */
                     comm->header_encryption = HEADER_ENCRYPTION_NONE;
-                    comm->header_encryption_ctx = NULL;
+                    comm->header_encryption_ctx_static = NULL;
+                    comm->header_encryption_ctx_dynamic = NULL;
                     /* ... and also are purgeable during periodic purge */
                     comm->purgeable = COMMUNITY_PURGEABLE;
                     comm->number_enc_packets = 0;
@@ -1624,7 +1637,7 @@ static int process_udp (n2n_sn_t * sss,
 
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                         packet_header_encrypt(ackbuf, encx, encx,
-                                              comm->header_encryption_ctx, comm->header_iv_ctx,
+                                              comm->header_encryption_ctx_static, comm->header_iv_ctx,
                                               time_stamp());
                     }
 
@@ -1825,7 +1838,7 @@ static int process_udp (n2n_sn_t * sss,
 
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                         packet_header_encrypt(nakbuf, encx, encx,
-                                              comm->header_encryption_ctx, comm->header_iv_ctx,
+                                              comm->header_encryption_ctx_static, comm->header_iv_ctx,
                                               time_stamp());
                     }
 
@@ -1912,7 +1925,7 @@ static int process_udp (n2n_sn_t * sss,
 
                 if(comm) {
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx,
+                        packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx_dynamic,
                                               comm->header_iv_ctx,
                                               time_stamp());
                     }
@@ -1951,7 +1964,7 @@ static int process_udp (n2n_sn_t * sss,
                     encode_PEER_INFO(encbuf, &encx, &cmn2, &pi);
 
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx,
+                        packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx_dynamic,
                                               comm->header_iv_ctx,
                                               time_stamp());
                     }
@@ -1976,7 +1989,7 @@ static int process_udp (n2n_sn_t * sss,
                         encode_QUERY_PEER(encbuf, &encx, &cmn2, &query);
 
                         if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                            packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx,
+                            packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx_dynamic,
                                                   comm->header_iv_ctx,
                                                   time_stamp());
                         }
@@ -2028,7 +2041,7 @@ static int process_udp (n2n_sn_t * sss,
 
                     if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                         packet_header_encrypt(encbuf, encx, encx,
-                                              comm->header_encryption_ctx, comm->header_iv_ctx,
+                                              comm->header_encryption_ctx_dynamic, comm->header_iv_ctx,
                                               time_stamp());
                     }
 

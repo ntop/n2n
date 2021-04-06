@@ -67,9 +67,10 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
 
         // remove community
         HASH_DEL(sss->communities, comm);
-        if(NULL != comm->header_encryption_ctx) {
+        if(NULL != comm->header_encryption_ctx_static) {
             // remove header encryption keys
-            free(comm->header_encryption_ctx);
+            free(comm->header_encryption_ctx_static);
+            free(comm->header_encryption_ctx_dynamic);
         }
         free(comm);
     }
@@ -118,6 +119,8 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
                         HASH_ADD_PTR(last_added_comm->allowed_users, public_key, user);
                         traceEvent(TRACE_INFO, "Added user '%s' with public key '%s' to community '%s'",
                                                user->name, ascii_public_key, last_added_comm->community);
+// !!! set this community to 'encrypted community'
+// !!! trigger dynamic key setup
                     }
                     continue;
                 }
@@ -154,7 +157,9 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
             /* we do not know if header encryption is used in this community,
              * first packet will show. just in case, setup the key. */
             comm->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
-            packet_header_setup_key(comm->community, &(comm->header_encryption_ctx), &(comm->header_iv_ctx));
+            packet_header_setup_key(comm->community, &(comm->header_encryption_ctx_static),
+                                                     &(comm->header_encryption_ctx_dynamic),
+                                                     &(comm->header_iv_ctx));
             HASH_ADD_STR(sss->communities, community, comm);
             last_added_comm = comm;
 

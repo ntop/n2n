@@ -123,13 +123,18 @@ int packet_header_encrypt (uint8_t packet[], uint16_t header_len, uint16_t packe
 
 
 void packet_header_setup_key (const char *community_name,
-                              he_context_t **ctx, he_context_t **ctx_iv) {
+                              he_context_t **ctx_static, he_context_t **ctx_dynamic, he_context_t **ctx_iv) {
 
     uint8_t key[16];
     pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
-    *ctx = (he_context_t*)calloc(1, sizeof (speck_context_t));
-    speck_init((speck_context_t**)ctx, key, 128);
+    // for REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK only
+    *ctx_static = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    speck_init((speck_context_t**)ctx_static, key, 128);
+
+    // for all other packets, same as static by default (changed by user/pw auth scheme)
+    *ctx_dynamic = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    speck_init((speck_context_t**)ctx_dynamic, key, 128);
 
     // hash again and use as key for IV encryption
     // REMOVE as soon as checksum and replay protection get their own fields
