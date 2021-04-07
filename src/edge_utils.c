@@ -688,6 +688,7 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
         scan_tmp = find_peer_by_sock(peer, eee->known_peers);
         if(scan_tmp != NULL) {
             HASH_DEL(eee->known_peers, scan_tmp);
+            free(scan);
             scan = scan_tmp;
             memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
         } else {
