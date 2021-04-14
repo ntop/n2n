@@ -516,6 +516,9 @@ typedef struct n2n_edge_callbacks {
 
     /* Called periodically in the main loop. */
     void (*main_loop_period)(n2n_edge_t *eee, time_t now);
+
+    /* Called when a new socket to supernode is created. */
+    void (*sock_opened)(n2n_edge_t *eee);
 } n2n_edge_callbacks_t;
 
 typedef struct n2n_tuntap_priv_config {
