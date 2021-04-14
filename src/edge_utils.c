@@ -219,6 +219,8 @@ int supernode_connect(n2n_edge_t *eee) {
             return -1;
         }
 
+        eee->cb.sock_opened(eee);
+
         struct sockaddr_in sock;
         sock.sin_family = AF_INET;
         sock.sin_port = htons(eee->curr_sn->sock.port);
