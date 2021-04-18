@@ -150,8 +150,7 @@ int tuntap_open (tuntap_dev *device,
         // also after the TAP interface UP status has been notified
         int i;
 
-        for(i = 0; i < 6; i++)
-            device->mac_addr[i] = n2n_rand();
+        memrnd(device->mac_addr, N2N_MAC_SIZE);
 
         // clear multicast bit
         device->mac_addr[0] &= ~0x01;

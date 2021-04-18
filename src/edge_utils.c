@@ -367,9 +367,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
 
     // setup authenitcation scheme
     eee->conf.auth.scheme = n2n_auth_simple_id;
-    for(idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx) {
-        eee->conf.auth.token[idx] = n2n_rand() % 0xff;
-    }
+    memrnd(eee->conf.auth.token, N2N_AUTH_TOKEN_SIZE);
     eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
 
     // first time calling edge_init_sockets needs -1 in the sockets for it does throw an error
@@ -1059,9 +1057,7 @@ void send_register_super (n2n_edge_t *eee) {
     cmn.flags = 0;
     memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
-    for(idx = 0; idx < N2N_COOKIE_SIZE; ++idx) {
-        eee->curr_sn->last_cookie[idx] = n2n_rand() % 0xff;
-    }
+    memrnd(eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
 
     memcpy(reg.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
     reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
