@@ -610,6 +610,24 @@ int sock_equal (const n2n_sock_t * a,
 
 /* *********************************************** */
 
+// fills a specified memory area with random numbers
+int memrnd (uint8_t *address, size_t len) {
+
+    for(; len >= 8; len -= 8) {
+        *(uint64_t*)address = n2n_rand();
+        address += 8;
+    }
+
+    for(; len > 0; len--) {
+        *address = n2n_rand();
+        address++;
+    }
+
+    return 0;
+}
+
+/* *********************************************** */
+
 #if defined(WIN32)
 int gettimeofday (struct timeval *tp, void *tzp) {
 

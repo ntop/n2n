@@ -405,15 +405,11 @@ int sn_init(n2n_sn_t *sss) {
 
     /* Random auth token */
     sss->auth.scheme = n2n_auth_simple_id;
-    for(idx = 0; idx < N2N_AUTH_TOKEN_SIZE; ++idx) {
-        sss->auth.token[idx] = n2n_rand() % 0xff;
-    }
+    memrnd(sss->auth.token, N2N_AUTH_TOKEN_SIZE);
     sss->auth.toksize = sizeof(sss->auth.token);
 
     /* Random MAC address */
-    for(i = 0; i < 6; i++) {
-        sss->mac_addr[i] = n2n_rand();
-    }
+    memrnd(sss->mac_addr, N2N_MAC_SIZE);
     sss->mac_addr[0] &= ~0x01; /* Clear multicast bit */
     sss->mac_addr[0] |= 0x02;    /* Set locally-assigned bit */
 
@@ -890,12 +886,10 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
             cmn.flags = N2N_FLAGS_FROM_SUPERNODE;
             memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
 
-            for(idx = 0; idx < N2N_COOKIE_SIZE; ++idx) {
-                cookie[idx] = n2n_rand() % 0xff;
-            }
-
+            memrnd(cookie, N2N_COOKIE_SIZE);
             memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
             memcpy(peer->last_cookie, cookie, N2N_COOKIE_SIZE);
+
             reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
             reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
             get_local_auth(sss, &(reg.auth));
