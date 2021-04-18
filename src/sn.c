@@ -61,6 +61,7 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
 
         // remove allowed users from community
         HASH_ITER(hh, comm->allowed_users, user, tmp_user) {
+            free(user->shared_secret_ctx);
             HASH_DEL(comm->allowed_users, user);
             free(user);
         }
@@ -767,6 +768,9 @@ int main (int argc, char * const argv[]) {
         HASH_ITER(hh, comm->allowed_users, user, tmp_user) {
             // calculate common shared secret (ECDH)
             generate_shared_secret(user->shared_secret, sss_node.private_key, user->public_key);
+            // prepare for use as key
+            user->shared_secret_ctx = (he_context_t*)calloc(1, sizeof(speck_context_t));
+            speck_init((speck_context_t**)&user->shared_secret_ctx, user->shared_secret, 128);
         }
     }
     traceEvent(TRACE_NORMAL, "calculated shared secrets for edge authentication");

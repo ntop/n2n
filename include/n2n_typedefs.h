@@ -587,6 +587,7 @@ typedef struct n2n_edge_conf {
     n2n_community_t          community_name;         /**< The community. 16 full octets. */
     n2n_desc_t               dev_desc;               /**< The device description (hint) */
     n2n_private_public_key_t *shared_secret;         /**< shared secret derived from federation public key, username and password */
+    he_context_t             *shared_secret_ctx;     /**< context holding the roundkeys derived from shared secret */
     n2n_private_public_key_t *federation_public_key; /**< federation public key provided by command line */
     uint8_t                  header_encryption;      /**< Header encryption indicator. */
     he_context_t     *header_encryption_ctx_static;  /**< Header encryption cipher context. */
@@ -692,6 +693,7 @@ typedef struct node_supernode_association {
 typedef struct sn_user {
     n2n_private_public_key_t   public_key;
     n2n_private_public_key_t   shared_secret;
+    he_context_t               *shared_secret_ctx;
     n2n_desc_t                 name;
 
    UT_hash_handle hh;

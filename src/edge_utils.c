@@ -376,7 +376,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     } else {
         eee->conf.auth.scheme = n2n_auth_user_password;
         // use public key as identifier
-        memcpy(&(eee->conf.auth.token), eee->conf.shared_secret, sizeof(n2n_private_public_key_t));
+        memcpy(&(eee->conf.auth.token), eee->conf.federation_public_key, sizeof(n2n_private_public_key_t));
         eee->conf.auth.toksize = sizeof(n2n_private_public_key_t);
     }
 
