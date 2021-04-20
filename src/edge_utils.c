@@ -359,9 +359,12 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     /* Set the key schedule (context) for header encryption if enabled */
     if(conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
         traceEvent(TRACE_NORMAL, "Header encryption is enabled.");
-        packet_header_setup_key((char *)(eee->conf.community_name), &(eee->conf.header_encryption_ctx_static),
-                                                                    &(eee->conf.header_encryption_ctx_dynamic),
-                                                                    &(eee->conf.header_iv_ctx));
+        packet_header_setup_key((char *)(eee->conf.community_name),
+                                (char *)(eee->conf.community_name),
+                                &(eee->conf.header_encryption_ctx_static),
+                                &(eee->conf.header_encryption_ctx_dynamic),
+                                &(eee->conf.header_iv_ctx_static),
+                                &(eee->conf.header_iv_ctx_dynamic));
     }
 
     if(eee->transop.no_encryption)
@@ -375,8 +378,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
         eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
     } else {
         eee->conf.auth.scheme = n2n_auth_user_password;
-        // use public key as identifier
-        memcpy(&(eee->conf.auth.token), eee->conf.federation_public_key, sizeof(n2n_private_public_key_t));
+        // 'token' stores the last random challenge being set upon sending REGISTER_SUPER
         eee->conf.auth.toksize = sizeof(n2n_private_public_key_t);
     }
 
@@ -730,21 +732,56 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
 
 
 // provides the current / a new local auth token
-// REVISIT: behavior should depend on some local auth scheme setting (to be implemented)
 static int get_local_auth (n2n_edge_t *eee, n2n_auth_t *auth) {
 
-    // n2n_auth_simple_id scheme
-    memcpy(auth, &(eee->conf.auth), sizeof(n2n_auth_t));
+    static const uint8_t null_block[16] = { 0 };
+
+
+    switch(eee->conf.auth.scheme) {
+        case n2n_auth_simple_id:
+            memcpy(auth, &(eee->conf.auth), sizeof(n2n_auth_t));
+            break;
+        case n2n_auth_user_password:
+            // generate a new random auth challenge every time, store it in local auth token
+            memrnd(auth->token, N2N_AUTH_TOKEN_SIZE);
+            memcpy(eee->conf.auth.token, auth->token, N2N_AUTH_TOKEN_SIZE);
+            // encrypt the challenge (first 128 bits, 16 bytes) for transmission
+            // use speck ctr with null_block as data to make it a block cipher step
+            speck_ctr(auth->token, null_block, 16, auth->token, (speck_context_t*)eee->conf.shared_secret_ctx);
+            break;
+        default:
+           break;
+    }
 
     return 0;
 }
 
 
 // handles an returning (remote) auth token, takes action as required by auth scheme, and
-// REVISIT: behavior should depend on some local auth scheme setting (to be implemented)
 static int handle_remote_auth (n2n_edge_t *eee, struct peer_info *peer, const n2n_auth_t *remote_auth) {
 
-    // n2n_auth_simple_id scheme: no action required
+    uint8_t tmp_token[N2N_AUTH_TOKEN_SIZE];
+
+    switch(eee->conf.auth.scheme) {
+        case n2n_auth_simple_id:
+            // no action required
+            break;
+        case n2n_auth_user_password:
+            // decrypt received token (first 128 bits, 16 bytes)
+            memcpy(tmp_token, remote_auth->token, N2N_AUTH_TOKEN_SIZE);
+            speck_128_decrypt(tmp_token, (speck_context_t*)eee->conf.shared_secret_ctx);
+            // un-XOR the original challenge
+            memxor(tmp_token, eee->conf.auth.token, N2N_AUTH_TOKEN_SIZE);
+            // setup for use as dynamic key
+hexdump(tmp_token,32); // !!!
+            packet_header_change_dynamic_key(tmp_token,
+                                             &(eee->conf.header_encryption_ctx_dynamic),
+                                             &(eee->conf.header_iv_ctx_dynamic));
+            break;
+        default:
+           break;
+    }
+
     return 0;
 }
 
@@ -1002,7 +1039,7 @@ void send_query_peer (n2n_edge_t * eee,
 
         if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
             packet_header_encrypt(pktbuf, idx, idx,
-                                  eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
+                                  eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                                   time_stamp ());
         }
 
@@ -1013,7 +1050,7 @@ void send_query_peer (n2n_edge_t * eee,
 
         if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
             packet_header_encrypt(pktbuf, idx, idx,
-                                  eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
+                                  eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                                   time_stamp ());
         }
 
@@ -1086,7 +1123,7 @@ void send_register_super (n2n_edge_t *eee) {
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx_static, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_static, eee->conf.header_iv_ctx_static,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
@@ -1122,7 +1159,7 @@ static void send_unregister_super (n2n_edge_t *eee) {
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
@@ -1222,7 +1259,7 @@ static void send_register (n2n_edge_t * eee,
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
@@ -1267,7 +1304,7 @@ static void send_register_ack (n2n_edge_t * eee,
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
-                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
     /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
@@ -2071,7 +2108,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, headerIdx, idx,
-                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
+                              eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
 #ifdef MTU_ASSERT_VALUE
@@ -2198,10 +2235,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                (signed int)udp_size, sock_to_cstr(sockbuf1, &sender));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-// !!! also check dynamic ctx
+// !!! also check static AND dynamic ctx
         if(packet_header_decrypt(udp_buf, udp_size,
                                  (char *)eee->conf.community_name,
-                                 eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx,
+                                 eee->conf.header_encryption_ctx_static, eee->conf.header_iv_ctx_static,
                                  &stamp) == 0) {
             traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
             return;

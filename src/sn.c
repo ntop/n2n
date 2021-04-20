@@ -158,9 +158,12 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
             /* we do not know if header encryption is used in this community,
              * first packet will show. just in case, setup the key. */
             comm->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
-            packet_header_setup_key(comm->community, &(comm->header_encryption_ctx_static),
-                                                     &(comm->header_encryption_ctx_dynamic),
-                                                     &(comm->header_iv_ctx));
+            packet_header_setup_key(comm->community,
+                                    comm->community,
+                                    &(comm->header_encryption_ctx_static),
+                                    &(comm->header_encryption_ctx_dynamic),
+                                    &(comm->header_iv_ctx_static),
+                                    &(comm->header_iv_ctx_dynamic));
             HASH_ADD_STR(sss->communities, community, comm);
             last_added_comm = comm;
 

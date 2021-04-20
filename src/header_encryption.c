@@ -82,7 +82,7 @@ int packet_header_encrypt (uint8_t packet[], uint16_t header_len, uint16_t packe
                            he_context_t *ctx, he_context_t *ctx_iv,
                            uint64_t stamp) {
 
-    const uint8_t null_block[16] = { 0 };
+    static const uint8_t null_block[16] = { 0 };
     uint32_t *p32 = (uint32_t*)packet;
     uint64_t *p64 = (uint64_t*)packet;
     uint64_t checksum = 0;
@@ -122,23 +122,49 @@ int packet_header_encrypt (uint8_t packet[], uint16_t header_len, uint16_t packe
 }
 
 
-void packet_header_setup_key (const char *community_name,
-                              he_context_t **ctx_static, he_context_t **ctx_dynamic, he_context_t **ctx_iv) {
+void packet_header_setup_key (const char *community_name, const char *key_dynamic,
+                              he_context_t **ctx_static, he_context_t **ctx_dynamic,
+                              he_context_t **ctx_iv_static, he_context_t **ctx_iv_dynamic) {
 
     uint8_t key[16];
-    pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
     // for REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK only
+    pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
+
     *ctx_static = (he_context_t*)calloc(1, sizeof (speck_context_t));
     speck_init((speck_context_t**)ctx_static, key, 128);
 
+    // hash again and use as key for IV encryption
+    pearson_hash_128(key, key, sizeof (key));
+    *ctx_iv_static = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    speck_init((speck_context_t**)ctx_iv_static, key, 128);
+
     // for all other packets, same as static by default (changed by user/pw auth scheme)
+    pearson_hash_128(key, (uint8_t*)key_dynamic, N2N_COMMUNITY_SIZE);
+
     *ctx_dynamic = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    speck_init((speck_context_t**)ctx_dynamic, key, 128);
+
+    pearson_hash_128(key, key, sizeof (key));
+    *ctx_iv_dynamic = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    speck_init((speck_context_t**)ctx_iv_dynamic, key, 128);
+}
+
+
+void packet_header_change_dynamic_key (const char *key_dynamic,
+                                       he_context_t **ctx_dynamic, he_context_t **ctx_iv_dynamic) {
+
+    uint8_t key[16];
+    pearson_hash_128(key, (uint8_t*)key_dynamic, N2N_COMMUNITY_SIZE);
+
+    // for REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK only
+    // for all other packets, same as static by default (changed by user/pw auth scheme)
     speck_init((speck_context_t**)ctx_dynamic, key, 128);
 
     // hash again and use as key for IV encryption
     // REMOVE as soon as checksum and replay protection get their own fields
     pearson_hash_128(key, key, sizeof (key));
-    *ctx_iv = (he_context_t*)calloc(1, sizeof (speck_context_t));
-    speck_init((speck_context_t**)ctx_iv, key, 128);
+    *ctx_iv_dynamic = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    speck_init((speck_context_t**)ctx_iv_dynamic, key, 128);
+
 }

@@ -592,7 +592,8 @@ typedef struct n2n_edge_conf {
     uint8_t                  header_encryption;      /**< Header encryption indicator. */
     he_context_t     *header_encryption_ctx_static;  /**< Header encryption cipher context. */
     he_context_t     *header_encryption_ctx_dynamic; /**< Header encryption cipher context. */
-    he_context_t             *header_iv_ctx;         /**< Header IV ecnryption cipher context, REMOVE as soon as seperte fileds for checksum and replay protection available */
+    he_context_t             *header_iv_ctx_static;  /**< Header IV ecnryption cipher context, REMOVE as soon as separate fileds for checksum and replay protection available */
+    he_context_t             *header_iv_ctx_dynamic; /**< Header IV ecnryption cipher context, REMOVE as soon as separate fileds for checksum and replay protection available */
     n2n_transform_t          transop_id;             /**< The transop to use. */
     uint8_t                  compression;            /**< Compress outgoing data packets before encryption */
     uint16_t                 num_routes;             /**< Number of routes in routes */
@@ -706,7 +707,8 @@ struct sn_community {
     uint8_t                       header_encryption;      /* Header encryption indicator. */
     he_context_t          *header_encryption_ctx_static;  /* Header encryption cipher context. */
     he_context_t          *header_encryption_ctx_dynamic; /* Header encryption cipher context. */
-    he_context_t                  *header_iv_ctx;         /* Header IV ecnryption cipher context, REMOVE as soon as seperate fields for checksum and replay protection available */
+    he_context_t                  *header_iv_ctx_static;  /* Header IV ecnryption cipher context, REMOVE as soon as separate fields for checksum and replay protection available */
+    he_context_t                  *header_iv_ctx_dynamic; /* Header IV ecnryption cipher context, REMOVE as soon as separate fields for checksum and replay protection available */
     struct                        peer_info *edges;       /* Link list of registered edges. */
     node_supernode_association_t  *assoc;                 /* list of other edges from this community and their supernodes */
     sn_user_t                     *allowed_users;         /* list of allowed users */
