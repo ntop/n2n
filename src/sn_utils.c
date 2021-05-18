@@ -398,7 +398,6 @@ int sn_init(n2n_sn_t *sss) {
         sss->federation->header_encryption = HEADER_ENCRYPTION_ENABLED;
         /*setup the encryption key */
         packet_header_setup_key(sss->federation->community,
-                                sss->federation->community, /* !!! */
                                 &(sss->federation->header_encryption_ctx_static),
                                 &(sss->federation->header_encryption_ctx_dynamic),
                                 &(sss->federation->header_iv_ctx_static),
@@ -410,8 +409,8 @@ int sn_init(n2n_sn_t *sss) {
 
     /* Random auth token */
     sss->auth.scheme = n2n_auth_simple_id;
-    memrnd(sss->auth.token, N2N_AUTH_TOKEN_SIZE);
-    sss->auth.toksize = sizeof(sss->auth.token);
+    memrnd(sss->auth.token, N2N_AUTH_ID_TOKEN_SIZE);
+    sss->auth.token_size = N2N_AUTH_ID_TOKEN_SIZE;
 
     /* Random MAC address */
     memrnd(sss->mac_addr, N2N_MAC_SIZE);
@@ -521,27 +520,48 @@ static uint16_t reg_lifetime (n2n_sn_t *sss) {
 }
 
 
-/** Compare two authentication tokens. It is called by update_edge
-    * and in UNREGISTER_SUPER handling to compare the stored auth token
-    * with the one received from the packet.
-    */
-static int auth_edge (const n2n_auth_t *auth1, const n2n_auth_t *auth2, n2n_auth_t *answer_auth) {
+/** Verifies authentication tokens from known edges.
+ *
+ *  It is called by update_edge and during UNREGISTER_SUPER handling
+ *  to verify the stored auth token.
+ */
+static int auth_edge (const n2n_auth_t *present, const n2n_auth_t *presented, n2n_auth_t *answer, struct sn_community *community) {
 
-    if((auth1->scheme == n2n_auth_simple_id) && (auth2->scheme == n2n_auth_simple_id)) {
+    sn_user_t *user = NULL;
+
+    if((present->scheme == n2n_auth_simple_id) && (presented->scheme == n2n_auth_simple_id)) {
         // n2n_auth_simple_id scheme: if required, zero_token answer (not for NAK)
-        if(answer_auth)
-            memset(answer_auth, 0, sizeof(n2n_auth_t));
+        if(answer)
+            memset(answer, 0, sizeof(n2n_auth_t));
 
         // 0 = success (tokens are equal)
-        return (memcmp(auth1, auth2, sizeof(n2n_auth_t)));
+        return (memcmp(present, presented, sizeof(n2n_auth_t)));
     }
 
-    if((auth1->scheme == n2n_auth_user_password) && (auth2->scheme == n2n_auth_user_password)) {
-// !!!!!!!!!
-// !!! in case of n2n_auth_user_password: is the public key still in list, if so, provide
-// !!!                                    encrypted current dynamic key just as in handle_remote_auth
-    }
+    if((present->scheme == n2n_auth_user_password) && (presented->scheme == n2n_auth_user_password)) {
+        // check if submitted public key is in list of allowed users
+        HASH_FIND(hh, community->allowed_users, &presented->token, sizeof(n2n_private_public_key_t), user);
+        if(user) {
+            if(answer) {
+                memcpy(answer, presented, sizeof(n2n_auth_t));
 
+                // return a double-encrypted challenge (just encrypt again) in the (first half of) public key field so edge can verify
+                memcpy(answer->token, answer->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, N2N_AUTH_CHALLENGE_SIZE);
+                speck_128_encrypt(answer->token, (speck_context_t*)user->shared_secret_ctx);
+
+                // decrypt the challenge using user's shared secret
+                speck_128_decrypt(answer->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, (speck_context_t*)user->shared_secret_ctx);
+                // xor-in the community dynamic key
+                memxor(answer->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, community->dynamic_key, N2N_AUTH_CHALLENGE_SIZE);
+                // xor-in the user's shared secret
+                memxor(answer->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, user->shared_secret, N2N_AUTH_CHALLENGE_SIZE);
+                // encrypt it using user's shared secret
+                speck_128_encrypt(answer->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, (speck_context_t*)user->shared_secret_ctx);
+                // user in list? success! (we will see if edge can handle the key for further com)
+            }
+            return 0;
+        }
+    }
 
     // if not successful earlier: failure
     return -1;
@@ -559,23 +579,53 @@ static int get_local_auth (n2n_sn_t *sss, n2n_auth_t *auth) {
 }
 
 
-// handles an incoming (remote) auth token, takes action as required by auth scheme, and
+// handles an incoming (remote) auth token from a so far unknown edge,
+// takes action as required by auth scheme, and
 // could provide an answer auth token for use in REGISTER_SUPER_ACK
-// REVISIT: behavior should depend on some local auth scheme setting (to be implemented)
-static int handle_remote_auth (n2n_sn_t *sss, struct peer_info *peer, const n2n_auth_t *remote_auth,
-                                                                            n2n_auth_t *answer_auth) {
+static int handle_remote_auth (n2n_sn_t *sss, const n2n_auth_t *remote_auth,
+                                              n2n_auth_t *answer_auth,
+                                              struct sn_community *community) {
 
-    // n2n_auth_simple_id scheme: store the arrived token
-    memcpy(&(peer->auth), remote_auth, sizeof(n2n_auth_t));
-    // n2n_auth_simple_id scheme: zero_token answer
-    memset(answer_auth, 0, sizeof(n2n_auth_t));
+    sn_user_t *user = NULL;
 
-// !!!!!!!!!
-// !!! n2n_auth_user_password scheme: check if submitted public key is in list of allowed users
-// !!!                                if so, get the shared_secret as well as the community dynamic
-// !!!                                key and encrypt the latter into answer_auth
+    if((NULL == community->allowed_users) != (remote_auth->scheme != n2n_auth_user_password)) {
+        // received token's scheme does not match expected scheme
+        return -1;
+    }
 
-    return 0;
+    switch(remote_auth->scheme) {
+        case n2n_auth_simple_id:
+            // zero_token answer
+            memset(answer_auth, 0, sizeof(n2n_auth_t));
+            return 0;
+        case n2n_auth_user_password:
+            // check if submitted public key is in list of allowed users
+            HASH_FIND(hh, community->allowed_users, &remote_auth->token, sizeof(n2n_private_public_key_t), user);
+            if(user) {
+                memcpy(answer_auth, remote_auth, sizeof(n2n_auth_t));
+
+                // return a double-encrypted challenge (just encrypt again) in the (first half of) public key field so edge can verify
+                memcpy(answer_auth->token, answer_auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, N2N_AUTH_CHALLENGE_SIZE);
+                speck_128_encrypt(answer_auth->token, (speck_context_t*)user->shared_secret_ctx);
+
+                // wrap dynamic key for transmission
+                // decrypt the challenge using user's shared secret
+                speck_128_decrypt(answer_auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, (speck_context_t*)user->shared_secret_ctx);
+                // xor-in the community dynamic key
+                memxor(answer_auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, community->dynamic_key, N2N_AUTH_CHALLENGE_SIZE);
+                // xor-in the user's shared secret
+                memxor(answer_auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, user->shared_secret, N2N_AUTH_CHALLENGE_SIZE);
+                // encrypt it using user's shared secret
+                speck_128_encrypt(answer_auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, (speck_context_t*)user->shared_secret_ctx);
+                return 0;
+            }
+            break;
+        default:
+            break;
+    }
+
+    // if not successful earlier: failure
+    return -1;
 }
 
 
@@ -593,7 +643,6 @@ static int update_edge (n2n_sn_t *sss,
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     struct peer_info *scan, *iter, *tmp;
-    int auth;
     int ret;
 
     traceEvent(TRACE_DEBUG, "update_edge for %s [%s]",
@@ -617,29 +666,35 @@ static int update_edge (n2n_sn_t *sss,
 
     if(NULL == scan) {
     /* Not known */
-        if(skip_add == SN_ADD) {
-            scan = (struct peer_info *) calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_nodes */
-            memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
-            scan->dev_addr.net_addr = reg->dev_addr.net_addr;
-            scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
-            memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
-            memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
-            scan->socket_fd = socket_fd;
-            memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
-            handle_remote_auth(sss, scan, &(reg->auth), answer_auth);
-            scan->last_valid_time_stamp = initial_time_stamp();
+        if(handle_remote_auth(sss, &(reg->auth), answer_auth, comm) == 0) {
+            if(skip_add == SN_ADD) {
+                scan = (struct peer_info *) calloc(1, sizeof(struct peer_info)); /* deallocated in purge_expired_nodes */
+                memcpy(&(scan->mac_addr), reg->edgeMac, sizeof(n2n_mac_t));
+                scan->dev_addr.net_addr = reg->dev_addr.net_addr;
+                scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
+                memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
+                memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
+                scan->socket_fd = socket_fd;
+                memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
+                scan->last_valid_time_stamp = initial_time_stamp();
 
-            HASH_ADD_PEER(comm->edges, scan);
+                memcpy(&(scan->auth), &(reg->auth), sizeof(n2n_auth_t));
 
-            traceEvent(TRACE_INFO, "update_edge created  %s ==> %s",
-                       macaddr_str(mac_buf, reg->edgeMac),
-                       sock_to_cstr(sockbuf, sender_sock));
+                HASH_ADD_PEER(comm->edges, scan);
+
+                traceEvent(TRACE_INFO, "update_edge created  %s ==> %s",
+                           macaddr_str(mac_buf, reg->edgeMac),
+                           sock_to_cstr(sockbuf, sender_sock));
+            }
+            ret = update_edge_new_sn;
+        } else {
+            traceEvent(TRACE_INFO, "authentication failed");
+            ret = update_edge_auth_fail;
         }
-        ret = update_edge_new_sn;
     } else {
         /* Known */
-        if(!sock_equal(sender_sock, &(scan->sock))) {
-            if((auth = auth_edge(&(scan->auth), &(reg->auth), answer_auth)) == 0) {
+        if(auth_edge(&(scan->auth), &(reg->auth), answer_auth, comm) == 0) {
+            if(!sock_equal(sender_sock, &(scan->sock))) {
                 memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
                 scan->socket_fd = socket_fd;
                 memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
@@ -649,18 +704,17 @@ static int update_edge (n2n_sn_t *sss,
                            sock_to_cstr(sockbuf, sender_sock));
                 ret = update_edge_sock_change;
             } else {
-                traceEvent(TRACE_INFO, "authentication failed");
+                memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
 
-                ret = update_edge_auth_fail;
+                traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
+                           macaddr_str(mac_buf, reg->edgeMac),
+                           sock_to_cstr(sockbuf, sender_sock));
+
+                ret = update_edge_no_change;
             }
         } else {
-            memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
-
-            traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
-                       macaddr_str(mac_buf, reg->edgeMac),
-                       sock_to_cstr(sockbuf, sender_sock));
-
-            ret = update_edge_no_change;
+            traceEvent(TRACE_INFO, "authentication failed");
+            ret = update_edge_auth_fail;
         }
     }
 
@@ -1167,6 +1221,7 @@ static int process_udp (n2n_sn_t * sss,
     n2n_sock_str_t      sockbuf;
     char                buf[32];
     struct sn_community *comm, *tmp;
+    uint32_t            header_enc = 0; /* 1 == encrypted by static key, 2 == encrypted by dynamic key */
     uint64_t            stamp;
     int                 skip_add;
 
@@ -1209,17 +1264,24 @@ static int process_udp (n2n_sn_t * sss,
     } else {
         /* most probably encrypted */
         /* cycle through the known communities (as keys) to eventually decrypt */
-        uint32_t ret = 0;
         HASH_ITER(hh, sss->communities, comm, tmp) {
             /* skip the definitely unencrypted communities */
             if(comm->header_encryption == HEADER_ENCRYPTION_NONE) {
                 continue;
             }
-// !!! also check dynamic ctx
-            if((ret = packet_header_decrypt(udp_buf, udp_size,
-                                            comm->community,
-                                            comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
-                                            &stamp))) {
+            // match with static (1) or dynamic (2) ctx?
+            header_enc = packet_header_decrypt(udp_buf, udp_size,
+                                               comm->community,
+                                               comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
+                                               &stamp);
+            if(!header_enc)
+                if(packet_header_decrypt(udp_buf, udp_size,
+                                         comm->community,
+                                         comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
+                                         &stamp))
+                    header_enc = 2;
+
+            if(header_enc) {
                 // time stamp verification follows in the packet specific section as it requires to determine the
                 // sender from the hash list by its MAC, this all depends on packet type and packet structure
                 // (MAC is not always in the same place)
@@ -1237,7 +1299,7 @@ static int process_udp (n2n_sn_t * sss,
                 break;
             }
         }
-        if(!ret) {
+        if(!header_enc) {
             // no matching key/community
             traceEvent(TRACE_DEBUG, "process_udp dropped a packet with seemingly encrypted header "
                        "for which no matching community which uses encrypted headers was found.");
@@ -1263,11 +1325,23 @@ static int process_udp (n2n_sn_t * sss,
 
     msg_type = cmn.pc; /* packet code */
 
+    // special case for user/pw auth
+    // community's auth scheme and message type need to match the used key (dynamic)
+    if(comm) {
+        if((comm->allowed_users)
+        && (msg_type != MSG_TYPE_REGISTER_SUPER)
+        && (msg_type != MSG_TYPE_REGISTER_SUPER_ACK)
+        && (msg_type != MSG_TYPE_REGISTER_SUPER_NAK)) {
+            if(header_enc != 2) {
+                traceEvent(TRACE_WARNING, "process_udp dropped packet encrypted with static key where expecting dynamic key.");
+                return -1;
+            }
+        }
+    }
+
     /* REVISIT: when UDP/IPv6 is supported we will need a flag to indicate which
      * IP transport version the packet arrived on. May need to UDP sockets. */
-
     memset(&sender, 0, sizeof(n2n_sock_t));
-
     sender.family = AF_INET; /* UDP socket was opened PF_INET v4 */
     sender.port = ntohs(sender_sock->sin_port);
     memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
@@ -1656,7 +1730,6 @@ static int process_udp (n2n_sn_t * sss,
                                macaddr_str(mac_buf, reg.edgeMac),
                                sock_to_cstr(sockbuf, &(ack.sock)));
                 } else {
-<<<<<<< HEAD
                     // this is an edge with valid authentication registering with another supernode, so ...
                     // 1- ... associate it with that other supernode
                     update_node_supernode_association(comm, &(reg.edgeMac), sender_sock, now);
@@ -1710,7 +1783,7 @@ static int process_udp (n2n_sn_t * sss,
 
             HASH_FIND_PEER(comm->edges, unreg.srcMac, peer);
             if(peer != NULL) {
-                if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL)) == 0) {
+                if((auth = auth_edge(&(peer->auth), &unreg.auth, NULL, comm)) == 0) {
                     if((peer->socket_fd != sss->sock) && (peer->socket_fd >= 0)) {
                         n2n_tcp_connection_t *conn;
                         HASH_FIND_INT(sss->tcp_connections, &(peer->socket_fd), conn);
@@ -1721,7 +1794,6 @@ static int process_udp (n2n_sn_t * sss,
                     }
                 }
             }
-
             break;
         }
 

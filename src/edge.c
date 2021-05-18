@@ -971,10 +971,13 @@ int main (int argc, char* argv[]) {
                 generate_public_key(*(conf.federation_public_key), *(conf.federation_public_key));
             }
         }
-        // calculate shared secret
+        // calculate public key and shared secret
         if(conf.federation_public_key) {
             traceEvent(TRACE_NORMAL, "Using username and password for edge authentication.");
             bind_private_key_to_username(*(conf.shared_secret), conf.dev_desc);
+            conf.public_key = calloc(1, sizeof(n2n_private_public_key_t));
+            if(conf.public_key)
+                generate_public_key(*conf.public_key, *(conf.shared_secret));
             generate_shared_secret(*(conf.shared_secret), *(conf.shared_secret), *(conf.federation_public_key));
             // prepare (first 128 bit) for use as key
             conf.shared_secret_ctx = (he_context_t*)calloc(1, sizeof(speck_context_t));

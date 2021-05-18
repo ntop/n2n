@@ -130,11 +130,13 @@ int speck_deinit (speck_context_t *ctx);
 
 // cipher SPECK -- 128 bit block size -- 128 bit key size -- ECB mode
 // follows endianess rules as used in official implementation guide and NOT as in original 2013 cipher presentation
-// used for IV in header encryption (one block); encrytion via speck_ctr with null_block as data
+// used for IV in header encryption (one block) and challenge encryption (user/password)
 // for now: just plain C -- probably no need for AVX, SSE, NEON
 
 
 int speck_128_decrypt (unsigned char *inout, speck_context_t *ctx);
+
+int speck_128_encrypt (unsigned char *inout, speck_context_t *ctx);
 
 
 #endif // SPECK_H

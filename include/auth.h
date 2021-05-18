@@ -36,5 +36,8 @@ int generate_shared_secret (n2n_private_public_key_t shared, n2n_private_public_
 
 int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *username);
 
+int calculate_dynamic_key (uint8_t out_key[N2N_AUTH_CHALLENGE_SIZE],
+                           uint32_t key_time, n2n_community_t comm, n2n_community_t fed);
+
 
 #endif

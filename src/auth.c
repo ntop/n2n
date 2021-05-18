@@ -145,3 +145,30 @@ int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *usernam
 
     return 0;
 }
+
+
+
+// calculate HASH( HASH³(time) ^ HASH²(comm) ^ HASH (fed) )
+int calculate_dynamic_key (uint8_t out_key[N2N_AUTH_CHALLENGE_SIZE],
+                           uint32_t key_time, n2n_community_t comm, n2n_community_t fed) {
+
+    uint8_t tmp[N2N_AUTH_CHALLENGE_SIZE];
+
+    memset(tmp, 0, N2N_AUTH_CHALLENGE_SIZE);
+
+    // we know that N2N_AUTH_CHALLENGE_TYPE == 16, i.e. 128 bit that can take the hash value
+    pearson_hash_128(out_key, (uint8_t*)&key_time, sizeof(key_time));
+    pearson_hash_128(out_key, out_key, N2N_AUTH_CHALLENGE_SIZE);
+    pearson_hash_128(out_key, out_key, N2N_AUTH_CHALLENGE_SIZE);
+
+    pearson_hash_128(tmp, comm, sizeof(n2n_community_t));
+    pearson_hash_128(tmp, tmp, N2N_AUTH_CHALLENGE_SIZE);
+    memxor(out_key, tmp, N2N_AUTH_CHALLENGE_SIZE);
+
+    pearson_hash_128(tmp, fed, sizeof(n2n_community_t));
+    memxor(out_key, tmp, N2N_AUTH_CHALLENGE_SIZE);
+
+    pearson_hash_128(out_key, out_key, N2N_AUTH_CHALLENGE_SIZE);
+
+    return 0;
+}

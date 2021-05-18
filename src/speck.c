@@ -981,14 +981,14 @@ int speck_deinit (speck_context_t *ctx) {
 
 // cipher SPECK -- 128 bit block size -- 128 bit key size -- ECB mode (decrypt only)
 // follows endianess rules as used in official implementation guide and NOT as in original 2013 cipher presentation
-// used for IV in header encryption (one block); encrytion via speck_ctr with null_block as data
+// used for IV in header encryption (one block) and challenge encryption (user/password)
 // for now: just plain C -- probably no need for AVX, SSE, NEON
 
 
 #define ROTL64(x,r) (((x)<<(r))|((x)>>(64-(r))))
 #define ROTR64(x,r) (((x)>>(r))|((x)<<(64-(r))))
 #define DR128(x,y,k) (y^=x, y=ROTR64(y,3), x^=k, x-=y, x=ROTL64(x,8))
-
+#define ER128(x,y,k) (x=(ROTR64(x,8)+y)^k, y=ROTL64(y,3)^x)
 
 int speck_128_decrypt (unsigned char *inout, speck_context_t *ctx) {
 
@@ -1000,6 +1000,24 @@ int speck_128_decrypt (unsigned char *inout, speck_context_t *ctx) {
 
     for(i = 31; i >= 0; i--)
         DR128(x, y, ctx->key[i]);
+
+    ((u64*)inout)[1] = htole64(x);
+    ((u64*)inout)[0] = htole64(y);
+
+    return 0;
+}
+
+
+int speck_128_encrypt (unsigned char *inout, speck_context_t *ctx) {
+
+    u64 x, y;
+    int i;
+
+    x = le64toh( *(u64*)&inout[8] );
+    y = le64toh( *(u64*)&inout[0] );
+
+    for(i = 0; i < 32; i++)
+        ER128(x, y, ctx->key[i]);
 
     ((u64*)inout)[1] = htole64(x);
     ((u64*)inout)[0] = htole64(y);

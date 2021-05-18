@@ -117,11 +117,26 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
                         memcpy(user->public_key, public_key, sizeof(public_key));
                         // common shared secret will be calculated later
                         // add to list
-                        HASH_ADD_PTR(last_added_comm->allowed_users, public_key, user);
+                        HASH_ADD(hh, last_added_comm->allowed_users, public_key, sizeof(n2n_private_public_key_t), user);
                         traceEvent(TRACE_INFO, "Added user '%s' with public key '%s' to community '%s'",
                                                user->name, ascii_public_key, last_added_comm->community);
-// !!! set this community to 'encrypted community'
-// !!! trigger dynamic key setup
+                        // enable header encryption
+                        last_added_comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
+                        packet_header_setup_key(last_added_comm->community,
+                                                &(last_added_comm->header_encryption_ctx_static),
+                                                &(last_added_comm->header_encryption_ctx_dynamic),
+                                                &(last_added_comm->header_iv_ctx_static),
+                                                &(last_added_comm->header_iv_ctx_dynamic));
+                        // dynamic key setup
+                        last_added_comm->last_dynamic_key_time = time(NULL);
+                        calculate_dynamic_key(last_added_comm->dynamic_key,           /* destination */
+                                              last_added_comm->last_dynamic_key_time, /* time */
+                                              last_added_comm->community,             /* community name */
+                                              sss->federation->community);            /* federation name */
+                        packet_header_change_dynamic_key(last_added_comm->dynamic_key,
+                                             &(last_added_comm->header_encryption_ctx_dynamic),
+                                             &(last_added_comm->header_iv_ctx_dynamic));
+
                     }
                     continue;
                 }
@@ -159,7 +174,6 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
              * first packet will show. just in case, setup the key. */
             comm->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
             packet_header_setup_key(comm->community,
-                                    comm->community,
                                     &(comm->header_encryption_ctx_static),
                                     &(comm->header_encryption_ctx_dynamic),
                                     &(comm->header_iv_ctx_static),

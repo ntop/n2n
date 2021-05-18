@@ -109,8 +109,7 @@ int packet_header_encrypt (uint8_t packet[], uint16_t header_len, uint16_t packe
     p32[3] = n2n_rand();
 
     // encrypt this pre-IV to IV
-    // use speck ctr with null_block as data to make it a block cipher step
-    speck_ctr(packet, null_block, 16, packet, (speck_context_t*)ctx_iv);
+    speck_128_encrypt(packet, (speck_context_t*)ctx_iv);
 
     // place IV plus magic in packet
     p32[4] = htobe32(magic);
@@ -122,31 +121,35 @@ int packet_header_encrypt (uint8_t packet[], uint16_t header_len, uint16_t packe
 }
 
 
-void packet_header_setup_key (const char *community_name, const char *key_dynamic,
+void packet_header_setup_key (const char *community_name,
                               he_context_t **ctx_static, he_context_t **ctx_dynamic,
                               he_context_t **ctx_iv_static, he_context_t **ctx_iv_dynamic) {
 
     uint8_t key[16];
 
-    // for REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK only
-    pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
+    // for REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK only;
+    // for all other packets, same as static by default (changed by user/pw auth scheme
+    // calling packet_header_change_dynamic_key later)
 
-    *ctx_static = (he_context_t*)calloc(1, sizeof (speck_context_t));
+   pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
+
+    if(!*ctx_static)
+        *ctx_static = (he_context_t*)calloc(1, sizeof(speck_context_t));
     speck_init((speck_context_t**)ctx_static, key, 128);
 
-    // hash again and use as key for IV encryption
-    pearson_hash_128(key, key, sizeof (key));
-    *ctx_iv_static = (he_context_t*)calloc(1, sizeof (speck_context_t));
-    speck_init((speck_context_t**)ctx_iv_static, key, 128);
-
-    // for all other packets, same as static by default (changed by user/pw auth scheme)
-    pearson_hash_128(key, (uint8_t*)key_dynamic, N2N_COMMUNITY_SIZE);
-
-    *ctx_dynamic = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    if(!*ctx_dynamic)
+        *ctx_dynamic = (he_context_t*)calloc(1, sizeof(speck_context_t));
     speck_init((speck_context_t**)ctx_dynamic, key, 128);
 
-    pearson_hash_128(key, key, sizeof (key));
-    *ctx_iv_dynamic = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    // hash again and use as key for IV encryption
+    pearson_hash_128(key, key, sizeof(key));
+
+    if(!*ctx_iv_static)
+        *ctx_iv_static = (he_context_t*)calloc(1, sizeof(speck_context_t));
+    speck_init((speck_context_t**)ctx_iv_static, key, 128);
+
+    if(!*ctx_iv_dynamic)
+        *ctx_iv_dynamic = (he_context_t*)calloc(1, sizeof(speck_context_t));
     speck_init((speck_context_t**)ctx_iv_dynamic, key, 128);
 }
 
@@ -155,7 +158,7 @@ void packet_header_change_dynamic_key (const char *key_dynamic,
                                        he_context_t **ctx_dynamic, he_context_t **ctx_iv_dynamic) {
 
     uint8_t key[16];
-    pearson_hash_128(key, (uint8_t*)key_dynamic, N2N_COMMUNITY_SIZE);
+    pearson_hash_128(key, (uint8_t*)key_dynamic, N2N_AUTH_CHALLENGE_SIZE);
 
     // for REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK only
     // for all other packets, same as static by default (changed by user/pw auth scheme)
@@ -163,8 +166,6 @@ void packet_header_change_dynamic_key (const char *key_dynamic,
 
     // hash again and use as key for IV encryption
     // REMOVE as soon as checksum and replay protection get their own fields
-    pearson_hash_128(key, key, sizeof (key));
-    *ctx_iv_dynamic = (he_context_t*)calloc(1, sizeof (speck_context_t));
+    pearson_hash_128(key, key, sizeof(key));
     speck_init((speck_context_t**)ctx_iv_dynamic, key, 128);
-
 }

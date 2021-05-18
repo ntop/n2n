@@ -290,6 +290,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     int rc = -1, i = 0;
     struct peer_info *scan, *tmp;
     size_t idx = 0;
+    uint8_t tmp_key[N2N_AUTH_CHALLENGE_SIZE];
 
     if((rc = edge_verify_conf(conf)) != 0) {
         traceEvent(TRACE_ERROR, "Invalid configuration");
@@ -356,31 +357,40 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
         goto edge_init_error;
     }
 
-    /* Set the key schedule (context) for header encryption if enabled */
+    // set the key schedule (context) for header encryption if enabled
     if(conf->header_encryption == HEADER_ENCRYPTION_ENABLED) {
         traceEvent(TRACE_NORMAL, "Header encryption is enabled.");
         packet_header_setup_key((char *)(eee->conf.community_name),
-                                (char *)(eee->conf.community_name),
                                 &(eee->conf.header_encryption_ctx_static),
                                 &(eee->conf.header_encryption_ctx_dynamic),
                                 &(eee->conf.header_iv_ctx_static),
                                 &(eee->conf.header_iv_ctx_dynamic));
+        // in case of user/password auth, initialize a random dynamic key to prevent
+        // forbidden communication; will be overwritten by legit key later
+        if(conf->shared_secret) {
+            memrnd(tmp_key, N2N_AUTH_CHALLENGE_SIZE);
+            packet_header_change_dynamic_key(tmp_key,
+                                             &(eee->conf.header_encryption_ctx_dynamic),
+                                             &(eee->conf.header_iv_ctx_dynamic));
+        }
     }
-
-    if(eee->transop.no_encryption)
-        traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
     // setup authentication scheme
     if(!conf->shared_secret) {
         eee->conf.auth.scheme = n2n_auth_simple_id;
         // random authentication token
-        memrnd(eee->conf.auth.token, N2N_AUTH_TOKEN_SIZE);
-        eee->conf.auth.toksize = sizeof(eee->conf.auth.token);
+        memrnd(eee->conf.auth.token, N2N_AUTH_ID_TOKEN_SIZE);
+        eee->conf.auth.token_size = N2N_AUTH_ID_TOKEN_SIZE;
     } else {
         eee->conf.auth.scheme = n2n_auth_user_password;
-        // 'token' stores the last random challenge being set upon sending REGISTER_SUPER
-        eee->conf.auth.toksize = sizeof(n2n_private_public_key_t);
+        // 'token' stores public key and the last random challenge being set upon sending REGISTER_SUPER
+        memcpy(eee->conf.auth.token, eee->conf.public_key, N2N_PRIVATE_PUBLIC_KEY_SIZE);
+        // random part of token (challenge) will be generated and filled in at each REGISTER_SUPER
+        eee->conf.auth.token_size = N2N_AUTH_PW_TOKEN_SIZE;
     }
+
+    if(eee->transop.no_encryption)
+        traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
 
     // first time calling edge_init_sockets needs -1 in the sockets for it does throw an error
     // on trying to close them (open_sockets does so for also being able to RE-open the sockets
@@ -731,23 +741,26 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
 }
 
 
+/* ************************************** */
+
+
 // provides the current / a new local auth token
 static int get_local_auth (n2n_edge_t *eee, n2n_auth_t *auth) {
 
     static const uint8_t null_block[16] = { 0 };
-
 
     switch(eee->conf.auth.scheme) {
         case n2n_auth_simple_id:
             memcpy(auth, &(eee->conf.auth), sizeof(n2n_auth_t));
             break;
         case n2n_auth_user_password:
-            // generate a new random auth challenge every time, store it in local auth token
-            memrnd(auth->token, N2N_AUTH_TOKEN_SIZE);
-            memcpy(eee->conf.auth.token, auth->token, N2N_AUTH_TOKEN_SIZE);
-            // encrypt the challenge (first 128 bits, 16 bytes) for transmission
-            // use speck ctr with null_block as data to make it a block cipher step
-            speck_ctr(auth->token, null_block, 16, auth->token, (speck_context_t*)eee->conf.shared_secret_ctx);
+            memcpy(auth, &(eee->conf.auth), sizeof(n2n_auth_t));
+            // generate a new random auth challenge every time
+            memrnd(auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, N2N_AUTH_CHALLENGE_SIZE);
+            // store it in local auth token
+            memcpy(eee->conf.auth.token + N2N_PRIVATE_PUBLIC_KEY_SIZE, auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, N2N_AUTH_CHALLENGE_SIZE);
+            // encrypt the challenge for transmission
+            speck_128_encrypt(auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, (speck_context_t*)eee->conf.shared_secret_ctx);
             break;
         default:
            break;
@@ -757,24 +770,34 @@ static int get_local_auth (n2n_edge_t *eee, n2n_auth_t *auth) {
 }
 
 
-// handles an returning (remote) auth token, takes action as required by auth scheme, and
+// handles a returning (remote) auth token, takes action as required by auth scheme
 static int handle_remote_auth (n2n_edge_t *eee, struct peer_info *peer, const n2n_auth_t *remote_auth) {
 
-    uint8_t tmp_token[N2N_AUTH_TOKEN_SIZE];
+    uint8_t tmp_token[N2N_AUTH_MAX_TOKEN_SIZE];
 
     switch(eee->conf.auth.scheme) {
         case n2n_auth_simple_id:
             // no action required
             break;
         case n2n_auth_user_password:
-            // decrypt received token (first 128 bits, 16 bytes)
-            memcpy(tmp_token, remote_auth->token, N2N_AUTH_TOKEN_SIZE);
+            memcpy(tmp_token, remote_auth->token, N2N_AUTH_PW_TOKEN_SIZE);
+
+            // decrypt double-encrypted received challenge (first half of public key field)
             speck_128_decrypt(tmp_token, (speck_context_t*)eee->conf.shared_secret_ctx);
+            speck_128_decrypt(tmp_token, (speck_context_t*)eee->conf.shared_secret_ctx);
+
+            // compare to original challenge
+            if(0 != memcmp(tmp_token, eee->conf.auth.token + N2N_PRIVATE_PUBLIC_KEY_SIZE, N2N_AUTH_CHALLENGE_SIZE))
+                return -1;
+
+            // decrypt the received challenge in which the dynamic key is wrapped
+            speck_128_decrypt(tmp_token + N2N_PRIVATE_PUBLIC_KEY_SIZE, (speck_context_t*)eee->conf.shared_secret_ctx);
             // un-XOR the original challenge
-            memxor(tmp_token, eee->conf.auth.token, N2N_AUTH_TOKEN_SIZE);
+            memxor(tmp_token + N2N_PRIVATE_PUBLIC_KEY_SIZE, eee->conf.auth.token + N2N_PRIVATE_PUBLIC_KEY_SIZE, N2N_AUTH_CHALLENGE_SIZE);
+            // un-XOR the shared secret
+            memxor(tmp_token + N2N_PRIVATE_PUBLIC_KEY_SIZE, *(eee->conf.shared_secret), N2N_AUTH_CHALLENGE_SIZE);
             // setup for use as dynamic key
-hexdump(tmp_token,32); // !!!
-            packet_header_change_dynamic_key(tmp_token,
+            packet_header_change_dynamic_key(tmp_token + N2N_PRIVATE_PUBLIC_KEY_SIZE,
                                              &(eee->conf.header_encryption_ctx_dynamic),
                                              &(eee->conf.header_iv_ctx_dynamic));
             break;
@@ -787,6 +810,7 @@ hexdump(tmp_token,32); // !!!
 
 
 /* ************************************** */
+
 
 int is_empty_ip_address (const n2n_sock_t * sock) {
 
@@ -2209,6 +2233,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
     peer_info_t           *sn = NULL;
     n2n_sock_t            sender;
     n2n_sock_t *          orig_sender = NULL;
+    uint32_t              header_enc = 0;
     uint64_t              stamp = 0;
     int                   skip_add = 0;
 
@@ -2235,15 +2260,22 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                (signed int)udp_size, sock_to_cstr(sockbuf1, &sender));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
-// !!! also check static AND dynamic ctx
-        if(packet_header_decrypt(udp_buf, udp_size,
-                                 (char *)eee->conf.community_name,
-                                 eee->conf.header_encryption_ctx_static, eee->conf.header_iv_ctx_static,
-                                 &stamp) == 0) {
+        // match with static (1) or dynamic (2) ctx?
+        header_enc = packet_header_decrypt(udp_buf, udp_size,
+                                           (char *)eee->conf.community_name,
+                                           eee->conf.header_encryption_ctx_static, eee->conf.header_iv_ctx_static,
+                                           &stamp);
+        if(!header_enc)
+            if(packet_header_decrypt(udp_buf, udp_size,
+                                     (char *)eee->conf.community_name,
+                                     eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
+                                     &stamp)) {
+                header_enc = 2;
+        }
+        if(!header_enc) {
             traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
             return;
         }
-
         // time stamp verification follows in the packet specific section as it requires to determine the
         // sender from the hash list by its MAC, or the packet might be from the supernode, this all depends
         // on packet type, path taken (via supernode) and packet structure (MAC is not always in the same place)
@@ -2262,6 +2294,17 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
     }
 
     msg_type = cmn.pc; /* packet code */
+
+    // special case for user/pw auth
+    // community's auth scheme and message type need to match the used key (dynamic)
+    if((eee->conf.shared_secret)
+    && (msg_type != MSG_TYPE_REGISTER_SUPER_ACK)
+    && (msg_type != MSG_TYPE_REGISTER_SUPER_NAK)) {
+        if(header_enc != 2) {
+            traceEvent(TRACE_WARNING, "process_udp dropped packet encrypted with static key where expecting dynamic key.");
+            return;
+        }
+    }
 
     // check if packet is from supernode and find the corresponding supernode in list
     from_supernode = cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
@@ -2432,75 +2475,76 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                (unsigned int)eee->sup_attempts);
 
                     if(0 == memcmp(ra.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
+                        if(0 == handle_remote_auth(eee, sn, &(ra.auth))) {
 
-                        handle_remote_auth(eee, sn, &(ra.auth));
-
-                        if(is_null_mac(eee->curr_sn->mac_addr)) {
-                            HASH_DEL(eee->conf.supernodes, eee->curr_sn);
-                            memcpy(&eee->curr_sn->mac_addr, ra.srcMac, N2N_MAC_SIZE);
-                            HASH_ADD_PEER(eee->conf.supernodes, eee->curr_sn);
-                        }
-
-                        payload = (n2n_REGISTER_SUPER_ACK_payload_t*)tmpbuf;
-
-                        // from here on, 'sn' gets used differently
-                        for(i = 0; i < ra.num_sn; i++) {
-                            skip_add = SN_ADD;
-                            sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), payload->mac, &skip_add);
-
-                            if(skip_add == SN_ADD_ADDED) {
-                                sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
-                                if(sn->ip_addr != NULL) {
-                                    inet_ntop(payload->sock.family,
-                                              (payload->sock.family == AF_INET) ? (void*)&(payload->sock.addr.v4) : (void*)&(payload->sock.addr.v6),
-                                              sn->ip_addr, N2N_EDGE_SN_HOST_SIZE - 1);
-                                    sprintf (sn->ip_addr, "%s:%u", sn->ip_addr, (uint16_t)(payload->sock.port));
-                                }
-                                sn_selection_criterion_default(&(sn->selection_criterion));
-                                sn->last_seen = 0; /* as opposed to payload handling in supernode */
-                                traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
+                            if(is_null_mac(eee->curr_sn->mac_addr)) {
+                                HASH_DEL(eee->conf.supernodes, eee->curr_sn);
+                                memcpy(&eee->curr_sn->mac_addr, ra.srcMac, N2N_MAC_SIZE);
+                                HASH_ADD_PEER(eee->conf.supernodes, eee->curr_sn);
                             }
-                            // shift to next payload entry
-                            payload++;
-                        }
 
-                        if(eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
-                            if((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
-                                net = htonl(ra.dev_addr.net_addr);
-                                if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL) {
-                                    strncpy(eee->tuntap_priv_conf.ip_addr, ip_str,
-                                            N2N_NETMASK_STR_SIZE);
+                            payload = (n2n_REGISTER_SUPER_ACK_payload_t*)tmpbuf;
+
+                            // from here on, 'sn' gets used differently
+                            for(i = 0; i < ra.num_sn; i++) {
+                                skip_add = SN_ADD;
+                                sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), payload->mac, &skip_add);
+
+                                if(skip_add == SN_ADD_ADDED) {
+                                    sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
+                                    if(sn->ip_addr != NULL) {
+                                        inet_ntop(payload->sock.family,
+                                                  (payload->sock.family == AF_INET) ? (void*)&(payload->sock.addr.v4) : (void*)&(payload->sock.addr.v6),
+                                                  sn->ip_addr, N2N_EDGE_SN_HOST_SIZE - 1);
+                                        sprintf (sn->ip_addr, "%s:%u", sn->ip_addr, (uint16_t)(payload->sock.port));
+                                    }
+                                    sn_selection_criterion_default(&(sn->selection_criterion));
+                                    sn->last_seen = 0; /* as opposed to payload handling in supernode */
+                                    traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
                                 }
-                                net = htonl(bitlen2mask(ra.dev_addr.net_bitlen));
-                                if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL) {
-                                    strncpy(eee->tuntap_priv_conf.netmask, ip_str,
-                                            N2N_NETMASK_STR_SIZE);
+                                // shift to next payload entry
+                                payload++;
+                            }
+
+                            if(eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
+                                if((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
+                                    net = htonl(ra.dev_addr.net_addr);
+                                    if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL) {
+                                        strncpy(eee->tuntap_priv_conf.ip_addr, ip_str,
+                                                N2N_NETMASK_STR_SIZE);
+                                    }
+                                    net = htonl(bitlen2mask(ra.dev_addr.net_bitlen));
+                                    if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL) {
+                                        strncpy(eee->tuntap_priv_conf.netmask, ip_str,
+                                                N2N_NETMASK_STR_SIZE);
+                                    }
                                 }
                             }
-                        }
 
-                        // update last_sup only on 'real' REGISTER_SUPER_ACKs, not on bootstrap ones (own MAC address
-                        // still null_mac) this allows reliable in/out PACKET drop if not really registered with a supernode yet
-                        if(!is_null_mac(eee->device.mac_addr)) {
-                            if(!eee->last_sup) {
-                                // indicates successful connection between the edge and a supernode
-                                traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
-                                // send gratuitous ARP only upon first registration with supernode
-                                send_grat_arps(eee);
+                            // update last_sup only on 'real' REGISTER_SUPER_ACKs, not on bootstrap ones (own MAC address
+                            // still null_mac) this allows reliable in/out PACKET drop if not really registered with a supernode yet
+                            if(!is_null_mac(eee->device.mac_addr)) {
+                                if(!eee->last_sup) {
+                                    // indicates successful connection between the edge and a supernode
+                                    traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
+                                    // send gratuitous ARP only upon first registration with supernode
+                                    send_grat_arps(eee);
+                                }
+                                eee->last_sup = now;
                             }
-                            eee->last_sup = now;
+
+                            eee->sn_wait = 0;
+                            reset_sup_attempts(eee); /* refresh because we got a response */
+
+                            /* NOTE: the register_interval should be chosen by the edge node
+                             * based on its NAT configuration. */
+                            //eee->conf.register_interval = ra.lifetime;
+
+                            if(eee->cb.sn_registration_updated && !is_null_mac(eee->device.mac_addr))
+                                eee->cb.sn_registration_updated(eee, now, &sender);
+                        } else {
+                            traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old response to challenge.");
                         }
-
-                        eee->sn_wait = 0;
-                        reset_sup_attempts(eee); /* refresh because we got a response */
-
-                        /* NOTE: the register_interval should be chosen by the edge node
-                         * based on its NAT configuration. */
-                        //eee->conf.register_interval = ra.lifetime;
-
-                        if(eee->cb.sn_registration_updated && !is_null_mac(eee->device.mac_addr))
-                            eee->cb.sn_registration_updated(eee, now, &sender);
-
                     } else {
                         traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
                     }
@@ -2522,8 +2566,11 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_NAK");
 
                 if((memcmp(nak.srcMac, eee->device.mac_addr, sizeof(n2n_mac_t))) == 0) {
-                    traceEvent(TRACE_ERROR, "Authentication error. MAC or IP address already in use or not released yet by supernode.");
-                    // the error description "MAC or IP ..." is true for the basic authentication scheme (1)
+                    if(eee->conf.shared_secret) {
+                        traceEvent(TRACE_ERROR, "Authentication error, username or password not recognized by supernode.");
+                    } else {
+                        traceEvent(TRACE_ERROR, "Authentication error. MAC or IP address already in use or not released yet by supernode.");
+                    }
                     exit(1);
                 } else {
                     HASH_FIND_PEER(eee->known_peers, nak.srcMac, peer);
