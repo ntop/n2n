@@ -1976,13 +1976,8 @@ static int process_udp (n2n_sn_t * sss,
             decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
             // to answer a PING, it is sufficient if the provided communtiy would be a valid one, there does not
-<<<<<<< HEAD
-            // neccessarily need to be an entry present, e.g. because there locally are no edges of the community
-            // connected (several sueprnodes in a federation setup)
-=======
-￼           // neccessarily need to be a comm entry present, e.g. because there locally are no edges of the
-￼           // community connected (several supernodes in a federation setup)
->>>>>>> 65208c1 (cached up to latest dev)
+            // neccessarily need to be a comm entry present, e.g. because there locally are no edges of the
+            // community connected (several supernodes in a federation setup)
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_edge_time_stamp_and_verify(comm->edges, sn, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
@@ -2031,19 +2026,11 @@ static int process_udp (n2n_sn_t * sss,
 
                 struct peer_info *scan;
 
-<<<<<<< HEAD
                 // as opposed to the special case 'PING', proper QUERY_PEER processing requires a locally actually present community entry
                 if(!comm) {
                     traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER with unknown community %s", cmn.community);
                     return -1;
                 }
-=======
-                 // as opposed to the special case 'PING', proper QUERY_PEER processing requires a locally actually present community entry
-￼                if(!comm) {
-￼                    traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER with unknown community %s", cmn.community);
-￼                    return -1;
-￼                }
->>>>>>> 65208c1 (cached up to latest dev)
 
                 HASH_FIND_PEER(comm->edges, query.targetMac, scan);
                 if(scan) {
