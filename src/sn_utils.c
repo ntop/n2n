@@ -1623,6 +1623,7 @@ static int process_udp (n2n_sn_t * sss,
                 ack.dev_addr.net_addr = ipaddr.net_addr;
                 ack.dev_addr.net_bitlen = ipaddr.net_bitlen;
             }
+
             ack.lifetime = reg_lifetime(sss);
 
             ack.sock.family = AF_INET;
@@ -1666,23 +1667,23 @@ static int process_udp (n2n_sn_t * sss,
                        sock_to_cstr(sockbuf, &(ack.sock)));
 
             ret_value = update_edge_no_change;
-            if(!is_null_mac(reg.edgeMac)) {
-                if(cmn.flags & N2N_FLAGS_SOCKET) {
-                    ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), SN_ADD_SKIP, now);
-                } else {
-                    ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), SN_ADD, now);
-                }
+            if(cmn.flags & N2N_FLAGS_SOCKET) {
+                ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), SN_ADD_SKIP, now);
+            } else {
+                // do not add in case of null mac (edge asking for ip address)
+                ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), is_null_mac(reg.edgeMac) ? SN_ADD_SKIP : SN_ADD, now);
             }
 
             if(ret_value == update_edge_auth_fail) {
                 cmn2.pc = n2n_register_super_nak;
                 memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
                 memcpy(nak.srcMac, reg.edgeMac, sizeof(n2n_mac_t));
+
                 encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     packet_header_encrypt(ackbuf, encx, encx,
-                                          comm->header_encryption_ctx, comm->header_iv_ctx,
+                                          comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
                                           time_stamp());
                 }
                 sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, ackbuf, encx);
@@ -1705,7 +1706,7 @@ static int process_udp (n2n_sn_t * sss,
 
                         if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                             packet_header_encrypt(ackbuf, encx, encx,
-                                                  comm->header_encryption_ctx, comm->header_iv_ctx,
+                                                  comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
                                                   time_stamp());
                         }
 
@@ -1975,8 +1976,13 @@ static int process_udp (n2n_sn_t * sss,
             decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
             // to answer a PING, it is sufficient if the provided communtiy would be a valid one, there does not
+<<<<<<< HEAD
             // neccessarily need to be an entry present, e.g. because there locally are no edges of the community
             // connected (several sueprnodes in a federation setup)
+=======
+￼           // neccessarily need to be a comm entry present, e.g. because there locally are no edges of the
+￼           // community connected (several supernodes in a federation setup)
+>>>>>>> 65208c1 (cached up to latest dev)
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_edge_time_stamp_and_verify(comm->edges, sn, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
@@ -2025,11 +2031,19 @@ static int process_udp (n2n_sn_t * sss,
 
                 struct peer_info *scan;
 
+<<<<<<< HEAD
                 // as opposed to the special case 'PING', proper QUERY_PEER processing requires a locally actually present community entry
                 if(!comm) {
                     traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER with unknown community %s", cmn.community);
                     return -1;
                 }
+=======
+                 // as opposed to the special case 'PING', proper QUERY_PEER processing requires a locally actually present community entry
+￼                if(!comm) {
+￼                    traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER with unknown community %s", cmn.community);
+￼                    return -1;
+￼                }
+>>>>>>> 65208c1 (cached up to latest dev)
 
                 HASH_FIND_PEER(comm->edges, query.targetMac, scan);
                 if(scan) {
