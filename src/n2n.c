@@ -256,10 +256,8 @@ char * macaddr_str (macstr_t buf,
 
 /** Resolve the supernode IP address.
  *
- *  REVISIT: This is a really bad idea. The edge will block completely while the
- *  hostname resolution is performed. This could take 15 seconds.
  */
-int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
+int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
 
     n2n_sn_name_t addr;
     const char *supernode_host;
@@ -278,7 +276,7 @@ int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
         if(supernode_port) {
             sn->port = atoi(supernode_port);
         } else {
-            traceEvent(TRACE_WARNING, "Bad supernode parameter (-l <host:port>) %s %s:%s",
+            traceEvent(TRACE_WARNING, "supernode2sock sees malformed supernode parameter (-l <host:port>) %s %s:%s",
                        addr, supernode_host, supernode_port);
         }
 
@@ -296,26 +294,140 @@ int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn) {
                 sn->family = AF_INET;
             } else {
                 /* Should only return IPv4 addresses due to aihints. */
-                traceEvent(TRACE_WARNING, "Failed to resolve supernode IPv4 address for %s", supernode_host);
+                traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode IPv4 address for %s", supernode_host);
                 rv = -1;
             }
 
             freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
             ainfo = NULL;
         } else {
-            traceEvent(TRACE_WARNING, "Failed to resolve supernode host %s, %d: %s", supernode_host, nameerr, gai_strerror(nameerr));
+            traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode host %s, %d: %s", supernode_host, nameerr, gai_strerror(nameerr));
             rv = -2;
         }
 
     } else {
-        traceEvent(TRACE_WARNING, "Wrong supernode parameter (-l <host:port>)");
+        traceEvent(TRACE_WARNING, "supernode2sock sees wrong supernode parameter (-l <host:port>)");
         rv = -3;
     }
 
     return(rv);
 }
 
+
+void *resolve_thread (void *p) {
+
+#ifdef HAVE_PTHREAD
+    n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
+    n2n_resolve_ip_sock_t   *entry, *tmp_entry;
+
+    while(1) {
+        sleep(N2N_RESOLVE_INTERVAL);
+
+        // lock access
+        pthread_mutex_lock(&param->access);
+
+        HASH_ITER(hh, param->list, entry, tmp_entry) {
+            // resolve
+            entry->error_code = supernode2sock(&entry->sock, entry->org_ip);
+            // if socket changed and no error
+            if(!sock_equal(&entry->sock, entry->org_sock)
+              && (!entry->error_code)) {
+                // flag the change
+                param->changed = 1;
+            }
+        }
+
+        // unlock access
+        pthread_mutex_unlock(&param->access);
+    }
+#endif
+}
+
+
+int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list) {
+
+#ifdef HAVE_PTHREAD
+    struct peer_info        *sn, *tmp_sn;
+    n2n_resolve_ip_sock_t   *entry;
+    int                     ret;
+
+    // create parameter structure
+    *param = (n2n_resolve_parameter_t*)calloc(1, sizeof(n2n_resolve_parameter_t));
+    if(*param) {
+        HASH_ITER(hh, sn_list, sn, tmp_sn) {
+            // create entries for those peers that come with ip_addr string (from command-line)
+            if(sn->ip_addr) {
+                entry = (n2n_resolve_ip_sock_t*)calloc(1, sizeof(n2n_resolve_ip_sock_t));
+                if(entry) {
+                    entry->org_ip = sn->ip_addr;
+                    entry->org_sock = &(sn->sock);
+                    memcpy(&(entry->sock), &(sn->sock), sizeof(n2n_sock_t));
+                    HASH_ADD(hh, (*param)->list, org_ip, sizeof(char*), entry);
+                } else
+                    traceEvent(TRACE_WARNING, "resolve_create_thread was unable to add list entry for supernode '%s'", sn->ip_addr);
+            }
+        }
+    } else {
+        traceEvent(TRACE_WARNING, "resolve_create_thread was unable to create list of supernodes");
+        return -1;
+    }
+
+    // create thread
+    ret = pthread_create(&((*param)->id), NULL, resolve_thread, (void *)*param);
+    if(ret) {
+        traceEvent(TRACE_WARNING, "resolve_create_thread failed to create resolver thread with error number %d", ret);
+        return -1;
+    }
+
+    pthread_mutex_init(&((*param)->access), NULL);
+
+    return 0;
+#endif
+}
+
+
+void resolve_cancel_thread (n2n_resolve_parameter_t *param) {
+
+#ifdef HAVE_PTHREAD
+    pthread_cancel(param->id);
+    free(param);
+#endif
+}
+
+
+void resolve_check (n2n_resolve_parameter_t *param, time_t now) {
+
+#ifdef HAVE_PTHREAD
+    n2n_resolve_ip_sock_t   *entry, *tmp_entry;
+    n2n_sock_str_t sock_buf;
+
+    if(now - param->last_checked > N2N_RESOLVE_CHECK_INTERVAL) {
+        // try to lock access
+        if(pthread_mutex_trylock(&param->access) == 0) {
+            // any changes?
+            if(param->changed) {
+                // reset flag
+                param->changed = 0;
+                // unselectively copy all socks (even those with error code, that would be the old one because
+                // sockets do not get overwritten in case of error in resolve_thread) from list to supernode list
+                HASH_ITER(hh, param->list, entry, tmp_entry) {
+                    memcpy(entry->org_sock, &entry->sock, sizeof(n2n_sock_t));
+                    traceEvent(TRACE_DEBUG, "resolve_check renews ip address of supernode '%s' to %s",
+                                             entry->org_ip, sock_to_cstr(sock_buf, &(entry->sock)));
+                }
+            }
+            param->last_checked = now;
+
+            // unlock access
+            pthread_mutex_unlock(&param->access);
+        }
+    }
+#endif
+}
+
+
 /* ************************************** */
+
 
 struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n_sock_t *sock, const n2n_mac_t mac, int *skip_add) {
 
@@ -607,6 +719,7 @@ int sock_equal (const n2n_sock_t * a,
     /* equal */
     return(1);
 }
+
 
 /* *********************************************** */
 

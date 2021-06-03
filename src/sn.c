@@ -25,6 +25,8 @@
 
 static n2n_sn_t sss_node;
 
+int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
+
 /** Load the list of allowed communities. Existing/previous ones will be removed
  *
  */
@@ -857,6 +859,10 @@ int main (int argc, char * const argv[]) {
         traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
     }
 #endif
+
+    if(resolve_create_thread(&(sss_node.resolve_parameter), sss_node.federation->edges) == 0) {
+         traceEvent(TRACE_NORMAL, "Successfully created resolver thread");
+    }
 
     traceEvent(TRACE_NORMAL, "supernode started");
 

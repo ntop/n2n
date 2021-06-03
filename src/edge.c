@@ -50,6 +50,7 @@ int supernode_disconnect (n2n_edge_t *eee);
 int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
                                        time_t now);
+int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
 
 /* ***************************************************** */
 
@@ -1225,6 +1226,10 @@ int main (int argc, char* argv[]) {
     if((getuid() == 0) || (getgid() == 0))
         traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
 #endif
+
+    if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
+         traceEvent(TRACE_NORMAL, "Successfully created resolver thread");
+    }
 
 #ifdef __linux__
     signal(SIGPIPE, SIG_IGN);

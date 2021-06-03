@@ -26,6 +26,9 @@ static HEAP_ALLOC (wrkmem, LZO1X_1_MEM_COMPRESS);
 
 /* ************************************** */
 
+int resolve_check (n2n_resolve_parameter_t *param, time_t now);
+int resolve_cancel_thread (n2n_resolve_parameter_t *param);
+
 static const char * supernode_ip (const n2n_edge_t * eee);
 static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac);
 
@@ -1458,12 +1461,16 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         --(eee->sup_attempts);
     }
 
+#ifndef HAVE_PTHREAD
     if(supernode2sock(&(eee->curr_sn->sock), eee->curr_sn->ip_addr) == 0) {
+#endif
         traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
                    supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
         send_register_super(eee);
+#ifndef HAVE_PTHREAD
     }
+#endif
 
     register_with_local_peers(eee);
 
@@ -2952,6 +2959,8 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
         sort_supernodes(eee, now);
 
+        resolve_check(eee->resolve_parameter, now);
+
         if(eee->cb.main_loop_period)
             eee->cb.main_loop_period(eee, now);
 
@@ -2972,6 +2981,8 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
 /** Deinitialise the edge and deallocate any owned memory. */
 void edge_term (n2n_edge_t * eee) {
+
+    resolve_cancel_thread(eee->resolve_parameter);
 
     if(eee->sock >= 0)
         closesocket(eee->sock);
