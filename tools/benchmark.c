@@ -51,6 +51,7 @@ static void init_compression_for_benchmark(void);
 static void deinit_compression_for_benchmark(void);
 static void run_compression_benchmark(void);
 static void run_hashing_benchmark(void);
+static void run_ecc_benchmark(void);
 
 
 int main(int argc, char * argv[]) {
@@ -85,11 +86,14 @@ int main(int argc, char * argv[]) {
   run_transop_benchmark("cc20", &transop_cc20, &conf, pktbuf);
   run_transop_benchmark("speck", &transop_speck, &conf, pktbuf);
 
+  run_ecc_benchmark();
+
   /* Also for compression (init moved here for ciphers get run before in case of lzo init error) */
   init_compression_for_benchmark();
   run_compression_benchmark();
 
   run_hashing_benchmark();
+
 
   /* Cleanup */
   transop_null.deinit(&transop_null);
@@ -278,6 +282,46 @@ static void run_hashing_benchmark(void) {
 
   printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
 	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
+  printf("\n");
+}
+
+// --- ecc benchmark ----------------------------------------------------------------------
+
+static void run_ecc_benchmark(void) {
+  const float target_sec = DURATION;
+  struct timeval t1;
+  struct timeval t2;
+  ssize_t nw;
+  ssize_t target_usec = target_sec * 1e6;
+  ssize_t tdiff = 0; // microseconds
+  size_t num_packets = 0;
+
+  unsigned char b[32];
+  unsigned char k[32];
+
+  memset(b, 0x00, 31);
+  b[31] = 9;
+
+  memset(k, 0x55, 32);
+
+  printf("[%s]\t%s\t%.1f sec\t(%u bytes) ",
+	 "curve", "25519", target_sec, 32);
+  fflush(stdout);
+
+  gettimeofday( &t1, NULL );
+  nw = 32;
+
+  while(tdiff < target_usec) {
+    curve25519(b, k, b);
+    num_packets++;
+    gettimeofday( &t2, NULL );
+    tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
+  }
+
+  float mpps = num_packets / (tdiff / 1e6) / 1e6;
+
+  printf(" ---> (%u bytes)\t%12u ops\t%8.1f Kops/s\n",
+	 (unsigned int)nw, (unsigned int)num_packets, mpps * 1e3);
   printf("\n");
 }
 

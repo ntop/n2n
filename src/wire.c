@@ -354,8 +354,8 @@ int encode_REGISTER_SUPER (uint8_t *base,
     retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
     retval += encode_buf(base, idx, reg->dev_desc, N2N_DESC_SIZE);
     retval += encode_uint16(base, idx, reg->auth.scheme);
-    retval += encode_uint16(base, idx, reg->auth.toksize);
-    retval += encode_buf(base, idx, reg->auth.token, reg->auth.toksize);
+    retval += encode_uint16(base, idx, reg->auth.token_size);
+    retval += encode_buf(base, idx, reg->auth.token, reg->auth.token_size);
 
     return retval;
 }
@@ -379,8 +379,8 @@ int decode_REGISTER_SUPER (n2n_REGISTER_SUPER_t *reg,
     retval += decode_uint8(&(reg->dev_addr.net_bitlen), base, rem, idx);
     retval += decode_buf(reg->dev_desc, N2N_DESC_SIZE, base, rem, idx);
     retval += decode_uint16(&(reg->auth.scheme), base, rem, idx);
-    retval += decode_uint16(&(reg->auth.toksize), base, rem, idx);
-    retval += decode_buf(reg->auth.token, reg->auth.toksize, base, rem, idx);
+    retval += decode_uint16(&(reg->auth.token_size), base, rem, idx);
+    retval += decode_buf(reg->auth.token, reg->auth.token_size, base, rem, idx);
 
     return retval;
 }
@@ -395,8 +395,8 @@ int encode_UNREGISTER_SUPER (uint8_t *base,
 
     retval += encode_common(base, idx, common);
     retval += encode_uint16(base, idx, unreg->auth.scheme);
-    retval += encode_uint16(base, idx, unreg->auth.toksize);
-    retval += encode_buf(base, idx, unreg->auth.token, unreg->auth.toksize);
+    retval += encode_uint16(base, idx, unreg->auth.token_size);
+    retval += encode_buf(base, idx, unreg->auth.token, unreg->auth.token_size);
     retval += encode_mac(base, idx, unreg->srcMac);
 
     return retval;
@@ -413,8 +413,8 @@ int decode_UNREGISTER_SUPER (n2n_UNREGISTER_SUPER_t *unreg,
     memset(unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
 
     retval += decode_uint16(&(unreg->auth.scheme), base, rem, idx);
-    retval += decode_uint16(&(unreg->auth.toksize), base, rem, idx);
-    retval += decode_buf(unreg->auth.token, unreg->auth.toksize, base, rem, idx);
+    retval += decode_uint16(&(unreg->auth.token_size), base, rem, idx);
+    retval += decode_buf(unreg->auth.token, unreg->auth.token_size, base, rem, idx);
     retval += decode_mac(unreg->srcMac, base, rem, idx);
 
     return retval;
@@ -482,7 +482,13 @@ int encode_REGISTER_SUPER_ACK (uint8_t *base,
     retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
     retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
     retval += encode_uint16(base, idx, reg->lifetime);
+
     retval += encode_sock(base, idx, &(reg->sock));
+
+    retval += encode_uint16(base, idx, reg->auth.scheme);
+    retval += encode_uint16(base, idx, reg->auth.token_size);
+    retval += encode_buf(base, idx, reg->auth.token, reg->auth.token_size);
+
     retval += encode_uint8(base, idx, reg->num_sn);
     retval += encode_buf(base, idx, tmpbuf, (reg->num_sn*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE));
 
@@ -509,6 +515,10 @@ int decode_REGISTER_SUPER_ACK (n2n_REGISTER_SUPER_ACK_t *reg,
     /* Socket is mandatory in this message type */
     retval += decode_sock(&(reg->sock), base, rem, idx);
 
+    retval += decode_uint16(&(reg->auth.scheme), base, rem, idx);
+    retval += decode_uint16(&(reg->auth.token_size), base, rem, idx);
+    retval += decode_buf(reg->auth.token, reg->auth.token_size, base, rem, idx);
+
     /* Following the edge socket are an array of backup supernodes. */
     retval += decode_uint8(&(reg->num_sn), base, rem, idx);
     retval += decode_buf(tmpbuf, (reg->num_sn * REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE), base, rem, idx);
@@ -528,6 +538,10 @@ int encode_REGISTER_SUPER_NAK (uint8_t *base,
     retval += encode_buf(base, idx, nak->cookie, N2N_COOKIE_SIZE);
     retval += encode_mac(base, idx, nak->srcMac);
 
+    retval += encode_uint16(base, idx, nak->auth.scheme);
+    retval += encode_uint16(base, idx, nak->auth.token_size);
+    retval += encode_buf(base, idx, nak->auth.token, nak->auth.token_size);
+
     return retval;
 }
 
@@ -543,6 +557,10 @@ int decode_REGISTER_SUPER_NAK (n2n_REGISTER_SUPER_NAK_t *nak,
 
     retval += decode_buf(nak->cookie, N2N_COOKIE_SIZE, base, rem, idx);
     retval += decode_mac(nak->srcMac, base, rem, idx);
+
+    retval += decode_uint16(&(nak->auth.scheme), base, rem, idx);
+    retval += decode_uint16(&(nak->auth.token_size), base, rem, idx);
+    retval += decode_buf(nak->auth.token, nak->auth.token_size, base, rem, idx);
 
     return retval;
 }

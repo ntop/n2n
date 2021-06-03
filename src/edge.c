@@ -186,8 +186,11 @@ static void help (int level) {
                "[-E] "
                "[-I <edge description>] "
             "\n                      "
+               "[-J <password>] "
+               "[-P <public key>] "
                "[-R <rule string>] "
 #ifdef WIN32
+            "\n                      "
                "[-x <metric>] "
 #endif
           "\n\n local options        "
@@ -283,7 +286,9 @@ static void help (int level) {
         printf(" -r                | enable packet forwarding through n2n community\n");
         printf(" -E                | accept multicast MAC addresses, drop by default\n");
         printf(" -I <description>  | annotate the edge's description used for easier\n"
-               "                   | identification in management port output\n");
+               "                   | identification in management port output or username\n");
+        printf(" -J <password>     | password for user-password edge authentication\n");
+        printf(" -P <public key>   | federation public key for user-password authentication\n");
         printf(" -R <rule>         | drop or accept packets by rules, can be set multiple times\n");
         printf("                   | rule format:    'src_ip/n:[s_port,e_port],...\n"
                "                   |    |on same|  ...dst_ip/n:[s_port,e_port],...\n"
@@ -536,10 +541,35 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 #endif
 
-        case 'I': /* Device Description (hint) */ {
+        case 'I': /* Device Description (hint) or username */ {
             memset(conf->dev_desc, 0, N2N_DESC_SIZE);
             /* reserve possible last char as null terminator. */
             strncpy((char *)conf->dev_desc, optargument, N2N_DESC_SIZE-1);
+            break;
+        }
+
+        case 'J': /* password for user-password authentication */ {
+            conf->shared_secret = calloc(1, sizeof(n2n_private_public_key_t));
+            if(conf->shared_secret)
+                generate_private_key(*(conf->shared_secret), optargument);
+
+            // the hash of the username (-I) gets xored into this key later,
+            // we can't be sure to already have it at this point
+            // also, the complete shared secret will be calculated then as we
+            // might still be missing the federation public key as well
+            break;
+        }
+
+        case 'P': /* federation public key for user-password authentication */ {
+            if(strlen(optargument) < ((N2N_PRIVATE_PUBLIC_KEY_SIZE * 8 + 5)/ 6 + 1)) {
+                conf->federation_public_key = calloc(1, sizeof(n2n_private_public_key_t));
+                if(conf->federation_public_key) {
+                    ascii_to_bin(*(conf->federation_public_key), optargument);
+                }
+            } else {
+                traceEvent(TRACE_WARNING, "Public key too long");
+                return -1;
+            }
             break;
         }
 
@@ -693,7 +723,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
     u_char c;
 
     while ((c = getopt_long(argc, argv,
-                            "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:S::DL:z::A::Hn:R:"
+                            "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:"
 #ifdef __linux__
                             "T:"
 #endif
@@ -708,7 +738,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
 
     }
 
-    return 0;
+    return 0; /* REVISIT: return setOption()'s return value */
 }
 
 /* *************************************************** */
@@ -921,11 +951,42 @@ int main (int argc, char* argv[]) {
         rc = -1;
 #endif
 
+    // --- additional crypto setup; REVISIT: move to edge_init()?
+    // payload
     if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
         if(conf.encrypt_key) {
-            /* make sure that AES is default cipher if key only (and no cipher) is specified */
+            // make sure that AES is default cipher if key only (and no cipher) is specified
             traceEvent(TRACE_WARNING, "Switching to AES as key was provided.");
             conf.transop_id = N2N_TRANSFORM_ID_AES;
+        }
+    }
+    // user auth
+    if(conf.shared_secret /* containing private key only so far*/) {
+        // if user-password auth and no federation public key provided, use default
+        if(!conf.federation_public_key) {
+            conf.federation_public_key = calloc(1, sizeof(n2n_private_public_key_t));
+            if(conf.federation_public_key) {
+                traceEvent(TRACE_WARNING, "Using default federation public key. FOR TESTING ONLY, usage of a custom federation name and key (-P) is highly recommended!");
+                generate_private_key(*(conf.federation_public_key), FEDERATION_NAME + 1);
+                generate_public_key(*(conf.federation_public_key), *(conf.federation_public_key));
+            }
+        }
+        // calculate public key and shared secret
+        if(conf.federation_public_key) {
+            traceEvent(TRACE_NORMAL, "Using username and password for edge authentication.");
+            bind_private_key_to_username(*(conf.shared_secret), conf.dev_desc);
+            conf.public_key = calloc(1, sizeof(n2n_private_public_key_t));
+            if(conf.public_key)
+                generate_public_key(*conf.public_key, *(conf.shared_secret));
+            generate_shared_secret(*(conf.shared_secret), *(conf.shared_secret), *(conf.federation_public_key));
+            // prepare (first 128 bit) for use as key
+            conf.shared_secret_ctx = (he_context_t*)calloc(1, sizeof(speck_context_t));
+            speck_init((speck_context_t**)&(conf.shared_secret_ctx), *(conf.shared_secret), 128);
+        }
+        // force header encryption
+        if(conf.header_encryption != HEADER_ENCRYPTION_ENABLED) {
+            traceEvent(TRACE_NORMAL, "Enabling header encryption for edge authentication.");
+            conf.header_encryption = HEADER_ENCRYPTION_ENABLED;
         }
     }
 
@@ -979,8 +1040,9 @@ int main (int argc, char* argv[]) {
     // for the sake of quickly establishing connection. REVISIT when a more elegant way to re-use main loop code
     // is found
 
-    // if more than one supernode given, find at least one who is alive to faster establish connection
-    if((HASH_COUNT(eee->conf.supernodes) <= 1) || (eee->conf.connect_tcp)) {
+    // find at least one supernode alive to faster establish connection
+    // exceptions:
+    if((HASH_COUNT(eee->conf.supernodes) <= 1) || (eee->conf.connect_tcp) || (eee->conf.shared_secret)) {
         // skip the initial supernode ping
         traceEvent(TRACE_DEBUG, "Skip PING to supernode.");
         runlevel = 2;

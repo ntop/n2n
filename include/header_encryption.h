@@ -27,4 +27,9 @@ int packet_header_encrypt (uint8_t packet[], uint16_t header_len, uint16_t packe
                            uint64_t stamp);
 
 void packet_header_setup_key (const char *community_name,
-                              he_context_t **ctx, he_context_t **ctx_iv);
+                              he_context_t **ctx_static, he_context_t **ctx_dynamic,
+                              he_context_t **ctx_iv_static, he_context_t **ctx_iv_dynamic);
+
+void packet_header_change_dynamic_key (const char *key_dynamic,
+                                       he_context_t **ctx_dynamic,
+                                       he_context_t **ctx_iv_dynamic);
