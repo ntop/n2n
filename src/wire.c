@@ -538,6 +538,10 @@ int encode_REGISTER_SUPER_NAK (uint8_t *base,
     retval += encode_buf(base, idx, nak->cookie, N2N_COOKIE_SIZE);
     retval += encode_mac(base, idx, nak->srcMac);
 
+    retval += encode_uint16(base, idx, nak->auth.scheme);
+    retval += encode_uint16(base, idx, nak->auth.token_size);
+    retval += encode_buf(base, idx, nak->auth.token, nak->auth.token_size);
+
     return retval;
 }
 
@@ -553,6 +557,10 @@ int decode_REGISTER_SUPER_NAK (n2n_REGISTER_SUPER_NAK_t *nak,
 
     retval += decode_buf(nak->cookie, N2N_COOKIE_SIZE, base, rem, idx);
     retval += decode_mac(nak->srcMac, base, rem, idx);
+
+    retval += decode_uint16(&(nak->auth.scheme), base, rem, idx);
+    retval += decode_uint16(&(nak->auth.token_size), base, rem, idx);
+    retval += decode_buf(nak->auth.token, nak->auth.token_size, base, rem, idx);
 
     return retval;
 }

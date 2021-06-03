@@ -18,7 +18,7 @@ rpmbuild -bb ./n2n.spec
 - Better ming Windows build support.
 - Added `-E` flag to allow multicast ethernet traffic.
 
-## Draft changelog between 2.8.x and 2.9.x (as of February 8, 2021)
+## Draft changelog between 2.8.x and 2.9.x (as of June 4, 2021)
 
 ### New Features
 
@@ -29,6 +29,7 @@ rpmbuild -bb ./n2n.spec
 - Experimental TCP support (`-S2`) lets edges connect to the supernodes via TCP in case firewalls block UDP (not available on Windows yet)
 - All four supported ciphers offer integrated versions rendering OpenSSL dependency non-mandatory (optionally still available)
 - MAC and IP address spoofing prevention
+- Optional edge user and password authentication
 - Network interface metric can be set by command-line option `-x` (Windows only)
 - Re-enabled local peer detection by multicast on Windows
 - Edge identifier (`-I`) helps to identify edges more easily in management port output

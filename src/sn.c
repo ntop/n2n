@@ -774,6 +774,11 @@ int main (int argc, char * const argv[]) {
     }
 #endif /* #if defined(N2N_HAVE_DAEMON) */
 
+    // warn on default federation name
+    if(!strcmp(sss_node.federation->community, FEDERATION_NAME)) {
+        traceEvent(TRACE_WARNING, "Using default federation name. FOR TESTING ONLY, usage of a custom federation name (-F) is highly recommended!");
+    }
+
     // generate shared secrets for user authentication; can be done only after
     // federation name is known (-F) and community list completely read (-c)
     traceEvent(TRACE_INFO, "started shared secrets calculation for edge authentication");

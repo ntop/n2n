@@ -1414,13 +1414,15 @@ static int process_udp (n2n_sn_t * sss,
                 rec_buf = encbuf;
                 /* Re-encode the header. */
                 encode_PACKET(encbuf, &encx, &cmn2, &pkt);
+
                 uint16_t oldEncx = encx;
 
                 /* Copy the original payload unchanged */
                 encode_buf(encbuf, &encx, (udp_buf + idx), (udp_size - idx));
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    packet_header_encrypt(rec_buf, oldEncx, encx,
+                    // in case of user-password auth, also encrypt the iv of payload assuming ChaCha20 and SPECK having the same iv size
+                    packet_header_encrypt(rec_buf, oldEncx + (NULL != comm->allowed_users) * min(encx - oldEncx, N2N_SPECK_IVEC_SIZE), encx,
                                           comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
                                           time_stamp());
                 }
@@ -1434,7 +1436,8 @@ static int process_udp (n2n_sn_t * sss,
                 encx = udp_size;
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                    packet_header_encrypt(rec_buf, idx, encx,
+                    // in case of user-password auth, also encrypt the iv of payload assuming ChaCha20 and SPECK having the same iv size
+                    packet_header_encrypt(rec_buf, idx + (NULL != comm->allowed_users) * min(encx - idx, N2N_SPECK_IVEC_SIZE), encx,
                                           comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
                                           time_stamp());
                 }
@@ -1651,7 +1654,7 @@ static int process_udp (n2n_sn_t * sss,
                     continue;
                 }
                 if(memcmp(&(peer->sock), &(ack.sock), sizeof(n2n_sock_t)) == 0) continue; /* a supernode doesn't add itself to the payload */
-                if((now - peer->last_seen) >= LAST_SEEN_SN_NEW) continue; /* skip long-time-not-seen supernodes.
+                if((now - peer->last_seen) >= LAST_SEEN_SN_NEW) continue;  /* skip long-time-not-seen supernodes.
                                                                             * We need to allow for a little extra time because supernodes sometimes exceed
                                                                             * their SN_ACTIVE time before they get re-registred to. */
                 if(((++num)*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE) > REG_SUPER_ACK_PAYLOAD_SPACE) break; /* no more space available in REGISTER_SUPER_ACK payload */
@@ -1912,10 +1915,10 @@ static int process_udp (n2n_sn_t * sss,
             if(comm->is_federation == IS_NO_FEDERATION) {
                 if(peer != NULL) {
                     // this is a NAK for one of the edges conencted to this supernode, forward,
-                    // i.e. re-assemble (memcpy of udpbuf to nakbuf could be sufficient as well)
+                    // i.e. re-assemble (memcpy from udpbuf to nakbuf could be sufficient as well)
 
                     // use incoming cmn (with already decreased TTL)
-                    // NAK (cookie and srcMac) remains unchanged
+                    // NAK (cookie, srcMac, auth) remains unchanged
 
                     encode_REGISTER_SUPER_NAK(nakbuf, &encx, &cmn, &nak);
 

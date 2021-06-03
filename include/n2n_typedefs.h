@@ -380,6 +380,7 @@ typedef struct n2n_REGISTER_SUPER_ACK {
 typedef struct n2n_REGISTER_SUPER_NAK {
     n2n_cookie_t    cookie;    /* Return cookie from REGISTER_SUPER */
     n2n_mac_t       srcMac;
+    n2n_auth_t      auth;      /* Authentication scheme and tokens */
 } n2n_REGISTER_SUPER_NAK_t;
 
 

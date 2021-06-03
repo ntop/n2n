@@ -178,9 +178,9 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define N2N_TRANSFORM_ID_MAX                65535
 
 #ifndef max
-#define max(a, b) ((a < b) ? b : a)
+#define max(a, b) (((a) < (b)) ? (b) : (a))
 #endif
 
 #ifndef min
-#define min(a, b) ((a > b) ? b : a)
+#define min(a, b) (((a) >(b)) ? (b) : (a))
 #endif

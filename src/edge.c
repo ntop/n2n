@@ -966,7 +966,7 @@ int main (int argc, char* argv[]) {
         if(!conf.federation_public_key) {
             conf.federation_public_key = calloc(1, sizeof(n2n_private_public_key_t));
             if(conf.federation_public_key) {
-                traceEvent(TRACE_WARNING, "Using default federation public key for edge authentication.");
+                traceEvent(TRACE_WARNING, "Using default federation public key. FOR TESTING ONLY, usage of a custom federation name and key (-P) is highly recommended!");
                 generate_private_key(*(conf.federation_public_key), FEDERATION_NAME + 1);
                 generate_public_key(*(conf.federation_public_key), *(conf.federation_public_key));
             }
@@ -985,7 +985,7 @@ int main (int argc, char* argv[]) {
         }
         // force header encryption
         if(conf.header_encryption != HEADER_ENCRYPTION_ENABLED) {
-            traceEvent(TRACE_WARNING, "Enabling header encryption for edge authentication.");
+            traceEvent(TRACE_NORMAL, "Enabling header encryption for edge authentication.");
             conf.header_encryption = HEADER_ENCRYPTION_ENABLED;
         }
     }

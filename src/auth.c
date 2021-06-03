@@ -86,7 +86,7 @@ int ascii_to_bin (uint8_t *out, uint8_t *in) {
                 traceEvent(TRACE_NORMAL, "ascii_to_bin encountered the unknown character '%c'", in[in_count]);
             }
         } else {
-            traceEvent(TRACE_NORMAL, "ascii_to_bin encountered a completely out-of-range character");
+            traceEvent(TRACE_WARNING, "ascii_to_bin encountered a completely out-of-range character");
         }
         bit_count += 6;
 
@@ -139,16 +139,13 @@ int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *usernam
     size_t i;
 
     pearson_hash_256(tmp, username, strlen(username));
-    for(i = 0; i < sizeof(n2n_private_public_key_t); i++) {
-        prv[i] ^= tmp[i];
-    }
+    memxor(prv, tmp, sizeof(n2n_private_public_key_t));
 
     return 0;
 }
 
 
-
-// calculate HASH( HASH³(time) ^ HASH²(comm) ^ HASH (fed) )
+// calculate HASH( HASH³(time) ^ HASH²(comm) ^ HASH(fed) )
 int calculate_dynamic_key (uint8_t out_key[N2N_AUTH_CHALLENGE_SIZE],
                            uint32_t key_time, n2n_community_t comm, n2n_community_t fed) {
 
