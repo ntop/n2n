@@ -128,7 +128,9 @@ add_library(n2n STATIC
         src/tuntap_osx.c
         src/n2n_regex.c
         src/network_traffic_filter.c
-        src/sn_selection.c)
+        src/sn_selection.c
+        src/auth.c
+        src/curve25519.c)
 
 
 if(N2N_OPTION_USE_OPENSSL)
@@ -181,6 +183,8 @@ install(TARGETS edge supernode
 # Tools
 add_executable(n2n-benchmark tools/benchmark.c)
 target_link_libraries(n2n-benchmark n2n)
+add_executable(n2n-keygen tools/keygen.c)
+target_link_libraries(n2n-keygen n2n)
 
 if(N2N_OPTION_USE_PCAPLIB)
   find_library(PCAP_LIB pcap)
