@@ -83,7 +83,7 @@ fi
 
 AC_CHECK_LIB([pthread], [pthread_mutex_trylock], pthread=true)
 if test x$pthread != x; then
-  LDFLAGS="${LDFLAGS} -lpthread"
+  LDFLAGS="${LDFLAGS} -pthread"
   AC_DEFINE([HAVE_PTHREAD],[],[pthread is present])
 fi
 
