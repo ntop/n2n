@@ -226,7 +226,7 @@ int supernode_connect(n2n_edge_t *eee) {
             eee->cb.sock_opened(eee);
 
         struct sockaddr_in sock;
-        sock.sin_family = AF_INET;
+        sock.sin_family = eee->curr_sn->sock.family;
         sock.sin_port = htons(eee->curr_sn->sock.port);
         memcpy(&(sock.sin_addr.s_addr), &(eee->curr_sn->sock.addr.v4), IPV4_SIZE);
 
@@ -3502,10 +3502,10 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
     sock = (n2n_sock_t*)calloc(1,sizeof(n2n_sock_t));
     rv = supernode2sock(sock, ip_and_port);
 
-    if(rv != 0) {
-        traceEvent(TRACE_WARNING, "Invalid supernode address");
+    if(rv < -2) { /* we accept resolver failure as it might resolve later */
+        traceEvent(TRACE_WARNING, "Invalid supernode parameter.");
         free(sock);
-        return(1);
+        return 1;
     }
 
     skip_add = SN_ADD;
@@ -3527,7 +3527,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
     traceEvent(TRACE_NORMAL, "Adding supernode = %s", sn->ip_addr);
     conf->sn_num++;
 
-    return(0);
+    return 0;
 }
 
 /* ************************************** */

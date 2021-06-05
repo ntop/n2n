@@ -260,57 +260,56 @@ char * macaddr_str (macstr_t buf,
 int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
 
     n2n_sn_name_t addr;
-    const char *supernode_host;
+    char *supernode_host;
+    char *supernode_port;
     int rv = 0;
+    int nameerr;
+    const struct addrinfo aihints = {0, PF_INET, 0, 0, 0, NULL, NULL, NULL};
+    struct addrinfo * ainfo = NULL;
+    struct sockaddr_in * saddr;
+
+    sn->family = AF_INVALID;
 
     memcpy(addr, addrIn, N2N_EDGE_SN_HOST_SIZE);
-
     supernode_host = strtok(addr, ":");
 
     if(supernode_host) {
-        char *supernode_port = strtok(NULL, ":");
-        const struct addrinfo aihints = {0, PF_INET, 0, 0, 0, NULL, NULL, NULL};
-        struct addrinfo * ainfo = NULL;
-        int nameerr;
-
+        supernode_port = strtok(NULL, ":");
         if(supernode_port) {
             sn->port = atoi(supernode_port);
-        } else {
-            traceEvent(TRACE_WARNING, "supernode2sock sees malformed supernode parameter (-l <host:port>) %s %s:%s",
-                       addr, supernode_host, supernode_port);
-        }
-
-        nameerr = getaddrinfo(supernode_host, NULL, &aihints, &ainfo);
-
-        if(0 == nameerr) {
-            struct sockaddr_in * saddr;
-
-            /* ainfo s the head of a linked list if non-NULL. */
-            if(ainfo && (PF_INET == ainfo->ai_family)) {
-                /* It is definitely and IPv4 address -> sockaddr_in */
-                saddr = (struct sockaddr_in *)ainfo->ai_addr;
-
-                memcpy(sn->addr.v4, &(saddr->sin_addr.s_addr), IPV4_SIZE);
-                sn->family = AF_INET;
+            nameerr = getaddrinfo(supernode_host, NULL, &aihints, &ainfo);
+            if(0 == nameerr) {
+               /* ainfo s the head of a linked list if non-NULL. */
+                if(ainfo && (PF_INET == ainfo->ai_family)) {
+                    /* It is definitely and IPv4 address -> sockaddr_in */
+                    saddr = (struct sockaddr_in *)ainfo->ai_addr;
+                    memcpy(sn->addr.v4, &(saddr->sin_addr.s_addr), IPV4_SIZE);
+                    sn->family = AF_INET;
+                    traceEvent(TRACE_INFO, "supernode2sock successfully resolves supernode IPv4 address for %s", supernode_host);
+                    rv = 0;
+                } else {
+                    /* Should only return IPv4 addresses due to aihints. */
+                    traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode IPv4 address for %s", supernode_host);
+                    rv = -1;
+                }
             } else {
-                /* Should only return IPv4 addresses due to aihints. */
-                traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode IPv4 address for %s", supernode_host);
-                rv = -1;
+                traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode host %s, %d: %s", supernode_host, nameerr, gai_strerror(nameerr));
+                rv = -2;
             }
-
-            freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
-            ainfo = NULL;
         } else {
-            traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode host %s, %d: %s", supernode_host, nameerr, gai_strerror(nameerr));
-            rv = -2;
+            traceEvent(TRACE_WARNING, "supernode2sock sees malformed supernode parameter (-l <host:port>) %s", addrIn);
+            rv = -3;
         }
-
     } else {
-        traceEvent(TRACE_WARNING, "supernode2sock sees wrong supernode parameter (-l <host:port>)");
-        rv = -3;
+        traceEvent(TRACE_WARNING, "supernode2sock sees malformed supernode parameter (-l <host:port>) %s %s:%s",
+                   addr, supernode_host, supernode_port);
+        rv = -4;
     }
 
-    return(rv);
+    freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
+    ainfo = NULL;
+
+    return rv;
 }
 
 
@@ -319,9 +318,10 @@ void *resolve_thread (void *p) {
 #ifdef HAVE_PTHREAD
     n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
+    int sleep_time = N2N_RESOLVE_INTERVAL / 10; /* initially shorter sleep */
 
     while(1) {
-        sleep(N2N_RESOLVE_INTERVAL);
+        sleep(sleep_time);
 
         // lock access
         pthread_mutex_lock(&param->access);
@@ -339,6 +339,15 @@ void *resolve_thread (void *p) {
 
         // unlock access
         pthread_mutex_unlock(&param->access);
+
+        // determine next sleep duration (shorter if resolver errors occured)
+        sleep_time = N2N_RESOLVE_INTERVAL;
+        HASH_ITER(hh, param->list, entry, tmp_entry) {
+            if(entry->error_code) {
+                sleep_time = N2N_RESOLVE_INTERVAL / 10;
+                break;
+            }
+        }
     }
 #endif
 }

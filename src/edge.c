@@ -51,6 +51,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
                                        time_t now);
 int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
+int resolve_check (n2n_resolve_parameter_t *param, time_t now);
 
 /* ***************************************************** */
 
@@ -1023,6 +1024,11 @@ int main (int argc, char* argv[]) {
         traceEvent(TRACE_ERROR, "Failed in edge_init");
         exit(1);
     }
+
+    if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
+         traceEvent(TRACE_NORMAL, "Successfully created resolver thread");
+    }
+
     memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
 
     if((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
@@ -1168,8 +1174,9 @@ int main (int argc, char* argv[]) {
                 }
             }
         }
-
         seek_answer = 1;
+
+        resolve_check(eee->resolve_parameter, now);
     }
     // allow a higher number of pings for first regular round of ping
     // to quicker get an inital 'supernode selection criterion overview'
@@ -1226,10 +1233,6 @@ int main (int argc, char* argv[]) {
     if((getuid() == 0) || (getgid() == 0))
         traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
 #endif
-
-    if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
-         traceEvent(TRACE_NORMAL, "Successfully created resolver thread");
-    }
 
 #ifdef __linux__
     signal(SIGPIPE, SIG_IGN);

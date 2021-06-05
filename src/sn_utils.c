@@ -1657,6 +1657,8 @@ static int process_udp (n2n_sn_t * sss,
                     skip--;
                     continue;
                 }
+                if(peer->sock.family == AF_INVALID)
+                    continue; /* do not add unresolved supernodes to payload */
                 if(memcmp(&(peer->sock), &(ack.sock), sizeof(n2n_sock_t)) == 0) continue; /* a supernode doesn't add itself to the payload */
                 if((now - peer->last_seen) >= LAST_SEEN_SN_NEW) continue;  /* skip long-time-not-seen supernodes.
                                                                             * We need to allow for a little extra time because supernodes sometimes exceed
