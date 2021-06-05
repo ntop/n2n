@@ -125,10 +125,12 @@ static int scan_address (char * ip_addr, size_t addr_size,
 
 static void help (int level) {
 
+    if(level == 0) return; /* no help required */
+
     printf("\n");
     print_n2n_version();
 
-    if(level == 0) /* short help */ {
+    if(level == 1) /* short help */ {
 
         printf("   basic usage:  edge <config file> (see edge.conf)\n"
                "\n"
@@ -150,7 +152,7 @@ static void help (int level) {
                "\n   man  files for n2n, edge, and superndode contain in-depth information"
                "\n\n");
 
-    } else if(level == 1) /* quick reference */ {
+    } else if(level == 2) /* quick reference */ {
 
         printf(" general usage:  edge <config file> (see edge.conf)\n"
            "\n"
@@ -257,7 +259,7 @@ static void help (int level) {
 #endif
 "\n");
         printf(" -i <reg_interval> | registration interval, for NAT hole punching (default\n"
-               "                   | 20 seconds)\n");
+               "                   | %u seconds)\n", REGISTER_SUPER_INTERVAL_DFL);
         printf(" -L <reg_ttl>      | TTL for registration packet for NAT hole punching through\n"
                "                   | supernode (default 0 for not set)\n");
         printf(" -k <key>          | encryption key (ASCII) - also N2N_KEY=<key>\n");
@@ -305,7 +307,8 @@ static void help (int level) {
 #ifndef WIN32
         printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
 #endif
-        printf(" -t <port>         | management UDP port, for multiple edges on a machine\n");
+        printf(" -t <port>         | management UDP port, for multiple edges on a machine,\n"
+               "                   | defaults to %u\n", N2N_EDGE_MGMT_PORT);
         printf(" -v                | make more verbose, repeat as required\n");
         printf(" -n <cidr:gateway> | route an IPv4 network via the gateway, use 0.0.0.0/0 for\n"
                "                   | the default gateway, can be set multiple times\n");
@@ -426,7 +429,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
         case 'E': /* multicast ethernet addresses accepted. */ {
             conf->drop_multicast = 0;
-            traceEvent(TRACE_DEBUG, "Enabling ethernet multicast traffic");
+            traceEvent(TRACE_INFO, "Enabling ethernet multicast traffic");
             break;
         }
 
@@ -542,7 +545,6 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 #endif
-
         case 'I': /* Device Description (hint) or username */ {
             memset(conf->dev_desc, 0, N2N_DESC_SIZE);
             /* reserve possible last char as null terminator. */
@@ -569,8 +571,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
                     ascii_to_bin(*(conf->federation_public_key), optargument);
                 }
             } else {
-                traceEvent(TRACE_WARNING, "Public key too long");
-                return -1;
+                traceEvent(TRACE_WARNING, "Public key too long.");
+                return 2;
             }
             break;
         }
@@ -579,7 +581,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             conf->local_port = atoi(optargument);
 
             if(conf->local_port == 0) {
-                traceEvent(TRACE_WARNING, "Bad local port format");
+                traceEvent(TRACE_WARNING, "Bad local port format, using OS assigned port.");
                 break;
             }
 
@@ -590,7 +592,6 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             conf->mgmt_port = atoi(optargument);
             break;
         }
-
 #ifdef __linux__
         case 'T': {
             if((optargument[0] == '0') && (optargument[1] == 'x'))
@@ -601,14 +602,13 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 #endif
-
         case 'n': {
             char cidr_net[64], gateway[64];
             n2n_route_t route;
 
             if(sscanf(optargument, "%63[^/]/%hhd:%63s", cidr_net, &route.net_bitlen, gateway) != 3) {
-                traceEvent(TRACE_WARNING, "Bad cidr/gateway format '%d'. See -h.", optargument);
-                break;
+                traceEvent(TRACE_WARNING, "Bad cidr/gateway format '%d'.", optargument);
+                return 2;
             }
 
             route.net_addr = inet_addr(cidr_net);
@@ -616,20 +616,20 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
             if((route.net_bitlen < 0) || (route.net_bitlen > 32)) {
                 traceEvent(TRACE_WARNING, "Bad prefix '%d' in '%s'", route.net_bitlen, optargument);
-                break;
+                return 2;
             }
 
             if(route.net_addr == INADDR_NONE) {
                 traceEvent(TRACE_WARNING, "Bad network '%s' in '%s'", cidr_net, optargument);
-                break;
+                return 2;
             }
 
             if(route.gateway == INADDR_NONE) {
                 traceEvent(TRACE_WARNING, "Bad gateway '%s' in '%s'", gateway, optargument);
-                break;
+                return 2;
             }
 
-            traceEvent(TRACE_DEBUG, "Adding %s/%d via %s", cidr_net, route.net_bitlen, gateway);
+            traceEvent(TRACE_NORMAL, "Adding %s/%d via %s", cidr_net, route.net_bitlen, gateway);
 
             conf->routes = realloc(conf->routes, sizeof(struct n2n_route) * (conf->num_routes + 1));
             conf->routes[conf->num_routes] = route;
@@ -660,13 +660,11 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 
         case 'h': /* quick reference */ {
-            help(1);
-            break;
+            return 2;
         }
 
         case '@': /* long help */ {
-            help(2);
-            break;
+            return 3;
         }
 
         case 'v': /* verbose */
@@ -682,7 +680,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             } else {
                 free(new_rule);
                 traceEvent(TRACE_WARNING, "Invalid filter rule: %s", optargument);
-                return(-1);
+                return 2;
             }
             break;
         }
@@ -694,12 +692,12 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 #endif
         default: {
-            traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored", (char)optkey);
-            return(-1);
+            traceEvent(TRACE_WARNING, "Unknown option -%c", (char)optkey);
+            return 2;
         }
     }
 
-    return(0);
+    return 0;
 }
 
 /* *********************************************** */
@@ -736,11 +734,11 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
                             long_options, NULL)) != '?') {
 
         if(c == 255) break;
-        setOption(c, optarg, ec, conf);
+        help(setOption(c, optarg, ec, conf));
 
     }
 
-    return 0; /* REVISIT: return setOption()'s return value */
+    return 0;
 }
 
 /* *************************************************** */
@@ -993,10 +991,10 @@ int main (int argc, char* argv[]) {
     }
 
     if(rc < 0)
-        help(0); /* short help */
+        help(1); /* short help */
 
     if(edge_verify_conf(&conf) != 0)
-        help(0); /* short help */
+        help(1); /* short help */
 
     traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
