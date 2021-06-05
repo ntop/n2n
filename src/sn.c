@@ -240,7 +240,7 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
     /* No new communities will be allowed */
     sss->lock_communities = 1;
 
-    return(0);
+    return 0;
 }
 
 
@@ -249,10 +249,13 @@ static int load_allowed_sn_community (n2n_sn_t *sss) {
 /** Help message to print if the command line arguments are not valid. */
 static void help (int level) {
 
+    if(level == 0) /* no help required */
+        return;
+
     printf("\n");
     print_n2n_version();
 
-    if(level == 0) /* short help */ {
+    if(level == 1) /* short help */ {
 
         printf("   basic usage:  supernode <config file> (see supernode.conf)\n"
                "\n"
@@ -267,7 +270,7 @@ static void help (int level) {
                "\n   man  files for n2n, edge, and superndode contain in-depth information"
                "\n\n");
 
-    } else if(level == 1) /* quick reference */ {
+    } else if(level == 2) /* quick reference */ {
 
         printf(" general usage:  supernode <config file> (see supernode.conf)\n"
            "\n"
@@ -319,7 +322,7 @@ static void help (int level) {
         );
         printf (" OPTIONS FOR THE UNDERLYING NETWORK CONNECTION\n");
         printf (" ---------------------------------------------\n\n");
-        printf(" -p <local port>   | fixed local UDP port, defaults to 7654\n");
+        printf(" -p <local port>   | fixed local UDP port, defaults to %u\n", N2N_SN_LPORT_DEFAULT);
         printf(" -F <fed name>     | name of the supernode's federation, defaults to\n"
                "                   | '%s'\n", (char *)FEDERATION_NAME);
         printf(" -l <host:port>    | ip address or name, and port of known supernode\n");
@@ -341,7 +344,7 @@ static void help (int level) {
         printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
 #endif
         printf(" -t <port>         | management UDP port, for multiple supernodes on a machine,\n"
-               "                   | defaults to 5645\n");
+               "                   | defaults to %u\n", N2N_SN_MGMT_PORT);
         printf(" -v                | make more verbose, repeat as required\n");
 #ifndef WIN32
         printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
@@ -370,20 +373,18 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
         case 'p': /* local-port */
             sss->lport = atoi(_optarg);
 
-            if(sss->lport == 0) {
-                traceEvent(TRACE_WARNING, "Bad local port format");
-                break;
-            }
+            if(sss->lport == 0)
+                traceEvent(TRACE_WARNING, "Bad local port format, defaulting to %u", N2N_SN_LPORT_DEFAULT);
+                // default is made sure in sn_init()
 
             break;
 
         case 't': /* mgmt-port */
             sss->mport = atoi(_optarg);
 
-            if(sss->mport == 0) {
-                traceEvent(TRACE_WARNING, "Bad management port format");
-                break;
-            }
+            if(sss->mport == 0)
+                traceEvent(TRACE_WARNING, "Bad management port format, defaulting to %u", N2N_SN_MGMT_PORT);
+                // default is made sure in sn_init()
 
             break;
 
@@ -398,12 +399,12 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             length = strlen(_optarg);
             if(length >= N2N_EDGE_SN_HOST_SIZE) {
                 traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d", length, N2N_EDGE_SN_HOST_SIZE);
-                return -1;
+                return 1;
             }
 
             if(!double_column) {
                 traceEvent(TRACE_WARNING, "Invalid -l format: missing port");
-                return -1;
+                return 1;
             }
 
             socket = (n2n_sock_t *)calloc(1, sizeof(n2n_sock_t));
@@ -412,7 +413,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             if(rv < -2) { /* we accept resolver failure as it might resolve later */
                 traceEvent(TRACE_WARNING, "Invalid supernode parameter.");
                 free(socket);
-                return -1;
+                return 1;
             }
 
             if(sss->federation != NULL) {
@@ -443,8 +444,8 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             uint32_t mask;
 
             if(sscanf(_optarg, "%15[^\\-]-%15[^/]/%hhu", ip_min_str, ip_max_str, &bitlen) != 3) {
-                traceEvent(TRACE_WARNING, "Bad net-net/bit format '%s'. See -h.", _optarg);
-                break;
+                traceEvent(TRACE_WARNING, "Bad net-net/bit format '%s'.", _optarg);
+                return 2;
             }
 
             net_min = inet_addr(ip_min_str);
@@ -457,14 +458,14 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
                 traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
 		                       ip_min_str, ip_max_str, bitlen, _optarg,
 		                       N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
-                break;
+                return 2;
             }
 
             if((bitlen > 30) || (bitlen == 0)) {
                 traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
 		                       bitlen, _optarg,
 		                       N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
-                break;
+                return 2;
             }
 
             traceEvent(TRACE_NORMAL, "The network range for community ip address service is '%s...%s/%hhu'.", ip_min_str, ip_max_str, bitlen);
@@ -486,7 +487,6 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             break;
 #endif
         case 'F': { /* federation name */
-
             snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1 ,"*%s", _optarg);
             sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
             break;
@@ -508,23 +508,21 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             break;
 #endif
         case 'h': /* quick reference */
-            help(1);
-            break;
+            return 2;
 
         case '@': /* long help */
-            help(2);
-            break;
+            return 3;
 
         case 'v': /* verbose */
             setTraceLevel(getTraceLevel() + 1);
             break;
 
         default:
-            traceEvent(TRACE_WARNING, "Unknown option -%c: Ignored.", (char) optkey);
-            return (-1);
+            traceEvent(TRACE_WARNING, "Unknown option -%c:", (char) optkey);
+            return 2;
     }
 
-    return (0);
+    return 0;
 }
 
 
@@ -566,8 +564,7 @@ static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
         if(c == 255) {
             break;
         }
-        if(0 != setOption(c, optarg, sss))
-            help(0);
+        help(setOption(c, optarg, sss));
     }
 
     return 0;
@@ -759,7 +756,7 @@ int main (int argc, char * const argv[]) {
 #endif
 
     if(rc < 0) {
-        help(0); /* short help */
+        help(1); /* short help */
     }
 
     if(sss_node.community_file)
