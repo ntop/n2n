@@ -398,25 +398,24 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             length = strlen(_optarg);
             if(length >= N2N_EDGE_SN_HOST_SIZE) {
                 traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d", length, N2N_EDGE_SN_HOST_SIZE);
-                break;
+                return -1;
             }
 
             if(!double_column) {
-                traceEvent(TRACE_WARNING, "Invalid -l format: ignored");
-                return (-1);
+                traceEvent(TRACE_WARNING, "Invalid -l format: missing port");
+                return -1;
             }
 
             socket = (n2n_sock_t *)calloc(1, sizeof(n2n_sock_t));
             rv = supernode2sock(socket, _optarg);
 
-            if(rv != 0) {
-                traceEvent(TRACE_WARNING, "Invalid socket");
+            if(rv < -2) { /* we accept resolver failure as it might resolve later */
+                traceEvent(TRACE_WARNING, "Invalid supernode parameter.");
                 free(socket);
-                break;
+                return -1;
             }
 
             if(sss->federation != NULL) {
-
                 skip_add = SN_ADD;
                 anchor_sn = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), socket, null_mac, &skip_add);
 
@@ -567,7 +566,8 @@ static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
         if(c == 255) {
             break;
         }
-        setOption(c, optarg, sss);
+        if(0 != setOption(c, optarg, sss))
+            help(0);
     }
 
     return 0;
