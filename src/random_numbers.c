@@ -142,6 +142,7 @@ uint64_t n2n_seed (void) {
 
     // __RDSEED__ ist set only if architecturual feature is set, e.g. compile with -march=native
 #ifdef __RDSEED__
+#if __GNUC__ > 4
     for(i = 0; i < RND_RETRIES; i++) {
         if(_rdseed64_step((unsigned long long*)&seed)) {
             // success!
@@ -153,6 +154,7 @@ uint64_t n2n_seed (void) {
     if(i == RND_RETRIES) {
         traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDSEED.");
     }
+#endif
 #endif
 
 #ifdef WIN32
