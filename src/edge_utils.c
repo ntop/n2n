@@ -26,7 +26,7 @@ static HEAP_ALLOC (wrkmem, LZO1X_1_MEM_COMPRESS);
 
 /* ************************************** */
 
-int resolve_check (n2n_resolve_parameter_t *param, time_t now);
+int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
 int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
 static const char * supernode_ip (const n2n_edge_t * eee);
@@ -1429,6 +1429,8 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
         supernode_connect(eee);
         reset_sup_attempts(eee);
+        // trigger out-of-schedule DNS resolution
+        eee->resolution_request = 1;
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
         // closing and re-opening the socket allows for re-establishing communication
@@ -2959,7 +2961,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
         sort_supernodes(eee, now);
 
-        resolve_check(eee->resolve_parameter, now);
+        eee->resolution_request = resolve_check(eee->resolve_parameter, eee->resolution_request, now);
 
         if(eee->cb.main_loop_period)
             eee->cb.main_loop_period(eee, now);

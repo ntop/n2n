@@ -51,7 +51,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
                                        time_t now);
 int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
-int resolve_check (n2n_resolve_parameter_t *param, time_t now);
+int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
 
 /* ***************************************************** */
 
@@ -1174,7 +1174,7 @@ int main (int argc, char* argv[]) {
         }
         seek_answer = 1;
 
-        resolve_check(eee->resolve_parameter, now);
+        resolve_check(eee->resolve_parameter, 0 /* no intermediate resolution requirement at this point */, now);
     }
     // allow a higher number of pings for first regular round of ping
     // to quicker get an inital 'supernode selection criterion overview'

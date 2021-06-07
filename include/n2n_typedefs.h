@@ -599,13 +599,16 @@ typedef struct n2n_resolve_ip_sock {
 
 // structure to hold resolver thread's parameters
 typedef struct n2n_resolve_parameter {
-    n2n_resolve_ip_sock_t   *list;        /* pointer to list of to be resolved nodes */
-    uint8_t                 changed;      /* indicates a change */
+    n2n_resolve_ip_sock_t   *list;         /* pointer to list of to be resolved nodes */
+    uint8_t                 changed;       /* indicates a change */
 #ifdef HAVE_PTHREAD
-    pthread_t               id;           /* thread id */
-    pthread_mutex_t         access;       /* mutex for shared access */
+    pthread_t               id;            /* thread id */
+    pthread_mutex_t         access;        /* mutex for shared access */
 #endif
-    time_t                  last_checked; /* last time the resolver completed */
+    uint8_t                 request;       /* flags main thread's need for intermediate resolution */
+    time_t                  check_interval;/* interval to checik resolover results */
+    time_t                  last_checked;  /* last time the resolver results were cheked */
+    time_t                  last_resolved; /* last time the resolver completed */
 } n2n_resolve_parameter_t;
 
 
@@ -700,6 +703,7 @@ struct n2n_edge {
     struct n2n_edge_stats            stats;                              /**< Statistics */
 
     n2n_resolve_parameter_t          *resolve_parameter;                 /**< Pointer to name resolver's parameter block */
+    uint8_t                          resolution_request;                 /**< Flag an immediate DNS resolution request */
 
     n2n_tuntap_priv_config_t         tuntap_priv_conf;                   /**< Tuntap config */
 
