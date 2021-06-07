@@ -1623,12 +1623,14 @@ static int process_udp (n2n_sn_t * sss,
             memcpy(&(ack.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
             memcpy(ack.srcMac, sss->mac_addr, sizeof(n2n_mac_t));
 
-            if((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
-               ((reg.dev_addr.net_addr & 0xFFFF0000) == 0xA9FE0000 /* 169.254.0.0 */)) {
-                memset(&ipaddr, 0, sizeof(n2n_ip_subnet_t));
-                assign_one_ip_addr(comm, reg.dev_desc, &ipaddr);
-                ack.dev_addr.net_addr = ipaddr.net_addr;
-                ack.dev_addr.net_bitlen = ipaddr.net_bitlen;
+            if(comm->is_federation != IS_FEDERATION) { /* alternatively, do not send zero tap ip address in federation REGISTER_SUPER */
+                if((reg.dev_addr.net_addr == 0) || (reg.dev_addr.net_addr == 0xFFFFFFFF) || (reg.dev_addr.net_bitlen == 0) ||
+                   ((reg.dev_addr.net_addr & 0xFFFF0000) == 0xA9FE0000 /* 169.254.0.0 */)) {
+                    memset(&ipaddr, 0, sizeof(n2n_ip_subnet_t));
+                    assign_one_ip_addr(comm, reg.dev_desc, &ipaddr);
+                    ack.dev_addr.net_addr = ipaddr.net_addr;
+                    ack.dev_addr.net_bitlen = ipaddr.net_bitlen;
+                }
             }
 
             ack.lifetime = reg_lifetime(sss);
