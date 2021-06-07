@@ -1676,11 +1676,13 @@ static int process_udp (n2n_sn_t * sss,
                        sock_to_cstr(sockbuf, &(ack.sock)));
 
             ret_value = update_edge_no_change;
-            if(cmn.flags & N2N_FLAGS_SOCKET) {
-                ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), SN_ADD_SKIP, now);
-            } else {
-                // do not add in case of null mac (edge asking for ip address)
-                ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), is_null_mac(reg.edgeMac) ? SN_ADD_SKIP : SN_ADD, now);
+            if(comm->is_federation != IS_FEDERATION) { /* REVISIT: auth among supernodes is not implemented yet */
+                if(cmn.flags & N2N_FLAGS_SOCKET) {
+                    ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), SN_ADD_SKIP, now);
+                } else {
+                    // do not add in case of null mac (edge asking for ip address)
+                    ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), is_null_mac(reg.edgeMac) ? SN_ADD_SKIP : SN_ADD, now);
+                }
             }
 
             if(ret_value == update_edge_auth_fail) {
@@ -2287,8 +2289,6 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                             // reset, await new prepended length
                             conn->expected = sizeof(uint16_t);
                             conn->position = 0;
-
-
                         }
                     }
                 }
