@@ -1641,6 +1641,7 @@ static int process_udp (n2n_sn_t * sss,
             if(comm->is_federation == IS_FEDERATION) {
                 skip_add = SN_ADD;
                 p = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(ack.sock), reg.edgeMac, &skip_add);
+                p->last_seen = now;
                 // communication with other supernodes happens via standard udp port
                 p->socket_fd = sss->sock;
             }
