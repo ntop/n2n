@@ -318,36 +318,47 @@ void *resolve_thread (void *p) {
 #ifdef HAVE_PTHREAD
     n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
-    int sleep_time = N2N_RESOLVE_INTERVAL / 10; /* initially shorter sleep */
+    time_t                  rep_time = N2N_RESOLVE_INTERVAL / 10;
+    time_t                  now;
 
     while(1) {
-        sleep(sleep_time);
+        sleep(N2N_RESOLVE_INTERVAL / 60); /* wake up in-between to check for signaled requests */
+
+        // what's the time?
+        now = time(NULL);
 
         // lock access
         pthread_mutex_lock(&param->access);
 
-        HASH_ITER(hh, param->list, entry, tmp_entry) {
-            // resolve
-            entry->error_code = supernode2sock(&entry->sock, entry->org_ip);
-            // if socket changed and no error
-            if(!sock_equal(&entry->sock, entry->org_sock)
-              && (!entry->error_code)) {
-                // flag the change
-                param->changed = 1;
+        // is it time to resolve yet?
+        if(((param->request)) || ((now - param->last_resolved) > rep_time)) {
+            HASH_ITER(hh, param->list, entry, tmp_entry) {
+                // resolve
+                entry->error_code = supernode2sock(&entry->sock, entry->org_ip);
+                // if socket changed and no error
+                if(!sock_equal(&entry->sock, entry->org_sock)
+                  && (!entry->error_code)) {
+                    // flag the change
+                    param->changed = 1;
+               }
+            }
+            param->last_resolved = now;
+
+            // any request fulfilled
+            param->request = 0;
+
+            // determine next resolver repetition (shorter time if resolver errors occured)
+            rep_time = N2N_RESOLVE_INTERVAL;
+            HASH_ITER(hh, param->list, entry, tmp_entry) {
+                if(entry->error_code) {
+                    rep_time = N2N_RESOLVE_INTERVAL / 10;
+                    break;
+                }
             }
         }
 
         // unlock access
         pthread_mutex_unlock(&param->access);
-
-        // determine next sleep duration (shorter if resolver errors occured)
-        sleep_time = N2N_RESOLVE_INTERVAL;
-        HASH_ITER(hh, param->list, entry, tmp_entry) {
-            if(entry->error_code) {
-                sleep_time = N2N_RESOLVE_INTERVAL / 10;
-                break;
-            }
-        }
     }
 #endif
 }
@@ -376,6 +387,7 @@ int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn
                     traceEvent(TRACE_WARNING, "resolve_create_thread was unable to add list entry for supernode '%s'", sn->ip_addr);
             }
         }
+        (*param)->check_interval = N2N_RESOLVE_CHECK_INTERVAL;
     } else {
         traceEvent(TRACE_WARNING, "resolve_create_thread was unable to create list of supernodes");
         return -1;
@@ -404,13 +416,18 @@ void resolve_cancel_thread (n2n_resolve_parameter_t *param) {
 }
 
 
-void resolve_check (n2n_resolve_parameter_t *param, time_t now) {
+uint8_t resolve_check (n2n_resolve_parameter_t *param, uint8_t requires_resolution, time_t now) {
 
+    uint8_t ret = requires_resolution; /* if trylock fails, it still requires resolution */
 #ifdef HAVE_PTHREAD
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
     n2n_sock_str_t sock_buf;
 
-    if(now - param->last_checked > N2N_RESOLVE_CHECK_INTERVAL) {
+    // check_interval and last_check do not need to be guarded by the mutex because
+    // their values get changed and evaluated only here
+
+
+    if((now - param->last_checked > param->check_interval) || (requires_resolution)) {
         // try to lock access
         if(pthread_mutex_trylock(&param->access) == 0) {
             // any changes?
@@ -421,17 +438,32 @@ void resolve_check (n2n_resolve_parameter_t *param, time_t now) {
                 // sockets do not get overwritten in case of error in resolve_thread) from list to supernode list
                 HASH_ITER(hh, param->list, entry, tmp_entry) {
                     memcpy(entry->org_sock, &entry->sock, sizeof(n2n_sock_t));
-                    traceEvent(TRACE_DEBUG, "resolve_check renews ip address of supernode '%s' to %s",
-                                             entry->org_ip, sock_to_cstr(sock_buf, &(entry->sock)));
+                    traceEvent(TRACE_INFO, "resolve_check renews ip address of supernode '%s' to %s",
+                                           entry->org_ip, sock_to_cstr(sock_buf, &(entry->sock)));
                 }
             }
+
+            // let the resolver thread know eventual difficulties in reaching the supernode
+            if(requires_resolution) {
+                param->request = 1;
+                ret = 0;
+            }
+
             param->last_checked = now;
+
+            // next appointment
+            if(param->request)
+                // earlier if resolver still working on fulfilling a request
+                param->check_interval = N2N_RESOLVE_CHECK_INTERVAL / 10;
+            else
+                param->check_interval = N2N_RESOLVE_CHECK_INTERVAL;
 
             // unlock access
             pthread_mutex_unlock(&param->access);
         }
     }
 #endif
+    return ret;
 }
 
 
