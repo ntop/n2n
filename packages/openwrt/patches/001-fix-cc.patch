@@ -1,0 +1,11 @@
+--- a/configure.seed
++++ b/configure.seed
+@@ -13,8 +13,6 @@
+ GIT_RELEASE=${N2N_VERSION_SHORT}
+ fi
+ 
+-CC=gcc
+-AR=ar
+ N2N_LIBS=
+ 
+ AC_PROG_CC
