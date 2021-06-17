@@ -2265,10 +2265,11 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                                      conn->buffer + conn->position, conn->expected - conn->position, 0 /*flags*/,
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
 
-                    if((bread <= 0) && (errno)) {
-                        traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
+                    if(bread <= 0) {
+                        traceEvent(TRACE_INFO, "run_sn_loop closes tcp connection to '%s'", sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
+                        traceEvent(TRACE_DEBUG, "recvfrom() returns %d and sees errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
-                        traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+                        traceEvent(TRACE_DEBUG, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
                         close_tcp_connection(sss, conn);
                         continue;
@@ -2280,7 +2281,8 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                             // the prepended length has been read, preparing for the packet
                             conn->expected += be16toh(*(uint16_t*)(conn->buffer));
                             if(conn->expected > N2N_SN_PKTBUF_SIZE) {
-                                traceEvent(TRACE_ERROR, "too many bytes in tcp packet expected");
+                                traceEvent(TRACE_INFO, "run_sn_loop closes tcp connection to '%s'", sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
+                                traceEvent(TRACE_DEBUG, "too many bytes in tcp packet expected");
                                 close_tcp_connection(sss, conn);
                                 continue;
                             }
@@ -2322,8 +2324,8 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                             conn->expected = sizeof(uint16_t);
                             conn->position = 0;
                             HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
-                            traceEvent(TRACE_DEBUG, "run_sn_loop accepted incoming TCP connection from %s",
-                                                    sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
+                            traceEvent(TRACE_INFO, "run_sn_loop accepted incoming TCP connection from %s",
+                                                   sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                         }
                     }
                 } else {
@@ -2357,9 +2359,9 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
             if(((now - before) < wait_time.tv_sec) && (*keep_running)){
                 // this is no real timeout, something went wrong with one of the tcp connections (probably)
                 // close them all, edges will re-open if they detect closure
+                traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming issue with tcp connection, closing them all");
                 HASH_ITER(hh, sss->tcp_connections, conn, tmp_conn)
                     close_tcp_connection(sss, conn);
-                traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming issue with tcp connection, closing them all");
             } else
                 traceEvent(TRACE_DEBUG, "timeout");
         }
