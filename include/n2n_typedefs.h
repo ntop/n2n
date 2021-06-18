@@ -805,6 +805,7 @@ typedef struct n2n_sn {
     struct sn_community                    *federation;
     n2n_private_public_key_t               private_key;       /* private federation key derived from federation name */
     n2n_auth_t                             auth;
+    uint8_t                                override_spoofing_protection; /* set if overriding MAC/IP spoofing protection (cli option '-M') */
     n2n_resolve_parameter_t                *resolve_parameter;/*Pointer to name resolver's parameter block */
 } n2n_sn_t;
 

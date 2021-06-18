@@ -284,6 +284,7 @@ static void help (int level) {
 #ifdef SN_MANUAL_MAC
                "[-m <mac address>] "
 #endif
+               "[-M] "
           "\n\n overlay network           "
                "[-c <community list file>] "
             "\n configuration             "
@@ -300,10 +301,12 @@ static void help (int level) {
                "[-g <numerical group id>]"
 #endif
           "\n\n meaning of the            "
+                "[-M]  disable MAC and IP address spoofing protection"
+            "\n flag options              "
 #if defined(N2N_HAVE_DAEMON)
                 "[-f]  do not fork but run in foreground"
+            "\n                           "
 #endif
-            "\n flag options              "
                 "[-v]  make more verbose, repeat as required"
             "\n                           "
           "\n technically, all parameters are optional, but the supernode executable"
@@ -330,6 +333,8 @@ static void help (int level) {
         printf(" -m <mac>          | fixed MAC address for the supernode, e.g.\n"
                "                   | '-m 10:20:30:40:50:60', random otherwise\n");
 #endif
+        printf(" -M                | disable MAC and IP address spoofing protection for all\n"
+               "                   | non-username-password-authenticating communities\n");
         printf ("\n");
         printf (" TAP DEVICE AND OVERLAY NETWORK CONFIGURATION\n");
         printf (" --------------------------------------------\n\n");
@@ -497,6 +502,9 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             break;
         }
 #endif
+        case 'M': /* override spoofing protection */
+            sss->override_spoofing_protection = 1;
+            break;
         case 'c': /* community file */
             sss->community_file = calloc(1, strlen(_optarg) + 1);
             if(sss->community_file)
@@ -549,7 +557,7 @@ static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
     u_char c;
 
     while((c = getopt_long(argc, argv,
-                           "p:l:t:a:c:F:vh"
+                           "p:l:t:a:c:F:vhM"
 #ifdef SN_MANUAL_MAC
                            "m:"
 #endif
@@ -778,6 +786,10 @@ int main (int argc, char * const argv[]) {
         traceEvent(TRACE_WARNING, "Using default federation name. FOR TESTING ONLY, usage of a custom federation name (-F) is highly recommended!");
     }
 
+    if(sss_node.override_spoofing_protection) {
+        traceEvent(TRACE_WARNING, "Disabled MAC and IP address spoofing protection. FOR TESTING ONLY, usage of user-password authentication (-I, -J, -P) recommended instead!");
+    }
+
     // generate shared secrets for user authentication; can be done only after
     // federation name is known (-F) and community list completely read (-c)
     traceEvent(TRACE_INFO, "started shared secrets calculation for edge authentication");
@@ -795,7 +807,6 @@ int main (int argc, char * const argv[]) {
         }
     }
     traceEvent(TRACE_NORMAL, "calculated shared secrets for edge authentication");
-
 
     traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
