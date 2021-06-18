@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=n2n
 PKG_SOURCE_URL:=https://github.com/ntop/n2n.git
-PKG_SOURCE_VERSION:=701befe6df8eaa43e94384a234fa962fd74ff70e
+PKG_SOURCE_VERSION:=54f39e9eb073883f433710ff683ea0aa212e0215
 PKG_VERSION:=2.9.0_dev_git$(PKG_SOURCE_VERSION)
 PKG_RELEASE:=1
 
@@ -29,6 +29,7 @@ define Package/n2n/Default
   TITLE:=N2N Peer-to-peer VPN
   URL:=http://www.ntop.org/n2n
   SUBMENU:=VPN
+  DEPENDS+=+libcap
 endef
 
 define Package/n2n-edge
