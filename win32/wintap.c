@@ -253,6 +253,30 @@ int open_wintap(struct tuntap_dev *device,
 
   /* ************************************** */
 
+  /* interface index, required for routing */
+
+  ULONG buffer_len = 0;
+  IP_ADAPTER_INFO *buffer;
+
+  // get required buffer size and allocate buffer
+  GetAdaptersInfo(NULL, &buffer_len);
+  buffer = malloc(buffer_len);
+
+  // find device by name and get its index
+  if(buffer && !GetAdaptersInfo(buffer, &buffer_len)) {
+    IP_ADAPTER_INFO *i;
+    for(i = buffer; i != NULL; i = i->Next) {
+      if(!strcmp(device->device_name, i->AdapterName)) {
+        device->if_idx = i->Index;
+        break;
+      }
+    }
+  }
+
+  free(buffer);
+
+  /* ************************************** */
+
   if(device_mac[0])
     set_interface_mac(device, device_mac);
 

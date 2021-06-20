@@ -24,7 +24,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <winioctl.h>
-
+#include <iptypes.h>
 
 #include "wintap.h"
 
@@ -70,6 +70,7 @@ typedef struct tuntap_dev {
 	HANDLE          device_handle;
 	char            *device_name;
 	char            *ifName;
+        int             if_idx;
 	OVERLAPPED      overlap_read, overlap_write;
 	n2n_mac_t       mac_addr;
 	uint32_t        ip_addr;

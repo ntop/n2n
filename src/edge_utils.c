@@ -41,7 +41,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
                                             const n2n_sock_t *peer);
 
 static int edge_init_sockets (n2n_edge_t *eee);
-static int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
+int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
 static void edge_cleanup_routes (n2n_edge_t *eee);
 
 static void check_known_peer_sock_change (n2n_edge_t *eee,
@@ -414,11 +414,6 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
 #endif
     if(edge_init_sockets(eee) < 0) {
         traceEvent(TRACE_ERROR, "socket setup failed");
-        goto edge_init_error;
-    }
-
-    if(edge_init_routes(eee, eee->conf.routes, eee->conf.num_routes) < 0) {
-        traceEvent(TRACE_ERROR, "routes setup failed");
         goto edge_init_error;
     }
 
@@ -3391,6 +3386,7 @@ static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t 
     struct in_addr net_addr, gateway;
     char c_net_addr[32];
     char c_gateway[32];
+    char c_interface[32];
     char cmd[256];
 
     for(i = 0; i < num_routes; i++) {
@@ -3404,12 +3400,12 @@ static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t 
             memcpy(&gateway, &(route->gateway), sizeof(gateway));
             _snprintf(c_net_addr, sizeof(c_net_addr), inet_ntoa(net_addr));
             _snprintf(c_gateway, sizeof(c_gateway), inet_ntoa(gateway));
-            _snprintf(cmd, sizeof(cmd), "route add %s/%d %s > nul", c_net_addr, route->net_bitlen, c_gateway);
+            _snprintf(c_interface, sizeof(c_interface), "if %u", eee->device.if_idx);
+            _snprintf(cmd, sizeof(cmd), "route add %s/%d %s %s > nul", c_net_addr, route->net_bitlen, c_gateway, c_interface);
             traceEvent(TRACE_NORMAL, "ROUTE CMD = '%s'\n", cmd);
             system(cmd);
         }
     }
-
 #endif // WIN32
 
     return (0);
@@ -3420,7 +3416,7 @@ static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t 
 /* Add the user-provided routes to the linux routing table. Network routes
  * are bound to the n2n TAP device, so they are automatically removed when
  * the TAP device is destroyed. */
-static int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
+int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
 #ifdef __linux__
     return    edge_init_routes_linux(eee, routes, num_routes);
 #endif
