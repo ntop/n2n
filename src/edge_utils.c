@@ -3380,13 +3380,14 @@ static int edge_init_routes_linux (n2n_edge_t *eee, n2n_route_t *routes, uint16_
 
 /* ************************************** */
 
-static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
+static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes, uint8_t verb /* 0 = add, 1 = delete */) {
 #ifdef WIN32
     int i;
     struct in_addr net_addr, gateway;
     char c_net_addr[32];
     char c_gateway[32];
     char c_interface[32];
+    char c_verb[32];
     char cmd[256];
 
     for(i = 0; i < num_routes; i++) {
@@ -3401,7 +3402,8 @@ static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t 
             _snprintf(c_net_addr, sizeof(c_net_addr), inet_ntoa(net_addr));
             _snprintf(c_gateway, sizeof(c_gateway), inet_ntoa(gateway));
             _snprintf(c_interface, sizeof(c_interface), "if %u", eee->device.if_idx);
-            _snprintf(cmd, sizeof(cmd), "route add %s/%d %s %s > nul", c_net_addr, route->net_bitlen, c_gateway, c_interface);
+            _snprintf(c_verb, sizeof(c_verb), verb ? "delete" : "add");
+            _snprintf(cmd, sizeof(cmd), "route %s %s/%d %s %s > nul", c_verb, c_net_addr, route->net_bitlen, c_gateway, c_interface);
             traceEvent(TRACE_NORMAL, "ROUTE CMD = '%s'\n", cmd);
             system(cmd);
         }
@@ -3422,7 +3424,7 @@ int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes)
 #endif
 
 #ifdef WIN32
-    return    edge_init_routes_win(eee, routes, num_routes);
+    return    edge_init_routes_win(eee, routes, num_routes, 0 /* add */);
 #endif
     return 0;
 }
@@ -3437,6 +3439,11 @@ static void edge_cleanup_routes (n2n_edge_t *eee) {
         free(eee->sn_route_to_clean);
     }
 #endif
+
+#ifdef WIN32
+    edge_init_routes_win(eee, eee->conf.routes, eee->conf.num_routes, 1 /* del */);
+#endif
+
 }
 
 /* ************************************** */
