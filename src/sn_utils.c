@@ -533,6 +533,15 @@ static int auth_edge (const n2n_auth_t *present, const n2n_auth_t *presented, n2
 
     sn_user_t *user = NULL;
 
+    if(present->scheme == n2n_auth_none) {
+        // n2n_auth_none scheme (set at supernode if cli option '-M')
+        // if required, zero_token answer (not for NAK)
+        if(answer)
+            memset(answer, 0, sizeof(n2n_auth_t));
+        // 0 == (always) successful
+        return 0;
+    }
+
     if((present->scheme == n2n_auth_simple_id) && (presented->scheme == n2n_auth_simple_id)) {
         // n2n_auth_simple_id scheme: if required, zero_token answer (not for NAK)
         if(answer)
@@ -598,6 +607,8 @@ static int handle_remote_auth (n2n_sn_t *sss, const n2n_auth_t *remote_auth,
     }
 
     switch(remote_auth->scheme) {
+        // we do not handle n2n_auth_none because the edge always edge always uses either id or user/password
+        // auth_none is sn-internal only (skipping MAC/IP address spoofing protection)
         case n2n_auth_simple_id:
             // zero_token answer
             memset(answer_auth, 0, sizeof(n2n_auth_t));
@@ -682,7 +693,12 @@ static int update_edge (n2n_sn_t *sss,
                 memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
                 scan->last_valid_time_stamp = initial_time_stamp();
 
+                // store the submitted auth token
                 memcpy(&(scan->auth), &(reg->auth), sizeof(n2n_auth_t));
+                // manually set to type 'auth_none' if cli option disables MAC/IP address spoofing protection
+                // for id based auth communities. This will be obsolete when handling public keys only (v4.0?)
+                if((reg->auth.scheme == n2n_auth_simple_id) && (sss->override_spoofing_protection))
+                    scan->auth.scheme = n2n_auth_none;
 
                 HASH_ADD_PEER(comm->edges, scan);
 
