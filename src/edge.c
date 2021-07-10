@@ -52,6 +52,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        time_t now);
 int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
 int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
+int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
 
 /* ***************************************************** */
 
@@ -1137,7 +1138,7 @@ int main (int argc, char* argv[]) {
             }
         }
 
-        if(runlevel == 4) { /* configure the TUNTAP device */
+        if(runlevel == 4) { /* configure the TUNTAP device, including routes */
             if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
                            eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
                            eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu
@@ -1151,6 +1152,11 @@ int main (int argc, char* argv[]) {
                                      eee->tuntap_priv_conf.ip_addr,
                                      eee->tuntap_priv_conf.netmask,
                                      macaddr_str(mac_buf, eee->device.mac_addr));
+            // routes
+            if(edge_init_routes(eee, eee->conf.routes, eee->conf.num_routes) < 0) {
+                traceEvent(TRACE_ERROR, "routes setup failed");
+                exit(1);
+            }
             runlevel = 5;
             // no more answers required
             seek_answer = 0;
