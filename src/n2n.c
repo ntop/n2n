@@ -292,6 +292,7 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
                     traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode IPv4 address for %s", supernode_host);
                     rv = -1;
                 }
+                freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
             } else {
                 traceEvent(TRACE_WARNING, "supernode2sock fails to resolve supernode host %s, %d: %s", supernode_host, nameerr, gai_strerror(nameerr));
                 rv = -2;
@@ -306,7 +307,6 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
         rv = -4;
     }
 
-    freeaddrinfo(ainfo); /* free everything allocated by getaddrinfo(). */
     ainfo = NULL;
 
     return rv;
