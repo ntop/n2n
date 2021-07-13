@@ -3507,6 +3507,10 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
     sock = (n2n_sock_t*)calloc(1,sizeof(n2n_sock_t));
     rv = supernode2sock(sock, ip_and_port);
 
+    while(rv == -2) {
+        rv = supernode2sock(sock, ip_and_port);
+    }
+
     if(rv < -2) { /* we accept resolver failure as it might resolve later */
         traceEvent(TRACE_WARNING, "Invalid supernode parameter.");
         free(sock);
