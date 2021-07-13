@@ -934,10 +934,19 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
 
         if((sent <= 0) && (errno)) {
             char * c = strerror(errno);
-            traceEvent(TRACE_ERROR, "sendto_fd sendto failed (%d) %s", errno, c);
+            // downgrade to TRACE_DEBUG in case of custom AF_INVALID, i.e. supernode not resolved yet
+            if(errno == EAFNOSUPPORT /* 93 */) {
+                traceEvent(TRACE_DEBUG, "sendto_fd sendto failed (%d) %s", errno, c);
 #ifdef WIN32
-            traceEvent(TRACE_ERROR, "sendto_fd WSAGetLastError(): %u", WSAGetLastError());
+                traceEvent(TRACE_DEBUG, "sendto_fd WSAGetLastError(): %u", WSAGetLastError());
 #endif
+            } else {
+                traceEvent(TRACE_ERROR, "sendto_fd sendto failed (%d) %s", errno, c);
+#ifdef WIN32
+                traceEvent(TRACE_ERROR, "sendto_fd WSAGetLastError(): %u", WSAGetLastError());
+#endif
+            }
+
             if(eee->conf.connect_tcp) {
                 supernode_disconnect(eee);
                 eee->sn_wait = 1;
