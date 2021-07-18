@@ -1,8 +1,12 @@
-.TH supernode 1  "Jan 3, 2009" "revision 3679" "USER COMMANDS"
+.TH supernode 1  "Jul 16, 2021" "version 3" "USER COMMANDS"
 .SH NAME
 supernode \- n2n supernode daemon
 .SH SYNOPSIS
-.B supernode \-l <port> [\-v]
+.B supernode
+<config file>
+.br
+.B supernode
+[OPTION]...
 .SH DESCRIPTION
 N2N is a peer-to-peer VPN system. Supernode is a node introduction registry,
 broadcast conduit and packet relay node for the n2n system. On startup supernode
@@ -16,19 +20,65 @@ Supernode can service a number of n2n communities concurrently. Traffic does not
 cross between communities.
 .PP
 All logging goes to stdout.
-.SH OPTIONS
+.PP
+The config file is similar to the command line, with one option per line.
+Lines starting with a "#" are ignored.
+An equal sign ('=') should be used between key and value. Example: -p=7777
+.SH OPTIONS FOR THE UNDERLYING NETWORK CONNECTION
 .TP
-\-l <port>
-listen on the given UDP port
+\fB\-p \fR<\fIlocal port\fR>
+listen on this fixed local UDP port, defaults to 7654
+.TP
+\fB\-F \fR<\fIfed name\fR>
+name of the supernode's federation, defaults to '*Federation'
+.TP
+\fB\-l \fR<\fIhost:port\fR>
+ip address or name, and port of known supernode
+.TP
+\fB\-m \fR<\fImac address\fR>
+fixed MAC address for the supernode, e.g.
+ '-m 10:20:30:40:50:60', random otherwise
+.TP
+\fB\-M\fR
+disable MAC and IP address spoofing protection for all
+non-username-password-authenticating communities
+.SH TAP DEVICE AND OVERLAY NETWORK CONFIGURATION
+.TP
+\fB\-c \fR<\fIpath\fR>
+file containing the allowed communities
+.TP
+\fB\-a \fR<\fInet-net/n\fR>
+subnet range for auto ip address service,
+.br
+e.g.  '-a 192.168.0.0-192.168.255.0/24',
+.br
+defaults to '10.128.255.0-10.255.255.0/24'
+.SH LOCAL OPTIONS
+.TP
+\-f
+disable daemon mode (UNIX) and run in foreground.
+.TP
+\fB\-t \fR<\fIport\fR>
+management UDP port, for multiple supernodes on a machine, defaults to 5645
 .TP
 \-v
 use verbose logging
 .TP
-\-f
-disable daemon mode (UNIX) and run in foreground.
+\fB\-u \fR<\fIUID\fR>
+numeric user ID to use when privileges are dropped
+.TP
+\fB\-g \fR<\fIGID\fR>
+numeric group ID to use when privileges are dropped
+.TP
+\fB-h\fR
+shows a quick reference including all available options
+.TP
+\fB--help\fR
+shows detailed parameter description
+
 .SH EXAMPLES
 .TP
-.B supernode -l 7654 -v
+.B supernode -p 7654 -v
 Start supernode listening on UDP port 7654 with verbose output.
 .PP
 .SH RESTART
