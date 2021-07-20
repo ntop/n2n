@@ -1559,7 +1559,6 @@ static int process_udp (n2n_sn_t * sss,
             uint8_t                                ackbuf[N2N_SN_PKTBUF_SIZE];
             uint8_t                                payload_buf[REG_SUPER_ACK_PAYLOAD_SPACE];
             n2n_REGISTER_SUPER_ACK_payload_t       *payload;
-            uint8_t                                tmp_hash_buf[16] = {0};
             size_t                                 encx = 0;
             struct sn_community_regular_expression *re, *tmp_re;
             struct peer_info                       *peer, *tmp_peer, *p;
