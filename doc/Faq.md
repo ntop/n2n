@@ -26,11 +26,7 @@ You can request the current status by just sending a new line, i.e. pressing [EN
 
 ### Is there support for multiple supernodes?
 
-As of now, one additional supernode is supported. The additional supernode is handled in a backup-fashion: A reserve-supernode can be started if one fails. The reserve-supernode just has to be known to the edges beforehand (simply by an additional `-l <ip:port>` at the edge).
-
-Actively using several supernodes in parallel will have the network fall apart (partitioned – some edges connected to one supernode, some to another).
-
-Considering these known limitations, current discussions however seem to include thoughts on increasing supernode reliability as well as fall-back mechanisms and might even shift more towards a full p2p-approach which then would not require a supernode at all, every node could be equal highly increasing network resilience.
+Yes, there is. Please [read](https://github.com/ntop/n2n/blob/dev/doc/Federation.md) about how several supernodes can form a Federation to increase network resilience.
 
 
 ### Can a supernode listen on multiple ports?
