@@ -1240,6 +1240,8 @@ static int process_udp (n2n_sn_t * sss,
     macstr_t            mac_buf2;
     n2n_sock_str_t      sockbuf;
     char                buf[32];
+    uint8_t             hash_buf[16] = {0}; /* always size of 16 (max) despite the actual value of N2N_REG_SUP_HASH_CHECK_LEN (<= 16) */
+
     struct sn_community *comm, *tmp;
     uint32_t            header_enc = 0; /* 1 == encrypted by static key, 2 == encrypted by dynamic key */
     uint64_t            stamp;
@@ -1289,17 +1291,20 @@ static int process_udp (n2n_sn_t * sss,
             if(comm->header_encryption == HEADER_ENCRYPTION_NONE) {
                 continue;
             }
+
             // match with static (1) or dynamic (2) ctx?
-            header_enc = packet_header_decrypt(udp_buf, udp_size,
-                                               comm->community,
-                                               comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
-                                               &stamp);
-            if(!header_enc)
-                if(packet_header_decrypt(udp_buf, udp_size,
-                                         comm->community,
-                                         comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
-                                         &stamp))
+            // check dynamic first as it is identical to static in normal header encryption mode
+            if(packet_header_decrypt(udp_buf, udp_size,
+                                     comm->community,
+                                     comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
+                                     &stamp)) {
                     header_enc = 2;
+            }
+            if(!header_enc) {
+                pearson_hash_128(hash_buf, udp_buf, max(0, (int)udp_size - (int)N2N_REG_SUP_HASH_CHECK_LEN));
+                header_enc = packet_header_decrypt(udp_buf, max(0, (int)udp_size - (int)N2N_REG_SUP_HASH_CHECK_LEN), comm->community,
+                                                   comm->header_encryption_ctx_static, comm->header_iv_ctx_static, &stamp);
+            }
 
             if(header_enc) {
                 // time stamp verification follows in the packet specific section as it requires to determine the
@@ -1338,6 +1343,7 @@ static int process_udp (n2n_sn_t * sss,
 
     rem = udp_size; /* Counts down bytes of packet to protect against buffer overruns. */
     idx = 0; /* marches through packet header as parts are decoded. */
+
     if(decode_common(&cmn, udp_buf, &rem, &idx) < 0) {
         traceEvent(TRACE_ERROR, "Failed to decode common section");
         return -1; /* failed to decode packet */
@@ -1553,6 +1559,7 @@ static int process_udp (n2n_sn_t * sss,
             uint8_t                                ackbuf[N2N_SN_PKTBUF_SIZE];
             uint8_t                                payload_buf[REG_SUPER_ACK_PAYLOAD_SPACE];
             n2n_REGISTER_SUPER_ACK_payload_t       *payload;
+            uint8_t                                tmp_hash_buf[16] = {0};
             size_t                                 encx = 0;
             struct sn_community_regular_expression *re, *tmp_re;
             struct peer_info                       *peer, *tmp_peer, *p;
@@ -1563,6 +1570,7 @@ static int process_udp (n2n_sn_t * sss,
             int                                    num = 0;
             int                                    skip;
             int                                    ret_value;
+            sn_user_t                              *user = NULL;
 
             memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
             memset(&nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
@@ -1629,6 +1637,22 @@ static int process_udp (n2n_sn_t * sss,
                 traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
                                        (char*)cmn.community);
                 return -1;
+            }
+
+            // hash check (user/pw auth only)
+            if(comm->allowed_users) {
+                // check if submitted public key is in list of allowed users
+                HASH_FIND(hh, comm->allowed_users, &reg.auth.token, sizeof(n2n_private_public_key_t), user);
+                if(user) {
+                    speck_128_encrypt(hash_buf, (speck_context_t*)user->shared_secret_ctx);
+                    if(memcmp(hash_buf, udp_buf + udp_size - N2N_REG_SUP_HASH_CHECK_LEN /* length has already been checked */, N2N_REG_SUP_HASH_CHECK_LEN)) {
+                        traceEvent(TRACE_INFO, "Rx REGISTER_SUPER with wrong hash.");
+                        return -1;
+                    }
+                } else {
+                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER from unknown user.");
+                    // continue and let auth check do the rest (otherwise, no NAK is sent)
+               }
             }
 
             cmn2.ttl = N2N_DEFAULT_TTL;
@@ -1715,6 +1739,10 @@ static int process_udp (n2n_sn_t * sss,
                     packet_header_encrypt(ackbuf, encx, encx,
                                           comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
                                           time_stamp());
+                    // if user-password-auth
+                    if(comm->allowed_users) {
+                        encode_buf(ackbuf, &encx, hash_buf /* no matter what content */, N2N_REG_SUP_HASH_CHECK_LEN);
+                    }
                 }
                 sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, ackbuf, encx);
 
@@ -1753,6 +1781,14 @@ static int process_udp (n2n_sn_t * sss,
                         packet_header_encrypt(ackbuf, encx, encx,
                                               comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
                                               time_stamp());
+                       // if user-password-auth
+                       if(comm->allowed_users) {
+                           // append an encrypted packet hash
+                           pearson_hash_128(hash_buf, ackbuf, encx);
+                           // same 'user' as above
+                           speck_128_encrypt(hash_buf, (speck_context_t*)user->shared_secret_ctx);
+                           encode_buf(ackbuf, &encx, hash_buf, N2N_REG_SUP_HASH_CHECK_LEN);
+                        }
                     }
 
                     sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, ackbuf, encx);
@@ -1953,6 +1989,10 @@ static int process_udp (n2n_sn_t * sss,
                         packet_header_encrypt(nakbuf, encx, encx,
                                               comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
                                               time_stamp());
+                        // if user-password-auth
+                        if(comm->allowed_users) {
+                            encode_buf(nakbuf, &encx, hash_buf /* no matter what content */, N2N_REG_SUP_HASH_CHECK_LEN);
+                        }
                     }
 
                     sendto_peer(sss, peer, nakbuf, encx);
