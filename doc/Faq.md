@@ -10,12 +10,12 @@ Please think of the community-name as password and start the supernode with the 
 
 If you additionally want to prevent open transmission of your secret community name via the network, **all** edge nodes should use `-H` command line option for header encryption.
 
-Also, please see the community.list file for advanced use of that file.
+Also, please see the `community.list` file coming with n2n for advanced use of that file.
 
 Beyond this access barrier you may want to use payload encryption `-A_` at the edges. Only the edges – not the supernode – are able to decipher the payload data. So, even if anyone would be able to break the access barrier to the supernode, the payload remains protected by the payload crypto, see [this document](https://github.com/ntop/n2n/blob/dev/doc/Crypto.md) for details.
 
 
-### Can I get a list of connected edge node and their community and source IP from the supernode?
+### Can I get a list of connected edge nodes and their community and source IP address from the supernode?
 
 The supernode provides basic information via its localhost udp management port. It defaults to 5645 and can be changed using supernode's `-t` command line option.
 
@@ -61,7 +61,7 @@ The edge's management port defaults to 5644 and can be changed using edge's `-t`
 answers every new line, i.e. pressing [ENTER] key, with current information. The edge even understands some simple commands, try `help`.
 
 
-### The edge surprisingly stops – throwing an "Authentication error. MAC or IP address already in use or not released yet by supernode" message. What is wrong?
+### The edge repeatedly throws an "Authentication error. MAC or IP address already in use or not released yet by supernode" message. What is wrong?
 
 The edge encountered n2n's protection against spoofing. It prevents that one edge's identity, MAC and IP address, can be impersonated by some other while the original one is still online, see some [details](Authentication.md). Mostly, there are two situations which can trigger this:
 
