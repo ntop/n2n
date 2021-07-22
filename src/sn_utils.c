@@ -738,7 +738,7 @@ static int update_edge (n2n_sn_t *sss,
         }
     }
 
-    if(scan != NULL) {
+    if((scan != NULL) && (ret != update_edge_auth_fail)) {
         scan->last_seen = now;
     }
 
