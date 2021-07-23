@@ -254,7 +254,8 @@ typedef enum n2n_pc {
     n2n_register_super_nak = 8,     /* NAK from supernode to edge - registration refused */
     n2n_federation =         9,     /* Not used by edge */
     n2n_peer_info =          10,    /* Send info on a peer from sn to edge */
-    n2n_query_peer =         11     /* ask supernode for info on a peer */
+    n2n_query_peer =         11,    /* ask supernode for info on a peer */
+    n2n_re_register_super =  12     /* ask edge to re-register with supernode */
 } n2n_pc_t;
 
 #define N2N_FLAGS_OPTIONS                0x0080

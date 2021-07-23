@@ -2722,6 +2722,30 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 break;
             }
 
+            case MSG_TYPE_RE_REGISTER_SUPER: {
+
+                if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                    if(!find_peer_time_stamp_and_verify(eee, sn, null_mac, stamp, TIME_STAMP_NO_JITTER)) {
+                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped RE_REGISTER due to time stamp error.");
+                        return;
+                    }
+                }
+
+                // only accept in user/pw mode for immediate re-registration because the new
+                // key is required for continous traffic flow, in other modes edge will realize
+                // changes with regular recurring REGISTER_SUPER
+                if(!eee->conf.shared_secret) {
+                    traceEvent(TRACE_DEBUG, "readFromIPScoket dropped RE_REGISTER_SUPER as not in user/pw auth mode.");
+                    return;
+                }
+
+                traceEvent(TRACE_INFO, "Rx RE_REGISTER_SUPER");
+
+                eee->sn_wait = 1;
+
+                break;
+            }
+
             default:
                 /* Not a known message type */
                 traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
