@@ -25,226 +25,11 @@
 
 static n2n_sn_t sss_node;
 
+void close_tcp_connection (n2n_sn_t *sss, n2n_tcp_connection_t *conn);
+void calculate_shared_secrets (n2n_sn_t *sss);
+int load_allowed_sn_community (n2n_sn_t *sss);
 int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
 
-/** Load the list of allowed communities. Existing/previous ones will be removed
- *
- */
-static int load_allowed_sn_community (n2n_sn_t *sss) {
-
-    char buffer[4096], *line, *cmn_str, net_str[20], format[20];
-
-    sn_user_t *user, *tmp_user;
-    n2n_desc_t username;
-    n2n_private_public_key_t public_key;
-    uint8_t ascii_public_key[(N2N_PRIVATE_PUBLIC_KEY_SIZE * 8 + 5) / 6 + 1];
-
-    dec_ip_str_t ip_str = {'\0'};
-    uint8_t bitlen;
-    in_addr_t net;
-    uint32_t mask;
-    FILE *fd = fopen(sss->community_file, "r");
-    struct sn_community *comm, *tmp_comm, *last_added_comm = NULL;
-    uint32_t num_communities = 0;
-    struct sn_community_regular_expression *re, *tmp_re;
-    uint32_t num_regex = 0;
-    int has_net;
-
-    if(fd == NULL) {
-        traceEvent(TRACE_WARNING, "File %s not found", sss->community_file);
-        return -1;
-    }
-
-    // remove communities (not: federation)
-    HASH_ITER(hh, sss->communities, comm, tmp_comm) {
-        if(comm->is_federation) {
-            continue;
-        }
-
-        // remove allowed users from community
-        HASH_ITER(hh, comm->allowed_users, user, tmp_user) {
-            free(user->shared_secret_ctx);
-            HASH_DEL(comm->allowed_users, user);
-            free(user);
-        }
-
-        // remove community
-        HASH_DEL(sss->communities, comm);
-        if(NULL != comm->header_encryption_ctx_static) {
-            // remove header encryption keys
-            free(comm->header_encryption_ctx_static);
-            free(comm->header_encryption_ctx_dynamic);
-        }
-        free(comm);
-    }
-
-    // remove all regular expressions for allowed communities
-    HASH_ITER(hh, sss->rules, re, tmp_re) {
-        HASH_DEL(sss->rules, re);
-        free(re);
-    }
-
-    // format definition for possible user-key entries
-    sprintf(format, "%c %%%ds %%%ds", N2N_USER_KEY_LINE_STARTER, N2N_DESC_SIZE - 1, sizeof(ascii_public_key)-1);
-
-    while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
-        int len = strlen(line);
-
-        if((len < 2) || line[0] == '#') {
-            continue;
-        }
-
-        len--;
-        while(len > 0) {
-            if((line[len] == '\n') || (line[len] == '\r')) {
-	        line[len] = '\0';
-	        len--;
-            } else {
-	        break;
-            }
-        }
-        // the loop above does not always determine correct 'len'
-        len = strlen(line);
-
-        // user-key line for edge authentication?
-        if(line[0] == N2N_USER_KEY_LINE_STARTER) { /* special first character */
-            if(sscanf(line, format, username, ascii_public_key) == 2) { /* correct format */
-                if(last_added_comm) { /* is there a valid community to add users to */
-                    user = (sn_user_t*)calloc(1, sizeof(sn_user_t));
-                    if(user) {
-                        // username
-                        memcpy(user->name, username, sizeof(username));
-                        // public key
-                        ascii_to_bin(public_key, ascii_public_key);
-                        memcpy(user->public_key, public_key, sizeof(public_key));
-                        // common shared secret will be calculated later
-                        // add to list
-                        HASH_ADD(hh, last_added_comm->allowed_users, public_key, sizeof(n2n_private_public_key_t), user);
-                        traceEvent(TRACE_INFO, "Added user '%s' with public key '%s' to community '%s'",
-                                               user->name, ascii_public_key, last_added_comm->community);
-                        // enable header encryption
-                        last_added_comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
-                        packet_header_setup_key(last_added_comm->community,
-                                                &(last_added_comm->header_encryption_ctx_static),
-                                                &(last_added_comm->header_encryption_ctx_dynamic),
-                                                &(last_added_comm->header_iv_ctx_static),
-                                                &(last_added_comm->header_iv_ctx_dynamic));
-                        // dynamic key setup
-                        last_added_comm->last_dynamic_key_time = time(NULL);
-                        calculate_dynamic_key(last_added_comm->dynamic_key,           /* destination */
-                                              last_added_comm->last_dynamic_key_time, /* time */
-                                              last_added_comm->community,             /* community name */
-                                              sss->federation->community);            /* federation name */
-                        packet_header_change_dynamic_key(last_added_comm->dynamic_key,
-                                             &(last_added_comm->header_encryption_ctx_dynamic),
-                                             &(last_added_comm->header_iv_ctx_dynamic));
-
-                    }
-                    continue;
-                }
-            }
-        }
-
-        // --- community name or regular expression
-
-        // cut off any IP sub-network upfront
-        cmn_str = (char*)calloc(len + 1, sizeof(char));
-        has_net = (sscanf(line, "%s %s", cmn_str, net_str) == 2);
-
-        // if it contains typical characters...
-        if(NULL != strpbrk(cmn_str, ".*+?[]\\")) {
-            // ...it is treated as regular expression
-            re = (struct sn_community_regular_expression*)calloc(1, sizeof(struct sn_community_regular_expression));
-            if(re) {
-                re->rule = re_compile(cmn_str);
-                HASH_ADD_PTR(sss->rules, rule, re);
-	        num_regex++;
-                traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", cmn_str);
-                free(cmn_str);
-                last_added_comm = NULL;
-                continue;
-            }
-        }
-
-        comm = (struct sn_community*)calloc(1,sizeof(struct sn_community));
-
-        if(comm != NULL) {
-            comm_init(comm, cmn_str);
-            /* loaded from file, this community is unpurgeable */
-            comm->purgeable = COMMUNITY_UNPURGEABLE;
-            /* we do not know if header encryption is used in this community,
-             * first packet will show. just in case, setup the key. */
-            comm->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
-            packet_header_setup_key(comm->community,
-                                    &(comm->header_encryption_ctx_static),
-                                    &(comm->header_encryption_ctx_dynamic),
-                                    &(comm->header_iv_ctx_static),
-                                    &(comm->header_iv_ctx_dynamic));
-            HASH_ADD_STR(sss->communities, community, comm);
-            last_added_comm = comm;
-
-            num_communities++;
-            traceEvent(TRACE_INFO, "Added allowed community '%s' [total: %u]",
-		       (char*)comm->community, num_communities);
-
-            // check for sub-network address
-            if(has_net) {
-                if(sscanf(net_str, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
-                    traceEvent(TRACE_WARNING, "Bad net/bit format '%s' for community '%c', ignoring. See comments inside community.list file.",
-		                           net_str, cmn_str);
-                    has_net = 0;
-                }
-                net = inet_addr(ip_str);
-                mask = bitlen2mask(bitlen);
-                if((net == (in_addr_t)(-1)) || (net == INADDR_NONE) || (net == INADDR_ANY)
-	                 || ((ntohl(net) & ~mask) != 0)) {
-                    traceEvent(TRACE_WARNING, "Bad network '%s/%u' in '%s' for community '%s', ignoring.",
-		                           ip_str, bitlen, net_str, cmn_str);
-                    has_net = 0;
-                }
-                if((bitlen > 30) || (bitlen == 0)) {
-                    traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s' for community '%s', ignoring.",
-		                           bitlen, net_str, cmn_str);
-                    has_net = 0;
-                }
-            }
-            if(has_net) {
-                comm->auto_ip_net.net_addr = ntohl(net);
-                comm->auto_ip_net.net_bitlen = bitlen;
-                traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
-		                       inet_ntoa(*(struct in_addr *) &net),
-		           comm->auto_ip_net.net_bitlen,
-		           comm->community);
-            } else {
-                assign_one_ip_subnet(sss, comm);
-            }
-        }
-
-        free(cmn_str);
-
-    }
-
-    fclose(fd);
-
-    if((num_regex + num_communities) == 0) {
-        traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", sss->community_file);
-        return -1;
-    }
-
-    traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
-	             num_communities, sss->community_file);
-
-    traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
-	             num_regex, sss->community_file);
-
-    /* No new communities will be allowed */
-    sss->lock_communities = 1;
-
-    return 0;
-}
-
-
-/* *************************************************** */
 
 /** Help message to print if the command line arguments are not valid. */
 static void help (int level) {
@@ -740,8 +525,6 @@ int main (int argc, char * const argv[]) {
     struct passwd *pw = NULL;
 #endif
     struct peer_info *scan, *tmp;
-    struct sn_community *comm, *tmp_comm;
-    sn_user_t *user, *tmp_user;
 
 
     sn_init(&sss_node);
@@ -790,23 +573,7 @@ int main (int argc, char * const argv[]) {
         traceEvent(TRACE_WARNING, "Disabled MAC and IP address spoofing protection. FOR TESTING ONLY, usage of user-password authentication (-I, -J, -P) recommended instead!");
     }
 
-    // generate shared secrets for user authentication; can be done only after
-    // federation name is known (-F) and community list completely read (-c)
-    traceEvent(TRACE_INFO, "started shared secrets calculation for edge authentication");
-    generate_private_key(sss_node.private_key, sss_node.federation->community + 1); /* skip '*' federation leading character */
-    HASH_ITER(hh, sss_node.communities, comm, tmp_comm) {
-        if(comm->is_federation) {
-            continue;
-        }
-        HASH_ITER(hh, comm->allowed_users, user, tmp_user) {
-            // calculate common shared secret (ECDH)
-            generate_shared_secret(user->shared_secret, sss_node.private_key, user->public_key);
-            // prepare for use as key
-            user->shared_secret_ctx = (he_context_t*)calloc(1, sizeof(speck_context_t));
-            speck_init((speck_context_t**)&user->shared_secret_ctx, user->shared_secret, 128);
-        }
-    }
-    traceEvent(TRACE_NORMAL, "calculated shared secrets for edge authentication");
+    calculate_shared_secrets(&sss_node);
 
     traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
