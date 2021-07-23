@@ -4,10 +4,6 @@
 
 #include "n2n.h"
 #include "n2n_win32.h"
-#if defined(_MSC_VER)
-#include <Iphlpapi.h>
-#pragma comment(lib,"Iphlpapi.lib")
-#endif
 /* ***************************************************** */
 
 void initWin32() {
