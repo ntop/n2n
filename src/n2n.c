@@ -312,9 +312,11 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
     return rv;
 }
 
-
+#if defined(_MSC_VER)
+DWORD WINAPI resolve_thread(LPVOID p) {
+#else
 void *resolve_thread (void *p) {
-
+#endif
 #ifdef HAVE_PTHREAD
     n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
