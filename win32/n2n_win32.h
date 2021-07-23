@@ -25,6 +25,10 @@
 #include <windows.h>
 #include <winioctl.h>
 #include <iptypes.h>
+#if defined(_MSC_VER)
+#include <Iphlpapi.h>
+#pragma comment(lib,"Iphlpapi.lib")
+#endif
 
 #include "wintap.h"
 
