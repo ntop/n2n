@@ -155,7 +155,7 @@ int calculate_dynamic_key (uint8_t out_key[N2N_AUTH_CHALLENGE_SIZE],
 
     // we know that N2N_AUTH_CHALLENGE_SIZE == 16, i.e. 128 bit that can take the hash value
     pearson_hash_128(key, comm, sizeof(n2n_community_t));
-    pearson_hash_128(key, tmp, N2N_AUTH_CHALLENGE_SIZE);
+    pearson_hash_128(key, key, N2N_AUTH_CHALLENGE_SIZE);
 
     pearson_hash_128(tmp, fed, sizeof(n2n_community_t));
     memxor(key, tmp, N2N_AUTH_CHALLENGE_SIZE);

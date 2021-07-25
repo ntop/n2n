@@ -45,6 +45,12 @@ static int update_edge (n2n_sn_t *sss,
                         int skip_add,
                         time_t now);
 
+static int re_register_and_purge_supernodes (n2n_sn_t *sss,
+                                             struct sn_community *comm,
+                                             time_t *p_last_re_reg_and_purge,
+                                             time_t now,
+                                             uint8_t forced);
+
 static int purge_expired_communities (n2n_sn_t *sss,
                                       time_t* p_last_purge,
                                       time_t now);
@@ -218,6 +224,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
     struct peer_info *edge, *tmp_edge;
     node_supernode_association_t *assoc, *tmp_assoc;
     n2n_tcp_connection_t *conn;
+    time_t any_time = 0;
 
     uint32_t num_communities = 0;
 
@@ -288,8 +295,11 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
 
     // prepare reading data -------------------------------
 
-    // new key_time for all communities
+    // new key_time for all communities, requires dynamic keys to be recalculated (see further below),
+    // and  edges to re-register (see above) and ...
     sss->dynamic_key_time = time(NULL);
+    // ... federated supernodes to re-register
+    re_register_and_purge_supernodes(sss, sss->federation, &any_time, any_time, 1 /* forced */);
 
     // format definition for possible user-key entries
     sprintf(format, "%c %%%ds %%%ds", N2N_USER_KEY_LINE_STARTER, N2N_DESC_SIZE - 1, sizeof(ascii_public_key)-1);
@@ -2159,6 +2169,14 @@ static int process_udp (n2n_sn_t * sss,
                             packet_header_encrypt(ackbuf, encx, encx,
                                                   comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
                                                   time_stamp());
+                           // if user-password-auth
+                           if(comm->allowed_users) {
+                               // append an encrypted packet hash
+                               pearson_hash_128(hash_buf, ackbuf, encx);
+                               // same 'user' as above
+                               speck_128_encrypt(hash_buf, (speck_context_t*)user->shared_secret_ctx);
+                               encode_buf(ackbuf, &encx, hash_buf, N2N_REG_SUP_HASH_CHECK_LEN);
+                            }
                         }
 
                         try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
@@ -2169,12 +2187,12 @@ static int process_udp (n2n_sn_t * sss,
                     if(comm->is_federation == IS_FEDERATION) {
                         if(reg.key_time > sss->dynamic_key_time) {
                             traceEvent(TRACE_DEBUG, "setting new key time");
+                            // have all edges re_register (using old dynamic key)
+                            send_re_register_super(sss);
                             // set new key time
                             sss->dynamic_key_time = reg.key_time;
                             // calculate new dynamic keys for all communities
                             calculate_dynamic_keys(sss);
-                            // have all edges re_register
-                            send_re_register_super(sss);
                             // force re-register with all supernodes
                             re_register_and_purge_supernodes(sss, sss->federation, &any_time, now, 1 /* forced */);
                         }
@@ -2347,12 +2365,12 @@ static int process_udp (n2n_sn_t * sss,
 
                 if(ack.key_time > sss->dynamic_key_time) {
                     traceEvent(TRACE_DEBUG, "setting new key time");
+                    // have all edges re_register (using old dynamic key)
+                    send_re_register_super(sss);
                     // set new key time
                     sss->dynamic_key_time = ack.key_time;
                     // calculate new dynamic keys for all communities
                     calculate_dynamic_keys(sss);
-                    // have all edges re_register
-                    send_re_register_super(sss);
                     // force re-register with all supernodes
                     re_register_and_purge_supernodes(sss, sss->federation, &any_time, now, 1 /* forced */);
                }
