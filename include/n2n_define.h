@@ -178,6 +178,14 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define N2N_IFNAMSIZ               16 /* 15 chars * NULL */
 #endif
 
+#ifdef _MSC_VER
+#define N2N_THREAD_RETURN_DATATYPE       DWORD WINAPI
+#define N2N_THREAD_PARAMETER_DATATYPE    LPVOID
+#else
+#define N2N_THREAD_RETURN_DATATYPE        void*
+#define N2N_THREAD_PARAMETER_DATATYPE     void*
+#endif
+
 #define SN_SELECTION_CRITERION_DATA_TYPE    uint32_t
 #define SN_SELECTION_CRITERION_BUF_SIZE     16
 
