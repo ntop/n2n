@@ -312,7 +312,7 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
     return rv;
 }
 
-upda
+
 N2N_THREAD_RETURN_DATATYPE resolve_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
 #ifdef HAVE_PTHREAD
