@@ -145,7 +145,7 @@ int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *usernam
 }
 
 
-// calculate SPECK ( plain = HASH³(time), key = HASH²(comm) ^ HASH(fed) )
+// calculate SPECK ( plain = HASH³(time), key = HASH³(comm) ^ HASH³(fed) )
 int calculate_dynamic_key (uint8_t out_key[N2N_AUTH_CHALLENGE_SIZE],
                            uint32_t key_time, n2n_community_t comm, n2n_community_t fed) {
 
@@ -156,8 +156,12 @@ int calculate_dynamic_key (uint8_t out_key[N2N_AUTH_CHALLENGE_SIZE],
     // we know that N2N_AUTH_CHALLENGE_SIZE == 16, i.e. 128 bit that can take the hash value
     pearson_hash_128(key, comm, sizeof(n2n_community_t));
     pearson_hash_128(key, key, N2N_AUTH_CHALLENGE_SIZE);
+    pearson_hash_128(key, key, N2N_AUTH_CHALLENGE_SIZE);
 
     pearson_hash_128(tmp, fed, sizeof(n2n_community_t));
+    pearson_hash_128(tmp, tmp, N2N_AUTH_CHALLENGE_SIZE);
+    pearson_hash_128(tmp, tmp, N2N_AUTH_CHALLENGE_SIZE);
+
     memxor(key, tmp, N2N_AUTH_CHALLENGE_SIZE);
 
     ctx = (speck_context_t*)calloc(1, sizeof(speck_context_t));

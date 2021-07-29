@@ -184,9 +184,12 @@ void send_re_register_super (n2n_sn_t *sss) {
             cmn.pc = n2n_re_register_super;
             cmn.flags = N2N_FLAGS_FROM_SUPERNODE;
             memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
-            encode_common(rereg_buf, &encx, &cmn);
 
             HASH_ITER(hh, comm->edges, edge, tmp_edge) {
+                // encode
+                encx = 0;
+                encode_common(rereg_buf, &encx, &cmn);
+
                 // send
                 traceEvent(TRACE_DEBUG, "send RE_REGISTER_SUPER to %s",
                                          sock_to_cstr(sockbuf, &(edge->sock)));

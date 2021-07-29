@@ -1233,7 +1233,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
     if(now - eee->last_sweep > SWEEP_TIME) {
         // this routine gets periodically called
 
-        if(eee->sn_wait == 0) {
+        if(!eee->sn_wait) {
             // sort supernodes in ascending order of their selection_criterion fields
             sn_selection_sort(&(eee->conf.supernodes));
         }
@@ -1425,11 +1425,16 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
     struct peer_info *peer, *tmp_peer;
     int cnt = 0;
 
-    if(eee->sn_wait && (now > (eee->last_register_req + (eee->conf.register_interval/10)))) {
+    if((eee->sn_wait && (now > (eee->last_register_req + (eee->conf.register_interval / 10))))
+     ||(eee->sn_wait == 2)) /* immediately re-register in case of RE_REGISTER_SUPER */ {
         /* fall through */
         traceEvent(TRACE_DEBUG, "update_supernode_reg: doing fast retry.");
     } else if(now < (eee->last_register_req + eee->conf.register_interval))
         return; /* Too early */
+
+    // downgrade an immediate request to a regular one now that we have passed the checks
+    if (eee->sn_wait == 2)
+        eee->sn_wait = 1;
 
     check_join_multicast_group(eee);
 
@@ -2741,7 +2746,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 traceEvent(TRACE_INFO, "Rx RE_REGISTER_SUPER");
 
-                eee->sn_wait = 1;
+                eee->sn_wait = 2; /* immediately */
 
                 break;
             }
