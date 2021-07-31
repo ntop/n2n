@@ -32,15 +32,18 @@ rpmbuild -bb ./n2n.spec
 - Network interface metric can be set by command-line option `-x` (Windows only)
 - Re-enabled local peer detection by multicast on Windows
 - Edge identifier (`-I`) helps to identify edges more easily in management port output
-- Optional edge user and password authentication (`-J`, `-P`)
+- Optional edge user and password authentication (`-J`, `-P`, `doc/Authentication.md`)
+
 
 ### Improvements
 
 - Increased edges' resiliance to temporary supernode failure
 - Fixed a compression-related memory leak
-- Ciphers partly come with platform-specific hardware acceleration (check `tools/n2n-benchmark`)
+- Ciphers partly come with platform-specific hardware acceleration
 - Clean-up management port output
 - Polished benchmark tool output
+- Spun-off the name resolution into a seperate thread avoiding lags
+- Implemented new `reload_communities` command to make supernode hot-reload the `-c` provided `community.list` file, issued through management port
 - Reactivated send out of gratuitous ARP packet on establishing connection
 - Enhanced documentation (`doc/` folder) including the man pages and command-line help text
 - Self-monitoring time stamp accuracy for use on systems with less accurate clocks
