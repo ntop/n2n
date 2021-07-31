@@ -1249,6 +1249,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
                        supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
             send_register_super(eee);
+            eee->last_register_req = now;
             eee->sn_wait = 1;
         }
 
@@ -1424,6 +1425,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
 
     struct peer_info *peer, *tmp_peer;
     int cnt = 0;
+    int off = 0;
 
     if((eee->sn_wait && (now > (eee->last_register_req + (eee->conf.register_interval / 10))))
      ||(eee->sn_wait == 2)) /* immediately re-register in case of RE_REGISTER_SUPER */ {
@@ -1432,9 +1434,13 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
     } else if(now < (eee->last_register_req + eee->conf.register_interval))
         return; /* Too early */
 
-    // downgrade an immediate request to a regular one now that we have passed the checks
-    if (eee->sn_wait == 2)
-        eee->sn_wait = 1;
+    // determine time offset to apply on last_register_req for
+    // all edges's next re-registration does not happen all at once
+    if (eee->sn_wait == 2) {
+        // remaining 1/4 is greater than 1/10 fast retry allowance;
+        // '%' might be expensive but does not happen all too often
+        off = n2n_rand() % ((eee->conf.register_interval * 3) / 4);
+    }
 
     check_join_multicast_group(eee);
 
@@ -1495,14 +1501,14 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
 
     // if supernode repeatedly not responding (already waiting), safeguard the
     // current known connections to peers by re-registering
-    if(eee->sn_wait)
+    if(eee->sn_wait == 1)
         HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
             if((now - peer->last_seen) > REGISTER_SUPER_INTERVAL_DFL)
                 send_register(eee, &(peer->sock), peer->mac_addr);
 
     eee->sn_wait = 1;
 
-    eee->last_register_req = now;
+    eee->last_register_req = now - off;
 }
 
 /* ************************************** */
@@ -2326,7 +2332,6 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                            (char *)eee->conf.community_name,
                                            eee->conf.header_encryption_ctx_static, eee->conf.header_iv_ctx_static,
                                            &stamp);
-            header_enc = 1;
         }
         if(!header_enc) {
             traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
