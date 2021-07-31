@@ -356,6 +356,7 @@ int encode_REGISTER_SUPER (uint8_t *base,
     retval += encode_uint16(base, idx, reg->auth.scheme);
     retval += encode_uint16(base, idx, reg->auth.token_size);
     retval += encode_buf(base, idx, reg->auth.token, reg->auth.token_size);
+    retval += encode_uint32(base, idx, reg->key_time);
 
     return retval;
 }
@@ -381,6 +382,7 @@ int decode_REGISTER_SUPER (n2n_REGISTER_SUPER_t *reg,
     retval += decode_uint16(&(reg->auth.scheme), base, rem, idx);
     retval += decode_uint16(&(reg->auth.token_size), base, rem, idx);
     retval += decode_buf(reg->auth.token, reg->auth.token_size, base, rem, idx);
+    retval += decode_uint32(&(reg->key_time), base, rem, idx);
 
     return retval;
 }
@@ -492,6 +494,8 @@ int encode_REGISTER_SUPER_ACK (uint8_t *base,
     retval += encode_uint8(base, idx, reg->num_sn);
     retval += encode_buf(base, idx, tmpbuf, (reg->num_sn*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE));
 
+    retval += encode_uint32(base, idx, reg->key_time);
+
     return retval;
 }
 
@@ -522,6 +526,8 @@ int decode_REGISTER_SUPER_ACK (n2n_REGISTER_SUPER_ACK_t *reg,
     /* Following the edge socket are an array of backup supernodes. */
     retval += decode_uint8(&(reg->num_sn), base, rem, idx);
     retval += decode_buf(tmpbuf, (reg->num_sn * REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE), base, rem, idx);
+
+    retval += decode_uint32(&(reg->key_time), base, rem, idx);
 
     return retval;
 }

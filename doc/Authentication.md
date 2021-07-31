@@ -55,11 +55,14 @@ ntop[0-1][0-9]
 
 This example also lists another user `sister` (with the same secret password `007`). The users become part of the preceding community name, `netleo` in this case. The public keys are cryptographically tied only to the user name, not to the community name. That way, to switch a user from one community to another, her line can easily be copied from one community section to another. By the way, do not forget to provide the `community.list` file to the supernode through the `-c community.list` parameter.
 
-Current supernode behavior does not limit the simultanious usage of usernames, i.e. one username can be used from several edges at the same time. However, it is recommended to use a distinct username and password for each edge or computer. Your management port output will be much more meaningful then with the HINT column showing the related username. Also, the auto IP address feature, i.e. not using `-a <IP address>` at the edge, will more likely assign unique addresses as those depend on the username.
+Current supernode behavior does not limit the simultanious usage of usernames, i.e. one username can be used from several edges at the same time. However, it is recommended to use a distinct username and password for each edge or computer. Your management port output will be much more meaningful then with the `HINT` column showing the related username. Also, the auto IP address feature, i.e. not using `-a <IP address>` at the edge, will more likely assign unique addresses as those depend on the username.
 
-If a user chooses a new password or needs to be excluded from accessing the community (stolen edge scenario), the corresponding line of the `community.list` file can be replaced with a newly generated one or be deleted respectively. Restarting the supernode is required after performing changes because the supernode reads in this data only once at start-up.
+If a user chooses a new password or needs to be excluded from accessing the community (stolen edge scenario), the corresponding line of the `community.list` file can be replaced with a newly generated one or be deleted respectively. Restarting the supernode or issuing the `reload_communities` command to the management port is required after performing changes to make the supernode(s) read in this data again.
 
-With a view to the detailed explanations below, your supernode should have a non-default federation name given by the `-F <federation name>` command line parameter, e.g. `-F secretFed`. It is used to derive a priavte key on the supernode side and is only to be shared among supernodes. However, a federation-wide support for this feature, i.e. across several supernodes, is possible but not implemented yet.
+When using this feature federation-wide, i.e. across several supernodes, please make sure to keep all supernodes' `community.list` files in sync. So, if you delete or change a user one supernode (or add it), you need to do it at all supernodes. There is no built-in sync for the `community.list` files across the federation. External tools such as _Syncthing_ or your very own script-driven scp-based-file-distribution might be of assistance. Also, with every change, you need to restart the supernode or issue the `reload_communites` command to the management port as outlined above.
+
+With a view to the detailed explanations below, your supernode(s) should have a non-default federation name given by the `-F <federation name>` command line parameter, e.g. `-F secretFed`. It is used to derive a priavte key at the supernode side and is only to be shared among supernodes.
+
 
 #### Edge
 
@@ -84,18 +87,19 @@ Considering all this, our example expands to
 [user@host n2n]$ sudo ./edge -l <supernode:port> -c netleo -I logan -J 007 -A5 -k mySecretKey -P opIyaWhWjKLJSNOHNpKnGmelhHWRqkmY5pAx7lbDHp4
 ```
 
+You might want to consider the use of [`.conf` files](https://github.com/ntop/n2n/blob/dev/doc/ConfigurationFiles.md) to accomodate all the command line paramters more easily.
+
+
 #### How Does It Work?
 
 In order to make this authentication scheme work, the existing header encryption scheme is split into using two keys: a _static_ and a _dynamic_ one. The static key remains unchanged and is the [classic header encryption key](https://github.com/ntop/n2n/blob/dev/doc/Crypto.md#header) derived from the community name. It only is applied to the very basic registration traffic between edge and supernode (REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK). The dynamic key is derived (among others) from the federation name – keep it secret! – and appplied to all the other packets, especially the data packets (PAKET) and peer-to-peer building packets (REGISTER), but also the ping and peer information (QUERY_PEER, PEER_INFO). An edge not provided with a valid dynamic key is not able to participate in the further communication.
 
 In regular header encryption mode, static key and dynamic key are equal. With activated user-password scheme, the supernode generates and transmits a dynamic key with the REGISTER_SUPER for further use. This happens in a secure way based on public key cryptography. A non-autheticated edge, i.e. without corresponding entry at the supernode or valid credentials, will not receive a valid dynmic key for communication beyond registration.
 
-In user-password scheme, the packets encrypted with the static key (REGISER_SUPER, REGISTER_SUPER_ACK, useless for REGISTER_SUPER_NAK) are "signed" with an encrypted outer hash using the shared secret which is only known to the federated supernodes and that specific edge.
+In user-password scheme, the packets encrypted with the static key (REGISTER_SUPER, REGISTER_SUPER_ACK, useless for REGISTER_SUPER_NAK) are "signed" with an encrypted outer hash using the shared secret which is only known to the federated supernodes and that specific edge.
 
 #### Possible Extensions
 
 Tools for automizing [`.conf` file](https://github.com/ntop/n2n/blob/dev/doc/ConfigurationFiles.md) generation for deployment ot delivery to freshly registered and approved users could greatly enhance this ecosystem; a user would not have to mess around with command line parameters but just copy a `.conf` file into a specified directory.
-
-Implementation of a federation-wide support for user-password authentication would allow much bigger networks using this feature. Still required steps are outlined [in some earlier post](https://github.com/ntop/n2n/issues/670#issuecomment-802119568).
 
 Let us know if you are intrerested in implementing or furthering these ideas.

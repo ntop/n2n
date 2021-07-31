@@ -45,6 +45,12 @@ static int update_edge (n2n_sn_t *sss,
                         int skip_add,
                         time_t now);
 
+static int re_register_and_purge_supernodes (n2n_sn_t *sss,
+                                             struct sn_community *comm,
+                                             time_t *p_last_re_reg_and_purge,
+                                             time_t now,
+                                             uint8_t forced);
+
 static int purge_expired_communities (n2n_sn_t *sss,
                                       time_t* p_last_purge,
                                       time_t now);
@@ -129,6 +135,76 @@ void calculate_shared_secrets (n2n_sn_t *sss) {
 }
 
 
+// calculate dynamic keys
+void calculate_dynamic_keys (n2n_sn_t *sss) {
+
+    struct sn_community *comm, *tmp_comm = NULL;
+
+    traceEvent(TRACE_INFO, "calculating dynamic keys");
+    HASH_ITER(hh, sss->communities, comm, tmp_comm) {
+        // skip federation
+        if(comm->is_federation) {
+            continue;
+        }
+
+        // calculate dynamic keys if this is a user/pw auth'ed community
+        if(comm->allowed_users) {
+            calculate_dynamic_key(comm->dynamic_key,           /* destination */
+                                  sss->dynamic_key_time,       /* time - same for all */
+                                  comm->community,             /* community name */
+                                  sss->federation->community); /* federation name */
+            packet_header_change_dynamic_key(comm->dynamic_key,
+                                             &(comm->header_encryption_ctx_dynamic),
+                                             &(comm->header_iv_ctx_dynamic));
+            traceEvent(TRACE_DEBUG, "calculated dynamic key for community '%s'", comm->community);
+        }
+    }
+}
+
+
+// send RE_REGISTER_SUPER to all edges from user/pw auth'ed communites
+void send_re_register_super (n2n_sn_t *sss) {
+
+    struct sn_community *comm, *tmp_comm = NULL;
+    struct peer_info *edge, *tmp_edge = NULL;
+    n2n_common_t   cmn;
+    uint8_t        rereg_buf[N2N_SN_PKTBUF_SIZE];
+    size_t         encx = 0;
+    n2n_sock_str_t sockbuf;
+
+    HASH_ITER(hh, sss->communities, comm, tmp_comm) {
+        if(comm->is_federation) {
+            continue;
+        }
+
+        // send RE_REGISTER_SUPER to edges if this is a user/pw auth community
+        if(comm->allowed_users) {
+            // prepare
+            cmn.ttl = N2N_DEFAULT_TTL;
+            cmn.pc = n2n_re_register_super;
+            cmn.flags = N2N_FLAGS_FROM_SUPERNODE;
+            memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
+
+            HASH_ITER(hh, comm->edges, edge, tmp_edge) {
+                // encode
+                encx = 0;
+                encode_common(rereg_buf, &encx, &cmn);
+
+                // send
+                traceEvent(TRACE_DEBUG, "send RE_REGISTER_SUPER to %s",
+                                         sock_to_cstr(sockbuf, &(edge->sock)));
+
+                packet_header_encrypt(rereg_buf, encx, encx,
+                                      comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
+                                      time_stamp());
+
+                /* sent = */ sendto_peer(sss, edge, rereg_buf, encx);
+             }
+        }
+    }
+}
+
+
 /** Load the list of allowed communities. Existing/previous ones will be removed,
  *  return 0 on success, -1 if file not found, -2 if no valid entries found
  */
@@ -151,11 +227,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
     struct peer_info *edge, *tmp_edge;
     node_supernode_association_t *assoc, *tmp_assoc;
     n2n_tcp_connection_t *conn;
-
-    n2n_common_t   cmn;
-    uint8_t        rereg_buf[N2N_SN_PKTBUF_SIZE];
-    size_t         encx = 0;
-    n2n_sock_str_t sockbuf;
+    time_t any_time = 0;
 
     uint32_t num_communities = 0;
 
@@ -168,32 +240,16 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
         return -1;
     }
 
+    // reset data structures ------------------------------
+
+    // send RE_REGISTER_SUPER to all edges from user/pw auth communites, this is safe because
+    // follow-up REGISTER_SUPER cannot be handled before this function ends
+    send_re_register_super(sss);
+
     // remove communities (not: federation)
     HASH_ITER(hh, sss->communities, comm, tmp_comm) {
         if(comm->is_federation) {
             continue;
-        }
-
-        // send RE_REGISTER_SUPER to edges if this is a user/pw auth community
-        if(comm->allowed_users) {
-            // prepare
-            cmn.ttl = N2N_DEFAULT_TTL;
-            cmn.pc = n2n_re_register_super;
-            cmn.flags = N2N_FLAGS_FROM_SUPERNODE;
-            memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
-            encode_common(rereg_buf, &encx, &cmn);
-
-            HASH_ITER(hh, comm->edges, edge, tmp_edge) {
-                // send
-                traceEvent(TRACE_DEBUG, "send RE_REGISTER_SUPER to %s",
-                                         sock_to_cstr(sockbuf, &(edge->sock)));
-
-                packet_header_encrypt(rereg_buf, encx, encx,
-                                      comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
-                                      time_stamp());
-
-                /* sent = */ sendto_peer(sss, edge, rereg_buf, encx);
-             }
         }
 
         // remove all edges from community
@@ -240,6 +296,14 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
         free(re);
     }
 
+    // prepare reading data -------------------------------
+
+    // new key_time for all communities, requires dynamic keys to be recalculated (see further below),
+    // and  edges to re-register (see above) and ...
+    sss->dynamic_key_time = time(NULL);
+    // ... federated supernodes to re-register
+    re_register_and_purge_supernodes(sss, sss->federation, &any_time, any_time, 1 /* forced */);
+
     // format definition for possible user-key entries
     sprintf(format, "%c %%%ds %%%ds", N2N_USER_KEY_LINE_STARTER, N2N_DESC_SIZE - 1, sizeof(ascii_public_key)-1);
 
@@ -285,16 +349,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
                                                 &(last_added_comm->header_encryption_ctx_dynamic),
                                                 &(last_added_comm->header_iv_ctx_static),
                                                 &(last_added_comm->header_iv_ctx_dynamic));
-                        // dynamic key setup
-                        last_added_comm->last_dynamic_key_time = time(NULL);
-                        calculate_dynamic_key(last_added_comm->dynamic_key,           /* destination */
-                                              last_added_comm->last_dynamic_key_time, /* time */
-                                              last_added_comm->community,             /* community name */
-                                              sss->federation->community);            /* federation name */
-                        packet_header_change_dynamic_key(last_added_comm->dynamic_key,
-                                             &(last_added_comm->header_encryption_ctx_dynamic),
-                                             &(last_added_comm->header_iv_ctx_dynamic));
-
+                        // dynamic key setup follows at a later point in code
                     }
                     continue;
                 }
@@ -391,7 +446,13 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
     traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
                      num_regex, sss->community_file);
 
-    /* No new communities will be allowed */
+    // calculate allowed user's shared secrets (shared with federation)
+    calculate_shared_secrets(sss);
+
+    // calculcate communties' dynamic keys
+    calculate_dynamic_keys(sss);
+
+    // no new communities will be allowed
     sss->lock_communities = 1;
 
     return 0;
@@ -1241,26 +1302,30 @@ static int find_edge_time_stamp_and_verify (struct peer_info * edges,
 }
 
 
-static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community *comm, time_t *p_last_re_reg_and_purge, time_t now) {
+static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community *comm, time_t *p_last_re_reg_and_purge, time_t now, uint8_t forced) {
 
     time_t time;
     struct peer_info *peer, *tmp;
 
-    if((now - (*p_last_re_reg_and_purge)) < RE_REG_AND_PURGE_FREQUENCY) {
-        return 0;
-    }
+    if(!forced) {
+        if((now - (*p_last_re_reg_and_purge)) < RE_REG_AND_PURGE_FREQUENCY) {
+            return 0;
+        }
 
-    // purge long-time-not-seen supernodes
-    purge_expired_nodes(&(comm->edges), sss->sock, &sss->tcp_connections, p_last_re_reg_and_purge,
-                        RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
+        // purge long-time-not-seen supernodes
+        purge_expired_nodes(&(comm->edges), sss->sock, &sss->tcp_connections, p_last_re_reg_and_purge,
+                            RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
+    }
 
     if(comm != NULL) {
         HASH_ITER(hh,comm->edges,peer,tmp) {
 
             time = now - peer->last_seen;
 
-            if(time <= LAST_SEEN_SN_ACTIVE) {
-                continue;
+            if(!forced) {
+                if(time <= LAST_SEEN_SN_ACTIVE) {
+                    continue;
+                }
             }
 
             /* re-register (send REGISTER_SUPER) */
@@ -1287,6 +1352,8 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
             reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
             reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
             get_local_auth(sss, &(reg.auth));
+
+            reg.key_time = sss->dynamic_key_time;
 
             idx = 0;
             encode_mac(reg.edgeMac, &idx, sss->mac_addr);
@@ -1447,7 +1514,6 @@ static int process_mgmt (n2n_sn_t *sss,
                 sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
                 return 0; /* no status output afterwards */
             }
-            calculate_shared_secrets(sss);
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                                 "OK.\n");
             sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
@@ -1584,6 +1650,7 @@ static int process_udp (n2n_sn_t * sss,
     uint32_t            header_enc = 0; /* 1 == encrypted by static key, 2 == encrypted by dynamic key */
     uint64_t            stamp;
     int                 skip_add;
+    time_t              any_time = 0;
 
     traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
                udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
@@ -2055,6 +2122,7 @@ static int process_udp (n2n_sn_t * sss,
                        macaddr_str(mac_buf, reg.edgeMac),
                        sock_to_cstr(sockbuf, &(ack.sock)));
 
+            // check authentication
             ret_value = update_edge_no_change;
             if(comm->is_federation != IS_FEDERATION) { /* REVISIT: auth among supernodes is not implemented yet */
                 if(cmn.flags & N2N_FLAGS_SOCKET) {
@@ -2066,6 +2134,7 @@ static int process_udp (n2n_sn_t * sss,
             }
 
             if(ret_value == update_edge_auth_fail) {
+                // send REGISTER_SUPER_NAK
                 cmn2.pc = n2n_register_super_nak;
                 memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
                 memcpy(nak.srcMac, reg.edgeMac, sizeof(n2n_mac_t));
@@ -2103,9 +2172,34 @@ static int process_udp (n2n_sn_t * sss,
                             packet_header_encrypt(ackbuf, encx, encx,
                                                   comm->header_encryption_ctx_static, comm->header_iv_ctx_static,
                                                   time_stamp());
+                           // if user-password-auth
+                           if(comm->allowed_users) {
+                               // append an encrypted packet hash
+                               pearson_hash_128(hash_buf, ackbuf, encx);
+                               // same 'user' as above
+                               speck_128_encrypt(hash_buf, (speck_context_t*)user->shared_secret_ctx);
+                               encode_buf(ackbuf, &encx, hash_buf, N2N_REG_SUP_HASH_CHECK_LEN);
+                            }
                         }
 
                         try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
+                    }
+
+                    // dynamic key time handling if appropriate
+                    ack.key_time = 0;
+                    if(comm->is_federation == IS_FEDERATION) {
+                        if(reg.key_time > sss->dynamic_key_time) {
+                            traceEvent(TRACE_DEBUG, "setting new key time");
+                            // have all edges re_register (using old dynamic key)
+                            send_re_register_super(sss);
+                            // set new key time
+                            sss->dynamic_key_time = reg.key_time;
+                            // calculate new dynamic keys for all communities
+                            calculate_dynamic_keys(sss);
+                            // force re-register with all supernodes
+                            re_register_and_purge_supernodes(sss, sss->federation, &any_time, now, 1 /* forced */);
+                        }
+                        ack.key_time = sss->dynamic_key_time;
                     }
 
                     // send REGISTER_SUPER_ACK
@@ -2256,8 +2350,8 @@ static int process_udp (n2n_sn_t * sss,
             }
 
             if(0 == memcmp(ack.cookie, scan->last_cookie, N2N_COOKIE_SIZE)) {
-                payload = (n2n_REGISTER_SUPER_ACK_payload_t *)dec_tmpbuf;
 
+                payload = (n2n_REGISTER_SUPER_ACK_payload_t *)dec_tmpbuf;
                 for(i = 0; i < ack.num_sn; i++) {
                     skip_add = SN_ADD;
                     tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), payload->mac, &skip_add);
@@ -2271,6 +2365,19 @@ static int process_udp (n2n_sn_t * sss,
                     // shift to next payload entry
                     payload++;
                 }
+
+                if(ack.key_time > sss->dynamic_key_time) {
+                    traceEvent(TRACE_DEBUG, "setting new key time");
+                    // have all edges re_register (using old dynamic key)
+                    send_re_register_super(sss);
+                    // set new key time
+                    sss->dynamic_key_time = ack.key_time;
+                    // calculate new dynamic keys for all communities
+                    calculate_dynamic_keys(sss);
+                    // force re-register with all supernodes
+                    re_register_and_purge_supernodes(sss, sss->federation, &any_time, now, 1 /* forced */);
+               }
+
             } else {
                 traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
             }
@@ -2759,7 +2866,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 traceEvent(TRACE_DEBUG, "timeout");
         }
 
-        re_register_and_purge_supernodes(sss, sss->federation, &last_re_reg_and_purge, now);
+        re_register_and_purge_supernodes(sss, sss->federation, &last_re_reg_and_purge, now, 0 /* not forced */);
         purge_expired_communities(sss, &last_purge_edges, now);
         sort_communities(sss, &last_sort_communities, now);
         resolve_check(sss->resolve_parameter, 0 /* presumably, no special resolution requirement */, now);

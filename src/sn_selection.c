@@ -162,8 +162,11 @@ extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_in
       return NULL;
     }
     memset(out, 0, SN_SELECTION_CRITERION_BUF_SIZE);
-    
-    if(peer->selection_criterion >= 0) {
+
+    // keep off the super-big values (used for "bad" or "good" or "undetermined" supernodes,
+    // easier to sort to the end of the list).
+    // Alternatively, typecast to (int16_t) and check for greater or equal zero
+    if(peer->selection_criterion < (UINT32_MAX >> 2)) {
 #ifndef SN_SELECTION_RTT
       snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
 #else
