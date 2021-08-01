@@ -339,16 +339,27 @@ int open_wintap(struct tuntap_dev *device,
 
   /* metric */
 
+  PMIB_IPINTERFACE_ROW Row;
+
   if(metric) { /* try to change only if a value has been given, otherwise leave with default or as set before */
+    // find & store original metric
+    Row = calloc(1, sizeof(MIB_IPINTERFACE_ROW));
+    InitializeIpInterfaceEntry(Row);
+    Row->InterfaceIndex = device->if_idx;
+    Row->Family = AF_INET;
+    GetIpInterfaceEntry(Row);
+
+    device->metric_original = Row->Metric;
     device->metric = metric;
 
-    _snprintf(cmd, sizeof(cmd),
-      "netsh interface ipv4 set interface \"%s\" metric=%d > nul",
-      device->ifName, device->metric);
+    // set new value
+    Row->Metric = metric;
 
-    if(system(cmd) != 0)
-      printf("WARNING: Unable to set device %s parameters metric=%d [%s]\n",
-        device->ifName, device->metric, cmd);
+    // store
+    Row->SitePrefixLength = 0; /* if not set to zero, following function call fails... */
+    SetIpInterfaceEntry(Row);
+    
+    free(Row);
   }
 
   /* ****************** */
@@ -443,6 +454,27 @@ int tuntap_open(struct tuntap_dev *device,
 /* ************************************************ */
 
 void tuntap_close(struct tuntap_dev *tuntap) {
+
+  PMIB_IPINTERFACE_ROW Row;
+
+  if(tuntap->metric) { /* only required if a value has been given (and thus stored) */
+    // find device entry
+    Row = calloc(1, sizeof(MIB_IPINTERFACE_ROW));
+    InitializeIpInterfaceEntry(Row);
+    Row->InterfaceIndex = tuntap->if_idx;
+    Row->Family = AF_INET;
+    GetIpInterfaceEntry(Row);
+
+    // restore original value
+    Row->Metric = tuntap->metric_original;
+
+    // store
+    Row->SitePrefixLength = 0; /* if not set to zero, following function call fails... */
+    SetIpInterfaceEntry(Row);
+
+    free(Row);
+  }
+
   CloseHandle(tuntap->device_handle);
 }
 
