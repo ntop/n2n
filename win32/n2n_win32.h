@@ -21,14 +21,19 @@
 #include <inttypes.h>
 #endif /* #if defined(__MINGW32__) */
 
+
 #include <winsock2.h>
 #include <windows.h>
-#include <winioctl.h>
-#include <iptypes.h>
+#include <ws2def.h>
+#include <ws2ipdef.h>
 #if defined(_MSC_VER)
 #include <Iphlpapi.h>
 #pragma comment(lib,"Iphlpapi.lib")
 #endif
+#include <netioapi.h>
+#include <winioctl.h>
+#include <iptypes.h>
+
 
 #include "wintap.h"
 
@@ -81,6 +86,7 @@ typedef struct tuntap_dev {
 	uint32_t        device_mask;
 	unsigned int    mtu;
 	unsigned int    metric;
+        unsigned int    metric_original;
 } tuntap_dev;
 
 
