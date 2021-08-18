@@ -18,13 +18,13 @@ Lines starting with a "#" are ignored.
 An equal sign ('=') should be used between key and value. Example: -p=7777
 .SH OPTIONS FOR THE UNDERLYING NETWORK CONNECTION
 .TP
-\fB\-c \fR<\fIcommunity\fR>
+\fB\-c \fR<\fIcommunity\fR>, \fB\-\-community\fR=<\fIcommunity\fR>
 sets the n2n community name. All edges within the same community appear on the
 same LAN (layer 2 network segment). Community name is 16 bytes in length. A name
 smaller than this is padded with 0x00 bytes and a name longer than this is
 truncated to take the first 16 bytes.
 .TP
-\fB\-l \fR<\fIhost:port\fR>
+\fB\-l \fR<\fIhost:port\fR>, \fB\-\-supernode-list\fR=<\fIhost:port\fR>
 sets the n2n supernode IP address and port to register to. Multiple supernodes
 can be specified.
 .TP
@@ -105,7 +105,7 @@ not done, the ARP caches of all peers will be wrong and packets will not flow to
 this edge until the next ARP refresh.
 e.g.  '\-m 10:20:30:40:50:60', by default a random MAC address is used.
 .TP
-\fB\-d \fR<\fIdevice\fR>
+\fB\-d \fR<\fIdevice\fR>, \fB\-\-device\fR=<\fIdevice\fR>
 TAP device name
 .TP
 \fB\-M \fR<\fImtu\fR>
@@ -172,17 +172,17 @@ binds the edge management system to the given UDP port. Default 5644. Use this
 if you need to run multiple instance of edge; or something is bound to that
 port.
 .TP
-\fB\-v\fR
+\fB\-v\fR, \fB\-\-verbose\fR
 make more verbose, repeat as required
 .TP
 \fB\-n \fR<\fIcidr:gateway\fR>
 route an IPv4 network via the gateway, use 0.0.0.0/0 for
 the default gateway, can be set multiple times
 .TP
-\fB\-u \fR<\fIUID\fR>
+\fB\-u \fR<\fIUID\fR>, \fB\-\-euid\fR=<\fIUID\fR>
 numeric user ID to use when privileges are dropped
 .TP
-\fB\-g \fR<\fIGID\fR>
+\fB\-g \fR<\fIGID\fR>, \fB\-\-egid\fR=<\fIGID\fR>
 numeric group ID to use when privileges are dropped
 .TP
 \fb\-h\fr
