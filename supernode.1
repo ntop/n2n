@@ -26,7 +26,7 @@ Lines starting with a "#" are ignored.
 An equal sign ('=') should be used between key and value. Example: -p=7777
 .SH OPTIONS FOR THE UNDERLYING NETWORK CONNECTION
 .TP
-\fB\-p \fR<\fIlocal port\fR>
+\fB\-p \fR<\fIlocal port\fR>, \fB\-\-local-port\fR=<\fIlocal port\fR>
 listen on this fixed local UDP port, defaults to 7654
 .TP
 \fB\-F \fR<\fIfed name\fR>
@@ -44,10 +44,10 @@ disable MAC and IP address spoofing protection for all
 non-username-password-authenticating communities
 .SH TAP DEVICE AND OVERLAY NETWORK CONFIGURATION
 .TP
-\fB\-c \fR<\fIpath\fR>
+\fB\-c \fR<\fIpath\fR>, \fB\-\-communities\fR=<\fIpath\fR>
 file containing the allowed communities
 .TP
-\fB\-a \fR<\fInet-net/n\fR>
+\fB\-a \fR<\fInet-net/n\fR>, \fB\-\-autoip\fR=<net-net/n\fR>
 subnet range for auto ip address service,
 .br
 e.g.  '-a 192.168.0.0-192.168.255.0/24',
@@ -55,13 +55,13 @@ e.g.  '-a 192.168.0.0-192.168.255.0/24',
 defaults to '10.128.255.0-10.255.255.0/24'
 .SH LOCAL OPTIONS
 .TP
-\-f
+\fB\-f\fR, \fB\-\-foreground\fR
 disable daemon mode (UNIX) and run in foreground.
 .TP
-\fB\-t \fR<\fIport\fR>
+\fB\-t \fR<\fIport\fR>, \fB\-\-mgmt-port\fR=<\fIport\fR>
 management UDP port, for multiple supernodes on a machine, defaults to 5645
 .TP
-\-v
+\fB\-v\fR, \fB\-\-verbose\fR
 use verbose logging
 .TP
 \fB\-u \fR<\fIUID\fR>
@@ -73,7 +73,7 @@ numeric group ID to use when privileges are dropped
 \fB-h\fR
 shows a quick reference including all available options
 .TP
-\fB--help\fR
+\fB\-\-help\fR
 shows detailed parameter description
 
 .SH EXAMPLES
