@@ -70,7 +70,7 @@ Its initialization relies on seeding with a value as random as possible. Various
 
 ### Pearson Block Hashing
 
-For general purpose hashing, n2n employs [Pearson Block Hashing](https://github.com/Logan007/pearsonB) as it offers variable hash sizes and is said not to be too "collidy". However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash value shall publically prove the knowledge of a secret without showing the secret itself.
+For general purpose hashing, n2n employs [Pearson Block Hashing](https://github.com/Logan007/pearsonB) as it offers variable hash sizes and is said not to be too "collidy". However, this is not a cryptographically secure hashing function which by the way is not required here: The hashing is never applied in a way that the hash value shall publicly prove the knowledge of a secret without showing the secret itself.
 
 _Pearson hashing is tweakable by using your own block-sized permutation._ Here, we use a three-round xor-rotate-multiply permutation scheme on 64-bit wide integer numbers with constants discovered by [David Stafford](http://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html) (`mix13`, permission obtained via eMail) which, meanwhile, is better known as part of `splitmix64()`.
 
@@ -124,7 +124,7 @@ In case of a PACKET-type, it is succeeded by the fields depicted below:
 
 ### Encryption
 
-If enabled (`-H`), all fields but the payload (which is handled seperately as outlined above) get encrypted using SPECK in CTR mode. As packet headers need to be decryptable by the supernode and we do not want to add another key (to keep it a simple interface), the community name serves as key (keep it secret!) because it is already known to the supernode. The community name consists of up to 20 characters (well, 19 + `0x00`), so key size of 128 bit is a reasonable choice here.
+If enabled (`-H`), all fields but the payload (which is handled separately as outlined above) get encrypted using SPECK in CTR mode. As packet headers need to be decryptable by the supernode and we do not want to add another key (to keep it a simple interface), the community name serves as key (keep it secret!) because it is already known to the supernode. The community name consists of up to 20 characters (well, 19 + `0x00`), so key size of 128 bit is a reasonable choice here.
 
 The scheme applied tries to maintain compatibility with current packet format and works as follows:
 
@@ -175,7 +175,7 @@ The scheme applied tries to maintain compatibility with current packet format an
 
 Decryption checks all known communities (several in case of supernode, only one at edge) as keys. On success, the emerging magic number along with a reasonable header's length value will reveal the correct community whose name will be copied back to the original fields allowing for regular packet handling.
 
-Thus, header encryption will only work with previously determined community names introduced to the supernode by `-c <path>` parameter. Also, it should be clear that header encryption is a per-community decision, i.e. all nodes and the supernode need to have it enabled. However, the supernode supports encrpyted and unencrypted communities in parallel, it determines their status online at arrival of the first packet. Use a fresh community name for encrypted communities; do not use a previously used one of former unecrpyted communities: their names were transmitted openly.
+Thus, header encryption will only work with previously determined community names introduced to the supernode by `-c <path>` parameter. Also, it should be clear that header encryption is a per-community decision, i.e. all nodes and the supernode need to have it enabled. However, the supernode supports encrypted and unencrypted communities in parallel, it determines their status online at arrival of the first packet. Use a fresh community name for encrypted communities; do not use a previously used one of former unecrypted communities: their names were transmitted openly.
 
 ### Checksum
 
@@ -183,7 +183,7 @@ The whole packet including the eventually present payload is checksummed using a
 
 The single block-cipher step employs SPECK because it is quite fast and it offers a 128-bit block cipher version. The key is derived from the header key – a hash of the hash.
 
-The checksum is calculated by the edges and the supernode. Changes to the payload will cause a different locally calculated checksum. Extracting the time stamp by exclusive-oring an errorneous checksum will lead to an invalid timestamp. So, checksum errors are indirectly detected when checking for a valid time stamp.
+The checksum is calculated by the edges and the supernode. Changes to the payload will cause a different locally calculated checksum. Extracting the time stamp by exclusive-oring an erroneous checksum will lead to an invalid timestamp. So, checksum errors are indirectly detected when checking for a valid time stamp.
 
 ### Replay Protection
 
@@ -199,7 +199,7 @@ The aforementioned 128-bit pre-IV can be depicted as follows:
 
 ```
 
-The time stamp consists of the 52-bit microsecond value, a 8-bit counter in case of equal following time stamps and, a 4-bit flag field F (accuracy indicator in last bit). edge and supernode monitor their own time stamps for doublets which would indicate an accuracy issue. If the counter overflows on the same time stamp, the sub-second part of the time stamp will also become counter. In this case, the whole stamp carries the accurcy bit flag (lowest bit) set so other edges and supernodes can handle this stamp appropriately.
+The time stamp consists of the 52-bit microsecond value, a 8-bit counter in case of equal following time stamps and, a 4-bit flag field F (accuracy indicator in last bit). edge and supernode monitor their own time stamps for doublets which would indicate an accuracy issue. If the counter overflows on the same time stamp, the sub-second part of the time stamp will also become counter. In this case, the whole stamp carries the accuracy bit flag (lowest bit) set so other edges and supernodes can handle this stamp appropriately.
 
 Encrypting this pre-IV using a block cipher step will generate a pseudo-random looking IV which gets written to the packet and used for the header encryption.
 
@@ -211,6 +211,6 @@ Upon receival, the time stamp as well as the checksum can be extracted from the 
 
 - Valid (remote) time stamps get stored as "last valid time stamp" seen from each node (supernode and edges). So, a newly arriving packet's time stamp can be compared to the last valid one. It should be equal or higher. However, as UDP packets may overtake each other just by taking another path through the internet, they are allowed to be 160 millisecond earlier than the last valid one. This limit is set with the `TIME_STAMP_JITTER` definition. If the accuracy flag is set, the time stamp will be allowed a jitter eight times as high, corresponding to 1.25 seconds by default.
 
-- However, the systemic packets such as REGISTER_SUPER are not allowed any time stamp jitter because n2n relies on the actual sender's socket. A replay from another IP within any allowed jitter time frame would deviate the traffic which shall be prevented (even if it remains undecryptable). Under absolutely rare (!) circumstances, this might cause a re-registration requirement which happens automatically but might cause a small delay – security (including network availability) first! REGISTER packets from the local multicast environment are excempt from the very strict no-jitter requirement because they indeed regularily can show some deviation if compared to time stamps in packets received on the regular socket. As these packets are incoming on different sockets, their processing is more likely to no take place in the order these packets were sent.
+- However, the systemic packets such as REGISTER_SUPER are not allowed any time stamp jitter because n2n relies on the actual sender's socket. A replay from another IP within any allowed jitter time frame would deviate the traffic which shall be prevented (even if it remains undecryptable). Under absolutely rare (!) circumstances, this might cause a re-registration requirement which happens automatically but might cause a small delay – security (including network availability) first! REGISTER packets from the local multicast environment are exempt from the very strict no-jitter requirement because they indeed regularly can show some deviation if compared to time stamps in packets received on the regular socket. As these packets are incoming on different sockets, their processing is more likely to no take place in the order these packets were sent.
 
 The way the IV is used for replay protection and for checksumming makes enabled header encryption a prerequisite for these features.

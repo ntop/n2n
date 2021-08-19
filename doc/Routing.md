@@ -19,7 +19,7 @@ On the client side, the easiest way to configure routing is via the `-n` option.
 
 10.0.0.1 is the IP address of the gateway to use to route the specified network. It should correspond to the IP address of the `server` within n2n. Multiple `-n` options can be specified.
 
-As an alternative to the `-n` option, the `ip route` linux command can be manually used. See the [n2n_gateway.sh](doc/n2n_gateway.sh) script for an example. See also the follwing description of other use cases and in depth explanation.
+As an alternative to the `-n` option, the `ip route` linux command can be manually used. See the [n2n_gateway.sh](doc/n2n_gateway.sh) script for an example. See also the following description of other use cases and in depth explanation.
 
 ## Special Scenarios
 

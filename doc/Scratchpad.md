@@ -37,12 +37,12 @@ rpmbuild -bb ./n2n.spec
 
 ### Improvements
 
-- Increased edges' resiliance to temporary supernode failure
+- Increased edges' resilience to temporary supernode failure
 - Fixed a compression-related memory leak
 - Ciphers partly come with platform-specific hardware acceleration
 - Clean-up management port output
 - Polished benchmark tool output
-- Spun-off the name resolution into a seperate thread avoiding lags
+- Spun-off the name resolution into a separate thread avoiding lags
 - Implemented new `reload_communities` command to make supernode hot-reload the `-c` provided `community.list` file, issued through management port
 - Reactivated send out of gratuitous ARP packet on establishing connection
 - Enhanced documentation (`doc/` folder) including the man pages and command-line help text

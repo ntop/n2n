@@ -43,7 +43,7 @@ Whereas a symmetric NAT would keep the mapping:
 so only RemoteIP can send packets to the internal host. RemoteIP is the supernode
 IP in case of n2n, to which the internal host has registered.
 
-In n2n, P2P can work monodirecitonally if only one of the two peers is behind a symmetric
+In n2n, P2P can work monodirectionally if only one of the two peers is behind a symmetric
 NAT. For example, if A is behind symmetric NAT and B is behind asymmetric NAT
    - A->B packets are P2P (will have the B public IP as destination)
    - B->A packets must go through the supernode
@@ -100,7 +100,7 @@ receives {REGISTER,Amac} from A.
 
 The supernode never forwards REGISTER messages because the public socket seen by
 the supervisor for some edge (eg. A) may be different to the socket seen by
-another edge due to the actions of symmetric NAT (alocating a new public socket
+another edge due to the actions of symmetric NAT (allocating a new public socket
 for the new outbound UDP "connection").
 
 ## Edge Resgitration Design Ammendments (starting from 2008-04-10)
@@ -172,7 +172,7 @@ else
 association but the known_peers registration is still active, then the peer
 becomes unreachable until the known_peers registration is deleted. Suggest two
 ways to mitigate this problem:
-   (a) make the known_peers purge timeout a config paramter;
+   (a) make the known_peers purge timeout a config parameter;
    (b) send packets direct and via supernode if the registration is older than 
        eg. 60 sec.
 
