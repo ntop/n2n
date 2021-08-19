@@ -232,6 +232,10 @@ using the last key that was valid.
 Edge provides a very simple management system on UDP port 5644. Send a newline
 to receive a status output. Send 'stop' to cause edge to exit cleanly.
 
+.TP
+.B echo | nc -w1 -u 127.0.0.1 5644
+Shows the current statistics of a running edge.
+
 .SH EXIT STATUS
 edge is a daemon and any exit is an error.
 .SH AUTHORS

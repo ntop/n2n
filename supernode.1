@@ -80,6 +80,9 @@ shows detailed parameter description
 .TP
 .B supernode -p 7654 -v
 Start supernode listening on UDP port 7654 with verbose output.
+.TP
+.B echo | nc -w1 -u 127.0.0.1 5645
+Shows the management status of a running supernode.
 .PP
 .SH RESTART
 When supernode restarts it loses all registration information from associated
