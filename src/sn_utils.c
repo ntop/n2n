@@ -1494,7 +1494,8 @@ static int process_mgmt (n2n_sn_t *sss,
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                                 "Help for supernode management console:\n"
                                 "\thelp                 | This help message\n"
-                                "\treload_communities   | Reloads communities and user's public keys\n");
+                                "\treload_communities   | Reloads communities and user's public keys\n"
+                                "\t<enter>              | Display status and statistics\n");
             sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
             return 0; /* no status output afterwards */
         }

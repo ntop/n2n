@@ -202,7 +202,7 @@ Start edge with TAP device n2n0 on community "mynetwork" with community
 supernode at 123.121.120.119 UDP port 7654 and bind the locally used UDP port to
 50001. Use "encryptme" as the single permanent shared encryption key. Assign MAC
 address DE:AD:BE:EF:01:23 to the n2n interface and drop to user=99 and group=99
-after the TAP device is successfull configured.
+after the TAP device is successfully configured.
 .PP
 Add the -f option to stop edge running as a daemon.
 .PP
@@ -232,6 +232,10 @@ using the last key that was valid.
 Edge provides a very simple management system on UDP port 5644. Send a newline
 to receive a status output. Send 'stop' to cause edge to exit cleanly.
 
+.TP
+.B echo | nc -w1 -u 127.0.0.1 5644
+Shows the current statistics of a running edge.
+
 .SH EXIT STATUS
 edge is a daemon and any exit is an error.
 .SH AUTHORS
@@ -246,3 +250,5 @@ Don Bindner
 (--) - significant contributions to n2n-1
 .SH SEE ALSO
 ifconfig(8) supernode(1) tunctl(8) n2n(7)
+.br
+The extensive documentation contained in the source code

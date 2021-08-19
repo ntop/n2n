@@ -45,7 +45,8 @@ non-username-password-authenticating communities
 .SH TAP DEVICE AND OVERLAY NETWORK CONFIGURATION
 .TP
 \fB\-c \fR<\fIpath\fR>, \fB\-\-communities\fR=<\fIpath\fR>
-file containing the allowed communities
+file containing the allowed communities and any User / Password based authentication
+details (See ALLOWED COMMUNITIES FILE section)
 .TP
 \fB\-a \fR<\fInet-net/n\fR>, \fB\-\-autoip\fR=<net-net/n\fR>
 subnet range for auto ip address service,
@@ -76,10 +77,32 @@ shows a quick reference including all available options
 \fB\-\-help\fR
 shows detailed parameter description
 
+.SH ALLOWED COMMUNITIES FILE
+This file is a plain text file.
+Comments are introduced with a hash at the beginning of the line.
+A line that begins with an asterisk is a user authentication definition and adds an allowed user to the most recently defined community.
+Allowed communities can be specified with a regular expression.
+.PP
+Example community file:
+.PP
+.nf
+.RS
+# List of allowed communities
+mynetwork
+netleo
+* logan nHWum+r42k1qDXdIeH-WFKeylK5UyLStRzxofRNAgpG
+* sister HwHpPrdMft+38tFDDiunUds6927t0+zhCMMkQdJafcC
+.RE
+.fi
+.PP
+More details on creating the allowed communities file are found in the Communities.md and Authentication.md documentation included with this package.
 .SH EXAMPLES
 .TP
 .B supernode -p 7654 -v
 Start supernode listening on UDP port 7654 with verbose output.
+.TP
+.B echo | nc -w1 -u 127.0.0.1 5645
+Shows the management status of a running supernode.
 .PP
 .SH RESTART
 When supernode restarts it loses all registration information from associated
@@ -91,3 +114,5 @@ supernode is a daemon and any exit is an error
 Luca Deri ( deri (at) ntop.org ), Richard Andrews ( andrews (at) ntop.org ), Don Bindner
 .SH SEE ALSO
 ifconfig(8) edge(8)
+.br
+The extensive documentation contained in the source code

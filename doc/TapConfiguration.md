@@ -107,7 +107,7 @@ has been provided:
 
 - PMTU discovery is disabled if possible (via the IP_MTU_DISCOVER socket option). This avoids
   silently dropping an oversized packet due to the DF flag; however, it possibly increments fragmentation on the path.
-- As examplained above, a lower MTU is set on the VPN interface, thus removing excessive fragmentation on
+- As explained above, a lower MTU is set on the VPN interface, thus removing excessive fragmentation on
   the sender.
 - A value of 1290 bytes is used instead of 1500 bytes as reference value for the internet interface MTU.
   This essentially avoids fragmentation if the PMTU is greater or equal than 1400 bytes.
@@ -146,6 +146,6 @@ explaining it all in detail.
 
 Setting up the integrated traffic filter permits to define exactly the kind of allowed traffic or deny 
 other on edge's TAP interface. It helps to keep unwanted traffic out of the n2n network for
-bandwitdth and security reasons. The traffic filter is disabled by default and gets activated by providing
+bandwidth and security reasons. The traffic filter is disabled by default and gets activated by providing
 as many `-R <rule>`-rules as required through edge's command-line. Specifics are written down in the
 [Traffic Restrictions](TrafficRestricitons.md) documentation.

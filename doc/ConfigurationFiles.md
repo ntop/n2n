@@ -70,4 +70,4 @@ Finally, the `.conf` file syntax also allows `=` between parameter and its optio
 -l=supernode.ntop.org:7777
 ```
 
-When used with `=`, there is no whitespace allowed between parameter, delimter (`=`), and option. So, do **not** put `-c = mynetwork` – it is required to be `-c=mynetwork`.
+When used with `=`, there is no whitespace allowed between parameter, delimiter (`=`), and option. So, do **not** put `-c = mynetwork` – it is required to be `-c=mynetwork`.
