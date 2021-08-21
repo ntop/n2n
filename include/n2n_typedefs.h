@@ -646,6 +646,7 @@ typedef struct n2n_edge_conf {
     char                     *encrypt_key;
     int                      register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
     int                      register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
+    in_addr_t                bind_address;           /**< The address to bind to if provided (-b) */
     int                      local_port;
     int                      mgmt_port;
     uint8_t                  connect_tcp;            /** connection to supernode 0 = UDP; 1 = TCP */

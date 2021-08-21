@@ -28,7 +28,7 @@
 
 /* ************************************** */
 
-SOCKET open_socket (int local_port, int bind_any, int type /* 0 = UDP, TCP otherwise */) {
+SOCKET open_socket (int local_port, int bind_any, in_addr_t address, int type /* 0 = UDP, TCP otherwise */) {
 
     SOCKET sock_fd;
     struct sockaddr_in local_address;
@@ -50,7 +50,12 @@ SOCKET open_socket (int local_port, int bind_any, int type /* 0 = UDP, TCP other
     memset(&local_address, 0, sizeof(local_address));
     local_address.sin_family = AF_INET;
     local_address.sin_port = htons(local_port);
-    local_address.sin_addr.s_addr = htonl(bind_any ? INADDR_ANY : INADDR_LOOPBACK);
+    if(bind_any == 2) {
+        // use the provided address for binding
+        local_address.sin_addr.s_addr = address;
+    } else {
+        local_address.sin_addr.s_addr = htonl(bind_any ? INADDR_ANY : INADDR_LOOPBACK);
+    }
 
     if(bind(sock_fd,(struct sockaddr*) &local_address, sizeof(local_address)) == -1) {
         traceEvent(TRACE_ERROR, "Bind error on local port %u [%s]\n", local_port, strerror(errno));

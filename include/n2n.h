@@ -220,7 +220,7 @@ int memxor (uint8_t *destination, const uint8_t *source, size_t len);
 char* sock_to_cstr (n2n_sock_str_t out,
                     const n2n_sock_t * sock);
 char * ip_subnet_to_str (dec_ip_bit_str_t buf, const n2n_ip_subnet_t *ipaddr);
-SOCKET open_socket (int local_port, int bind_any, int type);
+SOCKET open_socket (int local_port, int bind_any, in_addr_t address, int type);
 int sock_equal (const n2n_sock_t * a,
                 const n2n_sock_t * b);
 
