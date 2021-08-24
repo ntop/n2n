@@ -253,7 +253,7 @@ static void help (int level) {
                "                   | causes connections to stall if not properly supported\n");
 #endif
         printf(" -b <bind ip>      | bind the edge to the provided local IP address only,\n"
-               "                   | defaults to 'any' ip address by default\n");
+               "                   | defaults to 'any' ip address if not provided\n");
         printf(" -S1 ... -S2       | do not connect p2p, always use the supernode,\n"
                "                   | -S1 = via UDP"
 
