@@ -577,7 +577,7 @@ int main (int argc, char * const argv[]) {
 
     traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
-    sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 0 /* UDP */);
+    sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 0, 0 /* UDP */);
     if(-1 == sss_node.sock) {
         traceEvent(TRACE_ERROR, "Failed to open main socket. %s", strerror(errno));
         exit(-2);
@@ -586,7 +586,7 @@ int main (int argc, char * const argv[]) {
     }
 
 #ifdef N2N_HAVE_TCP
-    sss_node.tcp_sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 1 /* TCP */);
+    sss_node.tcp_sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 0, 1 /* TCP */);
     if(-1 == sss_node.tcp_sock) {
         traceEvent(TRACE_ERROR, "Failed to open auxiliary TCP socket. %s", strerror(errno));
         exit(-2);
@@ -602,7 +602,7 @@ int main (int argc, char * const argv[]) {
     }
 #endif
 
-    sss_node.mgmt_sock = open_socket(sss_node.mport, 0 /* bind LOOPBACK */, 0 /* UDP */);
+    sss_node.mgmt_sock = open_socket(sss_node.mport, 0 /* bind LOOPBACK */, 0, 0 /* UDP */);
     if(-1 == sss_node.mgmt_sock) {
         traceEvent(TRACE_ERROR, "Failed to open management socket. %s", strerror(errno));
         exit(-2);

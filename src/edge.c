@@ -177,7 +177,7 @@ static void help (int level) {
                "[-H] "
                "[-z<compression>]"
             "\n                      "
-               "[-S<level of solitude>]"
+               "[-b <bind IP address>][-S<level of solitude>]"
           "\n\n tap device and       "
                "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
             "\n overlay network      "
@@ -252,6 +252,8 @@ static void help (int level) {
         printf(" -D                | enable PMTU discovery, it can reduce fragmentation but\n"
                "                   | causes connections to stall if not properly supported\n");
 #endif
+        printf(" -b <bind ip>      | bind the edge to the provided local IP address only,\n"
+               "                   | defaults to 'any' ip address if not provided\n");
         printf(" -S1 ... -S2       | do not connect p2p, always use the supernode,\n"
                "                   | -S1 = via UDP"
 
@@ -589,6 +591,20 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
+        case 'b': {
+            if(optargument) {
+                conf->bind_address = inet_addr(optargument);
+
+                if(conf->bind_address == INADDR_NONE) {
+                    traceEvent(TRACE_WARNING, "Bad address to bind to, binding to any IP address.");
+                    conf->bind_address = INADDR_ANY;
+                    break;
+                }
+            }
+
+            break;
+        }
+
         case 't': {
             conf->mgmt_port = atoi(optargument);
             break;
@@ -711,6 +727,7 @@ static const struct option long_options[] =
         { "tap-device",        required_argument, NULL, 'd' },
         { "euid",              required_argument, NULL, 'u' },
         { "egid",              required_argument, NULL, 'g' },
+        { "bind",              required_argument, NULL, 'b' },
         { "help"     ,         no_argument,       NULL, '@' }, /* special character '@' to identify long help case */
         { "verbose",           no_argument,       NULL, 'v' },
         { NULL,                0,                 NULL,  0  }
@@ -724,7 +741,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
     u_char c;
 
     while ((c = getopt_long(argc, argv,
-                            "k:a:bc:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:"
+                            "k:a:b:c:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:"
 #ifdef __linux__
                             "T:"
 #endif

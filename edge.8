@@ -40,6 +40,10 @@ TOS for packets, e.g. 0x48 for SSH like priority
 enable PMTU discovery, it can reduce fragmentation but
 causes connections to stall if not properly supported
 .TP
+\fB\-b \fR<\fIbind ip\fR>
+binds edge to the provided local IP address only, defaults to 'any' ip address
+if not provided
+.TP
 \fB\-S1\fR ... \fB\-S2\fR
 do not connect p2p, always use the supernode,
 \-S1 = via UDP, \-S2 = via TCP
