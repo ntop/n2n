@@ -52,6 +52,8 @@ SOCKET open_socket (int local_port, int bind_any, in_addr_t address, int type /*
     local_address.sin_port = htons(local_port);
     if(bind_any == 2) {
         // use the provided address for binding
+        // REVISIT: allow for multiple addresses to be provided, i.e. through several '-b' at cli,
+        //          internally requires a list of in_addr_t addresses
         local_address.sin_addr.s_addr = address;
     } else {
         local_address.sin_addr.s_addr = htonl(bind_any ? INADDR_ANY : INADDR_LOOPBACK);
