@@ -40,10 +40,17 @@ add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
 
 # N2n specific params
+OPTION(N2N_OPTION_USE_PTHREAD "USE PTHREAD Library" OFF)
 OPTION(N2N_OPTION_USE_OPENSSL "USE OPENSSL Library" OFF)
 OPTION(N2N_OPTION_USE_PCAPLIB "USE PCAP Library" OFF)
 OPTION(N2N_OPTION_USE_ZSTD "USE ZSTD Library" OFF)
 
+
+find_library(PTHREAD_LIB pthread)
+if(PTHREAD_LIB)
+  set(N2N_OPTION_USE_PTHREAD ON)
+  ADD_DEFINITIONS("-DHAVE_PTHREAD")
+endif(PTHREAD_LIB)
 
 if(NOT DEFINED N2N_OPTION_USE_OPENSSL)
 set(N2N_OPTION_USE_OPENSSL OFF)
@@ -132,6 +139,10 @@ add_library(n2n STATIC
         src/auth.c
         src/curve25519.c)
 
+
+if(N2N_OPTION_USE_PTHREAD)
+  target_link_libraries(n2n pthread)
+endif(N2N_OPTION_USE_PTHREAD)
 
 if(N2N_OPTION_USE_OPENSSL)
 #  target_link_libraries(n2n crypto)
