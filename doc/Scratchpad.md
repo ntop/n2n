@@ -18,7 +18,7 @@ rpmbuild -bb ./n2n.spec
 - Better ming Windows build support.
 - Added `-E` flag to allow multicast ethernet traffic.
 
-## Draft changelog between 2.8.x and 2.9.x (as of June 4, 2021)
+## Draft changelog between 2.8.x and 2.9.x (as of August 29, 2021)
 
 ### New Features
 
@@ -32,6 +32,7 @@ rpmbuild -bb ./n2n.spec
 - Network interface metric can be set by command-line option `-x` (Windows only)
 - Re-enabled local peer detection by multicast on Windows
 - Edge identifier (`-I`) helps to identify edges more easily in management port output
+- Optionally bind edge to one local IP address only (`-b`)
 - Optional edge user and password authentication (`-J`, `-P`, `doc/Authentication.md`)
 
 
@@ -45,7 +46,7 @@ rpmbuild -bb ./n2n.spec
 - Spun-off the name resolution into a separate thread avoiding lags
 - Implemented new `reload_communities` command to make supernode hot-reload the `-c` provided `community.list` file, issued through management port
 - Reactivated send out of gratuitous ARP packet on establishing connection
-- Enhanced documentation (`doc/` folder) including the man pages and command-line help text
+- Enhanced documentation (`doc/` folder) including the man pages and command-line help text (`-h` and more detailed `--help`)
 - Self-monitoring time stamp accuracy for use on systems with less accurate clocks
 - Fixed man pages' and config files' paths
 - Code clean-up
