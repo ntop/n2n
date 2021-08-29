@@ -210,7 +210,7 @@ int supernode_connect(n2n_edge_t *eee) {
     if(eee->sock < 0) {
 
         if(eee->conf.local_port > 0)
-            traceEvent(TRACE_NORMAL, "Binding to local port %d",
+            traceEvent(TRACE_NORMAL, "binding to local port %d",
                                      (eee->conf.connect_tcp) ? 0 : eee->conf.local_port);
 
         eee->sock = open_socket((eee->conf.connect_tcp) ?  0 : eee->conf.local_port,
@@ -218,7 +218,7 @@ int supernode_connect(n2n_edge_t *eee) {
                                  eee->conf.connect_tcp);
 
         if(eee->sock < 0) {
-            traceEvent(TRACE_ERROR, "Failed to bind main UDP port %u",
+            traceEvent(TRACE_ERROR, "failed to bind main UDP port %u",
                                      (eee->conf.connect_tcp) ? 0 : eee->conf.local_port);
             return -1;
         }
@@ -252,18 +252,18 @@ int supernode_connect(n2n_edge_t *eee) {
             sockopt = eee->conf.tos;
 
             if(setsockopt(eee->sock, IPPROTO_IP, IP_TOS, (char *)&sockopt, sizeof(sockopt)) == 0)
-                traceEvent(TRACE_NORMAL, "TOS set to 0x%x", eee->conf.tos);
+                traceEvent(TRACE_INFO, "TOS set to 0x%x", eee->conf.tos);
             else
-                traceEvent(TRACE_ERROR, "Could not set TOS 0x%x[%d]: %s", eee->conf.tos, errno, strerror(errno));
+                traceEvent(TRACE_WARNING, "could not set TOS 0x%x[%d]: %s", eee->conf.tos, errno, strerror(errno));
         }
 #ifdef IP_PMTUDISC_DO
         sockopt = (eee->conf.disable_pmtu_discovery) ? IP_PMTUDISC_DONT : IP_PMTUDISC_DO;
 
         if(setsockopt(eee->sock, IPPROTO_IP, IP_MTU_DISCOVER, &sockopt, sizeof(sockopt)) < 0)
-            traceEvent(TRACE_WARNING, "Could not %s PMTU discovery[%d]: %s",
+            traceEvent(TRACE_WARNING, "could not %s PMTU discovery[%d]: %s",
                        (eee->conf.disable_pmtu_discovery) ? "disable" : "enable", errno, strerror(errno));
         else
-            traceEvent(TRACE_DEBUG, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
+            traceEvent(TRACE_INFO, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
 #endif
     }
 
@@ -297,12 +297,12 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     uint8_t tmp_key[N2N_AUTH_CHALLENGE_SIZE];
 
     if((rc = edge_verify_conf(conf)) != 0) {
-        traceEvent(TRACE_ERROR, "Invalid configuration");
+        traceEvent(TRACE_ERROR, "invalid configuration");
         goto edge_init_error;
     }
 
     if(!eee) {
-        traceEvent(TRACE_ERROR, "Cannot allocate memory");
+        traceEvent(TRACE_ERROR, "cannot allocate memory");
         goto edge_init_error;
     }
 
@@ -328,7 +328,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     // zstd does not require initialization. if it were required, this would be a good place
 #endif
 
-    traceEvent(TRACE_NORMAL, "Number of supernodes in the list: %d\n", HASH_COUNT(eee->conf.supernodes));
+    traceEvent(TRACE_NORMAL, "number of supernodes in the list: %d\n", HASH_COUNT(eee->conf.supernodes));
     HASH_ITER(hh, eee->conf.supernodes, scan, tmp) {
         traceEvent(TRACE_NORMAL, "supernode %u => %s\n", i, (scan->ip_addr));
         i++;
@@ -357,7 +357,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     }
 
     if((rc < 0) || (eee->transop.fwd == NULL) || (eee->transop.transform_id != transop_id)) {
-        traceEvent(TRACE_ERROR, "Transop init failed");
+        traceEvent(TRACE_ERROR, "transop init failed");
         goto edge_init_error;
     }
 
@@ -403,7 +403,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     }
 
     if(eee->transop.no_encryption)
-        traceEvent(TRACE_WARNING, "Encryption is disabled in edge");
+        traceEvent(TRACE_WARNING, "encryption is disabled in edge");
 
     // first time calling edge_init_sockets needs -1 in the sockets for it does throw an error
     // on trying to close them (open_sockets does so for also being able to RE-open the sockets
@@ -523,12 +523,12 @@ static void register_with_local_peers (n2n_edge_t * eee) {
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
     if(eee->multicast_joined && eee->conf.allow_p2p) {
         /* send registration to the local multicast group */
-        traceEvent(TRACE_DEBUG, "Registering with multicast group %s:%u",
+        traceEvent(TRACE_DEBUG, "registering with multicast group %s:%u",
                    N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
         send_register(eee, &(eee->multicast_peer), NULL);
     }
 #else
-    traceEvent(TRACE_DEBUG, "Multicast peers discovery is disabled, skipping");
+    traceEvent(TRACE_DEBUG, "multicast peers discovery is disabled, skipping");
 #endif
 }
 
@@ -591,11 +591,11 @@ static void register_with_new_peer (n2n_edge_t *eee,
 
         HASH_ADD_PEER(eee->pending_peers, scan);
 
-        traceEvent(TRACE_DEBUG, "=== new pending %s -> %s",
+        traceEvent(TRACE_DEBUG, "new pending peer %s [%s]",
                    macaddr_str(mac_buf, scan->mac_addr),
                    sock_to_cstr(sockbuf, &(scan->sock)));
 
-        traceEvent(TRACE_DEBUG, "Pending peers list size=%u",
+        traceEvent(TRACE_DEBUG, "pending peers list size=%u",
                    HASH_COUNT(eee->pending_peers));
         /* trace Sending REGISTER */
         if(from_supernode) {
@@ -729,23 +729,23 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
         HASH_ADD_PEER(eee->known_peers, scan);
         scan->last_p2p = now;
 
-        traceEvent(TRACE_DEBUG, "P2P connection established: %s [%s]",
+        traceEvent(TRACE_DEBUG, "p2p connection established: %s [%s]",
                    macaddr_str(mac_buf, mac),
                    sock_to_cstr(sockbuf, peer));
 
-        traceEvent(TRACE_DEBUG, "=== new peer %s -> %s",
+        traceEvent(TRACE_DEBUG, "new peer %s [%s]",
                    macaddr_str(mac_buf, scan->mac_addr),
                    sock_to_cstr(sockbuf, &(scan->sock)));
 
-        traceEvent(TRACE_DEBUG, "Pending peers list size=%u",
+        traceEvent(TRACE_DEBUG, "pending peers list size=%u",
                    HASH_COUNT(eee->pending_peers));
 
-        traceEvent(TRACE_DEBUG, "Known peers list size=%u",
+        traceEvent(TRACE_DEBUG, "known peers list size=%u",
                    HASH_COUNT(eee->known_peers));
 
         scan->last_seen = now;
     } else
-        traceEvent(TRACE_DEBUG, "Failed to find sender in pending_peers.");
+        traceEvent(TRACE_DEBUG, "failed to find sender in pending_peers");
 }
 
 
@@ -890,7 +890,7 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
     if(!sock_equal(&(scan->sock), peer)) {
         if(!from_supernode) {
             /* This is a P2P packet */
-            traceEvent(TRACE_NORMAL, "Peer changed %s: %s -> %s",
+            traceEvent(TRACE_NORMAL, "peer %s changed [%s] -> [%s]",
                        macaddr_str(mac_buf, scan->mac_addr),
                        sock_to_cstr(sockbuf1, &(scan->sock)),
                        sock_to_cstr(sockbuf2, peer));
@@ -937,30 +937,30 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
             char * c = strerror(errno);
             // downgrade to TRACE_DEBUG in case of custom AF_INVALID, i.e. supernode not resolved yet
             if(errno == EAFNOSUPPORT /* 93 */) {
-                traceEvent(TRACE_DEBUG, "sendto_fd sendto failed (%d) %s", errno, c);
+                traceEvent(TRACE_DEBUG, "sendto failed (%d) %s", errno, c);
 #ifdef WIN32
-                traceEvent(TRACE_DEBUG, "sendto_fd WSAGetLastError(): %u", WSAGetLastError());
+                traceEvent(TRACE_DEBUG, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             } else {
-                traceEvent(TRACE_ERROR, "sendto_fd sendto failed (%d) %s", errno, c);
+                traceEvent(TRACE_WARNING, "sendto failed (%d) %s", errno, c);
 #ifdef WIN32
-                traceEvent(TRACE_ERROR, "sendto_fd WSAGetLastError(): %u", WSAGetLastError());
+                traceEvent(TRACE_WARNING, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             }
 
             if(eee->conf.connect_tcp) {
                 supernode_disconnect(eee);
                 eee->sn_wait = 1;
-                traceEvent(TRACE_DEBUG, "sendto_fd disconnected supernode due to sendto() error");
+                traceEvent(TRACE_DEBUG, "disconnected supernode due to sendto() error");
                 return -1;
             }
         } else {
-            traceEvent(TRACE_DEBUG, "sendto_fd sent=%d to ", (signed int)sent);
+            traceEvent(TRACE_DEBUG, "sent=%d to ", (signed int)sent);
         }
     } else {
         supernode_disconnect(eee);
         eee->sn_wait = 1;
-        traceEvent(TRACE_DEBUG, "sendto_fd disconnected supernode due to select() timeout");
+        traceEvent(TRACE_DEBUG, "disconnected supernode due to select() timeout");
         return -1;
     }
     return sent;
@@ -1039,14 +1039,14 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
 #endif
 
             if(setsockopt(eee->udp_multicast_sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
-                traceEvent(TRACE_WARNING, "Failed to bind to local multicast group %s:%u [errno %u]",
+                traceEvent(TRACE_WARNING, "failed to bind to local multicast group %s:%u [errno %u]",
                            N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
 
 #ifdef WIN32
-                traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
+                traceEvent(TRACE_WARNING, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             } else {
-                traceEvent(TRACE_NORMAL, "Successfully joined multicast group %s:%u",
+                traceEvent(TRACE_NORMAL, "successfully joined multicast group %s:%u",
                            N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
                 eee->multicast_joined = 1;
             }
@@ -1171,7 +1171,7 @@ void send_register_super (n2n_edge_t *eee) {
     idx = 0;
     encode_REGISTER_SUPER(pktbuf, &idx, &cmn, &reg);
 
-    traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to %s",
+    traceEvent(TRACE_DEBUG, "send REGISTER_SUPER to [%s]",
                sock_to_cstr(sockbuf, &(eee->curr_sn->sock)));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
@@ -1214,7 +1214,7 @@ static void send_unregister_super (n2n_edge_t *eee) {
     idx = 0;
     encode_UNREGISTER_SUPER(pktbuf, &idx, &cmn, &unreg);
 
-    traceEvent(TRACE_DEBUG, "send UNREGISTER_SUPER to %s",
+    traceEvent(TRACE_DEBUG, "send UNREGISTER_SUPER to [%s]",
                sock_to_cstr(sockbuf, &(eee->curr_sn->sock)));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
@@ -1246,7 +1246,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
             reset_sup_attempts(eee);
             supernode_connect(eee);
 
-            traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
+            traceEvent(TRACE_INFO, "registering with supernode [%s][number of supernodes %d][attempts left %u]",
                        supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
             send_register_super(eee);
@@ -1287,7 +1287,7 @@ static void send_register (n2n_edge_t * eee,
     n2n_sock_str_t sockbuf;
 
     if(!eee->conf.allow_p2p) {
-        traceEvent(TRACE_DEBUG, "Skipping register as P2P is disabled");
+        traceEvent(TRACE_DEBUG, "skipping register as P2P is disabled");
         return;
     }
 
@@ -1315,7 +1315,7 @@ static void send_register (n2n_edge_t * eee,
     idx = 0;
     encode_REGISTER(pktbuf, &idx, &cmn, &reg);
 
-    traceEvent(TRACE_INFO, "Send REGISTER to %s",
+    traceEvent(TRACE_INFO, "send REGISTER to [%s]",
                sock_to_cstr(sockbuf, remote_peer));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
@@ -1341,7 +1341,7 @@ static void send_register_ack (n2n_edge_t * eee,
     n2n_sock_str_t sockbuf;
 
     if(!eee->conf.allow_p2p) {
-        traceEvent(TRACE_DEBUG, "Skipping register ACK as P2P is disabled");
+        traceEvent(TRACE_DEBUG, "skipping register ACK as P2P is disabled");
         return;
     }
 
@@ -1360,7 +1360,7 @@ static void send_register_ack (n2n_edge_t * eee,
     idx = 0;
     encode_REGISTER_ACK(pktbuf, &idx, &cmn, &ack);
 
-    traceEvent(TRACE_INFO, "send REGISTER_ACK %s",
+    traceEvent(TRACE_INFO, "send REGISTER_ACK to [%s]",
                sock_to_cstr(sockbuf, remote_peer));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
@@ -1409,7 +1409,7 @@ static void send_grat_arps (n2n_edge_t * eee) {
     uint8_t buffer[48];
     size_t len;
 
-    traceEvent(TRACE_DEBUG, "Sending gratuitous ARP...");
+    traceEvent(TRACE_DEBUG, "sending gratuitous ARP...");
     len = build_gratuitous_arp(eee, (char*)buffer, sizeof(buffer));
 
     edge_send_packet2net(eee, buffer, len);
@@ -1450,7 +1450,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         sn_selection_criterion_bad(&(eee->curr_sn->selection_criterion));
         sn_selection_sort(&(eee->conf.supernodes));
         eee->curr_sn = eee->conf.supernodes;
-        traceEvent(TRACE_WARNING, "Supernode not responding, now trying %s", supernode_ip(eee));
+        traceEvent(TRACE_WARNING, "supernode not responding, now trying [%s]", supernode_ip(eee));
         supernode_connect(eee);
         reset_sup_attempts(eee);
         // trigger out-of-schedule DNS resolution
@@ -1475,12 +1475,12 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
                 if(eee->close_socket_counter >= N2N_CLOSE_SOCKET_COUNTER_MAX) {
                     eee->close_socket_counter = 0;
                     supernode_disconnect(eee);
-                    traceEvent(TRACE_DEBUG, "update_supernode_reg disconnected supernode");
+                    traceEvent(TRACE_DEBUG, "disconnected supernode");
                 }
             }
 
             supernode_connect(eee);
-            traceEvent(TRACE_DEBUG, "update_supernode_reg reconnected to supernode");
+            traceEvent(TRACE_DEBUG, "reconnected to supernode");
         }
 
     } else {
@@ -1490,7 +1490,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
 #ifndef HAVE_PTHREAD
     if(supernode2sock(&(eee->curr_sn->sock), eee->curr_sn->ip_addr) == 0) {
 #endif
-        traceEvent(TRACE_INFO, "Registering with supernode [%s][number of supernodes %d][attempts left %u]",
+        traceEvent(TRACE_INFO, "registering with supernode [%s][number of supernodes %d][attempts left %u]",
                    supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
         send_register_super(eee);
@@ -1593,7 +1593,7 @@ static int handle_PACKET (n2n_edge_t * eee,
                     deflation_buffer = malloc(deflated_len);
                     deflated_len = ZSTD_decompress(deflation_buffer, deflated_len, eth_payload, eth_size);
                     if(ZSTD_isError(deflated_len)) {
-                        traceEvent(TRACE_ERROR, "payload decompression failed with zstd error '%s'.",
+                        traceEvent(TRACE_WARNING, "payload decompression failed with zstd error '%s'.",
                                    ZSTD_getErrorName(deflated_len));
                         free(deflation_buffer);
                         return(-1); // cannot help it
@@ -1601,13 +1601,13 @@ static int handle_PACKET (n2n_edge_t * eee,
                     break;
 #endif
                 default:
-                    traceEvent(TRACE_ERROR, "payload decompression failed: received packet indicating unsupported %s compression.",
+                    traceEvent(TRACE_WARNING, "payload decompression failed: received packet indicating unsupported %s compression.",
                                compression_str(rx_compression_id));
                     return(-1); // cannot handle it
             }
 
             if(rx_compression_id != N2N_COMPRESSION_ID_NONE) {
-                traceEvent(TRACE_DEBUG, "payload decompression [%s]: deflated %u bytes to %u bytes",
+                traceEvent(TRACE_DEBUG, "payload decompression %s: deflated %u bytes to %u bytes",
                            compression_str(rx_compression_id), eth_size, (int)deflated_len);
                 memcpy(eth_payload ,deflation_buffer, deflated_len );
                 eth_size = deflated_len;
@@ -1617,7 +1617,7 @@ static int handle_PACKET (n2n_edge_t * eee,
             is_multicast = (is_ip6_discovery(eth_payload, eth_size) || is_ethMulticast(eth_payload, eth_size));
 
             if(eee->conf.drop_multicast && is_multicast) {
-                traceEvent(TRACE_INFO, "Dropping RX multicast");
+                traceEvent(TRACE_INFO, "dropping RX multicast");
                 return(-1);
             } else if((!eee->conf.allow_routing) && (!is_multicast)) {
                 /* Check if it is a routed packet */
@@ -1628,11 +1628,11 @@ static int handle_PACKET (n2n_edge_t * eee,
 
                     /* Note: all elements of the_ip are in network order */
                     if(!memcmp(dst_mac, broadcast_mac, N2N_MAC_SIZE))
-                        traceEvent(TRACE_DEBUG, "Broadcast packet [%s]",
+                        traceEvent(TRACE_DEBUG, "RX broadcast packet destined to [%s]",
                                    intoa(ntohl(*dst), ip_buf, sizeof(ip_buf)));
                     else if((*dst != eee->device.ip_addr)) {
                         /* This is a packet that needs to be routed */
-                        traceEvent(TRACE_INFO, "Discarding routed packet [%s]",
+                        traceEvent(TRACE_INFO, "discarding routed packet destined to [%s]",
                                    intoa(ntohl(*dst), ip_buf, sizeof(ip_buf)));
                         return(-1);
                     } else {
@@ -1644,32 +1644,32 @@ static int handle_PACKET (n2n_edge_t * eee,
 
             if(eee->network_traffic_filter->filter_packet_from_peer(eee->network_traffic_filter, eee, orig_sender,
                                                                     eth_payload, eth_size) == N2N_DROP) {
-                traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)eth_size);
+                traceEvent(TRACE_DEBUG, "filtered packet of size %u", (unsigned int)eth_size);
                 return(0);
             }
 
             if(eee->cb.packet_from_peer) {
                 uint16_t tmp_eth_size = eth_size;
                 if(eee->cb.packet_from_peer(eee, orig_sender, eth_payload, &tmp_eth_size) == N2N_DROP) {
-                    traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)eth_size);
+                    traceEvent(TRACE_DEBUG, "DROP packet of size %u", (unsigned int)eth_size);
                     return(0);
                 }
                 eth_size = tmp_eth_size;
             }
 
             /* Write ethernet packet to tap device. */
-            traceEvent(TRACE_DEBUG, "sending to TAP %u", (unsigned int)eth_size);
+            traceEvent(TRACE_DEBUG, "sending data of size %u to TAP", (unsigned int)eth_size);
             data_sent_len = tuntap_write(&(eee->device), eth_payload, eth_size);
 
             if(data_sent_len == eth_size) {
                 retval = 0;
             }
         } else {
-                traceEvent(TRACE_ERROR, "invalid transop ID: expected %s(%u), got %s(%u) from %s [%s]",
+                traceEvent(TRACE_WARNING, "invalid transop ID: expected %s (%u), got %s (%u) from %s [%s]",
                            transop_str(eee->conf.transop_id), eee->conf.transop_id,
                            transop_str(rx_transop_id), rx_transop_id,
-                           sock_to_cstr(sockbuf, orig_sender),
-                           macaddr_str(mac_buf, pkt->srcMac));
+                           macaddr_str(mac_buf, pkt->srcMac),
+                           sock_to_cstr(sockbuf, orig_sender));
         }
     }
 
@@ -1697,7 +1697,7 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
     }
 
     if(!(fd = fopen("/proc/net/arp", "r"))) {
-        traceEvent(TRACE_ERROR, "Could not open arp table. [%d]: %s", errno, strerror(errno));
+        traceEvent(TRACE_WARNING, "could not open arp table: %d - %s", errno, strerror(errno));
         return buf;
     }
 
@@ -1747,7 +1747,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                        (struct sockaddr *) &sender_sock, (socklen_t *) &i);
 
     if(recvlen < 0) {
-        traceEvent(TRACE_ERROR, "mgmt recvfrom failed with %s", strerror(errno));
+        traceEvent(TRACE_WARNING, "mgmt recvfrom failed: %d - %s", errno, strerror(errno));
         return; /* failed to receive data from UDP */
     }
 
@@ -1769,7 +1769,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     }
 
     if(0 == memcmp(udp_buf, "stop", 4)) {
-        traceEvent(TRACE_ERROR, "stop command received.");
+        traceEvent(TRACE_NORMAL, "stop command received");
         *keep_running = 0;
         return;
     }
@@ -1778,7 +1778,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
         msg_len = 0;
         setTraceLevel(getTraceLevel() + 1);
 
-        traceEvent(TRACE_ERROR, "+verb traceLevel=%u", (unsigned int) getTraceLevel());
+        traceEvent(TRACE_NORMAL, "+verb traceLevel=%u", (unsigned int) getTraceLevel());
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "> +OK traceLevel=%u\n", (unsigned int) getTraceLevel());
 
@@ -1800,14 +1800,14 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                                 "> -NOK traceLevel=%u\n", getTraceLevel());
         }
 
-        traceEvent(TRACE_ERROR, "-verb traceLevel=%u", (unsigned int) getTraceLevel());
+        traceEvent(TRACE_NORMAL, "-verb traceLevel=%u", (unsigned int) getTraceLevel());
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
         return;
     }
 
-    traceEvent(TRACE_DEBUG, "mgmt status rq");
+    traceEvent(TRACE_DEBUG, "mgmt status requested");
 
     msg_len = 0;
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
@@ -1979,12 +1979,12 @@ static int find_peer_destination (n2n_edge_t * eee,
     time_t now = time(NULL);
 
     if(is_multi_broadcast(mac_address)) {
-        traceEvent(TRACE_DEBUG, "Multicast or broadcast destination peer, using supernode");
+        traceEvent(TRACE_DEBUG, "multicast or broadcast destination peer, using supernode");
         memcpy(destination, &(eee->curr_sn->sock), sizeof(struct sockaddr_in));
         return(0);
     }
 
-    traceEvent(TRACE_DEBUG, "Searching destination peer for MAC %s",
+    traceEvent(TRACE_DEBUG, "searching destination socket for %s",
                             macaddr_str(mac_buf, mac_address));
 
     HASH_FIND_PEER(eee->known_peers, mac_address, scan);
@@ -1993,7 +1993,7 @@ static int find_peer_destination (n2n_edge_t * eee,
         if((now - scan->last_p2p) >= (scan->timeout / 2)) {
             /* Too much time passed since we saw the peer, need to register again
              * since the peer address may have changed. */
-            traceEvent(TRACE_DEBUG, "Refreshing idle known peer");
+            traceEvent(TRACE_DEBUG, "refreshing idle known peer");
             HASH_DEL(eee->known_peers, scan);
             free(scan);
             /* NOTE: registration will be performed upon the receival of the next response packet */
@@ -2006,13 +2006,13 @@ static int find_peer_destination (n2n_edge_t * eee,
 
     if(retval == 0) {
         memcpy(destination, &(eee->curr_sn->sock), sizeof(struct sockaddr_in));
-        traceEvent(TRACE_DEBUG, "P2P Peer [MAC=%s] not found, using supernode",
+        traceEvent(TRACE_DEBUG, "p2p peer %s not found, using supernode",
                                 macaddr_str(mac_buf, mac_address));
 
         check_query_peer_info(eee, now, mac_address);
     }
 
-    traceEvent(TRACE_DEBUG, "find_peer_address (%s) -> [%s]",
+    traceEvent(TRACE_DEBUG, "found peer's socket %s [%s]",
                macaddr_str(mac_buf, mac_address),
                sock_to_cstr(sockbuf, destination));
 
@@ -2039,9 +2039,9 @@ static int send_packet (n2n_edge_t * eee,
 
     is_p2p = find_peer_destination(eee, dstMac, &destination);
 
-    traceEvent(TRACE_INFO, "Tx PACKET to %s (dest=%s) [%u B]",
-               sock_to_cstr(sockbuf, &destination),
-               macaddr_str(mac_buf, dstMac), pktlen);
+    traceEvent(TRACE_INFO, "Tx PACKET of %u bytes to %s [%s]",
+               pktlen, macaddr_str(mac_buf, dstMac),
+               sock_to_cstr(sockbuf, &destination));
 
     if(is_p2p)
         ++(eee->stats.tx_p2p);
@@ -2092,7 +2092,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
             /* Note: all elements of the_ip are in network order */
             if(*src != eee->device.ip_addr) {
                 /* This is a packet that needs to be routed */
-                traceEvent(TRACE_INFO, "Discarding routed packet [%s]",
+                traceEvent(TRACE_INFO, "discarding routed packet destined to [%s]",
                            intoa(ntohl(*src), ip_buf, sizeof(ip_buf)));
                 return;
             } else {
@@ -2180,7 +2180,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
                             pktbuf + idx, N2N_PKT_BUF_SIZE - idx,
                             tap_pkt, len, pkt.dstMac);
 
-    traceEvent(TRACE_DEBUG, "Encode %u B PACKET [%u B data, %u B overhead] transform %u",
+    traceEvent(TRACE_DEBUG, "encode PACKET of %u bytes, %u bytes data, %u bytes overhead, transform %u",
                (u_int)idx, (u_int)len, (u_int)(idx - len), tx_transop_idx);
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
@@ -2230,13 +2230,13 @@ void edge_read_from_tap (n2n_edge_t * eee) {
                     );
     } else {
         const uint8_t * mac = eth_pkt;
-        traceEvent(TRACE_DEBUG, "### Rx TAP packet (%4d) for %s",
+        traceEvent(TRACE_DEBUG, "Rx TAP packet (%4d) for %s",
                    (signed int)len, macaddr_str(mac_buf, mac));
 
         if(eee->conf.drop_multicast &&
            (is_ip6_discovery(eth_pkt, len) ||
             is_ethMulticast(eth_pkt, len))) {
-                traceEvent(TRACE_INFO, "Dropping TX multicast");
+                traceEvent(TRACE_INFO, "dropping Tx multicast");
         } else {
             if(!eee->last_sup) {
                 // drop packets before first registration with supernode
@@ -2247,7 +2247,7 @@ void edge_read_from_tap (n2n_edge_t * eee) {
             if(eee->network_traffic_filter) {
                 if(eee->network_traffic_filter->filter_packet_from_tap(eee->network_traffic_filter, eee, eth_pkt,
                                                                            len) == N2N_DROP) {
-                    traceEvent(TRACE_DEBUG, "Filtered packet %u", (unsigned int)len);
+                    traceEvent(TRACE_DEBUG, "filtered packet of size %u", (unsigned int)len);
                     return;
                 }
             }
@@ -2255,7 +2255,7 @@ void edge_read_from_tap (n2n_edge_t * eee) {
             if(eee->cb.packet_from_tap) {
                 uint16_t tmp_len = len;
                 if(eee->cb.packet_from_tap(eee, eth_pkt, &tmp_len) == N2N_DROP) {
-                    traceEvent(TRACE_DEBUG, "DROP packet %u", (unsigned int)len);
+                    traceEvent(TRACE_DEBUG, "DROP packet of size %u", (unsigned int)len);
                     return;
                 }
                 len = tmp_len;
@@ -2311,7 +2311,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
     via_multicast = (in_sock == eee->udp_multicast_sock);
 
-    traceEvent(TRACE_DEBUG, "### Rx N2N UDP (%d) from %s",
+    traceEvent(TRACE_DEBUG, "Rx N2N_UDP of size %d from [%s]",
                (signed int)udp_size, sock_to_cstr(sockbuf1, &sender));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
@@ -2335,7 +2335,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                            &stamp);
         }
         if(!header_enc) {
-            traceEvent(TRACE_DEBUG, "readFromIPSocket failed to decrypt header.");
+            traceEvent(TRACE_DEBUG, "failed to decrypt header");
             return;
         }
         // time stamp verification follows in the packet specific section as it requires to determine the
@@ -2350,7 +2350,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
             // from some other edge on local network, possibly header encrypted
             traceEvent(TRACE_DEBUG, "dropped packet arriving via multicast due to error while decoding N2N_UDP");
         } else {
-            traceEvent(TRACE_WARNING, "failed to decode common section in N2N_UDP");
+            traceEvent(TRACE_INFO, "failed to decode common section in N2N_UDP");
         }
         return; /* failed to decode packet */
     }
@@ -2363,7 +2363,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
     && (msg_type != MSG_TYPE_REGISTER_SUPER_ACK)
     && (msg_type != MSG_TYPE_REGISTER_SUPER_NAK)) {
         if(header_enc != 2) {
-            traceEvent(TRACE_WARNING, "process_udp dropped packet encrypted with static key where dynamic key expected.");
+            traceEvent(TRACE_INFO, "dropped packet encrypted with static key where dynamic key expected");
             return;
         }
     }
@@ -2374,7 +2374,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
         skip_add = SN_ADD_SKIP;
         sn = add_sn_to_list_by_mac_or_sock (&(eee->conf.supernodes), &sender, null_mac, &skip_add);
         if(!sn) {
-            traceEvent(TRACE_DEBUG, "readFromIPSocket dropped incoming data from unknown supernode.");
+            traceEvent(TRACE_DEBUG, "dropped incoming data from unknown supernode");
             return;
         }
     }
@@ -2389,14 +2389,14 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify(eee, sn, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped PACKET due to time stamp error");
                         return;
                     }
                 }
 
                 if(!eee->last_sup) {
                     // drop packets received before first registration with supernode
-                    traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PACKET recevied before first registration with supernode.");
+                    traceEvent(TRACE_DEBUG, "dropped PACKET recevied before first registration with supernode");
                     return;
                 }
 
@@ -2409,13 +2409,14 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                      * a valid channel. We still use check_peer_registration_needed in
                      * handle_PACKET to double check this.
                      */
-                    traceEvent(TRACE_DEBUG, "Got P2P packet");
-                    traceEvent(TRACE_DEBUG, "[P2P] Rx data from %s [%u B]", sock_to_cstr(sockbuf1, &sender), udp_size);
+                    traceEvent(TRACE_DEBUG, "[p2p] from %s",
+                               macaddr_str(mac_buf1, pkt.srcMac));
                     find_and_remove_peer(&eee->pending_peers, pkt.srcMac);
                 } else {
                     /* [PsP] : edge Peer->Supernode->edge Peer */
-                    traceEvent(TRACE_DEBUG, "[PsP] Rx data from %s (Via=%s) [%u B]",
-                               sock_to_cstr(sockbuf2, orig_sender), sock_to_cstr(sockbuf1, &sender), udp_size);
+                    traceEvent(TRACE_DEBUG, "[pSp] from %s via [%s]",
+                               macaddr_str(mac_buf1, pkt.srcMac),
+                               sock_to_cstr(sockbuf1, &sender));
                 }
 
                 /* Update the sender in peer table entry */
@@ -2437,7 +2438,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify(eee, sn, reg.srcMac, stamp,
                                                         via_multicast ? TIME_STAMP_ALLOW_JITTER : TIME_STAMP_NO_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped REGISTER due to time stamp error");
                         return;
                     }
                 }
@@ -2446,12 +2447,12 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     orig_sender = &(reg.sock);
 
                 if(via_multicast && !memcmp(reg.srcMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
-                    traceEvent(TRACE_DEBUG, "Skipping REGISTER from self");
+                    traceEvent(TRACE_DEBUG, "skipping REGISTER from self");
                     break;
                 }
 
                 if(!via_multicast && memcmp(reg.dstMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
-                    traceEvent(TRACE_DEBUG, "Skipping REGISTER for other peer");
+                    traceEvent(TRACE_DEBUG, "skipping REGISTER for other peer");
                     break;
                 }
 
@@ -2461,16 +2462,17 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                      * a valid channel. We still use check_peer_registration_needed below
                      * to double check this.
                      */
-                    traceEvent(TRACE_DEBUG, "Got P2P register");
-                    traceEvent(TRACE_INFO, "[P2P] Rx REGISTER from %s", sock_to_cstr(sockbuf1, &sender));
+                    traceEvent(TRACE_INFO, "[p2p] Rx REGISTER from %s [%s]",
+                                           macaddr_str(mac_buf1, reg.srcMac),
+                                           sock_to_cstr(sockbuf1, &sender));
                     find_and_remove_peer(&eee->pending_peers, reg.srcMac);
 
                     /* NOTE: only ACK to peers */
                     send_register_ack(eee, orig_sender, &reg);
                 } else {
-                    traceEvent(TRACE_INFO, "[PsP] Rx REGISTER src=%s dst=%s from sn=%s (edge:%s)",
-                               macaddr_str(mac_buf1, reg.srcMac), macaddr_str(mac_buf2, reg.dstMac),
-                               sock_to_cstr(sockbuf1, &sender), sock_to_cstr(sockbuf2, orig_sender));
+                    traceEvent(TRACE_INFO, "[pSp] Rx REGISTER from %s [%s] to %s via [%s]",
+                               macaddr_str(mac_buf1, reg.srcMac), sock_to_cstr(sockbuf2, orig_sender),
+                               macaddr_str(mac_buf2, reg.dstMac), sock_to_cstr(sockbuf1, &sender));
                 }
 
                 check_peer_registration_needed(eee, from_supernode, via_multicast,
@@ -2486,7 +2488,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify(eee, sn, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_ACK due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped REGISTER_ACK due to time stamp error");
                         return;
                     }
                 }
@@ -2494,11 +2496,11 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 if(is_valid_peer_sock(&ra.sock))
                     orig_sender = &(ra.sock);
 
-                traceEvent(TRACE_INFO, "Rx REGISTER_ACK src=%s dst=%s from peer %s (%s)",
+                traceEvent(TRACE_INFO, "Rx REGISTER_ACK from %s [%s] to %s via [%s]",
                            macaddr_str(mac_buf1, ra.srcMac),
+                           sock_to_cstr(sockbuf2, orig_sender),
                            macaddr_str(mac_buf2, ra.dstMac),
-                           sock_to_cstr(sockbuf1, &sender),
-                           sock_to_cstr(sockbuf2, orig_sender));
+                           sock_to_cstr(sockbuf1, &sender));
 
                 peer_set_p2p_confirmed(eee, ra.srcMac, &sender, now);
                 break;
@@ -2514,7 +2516,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 int skip_add;
 
                 if(!(eee->sn_wait)) {
-                    traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER.");
+                    traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_ACK with no outstanding REGISTER_SUPER");
                     return;
                 }
 
@@ -2523,7 +2525,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify(eee, sn, ra.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_SUPER_ACK due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped REGISTER_SUPER_ACK due to time stamp error");
                         return;
                     }
                 }
@@ -2532,20 +2534,20 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 if(eee->conf.shared_secret) {
                     speck_128_encrypt(hash_buf, (speck_context_t*)eee->conf.shared_secret_ctx);
                     if(memcmp(hash_buf, udp_buf + udp_size - N2N_REG_SUP_HASH_CHECK_LEN /* length is has already been checked */, N2N_REG_SUP_HASH_CHECK_LEN)) {
-                        traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong hash.");
+                        traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong hash");
                         return;
                     }
                 }
 
                 if(memcmp(ra.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
-                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
+                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie");
                     return;
                 }
 
                 if(handle_remote_auth(eee, sn, &(ra.auth))) {
-                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old response to challenge.");
+                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old response to challenge");
                     if(eee->conf.shared_secret) {
-                        traceEvent(TRACE_NORMAL, "Rx REGISTER_SUPER_ACK with wrong or old response to challenge, maybe indicating wrong federation public key (-P).");
+                        traceEvent(TRACE_NORMAL, "Rx REGISTER_SUPER_ACK with wrong or old response to challenge, maybe indicating wrong federation public key (-P)");
                     }
                     return;
                 }
@@ -2553,7 +2555,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 if(is_valid_peer_sock(&ra.sock))
                     orig_sender = &(ra.sock);
 
-                traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK from MAC %s [%s] (external %s). Attempts %u",
+                traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK from %s [%s] (external %s) with %u attempts left",
                            macaddr_str(mac_buf1, ra.srcMac),
                            sock_to_cstr(sockbuf1, &sender),
                            sock_to_cstr(sockbuf2, orig_sender),
@@ -2582,7 +2584,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                         }
                         sn_selection_criterion_default(&(sn->selection_criterion));
                         sn->last_seen = 0; /* as opposed to payload handling in supernode */
-                        traceEvent(TRACE_NORMAL, "Supernode '%s' added to the list of supernodes.", sn->ip_addr);
+                        traceEvent(TRACE_NORMAL, "supernode '%s' added to the list of supernodes.", sn->ip_addr);
                     }
                     // shift to next payload entry
                     payload++;
@@ -2603,8 +2605,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 // still null_mac) this allows reliable in/out PACKET drop if not really registered with a supernode yet
                 if(!is_null_mac(eee->device.mac_addr)) {
                     if(!eee->last_sup) {
-                        // indicates successful connection between the edge and a supernode
-                        traceEvent(TRACE_NORMAL, "[OK] Edge Peer <<< ================ >>> Super Node");
+                        // indicates first successful connection between the edge and a supernode
+                        traceEvent(TRACE_NORMAL, "[OK] edge <<< ================ >>> supernode");
                         // send gratuitous ARP only upon first registration with supernode
                         send_grat_arps(eee);
                     }
@@ -2630,7 +2632,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
 
                 if(!(eee->sn_wait)) {
-                    traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_NAK with no outstanding REGISTER_SUPER.");
+                    traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_NAK with no outstanding REGISTER_SUPER");
                     return;
                 }
 
@@ -2639,13 +2641,13 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify(eee, sn, nak.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped REGISTER_SUPER_NAK due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped REGISTER_SUPER_NAK due to time stamp error");
                         return;
                     }
                 }
 
                 if(memcmp(nak.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
-                    traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_NAK with wrong or old cookie.");
+                    traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_NAK with wrong or old cookie");
                     return;
                 }
 
@@ -2657,9 +2659,9 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 if((memcmp(nak.srcMac, eee->device.mac_addr, sizeof(n2n_mac_t))) == 0) {
                     if(eee->conf.shared_secret) {
-                        traceEvent(TRACE_ERROR, "Authentication error. username or password not recognized by supernode.");
+                        traceEvent(TRACE_ERROR, "authentication error, username or password not recognized by supernode");
                     } else {
-                        traceEvent(TRACE_ERROR, "Authentication error. MAC or IP address already in use or not released yet by supernode.");
+                        traceEvent(TRACE_ERROR, "authentication error, MAC or IP address already in use or not released yet by supernode");
                     }
                     // REVISIT: the following portion is too harsh, repeated error warning should be sufficient until it eventually is resolved,
                     //           preventing de-auth attacks
@@ -2687,15 +2689,15 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify(eee, sn, null_mac, stamp, TIME_STAMP_ALLOW_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped PEER_INFO due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped PEER_INFO due to time stamp error");
                         return;
                     }
                 }
 
                 if(!is_valid_peer_sock(&pi.sock)) {
-                    traceEvent(TRACE_DEBUG, "Skip invalid PEER_INFO %s [%s]",
-                               sock_to_cstr(sockbuf1, &pi.sock),
-                               macaddr_str(mac_buf1, pi.mac));
+                    traceEvent(TRACE_DEBUG, "skip invalid PEER_INFO from %s [%s]",
+                              macaddr_str(mac_buf1, pi.mac),
+                              sock_to_cstr(sockbuf1, &pi.sock));
                     break;
                 }
 
@@ -2708,7 +2710,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                         scan->last_seen = now;
                         /* The data type depends on the actual selection strategy that has been chosen. */
                         sn_selection_criterion_calculate(eee, scan, &pi.data);
-                        traceEvent(TRACE_INFO, "Rx PONG from supernode '%s'",
+                        traceEvent(TRACE_INFO, "Rx PONG from supernode %s",
                                    macaddr_str(mac_buf1, pi.srcMac));
 
                         break;
@@ -2719,7 +2721,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                     if(scan) {
                         scan->sock = pi.sock;
-                        traceEvent(TRACE_INFO, "Rx PEER_INFO for %s: is at %s",
+                        traceEvent(TRACE_INFO, "Rx PEER_INFO %s can be found at [%s]",
                                    macaddr_str(mac_buf1, pi.mac),
                                    sock_to_cstr(sockbuf1, &pi.sock));
 
@@ -2737,7 +2739,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_peer_time_stamp_and_verify(eee, sn, null_mac, stamp, TIME_STAMP_NO_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "readFromIPSocket dropped RE_REGISTER due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped RE_REGISTER due to time stamp error");
                         return;
                     }
                 }
@@ -2746,7 +2748,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 // key is required for continous traffic flow, in other modes edge will realize
                 // changes with regular recurring REGISTER_SUPER
                 if(!eee->conf.shared_secret) {
-                    traceEvent(TRACE_DEBUG, "readFromIPScoket dropped RE_REGISTER_SUPER as not in user/pw auth mode.");
+                    traceEvent(TRACE_DEBUG, "dropped RE_REGISTER_SUPER as not in user/pw auth mode");
                     return;
                 }
 
@@ -2759,13 +2761,13 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
             default:
                 /* Not a known message type */
-                traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
+                traceEvent(TRACE_WARNING, "unable to handle packet type %d: ignored", (signed int)msg_type);
                 return;
         } /* switch(msg_type) */
     } else if(from_supernode) /* if(community match) */
-        traceEvent(TRACE_WARNING, "Received packet with unknown community");
+        traceEvent(TRACE_WARNING, "received packet with unknown community");
     else
-        traceEvent(TRACE_INFO, "Ignoring packet with unknown community");
+        traceEvent(TRACE_INFO, "ignoring packet with unknown community");
 }
 
 
@@ -2794,9 +2796,9 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
           ) {
             /* For UDP bread of zero just means no data (unlike TCP). */
             /* The fd is no good now. Maybe we lost our interface. */
-            traceEvent(TRACE_ERROR, "fetch_and_eventually_process_data's recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
+            traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
-            traceEvent(TRACE_ERROR, "fetch_and_eventually_process_data's WSAGetLastError(): %u", WSAGetLastError());
+            traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             return -1;
         }
@@ -2817,13 +2819,13 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                          pktbuf + *position, *expected - *position, 0 /*flags*/,
                         (struct sockaddr *)&sender_sock, (socklen_t *)&i);
         if((bread <= 0) && (errno)) {
-            traceEvent(TRACE_ERROR, "fetch_and_eventually_process_data's recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
+            traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
-            traceEvent(TRACE_ERROR, "fetch_and_eventually_process_data's WSAGetLastError(): %u", WSAGetLastError());
+            traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             supernode_disconnect(eee);
             eee->sn_wait = 1;
-            traceEvent(TRACE_DEBUG, "fetch_and_eventually_process_data disconnected supernode due to connection error");
+            traceEvent(TRACE_DEBUG, "disconnected supernode due to connection error");
             goto tcp_done;
         }
         *position = *position + bread;
@@ -2835,7 +2837,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                 if(*expected > N2N_PKT_BUF_SIZE) {
                     supernode_disconnect(eee);
                     eee->sn_wait = 1;
-                    traceEvent(TRACE_DEBUG, "run_edge_loop disconnected supernode due to too many bytes expected");
+                    traceEvent(TRACE_DEBUG, "disconnected supernode due to too many bytes expected");
                     goto tcp_done;
                 }
             } else {
@@ -3018,7 +3020,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
            ((now - lastIfaceCheck) > IFACE_UPDATE_INTERVAL)) {
             uint32_t old_ip = eee->device.ip_addr;
 
-            traceEvent(TRACE_NORMAL, "Re-checking dynamic IP address.");
+            traceEvent(TRACE_NORMAL, "re-checking dynamic IP address");
             tuntap_get_address(&(eee->device));
             lastIfaceCheck = now;
 
@@ -3093,7 +3095,7 @@ static int edge_init_sockets (n2n_edge_t *eee) {
 
     eee->udp_mgmt_sock = open_socket(eee->conf.mgmt_port, 0 /* bind LOOPBACK */, 0, 0 /* UDP */);
     if(eee->udp_mgmt_sock < 0) {
-        traceEvent(TRACE_ERROR, "Failed to bind management UDP port %u", eee->conf.mgmt_port);
+        traceEvent(TRACE_ERROR, "failed to bind management UDP port %u", eee->conf.mgmt_port);
         return(-2);
     }
 
@@ -3386,12 +3388,12 @@ static int edge_init_routes_linux (n2n_edge_t *eee, n2n_route_t *routes, uint16_
             uint32_t *a;
 
             if(eee->sn_route_to_clean) {
-                traceEvent(TRACE_ERROR, "Only one default gateway route allowed");
+                traceEvent(TRACE_ERROR, "only one default gateway route allowed");
                 return(-1);
             }
 
             if(eee->conf.sn_num != 1) {
-                traceEvent(TRACE_ERROR, "Only one supernode supported with routes");
+                traceEvent(TRACE_ERROR, "only one supernode supported with routes");
                 return(-1);
             }
 
@@ -3399,7 +3401,7 @@ static int edge_init_routes_linux (n2n_edge_t *eee, n2n_route_t *routes, uint16_
                 return(-1);
 
             if(sn.family != AF_INET) {
-                traceEvent(TRACE_ERROR, "Only IPv4 routes supported");
+                traceEvent(TRACE_ERROR, "only IPv4 routes supported");
                 return(-1);
             }
 
@@ -3465,7 +3467,16 @@ static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t 
     for(i = 0; i < num_routes; i++) {
         n2n_route_t *route = &routes[i];
         if((route->net_addr == 0) && (route->net_bitlen == 0)) {
-            traceEvent(TRACE_NORMAL, "Warning: The 0.0.0.0/0 route settings are not supported on Windows");
+            // REVISIT: there might be a chance to get it working on Windows following the hints at
+            //          https://docs.microsoft.com/en-us/windows/win32/api/netioapi/ns-netioapi-mib_ipinterface_row
+            //
+            //        " The DisableDefaultRoutes member of the MIB_IPINTERFACE_ROW structure can be used to disable
+            //          using the default route on an interface. This member can be used as a security measure by
+            //          VPN clients to restrict split tunneling when split tunneling is not required by the VPN client.
+            //          A VPN client can call the SetIpInterfaceEntry function to set the DisableDefaultRoutes member
+            //          to TRUE when required. A VPN client can query the current state of the DisableDefaultRoutes
+            //          member by calling the GetIpInterfaceEntry function. "
+            traceEvent(TRACE_WARNING, "the 0.0.0.0/0 route settings are not supported on Windows");
             return(-1);
         } else {
             /* ip route add net via n2n_gateway */
@@ -3581,7 +3592,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
     rv = supernode2sock(sock, ip_and_port);
 
     if(rv < -2) { /* we accept resolver failure as it might resolve later */
-        traceEvent(TRACE_WARNING, "Invalid supernode parameter.");
+        traceEvent(TRACE_WARNING, "invalid supernode parameter.");
         free(sock);
         return 1;
     }
@@ -3602,7 +3613,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
 
     free(sock);
 
-    traceEvent(TRACE_NORMAL, "Adding supernode = %s", sn->ip_addr);
+    traceEvent(TRACE_NORMAL, "adding supernode = %s", sn->ip_addr);
     conf->sn_num++;
 
     return 0;

@@ -340,7 +340,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
                         // common shared secret will be calculated later
                         // add to list
                         HASH_ADD(hh, last_added_comm->allowed_users, public_key, sizeof(n2n_private_public_key_t), user);
-                        traceEvent(TRACE_INFO, "Added user '%s' with public key '%s' to community '%s'",
+                        traceEvent(TRACE_INFO, "added user '%s' with public key '%s' to community '%s'",
                                                user->name, ascii_public_key, last_added_comm->community);
                         // enable header encryption
                         last_added_comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
@@ -370,7 +370,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
                 re->rule = re_compile(cmn_str);
                 HASH_ADD_PTR(sss->rules, rule, re);
                 num_regex++;
-                traceEvent(TRACE_INFO, "Added regular expression for allowed communities '%s'", cmn_str);
+                traceEvent(TRACE_INFO, "added regular expression for allowed communities '%s'", cmn_str);
                 free(cmn_str);
                 last_added_comm = NULL;
                 continue;
@@ -395,13 +395,13 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
             last_added_comm = comm;
 
             num_communities++;
-            traceEvent(TRACE_INFO, "Added allowed community '%s' [total: %u]",
+            traceEvent(TRACE_INFO, "added allowed community '%s' [total: %u]",
                        (char*)comm->community, num_communities);
 
             // check for sub-network address
             if(has_net) {
                 if(sscanf(net_str, "%15[^/]/%hhu", ip_str, &bitlen) != 2) {
-                    traceEvent(TRACE_WARNING, "Bad net/bit format '%s' for community '%c', ignoring. See comments inside community.list file.",
+                    traceEvent(TRACE_WARNING, "bad net/bit format '%s' for community '%c', ignoring; see comments inside community.list file",
                                            net_str, cmn_str);
                     has_net = 0;
                 }
@@ -409,12 +409,12 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
                 mask = bitlen2mask(bitlen);
                 if((net == (in_addr_t)(-1)) || (net == INADDR_NONE) || (net == INADDR_ANY)
                          || ((ntohl(net) & ~mask) != 0)) {
-                    traceEvent(TRACE_WARNING, "Bad network '%s/%u' in '%s' for community '%s', ignoring.",
+                    traceEvent(TRACE_WARNING, "bad network '%s/%u' in '%s' for community '%s', ignoring",
                                            ip_str, bitlen, net_str, cmn_str);
                     has_net = 0;
                 }
                 if((bitlen > 30) || (bitlen == 0)) {
-                    traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s' for community '%s', ignoring.",
+                    traceEvent(TRACE_WARNING, "bad prefix '%hhu' in '%s' for community '%s', ignoring",
                                            bitlen, net_str, cmn_str);
                     has_net = 0;
                 }
@@ -422,7 +422,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
             if(has_net) {
                 comm->auto_ip_net.net_addr = ntohl(net);
                 comm->auto_ip_net.net_bitlen = bitlen;
-                traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
+                traceEvent(TRACE_INFO, "assigned sub-network %s/%u to community '%s'",
                                        inet_ntoa(*(struct in_addr *) &net),
                            comm->auto_ip_net.net_bitlen,
                            comm->community);
@@ -436,14 +436,14 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
     fclose(fd);
 
     if((num_regex + num_communities) == 0) {
-        traceEvent(TRACE_WARNING, "File %s does not contain any valid community names or regular expressions", sss->community_file);
+        traceEvent(TRACE_WARNING, "file %s does not contain any valid community names or regular expressions", sss->community_file);
         return -2;
     }
 
-    traceEvent(TRACE_NORMAL, "Loaded %u fixed-name communities from %s",
+    traceEvent(TRACE_NORMAL, "loaded %u fixed-name communities from %s",
                      num_communities, sss->community_file);
 
-    traceEvent(TRACE_NORMAL, "Loaded %u regular expressions for community name matching from %s",
+    traceEvent(TRACE_NORMAL, "loaded %u regular expressions for community name matching from %s",
                      num_regex, sss->community_file);
 
     // calculate allowed user's shared secrets (shared with federation)
@@ -480,7 +480,7 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
 
     if((sent <= 0) && (errno)) {
         char * c = strerror(errno);
-        traceEvent(TRACE_ERROR, "sendto_fd failed (%d) %s", errno, c);
+        traceEvent(TRACE_ERROR, "sendto failed (%d) %s", errno, c);
 #ifdef WIN32
         traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
@@ -492,7 +492,7 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
             return -1;
         }
     } else {
-            traceEvent(TRACE_DEBUG, "sendto_fd sent=%d to ", (signed int)sent);
+            traceEvent(TRACE_DEBUG, "sendto sent=%d to ", (signed int)sent);
     }
 
     return sent;
@@ -564,7 +564,7 @@ static ssize_t sendto_peer (n2n_sn_t *sss,
         struct sockaddr_in socket;
         fill_sockaddr((struct sockaddr *)&socket, sizeof(socket), &(peer->sock));
 
-        traceEvent(TRACE_DEBUG, "sendto_peer %lu to [%s]",
+        traceEvent(TRACE_DEBUG, "sent %lu bytes to [%s]",
                    pktsize,
                    sock_to_cstr(sockbuf, &(peer->sock)));
 
@@ -695,17 +695,17 @@ static int try_forward (n2n_sn_t * sss,
             // check if target edge is associated with a certain supernode
             HASH_FIND(hh, comm->assoc, dstMac, sizeof(n2n_mac_t), assoc);
             if(assoc) {
-                traceEvent(TRACE_DEBUG, "try_forward found mac address associated with a known supernode, forwarding packet to that supernode");
+                traceEvent(TRACE_DEBUG, "found mac address associated with a known supernode, forwarding packet to that supernode");
                 sendto_sock(sss, sss->sock,
                             (const struct sockaddr*)&(assoc->sock),
                             pktbuf, pktsize);
             } else {
                 // forwarding packet to all federated supernodes
-                traceEvent(TRACE_DEBUG, "try_forward sees unknown mac address, broadcasting packet to all federated supernodes");
+                traceEvent(TRACE_DEBUG, "unknown mac address, broadcasting packet to all federated supernodes");
                 try_broadcast(sss, NULL, cmn, sss->mac_addr, from_supernode, pktbuf, pktsize);
             }
         } else {
-            traceEvent(TRACE_DEBUG, "try_forward sees unknown mac address in packet from a supernode, dropping the packet");
+            traceEvent(TRACE_DEBUG, "unknown mac address in packet from a supernode, dropping the packet");
             /* Not a known MAC so drop. */
             return -2;
         }
@@ -1065,7 +1065,7 @@ static int update_edge (n2n_sn_t *sss,
 
                 HASH_ADD_PEER(comm->edges, scan);
 
-                traceEvent(TRACE_INFO, "update_edge created  %s ==> %s",
+                traceEvent(TRACE_INFO, "created edge  %s ==> %s",
                            macaddr_str(mac_buf, reg->edgeMac),
                            sock_to_cstr(sockbuf, sender_sock));
             }
@@ -1082,14 +1082,14 @@ static int update_edge (n2n_sn_t *sss,
                 scan->socket_fd = socket_fd;
                 memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
 
-                traceEvent(TRACE_INFO, "update_edge updated  %s ==> %s",
+                traceEvent(TRACE_INFO, "updated edge  %s ==> %s",
                            macaddr_str(mac_buf, reg->edgeMac),
                            sock_to_cstr(sockbuf, sender_sock));
                 ret = update_edge_sock_change;
             } else {
                 memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
 
-                traceEvent(TRACE_DEBUG, "update_edge unchanged %s ==> %s",
+                traceEvent(TRACE_DEBUG, "edge unchanged %s ==> %s",
                            macaddr_str(mac_buf, reg->edgeMac),
                            sock_to_cstr(sockbuf, sender_sock));
 
@@ -1181,10 +1181,10 @@ static int assign_one_ip_addr (struct sn_community *comm, n2n_desc_t dev_desc, n
     }
 
     if(success) {
-        traceEvent(TRACE_INFO, "Assign IP %s to tap adapter of edge.", ip_subnet_to_str(ip_bit_str, ip_addr));
+        traceEvent(TRACE_INFO, "assign IP %s to tap adapter of edge", ip_subnet_to_str(ip_bit_str, ip_addr));
         return 0;
     } else {
-        traceEvent(TRACE_WARNING, "No assignable IP to edge tap adapter.");
+        traceEvent(TRACE_WARNING, "no assignable IP to edge tap adapter");
         return -1;
     }
 }
@@ -1258,7 +1258,7 @@ int assign_one_ip_subnet (n2n_sn_t *sss,
         comm->auto_ip_net.net_addr = net_id_i;
         comm->auto_ip_net.net_bitlen = sss->min_auto_ip_net.net_bitlen;
         net = htonl(comm->auto_ip_net.net_addr);
-        traceEvent(TRACE_INFO, "Assigned sub-network %s/%u to community '%s'.",
+        traceEvent(TRACE_INFO, "assigned sub-network %s/%u to community '%s'",
                    inet_ntoa(*(struct in_addr *) &net),
                    comm->auto_ip_net.net_bitlen,
                    comm->community);
@@ -1266,7 +1266,7 @@ int assign_one_ip_subnet (n2n_sn_t *sss,
     } else {
         comm->auto_ip_net.net_addr = 0;
         comm->auto_ip_net.net_bitlen = 0;
-        traceEvent(TRACE_WARNING, "No assignable sub-network left for community '%s'.",
+        traceEvent(TRACE_WARNING, "no assignable sub-network left for community '%s'",
                    comm->community);
         return -1;
     }
@@ -1389,7 +1389,7 @@ static int purge_expired_communities (n2n_sn_t *sss,
         return 0;
     }
 
-    traceEvent(TRACE_DEBUG, "Purging old communities and edges");
+    traceEvent(TRACE_DEBUG, "purging old communities and edges");
 
     HASH_ITER(hh, sss->communities, comm, tmp_comm) {
         // federation is taken care of in re_register_and_purge_supernodes()
@@ -1409,7 +1409,7 @@ static int purge_expired_communities (n2n_sn_t *sss,
         }
 
         if((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
-            traceEvent(TRACE_INFO, "Purging idle community %s", comm->community);
+            traceEvent(TRACE_INFO, "purging idle community %s", comm->community);
             if(NULL != comm->header_encryption_ctx_static) {
                 /* this should not happen as 'purgeable' and thus only communities w/o encrypted header here */
                 free(comm->header_encryption_ctx_static);
@@ -1507,7 +1507,7 @@ static int process_mgmt (n2n_sn_t *sss,
                 sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
                 return 0; /* no status output afterwards */
             }
-            traceEvent(TRACE_NORMAL, "process_mgmt sees 'reload_communities' command.");
+            traceEvent(TRACE_NORMAL, "'reload_communities' command");
 
             if(load_allowed_sn_community(sss)) {
                 ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
@@ -1653,7 +1653,7 @@ static int process_udp (n2n_sn_t * sss,
     int                 skip_add;
     time_t              any_time = 0;
 
-    traceEvent(TRACE_DEBUG, "Processing incoming UDP packet [len: %lu][sender: %s:%u]",
+    traceEvent(TRACE_DEBUG, "processing incoming UDP packet [len: %lu][sender: %s:%u]",
                udp_size, intoa(ntohl(sender_sock->sin_addr.s_addr), buf, sizeof(buf)),
                ntohs(sender_sock->sin_port));
 
@@ -1661,7 +1661,7 @@ static int process_udp (n2n_sn_t * sss,
      * it heavily relies on the structure of packet's common part
      * changes to wire.c:encode/decode_common need to go together with this code */
     if(udp_size < 24) {
-        traceEvent(TRACE_DEBUG, "process_udp dropped a packet too short to be valid.");
+        traceEvent(TRACE_DEBUG, "dropped a packet too short to be valid");
         return -1;
     }
     if((udp_buf[23] == (uint8_t)0x00) // null terminated community name
@@ -1675,14 +1675,14 @@ static int process_udp (n2n_sn_t * sss,
         HASH_FIND_COMMUNITY(sss->communities, (char *)&udp_buf[04], comm);
         if(comm) {
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                traceEvent(TRACE_DEBUG, "process_udp dropped a packet with unencrypted header "
-                           "addressed to community '%s' which uses encrypted headers.",
+                traceEvent(TRACE_DEBUG, "dropped a packet with unencrypted header "
+                           "addressed to community '%s' which uses encrypted headers",
                            comm->community);
                 return -1;
             }
             if(comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
-                traceEvent(TRACE_INFO, "process_udp locked community '%s' to using "
-                           "unencrypted headers.", comm->community);
+                traceEvent(TRACE_INFO, "locked community '%s' to "
+                           "unencrypted headers", comm->community);
                 /* set 'no encryption' in case it is not set yet */
                 comm->header_encryption = HEADER_ENCRYPTION_NONE;
                 comm->header_encryption_ctx_static = NULL;
@@ -1718,8 +1718,8 @@ static int process_udp (n2n_sn_t * sss,
                 // (MAC is not always in the same place)
 
                 if(comm->header_encryption == HEADER_ENCRYPTION_UNKNOWN) {
-                    traceEvent(TRACE_INFO, "process_udp locked community '%s' to using "
-                               "encrypted headers.", comm->community);
+                    traceEvent(TRACE_INFO, "locked community '%s' to "
+                               "encrypted headers", comm->community);
                     /* set 'encrypted' in case it is not set yet */
                     comm->header_encryption = HEADER_ENCRYPTION_ENABLED;
                 }
@@ -1732,8 +1732,8 @@ static int process_udp (n2n_sn_t * sss,
         }
         if(!header_enc) {
             // no matching key/community
-            traceEvent(TRACE_DEBUG, "process_udp dropped a packet with seemingly encrypted header "
-                       "for which no matching community which uses encrypted headers was found.");
+            traceEvent(TRACE_DEBUG, "dropped a packet with seemingly encrypted header "
+                       "for which no matching community which uses encrypted headers was found");
             return -1;
         }
     }
@@ -1751,7 +1751,7 @@ static int process_udp (n2n_sn_t * sss,
     idx = 0; /* marches through packet header as parts are decoded. */
 
     if(decode_common(&cmn, udp_buf, &rem, &idx) < 0) {
-        traceEvent(TRACE_ERROR, "Failed to decode common section");
+        traceEvent(TRACE_ERROR, "failed to decode common section");
         return -1; /* failed to decode packet */
     }
 
@@ -1765,7 +1765,7 @@ static int process_udp (n2n_sn_t * sss,
         && (msg_type != MSG_TYPE_REGISTER_SUPER_ACK)
         && (msg_type != MSG_TYPE_REGISTER_SUPER_NAK)) {
             if(header_enc != 2) {
-                traceEvent(TRACE_WARNING, "process_udp dropped packet encrypted with static key where expecting dynamic key.");
+                traceEvent(TRACE_WARNING, "dropped packet encrypted with static key where expecting dynamic key");
                 return -1;
             }
         }
@@ -1784,13 +1784,13 @@ static int process_udp (n2n_sn_t * sss,
         sn = add_sn_to_list_by_mac_or_sock (&(sss->federation->edges), &sender, null_mac, &skip_add);
         // only REGISTER_SUPER allowed from unknown supernodes
         if((!sn) && (msg_type != MSG_TYPE_REGISTER_SUPER)) {
-            traceEvent(TRACE_DEBUG, "process_udp dropped incoming data from unknown supernode.");
+            traceEvent(TRACE_DEBUG, "dropped incoming data from unknown supernode");
             return -1;
         }
     }
 
     if(cmn.ttl < 1) {
-        traceEvent(TRACE_WARNING, "Expired TTL");
+        traceEvent(TRACE_WARNING, "expired TTL");
         return 0; /* Don't process further */
     }
 
@@ -1810,7 +1810,7 @@ static int process_udp (n2n_sn_t * sss,
             uint8_t *     rec_buf; /* either udp_buf or encbuf */
 
             if(!comm) {
-                traceEvent(TRACE_DEBUG, "process_udp PACKET with unknown community %s", cmn.community);
+                traceEvent(TRACE_DEBUG, "PACKET with unknown community %s", cmn.community);
                 return -1;
             }
 
@@ -1820,7 +1820,7 @@ static int process_udp (n2n_sn_t * sss,
             // already checked for valid comm
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                 if(!find_edge_time_stamp_and_verify(comm->edges, sn, pkt.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped PACKET due to time stamp error.");
+                    traceEvent(TRACE_DEBUG, "dropped PACKET due to time stamp error");
                     return -1;
                 }
             }
@@ -1895,7 +1895,7 @@ static int process_udp (n2n_sn_t * sss,
             uint8_t *       rec_buf; /* either udp_buf or encbuf */
 
             if(!comm) {
-                traceEvent(TRACE_DEBUG, "process_udp REGISTER from unknown community %s", cmn.community);
+                traceEvent(TRACE_DEBUG, "REGISTER from unknown community %s", cmn.community);
                 return -1;
             }
 
@@ -1905,7 +1905,7 @@ static int process_udp (n2n_sn_t * sss,
             // already checked for valid comm
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                 if(!find_edge_time_stamp_and_verify(comm->edges, sn, reg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER due to time stamp error.");
+                    traceEvent(TRACE_DEBUG, "dropped REGISTER due to time stamp error");
                     return -1;
                 }
             }
@@ -1953,7 +1953,7 @@ static int process_udp (n2n_sn_t * sss,
         }
 
         case MSG_TYPE_REGISTER_ACK: {
-            traceEvent(TRACE_DEBUG, "Rx REGISTER_ACK (NOT IMPLEMENTED) Should not be via supernode");
+            traceEvent(TRACE_DEBUG, "Rx REGISTER_ACK (not implemented) should not be via supernode");
             break;
         }
 
@@ -1988,7 +1988,7 @@ static int process_udp (n2n_sn_t * sss,
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_edge_time_stamp_and_verify(comm->edges, sn, reg.edgeMac, stamp, TIME_STAMP_NO_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped REGISTER_SUPER due to time stamp error");
                         return -1;
                     }
                 }
@@ -2013,7 +2013,7 @@ static int process_udp (n2n_sn_t * sss,
                     }
                 }
                 if(match != 1) {
-                    traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
+                    traceEvent(TRACE_INFO, "discarded registration with unallowed community '%s'",
                                (char*)cmn.community);
                     return -1;
                 }
@@ -2033,13 +2033,13 @@ static int process_udp (n2n_sn_t * sss,
                     comm->number_enc_packets = 0;
                     HASH_ADD_STR(sss->communities, community, comm);
 
-                    traceEvent(TRACE_INFO, "New community: %s", comm->community);
+                    traceEvent(TRACE_INFO, "new community: %s", comm->community);
                     assign_one_ip_subnet(sss, comm);
                 }
             }
 
             if(!comm) {
-                traceEvent(TRACE_INFO, "Discarded registration: unallowed community '%s'",
+                traceEvent(TRACE_INFO, "discarded registration with unallowed community '%s'",
                                        (char*)cmn.community);
                 return -1;
             }
@@ -2051,11 +2051,11 @@ static int process_udp (n2n_sn_t * sss,
                 if(user) {
                     speck_128_encrypt(hash_buf, (speck_context_t*)user->shared_secret_ctx);
                     if(memcmp(hash_buf, udp_buf + udp_size - N2N_REG_SUP_HASH_CHECK_LEN /* length has already been checked */, N2N_REG_SUP_HASH_CHECK_LEN)) {
-                        traceEvent(TRACE_INFO, "Rx REGISTER_SUPER with wrong hash.");
+                        traceEvent(TRACE_INFO, "Rx REGISTER_SUPER with wrong hash");
                         return -1;
                     }
                 } else {
-                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER from unknown user.");
+                    traceEvent(TRACE_INFO, "Rx REGISTER_SUPER from unknown user");
                     // continue and let auth check do the rest (otherwise, no NAK is sent)
                }
             }
@@ -2259,12 +2259,12 @@ static int process_udp (n2n_sn_t * sss,
             memset(&unreg, 0, sizeof(n2n_UNREGISTER_SUPER_t));
 
             if(!comm) {
-                traceEvent(TRACE_DEBUG, "process_udp UNREGISTER_SUPER with unknown community %s", cmn.community);
+                traceEvent(TRACE_DEBUG, "dropped UNREGISTER_SUPER with unknown community %s", cmn.community);
                 return -1;
             }
 
             if((from_supernode == 1) || (comm->is_federation == IS_FEDERATION)) {
-                traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER: should not come from a supernode or federation.");
+                traceEvent(TRACE_DEBUG, "dropped UNREGISTER_SUPER: should not come from a supernode or federation.");
                 return -1;
             }
 
@@ -2272,7 +2272,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                 if(!find_edge_time_stamp_and_verify(comm->edges, sn, unreg.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped UNREGISTER_SUPER due to time stamp error.");
+                    traceEvent(TRACE_DEBUG, "dropped UNREGISTER_SUPER due to time stamp error");
                     return -1;
                 }
             }
@@ -2317,12 +2317,12 @@ static int process_udp (n2n_sn_t * sss,
             memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
             if(!comm) {
-                traceEvent(TRACE_DEBUG, "process_udp REGISTER_SUPER_ACK with unknown community %s", cmn.community);
+                traceEvent(TRACE_DEBUG, "REGISTER_SUPER_ACK with unknown community %s", cmn.community);
                 return -1;
             }
 
             if((from_supernode == 0) || (comm->is_federation == IS_NO_FEDERATION)) {
-                traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK: should not come from an edge or regular community.");
+                traceEvent(TRACE_DEBUG, "dropped REGISTER_SUPER_ACK, should not come from an edge or regular community");
                 return -1;
             }
 
@@ -2331,7 +2331,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                 if(!find_edge_time_stamp_and_verify(comm->edges, sn, ack.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to time stamp error.");
+                    traceEvent(TRACE_DEBUG, "dropped REGISTER_SUPER_ACK due to time stamp error");
                     return -1;
                 }
             }
@@ -2346,7 +2346,7 @@ static int process_udp (n2n_sn_t * sss,
             if(scan != NULL) {
                 scan->last_seen = now;
             } else {
-                traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_ACK due to an unknown supernode.");
+                traceEvent(TRACE_DEBUG, "dropped REGISTER_SUPER_ACK due to an unknown supernode");
                 break;
             }
 
@@ -2380,7 +2380,7 @@ static int process_udp (n2n_sn_t * sss,
                }
 
             } else {
-                traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie.");
+                traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie");
             }
             break;
         }
@@ -2402,7 +2402,7 @@ static int process_udp (n2n_sn_t * sss,
             memset(&nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
 
             if(!comm) {
-                traceEvent(TRACE_DEBUG, "process_udp REGISTER_SUPER_NAK with unknown community %s", cmn.community);
+                traceEvent(TRACE_DEBUG, "REGISTER_SUPER_NAK with unknown community %s", cmn.community);
                 return -1;
             }
 
@@ -2410,7 +2410,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                 if(!find_edge_time_stamp_and_verify(comm->edges, sn, nak.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_NAK due to time stamp error.");
+                    traceEvent(TRACE_DEBUG, "process_udp dropped REGISTER_SUPER_NAK due to time stamp error");
                     return -1;
                 }
             }
@@ -2478,13 +2478,13 @@ static int process_udp (n2n_sn_t * sss,
                     }
                 }
                 if(match != 1) {
-                    traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER from unknown community %s", cmn.community);
+                    traceEvent(TRACE_DEBUG, "QUERY_PEER from unknown community %s", cmn.community);
                     return -1;
                 }
             }
 
             if(!comm && sss->lock_communities && (match == 0)) {
-                traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER from not allowed community %s", cmn.community);
+                traceEvent(TRACE_DEBUG, "QUERY_PEER from not allowed community %s", cmn.community);
                 return -1;
             }
 
@@ -2496,14 +2496,14 @@ static int process_udp (n2n_sn_t * sss,
             if(comm) {
                 if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                     if(!find_edge_time_stamp_and_verify(comm->edges, sn, query.srcMac, stamp, TIME_STAMP_ALLOW_JITTER)) {
-                        traceEvent(TRACE_DEBUG, "process_udp dropped QUERY_PEER due to time stamp error.");
+                        traceEvent(TRACE_DEBUG, "dropped QUERY_PEER due to time stamp error");
                         return -1;
                     }
                 }
             }
 
             if(is_null_mac(query.targetMac)) {
-                traceEvent(TRACE_DEBUG, "Rx PING from %s.",
+                traceEvent(TRACE_DEBUG, "Rx PING from %s",
                            macaddr_str(mac_buf, query.srcMac));
 
                 cmn2.ttl = N2N_DEFAULT_TTL;
@@ -2543,7 +2543,7 @@ static int process_udp (n2n_sn_t * sss,
 
                 // as opposed to the special case 'PING', proper QUERY_PEER processing requires a locally actually present community entry
                 if(!comm) {
-                    traceEvent(TRACE_DEBUG, "process_udp QUERY_PEER with unknown community %s", cmn.community);
+                    traceEvent(TRACE_DEBUG, "QUERY_PEER with unknown community %s", cmn.community);
                     return -1;
                 }
 
@@ -2575,10 +2575,10 @@ static int process_udp (n2n_sn_t * sss,
                 } else {
 
                     if(from_supernode) {
-                        traceEvent(TRACE_DEBUG, "QUERY_PEER on unknown edge from supernode %s. Dropping the packet.",
+                        traceEvent(TRACE_DEBUG, "QUERY_PEER on unknown edge from supernode %s, dropping the packet",
                                    macaddr_str(mac_buf, query.srcMac));
                     } else {
-                        traceEvent(TRACE_DEBUG, "QUERY_PEER from unknown edge %s. Forwarding to all other supernodes.",
+                        traceEvent(TRACE_DEBUG, "QUERY_PEER from unknown edge %s, forwarding to all other supernodes",
                                    macaddr_str(mac_buf, query.srcMac));
 
                         memcpy(&cmn2, &cmn, sizeof(n2n_common_t));
@@ -2606,7 +2606,7 @@ static int process_udp (n2n_sn_t * sss,
             struct peer_info                       *peer;
 
             if(!comm) {
-                traceEvent(TRACE_DEBUG, "process_udp PEER_INFO with unknown community %s", cmn.community);
+                traceEvent(TRACE_DEBUG, "PEER_INFO with unknown community %s", cmn.community);
                 return -1;
             }
 
@@ -2614,7 +2614,7 @@ static int process_udp (n2n_sn_t * sss,
 
             if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
                 if(!find_edge_time_stamp_and_verify(comm->edges, sn, pi.srcMac, stamp, TIME_STAMP_NO_JITTER)) {
-                    traceEvent(TRACE_DEBUG, "process_udp dropped PEER_INFO due to time stamp error.");
+                    traceEvent(TRACE_DEBUG, "dropped PEER_INFO due to time stamp error");
                     return -1;
                 }
             }
@@ -2651,7 +2651,7 @@ static int process_udp (n2n_sn_t * sss,
 
         default:
             /* Not a known message type */
-            traceEvent(TRACE_WARNING, "Unable to handle packet type %d: ignored", (signed int)msg_type);
+            traceEvent(TRACE_WARNING, "unable to handle packet type %d: ignored", (signed int)msg_type);
     } /* switch(msg_type) */
 
     return 0;
@@ -2767,7 +2767,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                                      (struct sockaddr *)&sender_sock, (socklen_t *)&i);
 
                     if(bread <= 0) {
-                        traceEvent(TRACE_INFO, "run_sn_loop closes tcp connection to '%s'", sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
+                        traceEvent(TRACE_INFO, "closing tcp connection to [%s]", sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                         traceEvent(TRACE_DEBUG, "recvfrom() returns %d and sees errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
                         traceEvent(TRACE_DEBUG, "WSAGetLastError(): %u", WSAGetLastError());
@@ -2782,7 +2782,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                             // the prepended length has been read, preparing for the packet
                             conn->expected += be16toh(*(uint16_t*)(conn->buffer));
                             if(conn->expected > N2N_SN_PKTBUF_SIZE) {
-                                traceEvent(TRACE_INFO, "run_sn_loop closes tcp connection to '%s'", sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
+                                traceEvent(TRACE_INFO, "closing tcp connection to [%s]", sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                                 traceEvent(TRACE_DEBUG, "too many bytes in tcp packet expected");
                                 close_tcp_connection(sss, conn);
                                 continue;
@@ -2825,13 +2825,13 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                             conn->expected = sizeof(uint16_t);
                             conn->position = 0;
                             HASH_ADD_INT(sss->tcp_connections, socket_fd, conn);
-                            traceEvent(TRACE_INFO, "run_sn_loop accepted incoming TCP connection from %s",
+                            traceEvent(TRACE_INFO, "accepted incoming TCP connection from [%s]",
                                                    sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                         }
                     }
                 } else {
                         // no space to store the socket for a new connection, close immediately
-                        traceEvent(TRACE_DEBUG, "run_sn_loop denied incoming TCP connection from %s due to max connections limit hit",
+                        traceEvent(TRACE_DEBUG, "denied incoming TCP connection from [%s] due to max connections limit hit",
                                                 sock_to_cstr(sockbuf, (n2n_sock_t*)&sender_sock));
                 }
             }

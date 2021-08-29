@@ -164,7 +164,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             sss->lport = atoi(_optarg);
 
             if(sss->lport == 0)
-                traceEvent(TRACE_WARNING, "Bad local port format, defaulting to %u", N2N_SN_LPORT_DEFAULT);
+                traceEvent(TRACE_WARNING, "bad local port format, defaulting to %u", N2N_SN_LPORT_DEFAULT);
                 // default is made sure in sn_init()
 
             break;
@@ -173,7 +173,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             sss->mport = atoi(_optarg);
 
             if(sss->mport == 0)
-                traceEvent(TRACE_WARNING, "Bad management port format, defaulting to %u", N2N_SN_MGMT_PORT);
+                traceEvent(TRACE_WARNING, "bad management port format, defaulting to %u", N2N_SN_MGMT_PORT);
                 // default is made sure in sn_init()
 
             break;
@@ -188,12 +188,12 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 
             length = strlen(_optarg);
             if(length >= N2N_EDGE_SN_HOST_SIZE) {
-                traceEvent(TRACE_WARNING, "Size of -l argument too long: %zu. Maximum size is %d", length, N2N_EDGE_SN_HOST_SIZE);
+                traceEvent(TRACE_WARNING, "size of -l argument too long: %zu; maximum size is %d", length, N2N_EDGE_SN_HOST_SIZE);
                 return 1;
             }
 
             if(!double_column) {
-                traceEvent(TRACE_WARNING, "Invalid -l format: missing port");
+                traceEvent(TRACE_WARNING, "invalid -l format, missing port");
                 return 1;
             }
 
@@ -201,7 +201,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             rv = supernode2sock(socket, _optarg);
 
             if(rv < -2) { /* we accept resolver failure as it might resolve later */
-                traceEvent(TRACE_WARNING, "Invalid supernode parameter.");
+                traceEvent(TRACE_WARNING, "invalid supernode parameter");
                 free(socket);
                 return 1;
             }
@@ -234,7 +234,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             uint32_t mask;
 
             if(sscanf(_optarg, "%15[^\\-]-%15[^/]/%hhu", ip_min_str, ip_max_str, &bitlen) != 3) {
-                traceEvent(TRACE_WARNING, "Bad net-net/bit format '%s'.", _optarg);
+                traceEvent(TRACE_WARNING, "bad net-net/bit format '%s'.", _optarg);
                 return 2;
             }
 
@@ -245,20 +245,20 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 	             || (net_max == (in_addr_t)(-1)) || (net_max == INADDR_NONE) || (net_max == INADDR_ANY)
 	             || (ntohl(net_min) >  ntohl(net_max))
 	             || ((ntohl(net_min) & ~mask) != 0) || ((ntohl(net_max) & ~mask) != 0)) {
-                traceEvent(TRACE_WARNING, "Bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
+                traceEvent(TRACE_WARNING, "bad network range '%s...%s/%u' in '%s', defaulting to '%s...%s/%d'",
 		                       ip_min_str, ip_max_str, bitlen, _optarg,
 		                       N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
                 return 2;
             }
 
             if((bitlen > 30) || (bitlen == 0)) {
-                traceEvent(TRACE_WARNING, "Bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
+                traceEvent(TRACE_WARNING, "bad prefix '%hhu' in '%s', defaulting to '%s...%s/%d'",
 		                       bitlen, _optarg,
 		                       N2N_SN_MIN_AUTO_IP_NET_DEFAULT, N2N_SN_MAX_AUTO_IP_NET_DEFAULT, N2N_SN_AUTO_IP_NET_BIT_DEFAULT);
                 return 2;
             }
 
-            traceEvent(TRACE_NORMAL, "The network range for community ip address service is '%s...%s/%hhu'.", ip_min_str, ip_max_str, bitlen);
+            traceEvent(TRACE_NORMAL, "the network range for community ip address service is '%s...%s/%hhu'", ip_min_str, ip_max_str, bitlen);
 
             sss->min_auto_ip_net.net_addr = ntohl(net_min);
             sss->min_auto_ip_net.net_bitlen = bitlen;
@@ -311,7 +311,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             break;
 
         default:
-            traceEvent(TRACE_WARNING, "Unknown option -%c:", (char) optkey);
+            traceEvent(TRACE_WARNING, "unknown option -%c:", (char) optkey);
             return 2;
     }
 
@@ -400,7 +400,7 @@ static int loadFromFile (const char *path, n2n_sn_t *sss) {
     fd = fopen(path, "r");
 
     if(fd == NULL) {
-        traceEvent(TRACE_WARNING, "Config file %s not found", path);
+        traceEvent(TRACE_WARNING, "config file %s not found", path);
         return -1;
     }
 
@@ -445,7 +445,7 @@ static int add_federation_to_communities (n2n_sn_t *sss) {
 
         num_communities = HASH_COUNT(sss->communities);
 
-        traceEvent(TRACE_INFO, "Added federation '%s' to the list of communities [total: %u]",
+        traceEvent(TRACE_INFO, "added federation '%s' to the list of communities [total: %u]",
 	                 (char*)sss->federation->community, num_communities);
     }
 
@@ -466,7 +466,7 @@ static void dump_registrations (int signo) {
     traceEvent(TRACE_NORMAL, "====================================");
 
     HASH_ITER(hh, sss_node.communities, comm, ctmp) {
-        traceEvent(TRACE_NORMAL, "Dumping community: %s", comm->community);
+        traceEvent(TRACE_NORMAL, "dumping community: %s", comm->community);
 
         HASH_ITER(hh, comm->edges, list, tmp) {
             if(list->sock.family == AF_INET) {
@@ -501,10 +501,10 @@ BOOL WINAPI term_handler (DWORD sig)
     static int called = 0;
 
     if(called) {
-        traceEvent(TRACE_NORMAL, "Ok I am leaving now");
+        traceEvent(TRACE_NORMAL, "ok, I am leaving now");
         _exit(0);
     } else {
-        traceEvent(TRACE_NORMAL, "Shutting down...");
+        traceEvent(TRACE_NORMAL, "shutting down...");
         called = 1;
     }
 
@@ -558,7 +558,7 @@ int main (int argc, char * const argv[]) {
         setUseSyslog(1); /* traceEvent output now goes to syslog. */
 
         if(-1 == daemon(0, 0)) {
-            traceEvent(TRACE_ERROR, "Failed to become daemon.");
+            traceEvent(TRACE_ERROR, "failed to become daemon");
             exit(-5);
         }
     }
@@ -566,11 +566,11 @@ int main (int argc, char * const argv[]) {
 
     // warn on default federation name
     if(!strcmp(sss_node.federation->community, FEDERATION_NAME)) {
-        traceEvent(TRACE_WARNING, "Using default federation name. FOR TESTING ONLY, usage of a custom federation name (-F) is highly recommended!");
+        traceEvent(TRACE_WARNING, "using default federation name; FOR TESTING ONLY, usage of a custom federation name (-F) is highly recommended!");
     }
 
     if(sss_node.override_spoofing_protection) {
-        traceEvent(TRACE_WARNING, "Disabled MAC and IP address spoofing protection. FOR TESTING ONLY, usage of user-password authentication (-I, -J, -P) recommended instead!");
+        traceEvent(TRACE_WARNING, "disabled MAC and IP address spoofing protection; FOR TESTING ONLY, usage of user-password authentication (-I, -J, -P) recommended instead!");
     }
 
     calculate_shared_secrets(&sss_node);
@@ -579,7 +579,7 @@ int main (int argc, char * const argv[]) {
 
     sss_node.sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 0, 0 /* UDP */);
     if(-1 == sss_node.sock) {
-        traceEvent(TRACE_ERROR, "Failed to open main socket. %s", strerror(errno));
+        traceEvent(TRACE_ERROR, "failed to open main socket. %s", strerror(errno));
         exit(-2);
     } else {
         traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (main)", sss_node.lport);
@@ -588,14 +588,14 @@ int main (int argc, char * const argv[]) {
 #ifdef N2N_HAVE_TCP
     sss_node.tcp_sock = open_socket(sss_node.lport, 1 /*bind ANY*/, 0, 1 /* TCP */);
     if(-1 == sss_node.tcp_sock) {
-        traceEvent(TRACE_ERROR, "Failed to open auxiliary TCP socket. %s", strerror(errno));
+        traceEvent(TRACE_ERROR, "failed to open auxiliary TCP socket, %s", strerror(errno));
         exit(-2);
     } else {
         traceEvent(TRACE_NORMAL, "supernode opened TCP %u (aux)", sss_node.lport);
     }
 
     if(-1 == listen(sss_node.tcp_sock, N2N_TCP_BACKLOG_QUEUE_SIZE)) {
-        traceEvent(TRACE_ERROR, "Failed to listen on auxiliary TCP socket. %s", strerror(errno));
+        traceEvent(TRACE_ERROR, "failed to listen on auxiliary TCP socket, %s", strerror(errno));
         exit(-2);
     } else {
         traceEvent(TRACE_NORMAL, "supernode is listening on TCP %u (aux)", sss_node.lport);
@@ -604,7 +604,7 @@ int main (int argc, char * const argv[]) {
 
     sss_node.mgmt_sock = open_socket(sss_node.mport, 0 /* bind LOOPBACK */, 0, 0 /* UDP */);
     if(-1 == sss_node.mgmt_sock) {
-        traceEvent(TRACE_ERROR, "Failed to open management socket. %s", strerror(errno));
+        traceEvent(TRACE_ERROR, "failed to open management socket, %s", strerror(errno));
         exit(-2);
     } else {
         traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", sss_node.mport);
@@ -619,24 +619,24 @@ int main (int argc, char * const argv[]) {
         sss_node.groupid = sss_node.groupid == 0 ? pw->pw_gid : 0;
     }
     if((sss_node.userid != 0) || (sss_node.groupid != 0)) {
-        traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
+        traceEvent(TRACE_NORMAL, "dropping privileges to uid=%d, gid=%d",
 	                 (signed int)sss_node.userid, (signed int)sss_node.groupid);
 
         /* Finished with the need for root privileges. Drop to unprivileged user. */
         if((setgid(sss_node.groupid) != 0)
            || (setuid(sss_node.userid) != 0)) {
-            traceEvent(TRACE_ERROR, "Unable to drop privileges [%u/%s]", errno, strerror(errno));
+            traceEvent(TRACE_ERROR, "unable to drop privileges [%u/%s]", errno, strerror(errno));
             exit(1);
         }
     }
 
     if((getuid() == 0) || (getgid() == 0)) {
-        traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
+        traceEvent(TRACE_WARNING, "running as root is discouraged, check out the -u/-g options");
     }
 #endif
 
     if(resolve_create_thread(&(sss_node.resolve_parameter), sss_node.federation->edges) == 0) {
-         traceEvent(TRACE_NORMAL, "Successfully created resolver thread");
+         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
 
     traceEvent(TRACE_NORMAL, "supernode started");

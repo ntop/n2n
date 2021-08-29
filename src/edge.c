@@ -361,7 +361,7 @@ static void setPayloadCompression (n2n_edge_conf_t *conf, int compression) {
             conf->compression = N2N_COMPRESSION_ID_NONE;
             // internal comrpession scheme numbering differs from cli counting by one, hence plus one
             // (internal: 0 == invalid, 1 == none, 2 == lzo, 3 == zstd)
-            traceEvent(TRACE_NORMAL, "the %s compression given by -z_ option is not supported in this version.", compression_str(compression + 1));
+            traceEvent(TRACE_NORMAL, "the %s compression given by -z_ option is not supported in this version", compression_str(compression + 1));
             exit(1); // to make the user aware
         }
     }
@@ -402,7 +402,7 @@ static void setPayloadEncryption (n2n_edge_conf_t *conf, int cipher) {
 
         default: {
             conf->transop_id = N2N_TRANSFORM_ID_INVAL;
-            traceEvent(TRACE_NORMAL, "the %s cipher given by -A_ option is not supported in this version.", transop_str(cipher));
+            traceEvent(TRACE_NORMAL, "the %s cipher given by -A_ option is not supported in this version", transop_str(cipher));
             exit(1);
         }
     }
@@ -432,7 +432,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
         case 'E': /* multicast ethernet addresses accepted. */ {
             conf->drop_multicast = 0;
-            traceEvent(TRACE_INFO, "Enabling ethernet multicast traffic");
+            traceEvent(TRACE_INFO, "enabling ethernet multicast traffic");
             break;
         }
 
@@ -491,8 +491,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             if(optargument) {
                 cipher = atoi(optargument);
             } else {
-                traceEvent(TRACE_WARNING, "the use of the solitary -A switch is deprecated and will not be supported in future versions. "
-                           "please use -A3 instead to choose the AES cipher for payload encryption.");
+                traceEvent(TRACE_WARNING, "the use of the solitary -A switch is deprecated and will not be supported in future versions, "
+                           "please use -A3 instead to choose AES cipher for payload encryption");
 
                 cipher = N2N_TRANSFORM_ID_AES; // default, if '-A' only
             }
@@ -514,8 +514,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             if(optargument) {
                 compression = atoi(optargument);
             } else {
-                traceEvent(TRACE_WARNING, "the use of the solitary -z switch is deprecated and will not be supported in future versions. "
-                           "please use -z1 instead to choose the LZO1X algorithm for payload compression.");
+                traceEvent(TRACE_WARNING, "the use of the solitary -z switch is deprecated and will not be supported in future versions, "
+                           "please use -z1 instead to choose LZO1X algorithm for payload compression");
 
                 compression = 1; // default, if '-z' only, equals -z1
             }
@@ -527,7 +527,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         case 'l': /* supernode-list */ {
             if(optargument) {
                 if(edge_conf_add_supernode(conf, optargument) != 0) {
-                    traceEvent(TRACE_WARNING, "Failed to add supernode '%s'", optargument);
+                    traceEvent(TRACE_WARNING, "failed to add supernode '%s'", optargument);
                 }
             }
             break;
@@ -574,7 +574,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
                     ascii_to_bin(*(conf->federation_public_key), optargument);
                 }
             } else {
-                traceEvent(TRACE_WARNING, "Public key too long.");
+                traceEvent(TRACE_WARNING, "public key too long");
                 return 2;
             }
             break;
@@ -584,7 +584,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             conf->local_port = atoi(optargument);
 
             if(conf->local_port == 0) {
-                traceEvent(TRACE_WARNING, "Bad local port format, using OS assigned port.");
+                traceEvent(TRACE_WARNING, "bad local port format, using OS assigned port");
                 break;
             }
 
@@ -624,7 +624,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             n2n_route_t route;
 
             if(sscanf(optargument, "%63[^/]/%hhd:%63s", cidr_net, &route.net_bitlen, gateway) != 3) {
-                traceEvent(TRACE_WARNING, "Bad cidr/gateway format '%d'.", optargument);
+                traceEvent(TRACE_WARNING, "bad cidr/gateway format '%d'", optargument);
                 return 2;
             }
 
@@ -632,21 +632,21 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             route.gateway = inet_addr(gateway);
 
             if((route.net_bitlen < 0) || (route.net_bitlen > 32)) {
-                traceEvent(TRACE_WARNING, "Bad prefix '%d' in '%s'", route.net_bitlen, optargument);
+                traceEvent(TRACE_WARNING, "bad prefix '%d' in '%s'", route.net_bitlen, optargument);
                 return 2;
             }
 
             if(route.net_addr == INADDR_NONE) {
-                traceEvent(TRACE_WARNING, "Bad network '%s' in '%s'", cidr_net, optargument);
+                traceEvent(TRACE_WARNING, "bad network '%s' in '%s'", cidr_net, optargument);
                 return 2;
             }
 
             if(route.gateway == INADDR_NONE) {
-                traceEvent(TRACE_WARNING, "Bad gateway '%s' in '%s'", gateway, optargument);
+                traceEvent(TRACE_WARNING, "bad gateway '%s' in '%s'", gateway, optargument);
                 return 2;
             }
 
-            traceEvent(TRACE_NORMAL, "Adding %s/%d via %s", cidr_net, route.net_bitlen, gateway);
+            traceEvent(TRACE_NORMAL, "adding %s/%d via %s", cidr_net, route.net_bitlen, gateway);
 
             conf->routes = realloc(conf->routes, sizeof(struct n2n_route) * (conf->num_routes + 1));
             conf->routes[conf->num_routes] = route;
@@ -660,8 +660,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             if(optargument) {
                 solitude = atoi(optargument);
             } else {
-                traceEvent(TRACE_WARNING, "the use of the solitary -S switch is deprecated and will not be supported in future versions. "
-                           "please use -S1 instead to choose supernode-only connection via UDP.");
+                traceEvent(TRACE_WARNING, "the use of the solitary -S switch is deprecated and will not be supported in future versions, "
+                           "please use -S1 instead to choose supernode-only connection via UDP");
 
                 solitude = 1;
             }
@@ -696,7 +696,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
                 HASH_ADD(hh, conf->network_traffic_filter_rules, key, sizeof(filter_rule_key_t), new_rule);
             } else {
                 free(new_rule);
-                traceEvent(TRACE_WARNING, "Invalid filter rule: %s", optargument);
+                traceEvent(TRACE_WARNING, "invalid filter rule: %s", optargument);
                 return 2;
             }
             break;
@@ -709,7 +709,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 #endif
         default: {
-            traceEvent(TRACE_WARNING, "Unknown option -%c", (char)optkey);
+            traceEvent(TRACE_WARNING, "unknown option -%c", (char)optkey);
             return 2;
         }
     }
@@ -791,7 +791,7 @@ static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_pri
     fd = fopen(path, "r");
 
     if(fd == NULL) {
-        traceEvent(TRACE_WARNING, "Config file %s not found", path);
+        traceEvent(TRACE_WARNING, "config file %s not found", path);
         return -1;
     }
 
@@ -830,7 +830,7 @@ static void daemonize () {
 #ifndef WIN32
     int childpid;
 
-    traceEvent(TRACE_NORMAL, "Parent process is exiting (this is normal)");
+    traceEvent(TRACE_NORMAL, "parent process is exiting (this is normal)");
 
     signal(SIGPIPE, SIG_IGN);
     signal(SIGHUP,  SIG_IGN);
@@ -838,7 +838,7 @@ static void daemonize () {
     signal(SIGQUIT, SIG_IGN);
 
     if((childpid = fork()) < 0)
-        traceEvent(TRACE_ERROR, "Occurred while daemonizing (errno=%d)",
+        traceEvent(TRACE_ERROR, "occurred while daemonizing (errno=%d)",
                    errno);
     else {
         if(!childpid) { /* child */
@@ -847,7 +847,7 @@ static void daemonize () {
             //traceEvent(TRACE_NORMAL, "Bye bye: I'm becoming a daemon...");
             rc = chdir("/");
             if(rc != 0)
-                traceEvent(TRACE_ERROR, "Error while moving to / directory");
+                traceEvent(TRACE_ERROR, "error while moving to / directory");
 
             setsid();    /* detach from the terminal */
 
@@ -885,10 +885,10 @@ BOOL WINAPI term_handler(DWORD sig)
     static int called = 0;
 
     if(called) {
-        traceEvent(TRACE_NORMAL, "Ok I am leaving now");
+        traceEvent(TRACE_NORMAL, "ok, I am leaving now");
         _exit(0);
     } else {
-        traceEvent(TRACE_NORMAL, "Shutting down...");
+        traceEvent(TRACE_NORMAL, "shutting down...");
         called = 1;
     }
 
@@ -974,7 +974,7 @@ int main (int argc, char* argv[]) {
     if(conf.transop_id == N2N_TRANSFORM_ID_NULL) {
         if(conf.encrypt_key) {
             // make sure that AES is default cipher if key only (and no cipher) is specified
-            traceEvent(TRACE_WARNING, "Switching to AES as key was provided.");
+            traceEvent(TRACE_WARNING, "switching to AES as key was provided");
             conf.transop_id = N2N_TRANSFORM_ID_AES;
         }
     }
@@ -984,14 +984,14 @@ int main (int argc, char* argv[]) {
         if(!conf.federation_public_key) {
             conf.federation_public_key = calloc(1, sizeof(n2n_private_public_key_t));
             if(conf.federation_public_key) {
-                traceEvent(TRACE_WARNING, "Using default federation public key. FOR TESTING ONLY, usage of a custom federation name and key (-P) is highly recommended!");
+                traceEvent(TRACE_WARNING, "using default federation public key; FOR TESTING ONLY, usage of a custom federation name and key (-P) is highly recommended!");
                 generate_private_key(*(conf.federation_public_key), FEDERATION_NAME + 1);
                 generate_public_key(*(conf.federation_public_key), *(conf.federation_public_key));
             }
         }
         // calculate public key and shared secret
         if(conf.federation_public_key) {
-            traceEvent(TRACE_NORMAL, "Using username and password for edge authentication.");
+            traceEvent(TRACE_NORMAL, "using username and password for edge authentication");
             bind_private_key_to_username(*(conf.shared_secret), conf.dev_desc);
             conf.public_key = calloc(1, sizeof(n2n_private_public_key_t));
             if(conf.public_key)
@@ -1003,7 +1003,7 @@ int main (int argc, char* argv[]) {
         }
         // force header encryption
         if(conf.header_encryption != HEADER_ENCRYPTION_ENABLED) {
-            traceEvent(TRACE_NORMAL, "Enabling header encryption for edge authentication.");
+            traceEvent(TRACE_NORMAL, "enabling header encryption for edge authentication");
             conf.header_encryption = HEADER_ENCRYPTION_ENABLED;
         }
     }
@@ -1014,14 +1014,14 @@ int main (int argc, char* argv[]) {
     if(edge_verify_conf(&conf) != 0)
         help(1); /* short help */
 
-    traceEvent(TRACE_NORMAL, "Starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
+    traceEvent(TRACE_NORMAL, "starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
 #if defined(HAVE_OPENSSL_1_1)
-    traceEvent(TRACE_NORMAL, "Using %s", OpenSSL_version(0));
+    traceEvent(TRACE_NORMAL, "using %s", OpenSSL_version(0));
 #endif
 
-    traceEvent(TRACE_NORMAL, "Using compression: %s.", compression_str(conf.compression));
-    traceEvent(TRACE_NORMAL, "Using %s cipher.", transop_str(conf.transop_id));
+    traceEvent(TRACE_NORMAL, "using compression: %s.", compression_str(conf.compression));
+    traceEvent(TRACE_NORMAL, "using %s cipher.", transop_str(conf.transop_id));
 
     /* Random seed */
     n2n_srand (n2n_seed());
@@ -1029,33 +1029,33 @@ int main (int argc, char* argv[]) {
 #ifndef WIN32
     /* If running suid root then we need to setuid before using the force. */
     if(setuid(0) != 0)
-        traceEvent(TRACE_ERROR, "Unable to become root [%u/%s]", errno, strerror(errno));
+        traceEvent(TRACE_ERROR, "unable to become root [%u/%s]", errno, strerror(errno));
     /* setgid(0); */
 #endif
 
     if(conf.encrypt_key && !strcmp((char*)conf.community_name, conf.encrypt_key))
-        traceEvent(TRACE_WARNING, "Community and encryption key must differ, otherwise security will be compromised");
+        traceEvent(TRACE_WARNING, "community and encryption key must differ, otherwise security will be compromised");
 
     if((eee = edge_init(&conf, &rc)) == NULL) {
-        traceEvent(TRACE_ERROR, "Failed in edge_init");
+        traceEvent(TRACE_ERROR, "failed in edge_init");
         exit(1);
     }
 
     if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
-         traceEvent(TRACE_NORMAL, "Successfully created resolver thread");
+         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
 
     memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
 
     if((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
          ((eee->tuntap_priv_conf.ip_mode[0] == '\0') && (eee->tuntap_priv_conf.ip_addr[0] != '\0'))) {
-        traceEvent(TRACE_NORMAL, "Use manually set IP address.");
+        traceEvent(TRACE_NORMAL, "use manually set IP address");
         eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_STATIC;
     } else if(0 == strcmp("dhcp", eee->tuntap_priv_conf.ip_mode)) {
-        traceEvent(TRACE_NORMAL, "Obtain IP from other edge DHCP services.");
+        traceEvent(TRACE_NORMAL, "obtain IP from other edge DHCP services");
         eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_DHCP;
     } else {
-        traceEvent(TRACE_NORMAL, "Automatically assign IP address by supernode.");
+        traceEvent(TRACE_NORMAL, "automatically assign IP address by supernode");
         eee->conf.tuntap_ip_mode = TUNTAP_IP_MODE_SN_ASSIGN;
     }
 
@@ -1067,7 +1067,7 @@ int main (int argc, char* argv[]) {
     // exceptions:
     if((HASH_COUNT(eee->conf.supernodes) <= 1) || (eee->conf.connect_tcp) || (eee->conf.shared_secret)) {
         // skip the initial supernode ping
-        traceEvent(TRACE_DEBUG, "Skip PING to supernode.");
+        traceEvent(TRACE_DEBUG, "skip PING to supernode");
         runlevel = 2;
     }
 
@@ -1087,7 +1087,7 @@ int main (int argc, char* argv[]) {
             // (re-)initialize the number of max concurrent pings (decreases by calling send_query_peer)
             eee->conf.number_max_sn_pings = NUMBER_SN_PINGS_INITIAL;
             send_query_peer(eee, null_mac);
-            traceEvent(TRACE_NORMAL, "Send PING to supernodes.");
+            traceEvent(TRACE_NORMAL, "send PING to supernodes");
             runlevel++;
         }
 
@@ -1098,14 +1098,14 @@ int main (int argc, char* argv[]) {
                 sn_selection_sort(&(eee->conf.supernodes));
                 eee->curr_sn = eee->conf.supernodes;
                 supernode_connect(eee);
-                traceEvent(TRACE_NORMAL, "Received first PONG from supernode [%s].", eee->curr_sn->ip_addr);
+                traceEvent(TRACE_NORMAL, "received first PONG from supernode [%s]", eee->curr_sn->ip_addr);
                 runlevel++;
             } else if(last_action <= (now - BOOTSTRAP_TIMEOUT)) {
                 // timeout
                 runlevel--;
                 // skip waiting for answer to direcly go to send PING again
                 seek_answer = 0;
-                traceEvent(TRACE_DEBUG, "PONG timeout.");
+                traceEvent(TRACE_DEBUG, "PONG timeout");
             }
         }
 
@@ -1116,7 +1116,7 @@ int main (int argc, char* argv[]) {
                 eee->sn_pong = 0;
                 if(eee->curr_sn->hh.next) {
                     sn_selection_sort((peer_info_t**)&(eee->curr_sn->hh.next));
-                    traceEvent(TRACE_DEBUG, "Received additional PONG from supernode.");
+                    traceEvent(TRACE_DEBUG, "received additional PONG from supernode");
                     // here, it is hard to detemine from which one, so no details to output
                 }
             }
@@ -1128,18 +1128,18 @@ int main (int argc, char* argv[]) {
                 eee->sn_wait = 1;
                 send_register_super(eee);
                 runlevel++;
-                traceEvent(TRACE_NORMAL, "Send REGISTER_SUPER to supernode [%s] asking for IP address.",
+                traceEvent(TRACE_NORMAL, "send REGISTER_SUPER to supernode [%s] asking for IP address",
                                          eee->curr_sn->ip_addr);
             } else {
                 runlevel += 2; /* skip waiting for TUNTAP IP address */
-                traceEvent(TRACE_DEBUG, "Skip auto IP address asignment.");
+                traceEvent(TRACE_DEBUG, "skip auto IP address asignment");
             }
         }
 
         if(runlevel == 3) { /* REGISTER_SUPER to get auto ip address from a sn has been sent */
             if(!eee->sn_wait) { /* TUNTAP IP address received */
                 runlevel++;
-                traceEvent(TRACE_NORMAL, "Received REGISTER_SUPER_ACK from supernode for IP address asignment.");
+                traceEvent(TRACE_NORMAL, "received REGISTER_SUPER_ACK from supernode for IP address asignment");
                 // it should be from curr_sn, but we can't determine definitely here, so no details to output
             } else if(last_action <= (now - BOOTSTRAP_TIMEOUT)) {
                 // timeout, so try next supernode
@@ -1151,7 +1151,7 @@ int main (int argc, char* argv[]) {
                 runlevel--;
                 // skip waiting for answer to direcly go to send REGISTER_SUPER again
                 seek_answer = 0;
-                traceEvent(TRACE_DEBUG, "REGISTER_SUPER_ACK timeout.");
+                traceEvent(TRACE_DEBUG, "REGISTER_SUPER_ACK timeout");
             }
         }
 
@@ -1165,7 +1165,7 @@ int main (int argc, char* argv[]) {
                                                            ) < 0)
                 exit(1);
             memcpy(&eee->device, &tuntap, sizeof(tuntap));
-            traceEvent(TRACE_NORMAL, "Created local tap device IP: %s, Mask: %s, MAC: %s",
+            traceEvent(TRACE_NORMAL, "created local tap device IP: %s, Mask: %s, MAC: %s",
                                      eee->tuntap_priv_conf.ip_addr,
                                      eee->tuntap_priv_conf.netmask,
                                      macaddr_str(mac_buf, eee->device.mac_addr));
@@ -1232,27 +1232,27 @@ int main (int argc, char* argv[]) {
     cap_set_flag(caps, CAP_EFFECTIVE, num_cap, cap_values, CAP_SET);
 
     if((cap_set_proc(caps) != 0) || (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) != 0))
-        traceEvent(TRACE_WARNING, "Unable to retain permitted capabilities [%s]\n", strerror(errno));
+        traceEvent(TRACE_WARNING, "unable to retain permitted capabilities [%s]\n", strerror(errno));
 #else
 #ifndef __APPLE__
-    traceEvent(TRACE_WARNING, "n2n has not been compiled with libcap-dev. Some commands may fail.");
+    traceEvent(TRACE_WARNING, "n2n has not been compiled with libcap-dev; some commands may fail");
 #endif
 #endif /* HAVE_LIBCAP */
 
     if((eee->tuntap_priv_conf.userid != 0) || (eee->tuntap_priv_conf.groupid != 0)) {
-        traceEvent(TRACE_NORMAL, "Dropping privileges to uid=%d, gid=%d",
+        traceEvent(TRACE_NORMAL, "dropping privileges to uid=%d, gid=%d",
                    (signed int)eee->tuntap_priv_conf.userid, (signed int)eee->tuntap_priv_conf.groupid);
 
         /* Finished with the need for root privileges. Drop to unprivileged user. */
         if((setgid(eee->tuntap_priv_conf.groupid) != 0)
            || (setuid(eee->tuntap_priv_conf.userid) != 0)) {
-            traceEvent(TRACE_ERROR, "Unable to drop privileges [%u/%s]", errno, strerror(errno));
+            traceEvent(TRACE_ERROR, "unable to drop privileges [%u/%s]", errno, strerror(errno));
             exit(1);
         }
     }
 
     if((getuid() == 0) || (getgid() == 0))
-        traceEvent(TRACE_WARNING, "Running as root is discouraged, check out the -u/-g options");
+        traceEvent(TRACE_WARNING, "running as root is discouraged, check out the -u/-g options");
 #endif
 
 #ifdef __linux__
@@ -1275,7 +1275,7 @@ int main (int argc, char* argv[]) {
     cap_set_flag(caps, CAP_EFFECTIVE, num_cap, cap_values, CAP_SET);
 
     if(cap_set_proc(caps) != 0)
-        traceEvent(TRACE_WARNING, "Could not regain the capabilities [%s]\n", strerror(errno));
+        traceEvent(TRACE_WARNING, "could not regain the capabilities [%s]\n", strerror(errno));
 
     cap_free(caps);
 #endif
