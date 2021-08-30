@@ -426,50 +426,53 @@ void resolve_cancel_thread (n2n_resolve_parameter_t *param) {
 uint8_t resolve_check (n2n_resolve_parameter_t *param, uint8_t requires_resolution, time_t now) {
 
     uint8_t ret = requires_resolution; /* if trylock fails, it still requires resolution */
+
 #ifdef HAVE_PTHREAD
-    n2n_resolve_ip_sock_t   *entry, *tmp_entry;
-    n2n_sock_str_t sock_buf;
+    if(param != NULL) {
+        n2n_resolve_ip_sock_t   *entry, *tmp_entry;
+        n2n_sock_str_t sock_buf;
 
-    // check_interval and last_check do not need to be guarded by the mutex because
-    // their values get changed and evaluated only here
+        // check_interval and last_check do not need to be guarded by the mutex because
+        // their values get changed and evaluated only here
 
-
-    if((now - param->last_checked > param->check_interval) || (requires_resolution)) {
-        // try to lock access
-        if(pthread_mutex_trylock(&param->access) == 0) {
-            // any changes?
-            if(param->changed) {
-                // reset flag
-                param->changed = 0;
-                // unselectively copy all socks (even those with error code, that would be the old one because
-                // sockets do not get overwritten in case of error in resolve_thread) from list to supernode list
-                HASH_ITER(hh, param->list, entry, tmp_entry) {
-                    memcpy(entry->org_sock, &entry->sock, sizeof(n2n_sock_t));
-                    traceEvent(TRACE_INFO, "resolve_check renews ip address of supernode '%s' to %s",
-                                           entry->org_ip, sock_to_cstr(sock_buf, &(entry->sock)));
+        if((now - param->last_checked > param->check_interval) || (requires_resolution)) {
+            // try to lock access
+            if(pthread_mutex_trylock(&param->access) == 0) {
+                // any changes?
+                if(param->changed) {
+                    // reset flag
+                    param->changed = 0;
+                    // unselectively copy all socks (even those with error code, that would be the old one because
+                    // sockets do not get overwritten in case of error in resolve_thread) from list to supernode list
+                    HASH_ITER(hh, param->list, entry, tmp_entry) {
+                        memcpy(entry->org_sock, &entry->sock, sizeof(n2n_sock_t));
+                        traceEvent(TRACE_INFO, "resolve_check renews ip address of supernode '%s' to %s",
+                                               entry->org_ip, sock_to_cstr(sock_buf, &(entry->sock)));
+                    }
                 }
+
+                // let the resolver thread know eventual difficulties in reaching the supernode
+                if(requires_resolution) {
+                    param->request = 1;
+                    ret = 0;
+                }
+
+                param->last_checked = now;
+
+                // next appointment
+                if(param->request)
+                    // earlier if resolver still working on fulfilling a request
+                    param->check_interval = N2N_RESOLVE_CHECK_INTERVAL / 10;
+                else
+                    param->check_interval = N2N_RESOLVE_CHECK_INTERVAL;
+
+                // unlock access
+                pthread_mutex_unlock(&param->access);
             }
-
-            // let the resolver thread know eventual difficulties in reaching the supernode
-            if(requires_resolution) {
-                param->request = 1;
-                ret = 0;
-            }
-
-            param->last_checked = now;
-
-            // next appointment
-            if(param->request)
-                // earlier if resolver still working on fulfilling a request
-                param->check_interval = N2N_RESOLVE_CHECK_INTERVAL / 10;
-            else
-                param->check_interval = N2N_RESOLVE_CHECK_INTERVAL;
-
-            // unlock access
-            pthread_mutex_unlock(&param->access);
         }
     }
 #endif
+
     return ret;
 }
 
