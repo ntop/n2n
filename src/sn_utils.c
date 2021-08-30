@@ -20,6 +20,7 @@
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 
+int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
 int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
 int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
@@ -727,7 +728,7 @@ int comm_init (struct sn_community *comm, char *cmn) {
 
 
 /** Initialise the supernode structure */
-int sn_init(n2n_sn_t *sss) {
+int sn_init_defaults (n2n_sn_t *sss) {
 
     int i;
     size_t idx;
@@ -784,6 +785,15 @@ int sn_init(n2n_sn_t *sss) {
     sss->mac_addr[0] |= 0x02;    /* Set locally-assigned bit */
 
     return 0; /* OK */
+}
+
+
+/** Initialise the supernode */
+int sn_init (n2n_sn_t *sss) {
+
+    if(resolve_create_thread(&(sss->resolve_parameter), sss->federation->edges) == 0) {
+         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
+    }
 }
 
 

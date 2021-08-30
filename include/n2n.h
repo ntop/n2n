@@ -269,6 +269,7 @@ int quick_edge_init (char *device_name, char *community_name,
                      char *supernode_ip_address_port,
                      int *keep_on_running);
 int comm_init (struct sn_community *comm, char *cmn);
+int sn_init_defaults (n2n_sn_t *sss);
 int sn_init (n2n_sn_t *sss);
 void sn_term (n2n_sn_t *sss);
 int supernode2sock (n2n_sock_t * sn, const n2n_sn_name_t addrIn);
