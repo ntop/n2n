@@ -426,6 +426,9 @@ void resolve_cancel_thread (n2n_resolve_parameter_t *param) {
 uint8_t resolve_check (n2n_resolve_parameter_t *param, uint8_t requires_resolution, time_t now) {
 
     uint8_t ret = requires_resolution; /* if trylock fails, it still requires resolution */
+    if(param == NULL) {
+        return ret;
+    }    
 #ifdef HAVE_PTHREAD
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
     n2n_sock_str_t sock_buf;
