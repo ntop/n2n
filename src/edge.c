@@ -50,7 +50,6 @@ int supernode_disconnect (n2n_edge_t *eee);
 int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
                                        time_t now);
-int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
 int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
 int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
 
@@ -1039,10 +1038,6 @@ int main (int argc, char* argv[]) {
     if((eee = edge_init(&conf, &rc)) == NULL) {
         traceEvent(TRACE_ERROR, "failed in edge_init");
         exit(1);
-    }
-
-    if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
-         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
 
     memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));

@@ -26,6 +26,7 @@ static HEAP_ALLOC (wrkmem, LZO1X_1_MEM_COMPRESS);
 
 /* ************************************** */
 
+int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list);
 int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
 int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
@@ -416,6 +417,10 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     if(edge_init_sockets(eee) < 0) {
         traceEvent(TRACE_ERROR, "socket setup failed");
         goto edge_init_error;
+    }
+
+    if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
+         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
 
     eee->network_traffic_filter = create_network_traffic_filter();
