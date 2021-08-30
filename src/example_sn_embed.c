@@ -25,7 +25,7 @@ int main () {
         n2n_sn_t sss_node;
         int rc;
 
-        sn_init(&sss_node);
+        sn_init_defaults(&sss_node);
         sss_node.daemon = 0;   // Whether to daemonize
         sss_node.lport = 1234; // Main UDP listen port
 
@@ -38,6 +38,8 @@ int main () {
         if(-1 == sss_node.mgmt_sock) {
             exit(-2);
         }
+
+        sn_init(&sss_node);
 
         keep_running = 1;
         rc = run_sn_loop(&sss_node, &keep_running);

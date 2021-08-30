@@ -527,7 +527,7 @@ int main (int argc, char * const argv[]) {
     struct peer_info *scan, *tmp;
 
 
-    sn_init(&sss_node);
+    sn_init_defaults(&sss_node);
     add_federation_to_communities(&sss_node);
 
     if((argc >= 2) && (argv[1][0] != '-')) {
@@ -635,9 +635,7 @@ int main (int argc, char * const argv[]) {
     }
 #endif
 
-    if(resolve_create_thread(&(sss_node.resolve_parameter), sss_node.federation->edges) == 0) {
-         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
-    }
+    sn_init(&sss_node);
 
     traceEvent(TRACE_NORMAL, "supernode started");
 
