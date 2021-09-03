@@ -2168,8 +2168,7 @@ static int process_udp (n2n_sn_t * sss,
             } else {
                 // if this is not already from a supernode ...
                 // and not from federation, ...
-                if(!(cmn.flags & N2N_FLAGS_FROM_SUPERNODE)
-                  &&(comm->is_federation != IS_FEDERATION)) {
+                if((!(cmn.flags & N2N_FLAGS_FROM_SUPERNODE)) || (!(cmn.flags & N2N_FLAGS_SOCKET))) {
                     // ... forward to all other supernodes (note try_broadcast()'s behavior with
                     //     NULL comm and from_supernode parameter)
                     // exception: do not forward auto ip draw
