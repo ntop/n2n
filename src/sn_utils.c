@@ -2136,7 +2136,7 @@ static int process_udp (n2n_sn_t * sss,
             // check authentication
             ret_value = update_edge_no_change;
             if(comm->is_federation != IS_FEDERATION) { /* REVISIT: auth among supernodes is not implemented yet */
-                if(cmn.flags & N2N_FLAGS_SOCKET) {
+                if(cmn.flags & N2N_FLAGS_FROM_SUPERNODE) {
                     ret_value = update_edge(sss, &reg, comm, &(ack.sock), socket_fd, &(ack.auth), SN_ADD_SKIP, now);
                 } else {
                     // do not add in case of null mac (edge asking for ip address)
@@ -2166,8 +2166,10 @@ static int process_udp (n2n_sn_t * sss,
                 traceEvent(TRACE_DEBUG, "Tx REGISTER_SUPER_NAK for %s",
                            macaddr_str(mac_buf, reg.edgeMac));
             } else {
-                // if this is not already forwarded from a supernode, ...
-                if(!(cmn.flags & N2N_FLAGS_SOCKET)) {
+                // if this is not already from a supernode ...
+                // and not from federation, ...
+                if(!(cmn.flags & N2N_FLAGS_FROM_SUPERNODE)
+                  &&(comm->is_federation != IS_FEDERATION)) {
                     // ... forward to all other supernodes (note try_broadcast()'s behavior with
                     //     NULL comm and from_supernode parameter)
                     // exception: do not forward auto ip draw
