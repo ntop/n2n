@@ -2494,9 +2494,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                      * a valid channel. We still use check_peer_registration_needed below
                      * to double check this.
                      */
-                    traceEvent(TRACE_INFO, "[p2p] Rx REGISTER from %s [%s]",
+                    traceEvent(TRACE_INFO, "[p2p] Rx REGISTER from %s [%s]%s",
                                            macaddr_str(mac_buf1, reg.srcMac),
-                                           sock_to_cstr(sockbuf1, &sender));
+                                           sock_to_cstr(sockbuf1, &sender),
+                                           (reg.cookie == N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
                     find_and_remove_peer(&eee->pending_peers, reg.srcMac);
 
                     /* NOTE: only ACK to peers */
@@ -2528,11 +2529,13 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 if(is_valid_peer_sock(&ra.sock))
                     orig_sender = &(ra.sock);
 
-                traceEvent(TRACE_INFO, "Rx REGISTER_ACK from %s [%s] to %s via [%s]",
+                traceEvent(TRACE_INFO, "Rx REGISTER_ACK from %s [%s] to %s via [%s]%s",
                            macaddr_str(mac_buf1, ra.srcMac),
                            sock_to_cstr(sockbuf2, orig_sender),
                            macaddr_str(mac_buf2, ra.dstMac),
-                           sock_to_cstr(sockbuf1, &sender));
+                           sock_to_cstr(sockbuf1, &sender),
+                          (ra.cookie == N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
+
 
                 peer_set_p2p_confirmed(eee, ra.srcMac,
                                       ra.cookie,
