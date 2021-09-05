@@ -171,15 +171,14 @@ int decode_buf (uint8_t * out,
 }
 
 
-
-int encode_mac (uint8_t * base,
+int encode_mac (uint8_t * base,  /* n2n_mac_t is typedefed array type which is always passed by reference */
                 size_t * idx,
                 const n2n_mac_t m) {
 
     return encode_buf(base, idx, m, N2N_MAC_SIZE);
 }
 
-int decode_mac (n2n_mac_t out, /* n2n_mac_t is typedefed array type which is always passed by reference */
+int decode_mac (n2n_mac_t out,
                 const uint8_t * base,
                 size_t * rem,
                 size_t * idx) {
@@ -187,6 +186,20 @@ int decode_mac (n2n_mac_t out, /* n2n_mac_t is typedefed array type which is alw
     return decode_buf(out, N2N_MAC_SIZE, base, rem, idx);
 }
 
+int encode_cookie (uint8_t * base,
+                   size_t * idx,
+                   const n2n_cookie_t c) {
+
+    return encode_uint32(base, idx, c);
+}
+
+int decode_cookie (n2n_cookie_t * out,  /* cookies are typedef'd as uint32_t which needs to correspond to this code */
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx) {
+
+    return decode_uint32(out, base, rem, idx);
+}
 
 
 int encode_common (uint8_t * base,
@@ -300,7 +313,7 @@ int encode_REGISTER (uint8_t *base,
     int retval = 0;
 
     retval += encode_common(base, idx, common);
-    retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+    retval += encode_cookie(base, idx, reg->cookie);
     retval += encode_mac(base, idx, reg->srcMac);
     retval += encode_mac(base, idx, reg->dstMac);
     if(common->flags & N2N_FLAGS_SOCKET) {
@@ -323,7 +336,7 @@ int decode_REGISTER (n2n_REGISTER_t *reg,
     size_t retval = 0;
     memset(reg, 0, sizeof(n2n_REGISTER_t));
 
-    retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+    retval += decode_cookie(&reg->cookie, base, rem, idx);
     retval += decode_mac(reg->srcMac, base, rem, idx);
     retval += decode_mac(reg->dstMac, base, rem, idx);
     if(cmn->flags & N2N_FLAGS_SOCKET) {
@@ -345,7 +358,7 @@ int encode_REGISTER_SUPER (uint8_t *base,
     int retval = 0;
 
     retval += encode_common(base, idx, common);
-    retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+    retval += encode_cookie(base, idx, reg->cookie);
     retval += encode_mac(base, idx, reg->edgeMac);
     if(common->flags & N2N_FLAGS_SOCKET) {
         retval += encode_sock(base, idx, &(reg->sock));
@@ -371,7 +384,7 @@ int decode_REGISTER_SUPER (n2n_REGISTER_SUPER_t *reg,
     size_t retval = 0;
     memset(reg, 0, sizeof(n2n_REGISTER_SUPER_t));
 
-    retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+    retval += decode_cookie(&reg->cookie, base, rem, idx);
     retval += decode_mac(reg->edgeMac, base, rem, idx);
     if(cmn->flags & N2N_FLAGS_SOCKET) {
         retval += decode_sock(&(reg->sock), base, rem, idx);
@@ -431,7 +444,7 @@ int encode_REGISTER_ACK (uint8_t *base,
     int retval = 0;
 
     retval += encode_common(base, idx, common);
-    retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+    retval += encode_cookie(base, idx, reg->cookie);
     retval += encode_mac(base, idx, reg->dstMac);
     retval += encode_mac(base, idx, reg->srcMac);
 
@@ -455,7 +468,7 @@ int decode_REGISTER_ACK (n2n_REGISTER_ACK_t *reg,
     size_t retval = 0;
     memset(reg, 0, sizeof(n2n_REGISTER_ACK_t));
 
-    retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+    retval += decode_cookie(&reg->cookie, base, rem, idx);
     retval += decode_mac(reg->dstMac, base, rem, idx);
     retval += decode_mac(reg->srcMac, base, rem, idx);
 
@@ -479,7 +492,7 @@ int encode_REGISTER_SUPER_ACK (uint8_t *base,
     int retval = 0;
 
     retval += encode_common(base, idx, common);
-    retval += encode_buf(base, idx, reg->cookie, N2N_COOKIE_SIZE);
+    retval += encode_cookie(base, idx, reg->cookie);
     retval += encode_mac(base, idx, reg->srcMac);
     retval += encode_uint32(base, idx, reg->dev_addr.net_addr);
     retval += encode_uint8(base, idx, reg->dev_addr.net_bitlen);
@@ -510,7 +523,7 @@ int decode_REGISTER_SUPER_ACK (n2n_REGISTER_SUPER_ACK_t *reg,
     size_t retval = 0;
     memset(reg, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
-    retval += decode_buf(reg->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+    retval += decode_cookie(&reg->cookie, base, rem, idx);
     retval += decode_mac(reg->srcMac, base, rem, idx);
     retval += decode_uint32(&(reg->dev_addr.net_addr), base, rem, idx);
     retval += decode_uint8(&(reg->dev_addr.net_bitlen), base, rem, idx);
@@ -541,7 +554,7 @@ int encode_REGISTER_SUPER_NAK (uint8_t *base,
     int retval = 0;
 
     retval += encode_common(base, idx, common);
-    retval += encode_buf(base, idx, nak->cookie, N2N_COOKIE_SIZE);
+    retval += encode_cookie(base, idx, nak->cookie);
     retval += encode_mac(base, idx, nak->srcMac);
 
     retval += encode_uint16(base, idx, nak->auth.scheme);
@@ -561,7 +574,7 @@ int decode_REGISTER_SUPER_NAK (n2n_REGISTER_SUPER_NAK_t *nak,
     size_t retval = 0;
     memset(nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
 
-    retval += decode_buf(nak->cookie, N2N_COOKIE_SIZE, base, rem, idx);
+    retval += decode_cookie(&nak->cookie, base, rem, idx);
     retval += decode_mac(nak->srcMac, base, rem, idx);
 
     retval += decode_uint16(&(nak->auth.scheme), base, rem, idx);

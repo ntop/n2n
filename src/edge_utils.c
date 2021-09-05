@@ -31,13 +31,13 @@ int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, t
 int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
 static const char * supernode_ip (const n2n_edge_t * eee);
-static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac, uint32_t cookie);
+static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac, n2n_cookie_t cookie);
 
 static void check_peer_registration_needed (n2n_edge_t *eee,
                                             uint8_t from_supernode,
                                             uint8_t via_multicast,
                                             const n2n_mac_t mac,
-                                            const uint32_t cookie,
+                                            const n2n_cookie_t cookie,
                                             const n2n_ip_subnet_t *dev_addr,
                                             const n2n_desc_t *dev_desc,
                                             const n2n_sock_t *peer);
@@ -660,7 +660,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
                                             uint8_t from_supernode,
                                             uint8_t via_multicast,
                                             const n2n_mac_t mac,
-                                            const uint32_t cookie,
+                                            const n2n_cookie_t cookie,
                                             const n2n_ip_subnet_t *dev_addr,
                                             const n2n_desc_t *dev_desc,
                                             const n2n_sock_t *peer) {
@@ -713,7 +713,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
  */
 static void peer_set_p2p_confirmed (n2n_edge_t * eee,
                                     const n2n_mac_t mac,
-                                    const uint32_t cookie,
+                                    const n2n_cookie_t cookie,
                                     const n2n_sock_t * peer,
                                     time_t now) {
 
@@ -1186,9 +1186,9 @@ void send_register_super (n2n_edge_t *eee) {
     }
     memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
-    memrnd(eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
+    eee->curr_sn->last_cookie = n2n_rand();
 
-    memcpy(reg.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE);
+    reg.cookie = eee->curr_sn->last_cookie;
     reg.dev_addr.net_addr = ntohl(eee->device.ip_addr);
     reg.dev_addr.net_bitlen = mask2bitlen(ntohl(eee->device.device_mask));
     memcpy(reg.dev_desc, eee->conf.dev_desc, N2N_DESC_SIZE);
@@ -1307,7 +1307,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
 static void send_register (n2n_edge_t * eee,
                            const n2n_sock_t * remote_peer,
                            const n2n_mac_t peer_mac,
-                           const uint32_t cookie) {
+                           const n2n_cookie_t cookie) {
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
@@ -1328,8 +1328,7 @@ static void send_register (n2n_edge_t * eee,
     cmn.flags = 0;
     memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
-    idx = 0;
-    encode_uint32(reg.cookie, &idx, cookie);
+    reg.cookie = cookie;
     idx = 0;
     encode_mac(reg.srcMac, &idx, eee->device.mac_addr);
 
@@ -1383,7 +1382,7 @@ static void send_register_ack (n2n_edge_t * eee,
     memcpy(cmn.community, eee->conf.community_name, N2N_COMMUNITY_SIZE);
 
     memset(&ack, 0, sizeof(ack));
-    memcpy(ack.cookie, reg->cookie, N2N_COOKIE_SIZE);
+    ack.cookie = reg->cookie;
     memcpy(ack.srcMac, eee->device.mac_addr, N2N_MAC_SIZE);
     memcpy(ack.dstMac, reg->srcMac, N2N_MAC_SIZE);
 
@@ -2509,7 +2508,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 }
 
                 check_peer_registration_needed(eee, from_supernode, via_multicast,
-                                               reg.srcMac, ntohl(*(uint32_t*)reg.cookie) ,&reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender);
+                                               reg.srcMac, reg.cookie, &reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender);
                 break;
             }
 
@@ -2536,7 +2535,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                            sock_to_cstr(sockbuf1, &sender));
 
                 peer_set_p2p_confirmed(eee, ra.srcMac,
-                                      ntohl(*(uint32_t*)ra.cookie) /* only works with cookie size of 4 */,
+                                      ra.cookie,
                                       &sender, now);
                 break;
             }
@@ -2574,7 +2573,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     }
                 }
 
-                if(memcmp(ra.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
+                if(ra.cookie != eee->curr_sn->last_cookie) {
                     traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK with wrong or old cookie");
                     return;
                 }
@@ -2681,7 +2680,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     }
                 }
 
-                if(memcmp(nak.cookie, eee->curr_sn->last_cookie, N2N_COOKIE_SIZE)) {
+                if(nak.cookie != eee->curr_sn->last_cookie) {
                     traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_NAK with wrong or old cookie");
                     return;
                 }

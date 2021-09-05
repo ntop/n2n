@@ -1066,7 +1066,7 @@ static int update_edge (n2n_sn_t *sss,
                 memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
                 memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
                 scan->socket_fd = socket_fd;
-                memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
+                scan->last_cookie = reg->cookie;
                 scan->last_valid_time_stamp = initial_time_stamp();
                 // eventually, store edge's preferred local socket from REGISTER_SUPER
                 if(cmn->flags & N2N_FLAGS_SOCKET)
@@ -1098,7 +1098,7 @@ static int update_edge (n2n_sn_t *sss,
             if(!sock_equal(sender_sock, &(scan->sock))) {
                 memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
                 scan->socket_fd = socket_fd;
-                memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
+                scan->last_cookie = reg->cookie;
                 // eventually, update edge's preferred local socket from REGISTER_SUPER
                 if(cmn->flags & N2N_FLAGS_SOCKET)
                     memcpy(&scan->preferred_sock, &reg->sock, sizeof(n2n_sock_t));
@@ -1110,7 +1110,7 @@ static int update_edge (n2n_sn_t *sss,
                            sock_to_cstr(sockbuf, sender_sock));
                 ret = update_edge_sock_change;
             } else {
-                memcpy(&(scan->last_cookie), reg->cookie, sizeof(N2N_COOKIE_SIZE));
+                scan->last_cookie = reg->cookie;
 
                 traceEvent(TRACE_DEBUG, "edge unchanged %s ==> %s",
                            macaddr_str(mac_buf, reg->edgeMac),
@@ -1368,9 +1368,8 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
             cmn.flags = N2N_FLAGS_FROM_SUPERNODE;
             memcpy(cmn.community, comm->community, N2N_COMMUNITY_SIZE);
 
-            memrnd(cookie, N2N_COOKIE_SIZE);
-            memcpy(reg.cookie, cookie, N2N_COOKIE_SIZE);
-            memcpy(peer->last_cookie, cookie, N2N_COOKIE_SIZE);
+            reg.cookie = n2n_rand();
+            peer->last_cookie = reg.cookie;
 
             reg.dev_addr.net_addr = ntohl(peer->dev_addr.net_addr);
             reg.dev_addr.net_bitlen = mask2bitlen(ntohl(peer->dev_addr.net_bitlen));
@@ -2088,7 +2087,7 @@ static int process_udp (n2n_sn_t * sss,
             cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
             memcpy(cmn2.community, cmn.community, sizeof(n2n_community_t));
 
-            memcpy(&(ack.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
+            ack.cookie = reg.cookie;
             memcpy(ack.srcMac, sss->mac_addr, sizeof(n2n_mac_t));
 
             if(comm->is_federation != IS_FEDERATION) { /* alternatively, do not send zero tap ip address in federation REGISTER_SUPER */
@@ -2160,7 +2159,7 @@ static int process_udp (n2n_sn_t * sss,
             if(ret_value == update_edge_auth_fail) {
                 // send REGISTER_SUPER_NAK
                 cmn2.pc = n2n_register_super_nak;
-                memcpy(&(nak.cookie), &(reg.cookie), sizeof(n2n_cookie_t));
+                nak.cookie = reg.cookie;
                 memcpy(nak.srcMac, reg.edgeMac, sizeof(n2n_mac_t));
 
                 encode_REGISTER_SUPER_NAK(ackbuf, &encx, &cmn2, &nak);
@@ -2374,7 +2373,7 @@ static int process_udp (n2n_sn_t * sss,
                 break;
             }
 
-            if(0 == memcmp(ack.cookie, scan->last_cookie, N2N_COOKIE_SIZE)) {
+            if(ack.cookie == scan->last_cookie) {
 
                 payload = (n2n_REGISTER_SUPER_ACK_payload_t *)dec_tmpbuf;
                 for(i = 0; i < ack.num_sn; i++) {
