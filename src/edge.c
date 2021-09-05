@@ -178,7 +178,7 @@ static void help (int level) {
                "[-H] "
                "[-z<compression>] "
             "\n                      "
-               "[-S<level of solitude>] "
+               "[-e <preferred local IP address>] [-S<level of solitude>]"
           "\n\n tap device and       "
                "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
             "\n overlay network      "
@@ -254,6 +254,8 @@ static void help (int level) {
         printf(" -D                | enable PMTU discovery, it can reduce fragmentation but\n"
                "                   | causes connections to stall if not properly supported\n");
 #endif
+        printf(" -e <local ip>     | advertises the provided local IP address as preferred,\n"
+               "                   | useful if multicast peer detection is not available\n");
         printf(" -S1 ... -S2       | do not connect p2p, always use the supernode,\n"
                "                   | -S1 = via UDP"
 
@@ -612,6 +614,25 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
+        case 'e': {
+            if(optargument) {
+                in_addr_t address_tmp = inet_addr(optargument);
+
+                memcpy(&(conf->preferred_sock.addr.v4), &(address_tmp), IPV4_SIZE);
+
+                if(address_tmp == INADDR_NONE) {
+                    traceEvent(TRACE_WARNING, "bad address for preferred local socket, skipping");
+                    conf->preferred_sock.family = AF_INVALID;
+                    break;
+                } else {
+                    conf->preferred_sock.family = AF_INET;
+                    // port is set after parsing all cli parameters
+                }
+            }
+
+            break;
+        }
+
         case 't': {
             conf->mgmt_port = atoi(optargument);
             break;
@@ -747,7 +768,11 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
     u_char c;
 
     while ((c = getopt_long(argc, argv,
+<<<<<<< HEAD
                             "k:a:c:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:"
+=======
+                            "k:a:b:c:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:e:"
+>>>>>>> 9772d7b (first draft)
 #ifdef __linux__
                             "T:"
 #endif
@@ -1041,6 +1066,18 @@ int main (int argc, char* argv[]) {
 
     if(conf.encrypt_key && !strcmp((char*)conf.community_name, conf.encrypt_key))
         traceEvent(TRACE_WARNING, "community and encryption key must differ, otherwise security will be compromised");
+
+    // so far, preferred local sock (-e) only works with a fixed port provided (-p)
+    if(conf.preferred_sock.family != AF_INVALID) {
+        conf.preferred_sock.port = conf.local_port;
+        if(conf.local_port == 0) {
+            traceEvent(TRACE_WARNING, "preferred local socket requires a port to be provided (-p), skipping");
+            conf.preferred_sock.family = AF_INVALID;
+            in_addr_t address_tmp = INADDR_NONE;
+            memcpy(&(conf.preferred_sock.addr.v4), &(address_tmp), IPV4_SIZE);
+        }
+    }
+
 
     if((eee = edge_init(&conf, &rc)) == NULL) {
         traceEvent(TRACE_ERROR, "failed in edge_init");

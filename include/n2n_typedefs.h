@@ -328,7 +328,7 @@ typedef struct n2n_REGISTER {
     n2n_cookie_t       cookie;      /**< Link REGISTER and REGISTER_ACK */
     n2n_mac_t          srcMac;      /**< MAC of registering party */
     n2n_mac_t          dstMac;      /**< MAC of target edge */
-    n2n_sock_t         sock;        /**< REVISIT: unused? */
+    n2n_sock_t         sock;        /**< Supernode's view of edge socket OR edge's preferred local socket */
     n2n_ip_subnet_t    dev_addr;    /**< IP address of the tuntap adapter. */
     n2n_desc_t         dev_desc;    /**< Hint description correlated with the edge */
 } n2n_REGISTER_t;
@@ -408,6 +408,7 @@ typedef struct n2n_PEER_INFO {
     n2n_mac_t                        srcMac;
     n2n_mac_t                        mac;
     n2n_sock_t                       sock;
+    n2n_sock_t                       preferred_sock;
     SN_SELECTION_CRITERION_DATA_TYPE data;
 } n2n_PEER_INFO_t;
 
@@ -426,6 +427,8 @@ struct peer_info {
     n2n_desc_t                       dev_desc;
     n2n_sock_t                       sock;
     SOCKET                           socket_fd;
+    n2n_sock_t                       preferred_sock;
+    time_t                           last_local_reg;
     n2n_cookie_t                     last_cookie;
     n2n_auth_t                       auth;
     int                              timeout;
@@ -647,6 +650,7 @@ typedef struct n2n_edge_conf {
     int                      register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
     int                      register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
     in_addr_t                bind_address;           /**< The address to bind to if provided (-b) */
+    n2n_sock_t               preferred_sock;         /**< propagated local sock for better p2p in LAN (-e) */
     int                      local_port;
     int                      mgmt_port;
     uint8_t                  connect_tcp;            /** connection to supernode 0 = UDP; 1 = TCP */

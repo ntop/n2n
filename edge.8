@@ -44,6 +44,11 @@ TOS for packets, e.g. 0x48 for SSH like priority
 enable PMTU discovery, it can reduce fragmentation but
 causes connections to stall if not properly supported
 .TP
+\fB\-e \fR<\fIlocal ip\fR>
+advertises the provided local IP address as preferred,
+useful if multicast peer detection is not available, e.g.
+disabled on routers
+.TP
 \fB\-S1\fR ... \fB\-S2\fR
 do not connect p2p, always use the supernode,
 \-S1 = via UDP, \-S2 = via TCP
