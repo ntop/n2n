@@ -592,7 +592,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
         case 'b': {
             if(optargument) {
-                conf->bind_address = inet_addr(optargument);
+                conf->bind_address = ntohl(inet_addr(optargument));
 
                 if(conf->bind_address == INADDR_NONE) {
                     traceEvent(TRACE_WARNING, "Bad address to bind to, binding to any IP address.");

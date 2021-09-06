@@ -215,7 +215,7 @@ int supernode_connect(n2n_edge_t *eee) {
                                      (eee->conf.connect_tcp) ? 0 : eee->conf.local_port);
 
         eee->sock = open_socket((eee->conf.connect_tcp) ?  0 : eee->conf.local_port,
-                                 2 /* bind as provided with next parameter */, eee->conf.bind_address,
+                                 eee->conf.bind_address,
                                  eee->conf.connect_tcp);
 
         if(eee->sock < 0) {
@@ -3098,7 +3098,7 @@ static int edge_init_sockets (n2n_edge_t *eee) {
         closesocket(eee->udp_multicast_sock);
 #endif
 
-    eee->udp_mgmt_sock = open_socket(eee->conf.mgmt_port, 0 /* bind LOOPBACK */, 0, 0 /* UDP */);
+    eee->udp_mgmt_sock = open_socket(eee->conf.mgmt_port, INADDR_LOOPBACK, 0 /* UDP */);
     if(eee->udp_mgmt_sock < 0) {
         traceEvent(TRACE_ERROR, "failed to bind management UDP port %u", eee->conf.mgmt_port);
         return(-2);
@@ -3113,7 +3113,7 @@ static int edge_init_sockets (n2n_edge_t *eee) {
     eee->multicast_peer.addr.v4[2] = 0;
     eee->multicast_peer.addr.v4[3] = 68;
 
-    eee->udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, 1 /* bind ANY */, 0, 0 /* UDP */);
+    eee->udp_multicast_sock = open_socket(N2N_MULTICAST_PORT, INADDR_ANY, 0 /* UDP */);
     if(eee->udp_multicast_sock < 0)
         return(-3);
     else {
