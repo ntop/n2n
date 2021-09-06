@@ -2606,6 +2606,9 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     }
                 }
 
+                eee->sn_wait = 0;
+                reset_sup_attempts(eee); /* refresh because we got a response */
+
                 // update last_sup only on 'real' REGISTER_SUPER_ACKs, not on bootstrap ones (own MAC address
                 // still null_mac) this allows reliable in/out PACKET drop if not really registered with a supernode yet
                 if(!is_null_mac(eee->device.mac_addr)) {
@@ -2617,9 +2620,6 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     }
                     eee->last_sup = now;
                 }
-
-                eee->sn_wait = 0;
-                reset_sup_attempts(eee); /* refresh because we got a response */
 
                 // NOTE: the register_interval should be chosen by the edge node based on its NAT configuration.
                 // eee->conf.register_interval = ra.lifetime;
