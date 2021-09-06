@@ -20,6 +20,14 @@
 #define _N2N_TYPEDEFS_H_
 
 
+typedef uint8_t  n2n_community_t[N2N_COMMUNITY_SIZE];
+typedef uint8_t  n2n_private_public_key_t[N2N_PRIVATE_PUBLIC_KEY_SIZE];
+typedef uint8_t  n2n_mac_t[N2N_MAC_SIZE];
+typedef uint32_t n2n_cookie_t;
+typedef uint8_t  n2n_desc_t[N2N_DESC_SIZE];
+typedef char     n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
+
+
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #include "getopt.h"
 
@@ -110,12 +118,6 @@ typedef unsigned long in_addr_t;
 #pragma pack(push,1)
 #endif
 
-typedef uint8_t  n2n_community_t[N2N_COMMUNITY_SIZE];
-typedef uint8_t  n2n_private_public_key_t[N2N_PRIVATE_PUBLIC_KEY_SIZE];
-typedef uint8_t  n2n_mac_t[N2N_MAC_SIZE];
-typedef uint32_t n2n_cookie_t;
-typedef uint8_t  n2n_desc_t[N2N_DESC_SIZE];
-typedef char     n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
 
 // those are definitely not typedefs (with a view to the filename) but neither are they defines
 static const n2n_mac_t broadcast_mac      = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
