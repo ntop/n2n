@@ -2314,7 +2314,11 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
      * hop as sender. */
     orig_sender = &sender;
 
+#ifdef SKIP_MULTICAST_PEERS_DISCOVERY
+    via_multicast = 0;
+#else
     via_multicast = (in_sock == eee->udp_multicast_sock);
+#endif
 
     traceEvent(TRACE_DEBUG, "Rx N2N_UDP of size %d from [%s]",
                (signed int)udp_size, sock_to_cstr(sockbuf1, &sender));
@@ -2785,7 +2789,11 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
 
     size_t bread = 0;
 
-    if((!eee->conf.connect_tcp) || (sock == eee->udp_multicast_sock)) {
+    if((!eee->conf.connect_tcp)
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
+    || (sock == eee->udp_multicast_sock)
+#endif
+      ) {
         // udp
         struct sockaddr_in sender_sock;
         socklen_t i;
