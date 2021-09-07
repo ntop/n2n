@@ -168,3 +168,18 @@ Your specific ARM mileage may vary, so it can be enabled by configuring the defi
 `./configure CFLAGS="-DSPECK_ARM_NEON"`
 
 Just make sure that the correct architecture is set, too. `-march=native` usually works quite well.
+
+## Disable Nulticast Local Peer Detection
+
+For better local peer detection, the edges try to detect local peers by sending REGISTER
+packets to a certain multicast address. Also, edges listen to this address to eventually
+fetch such packets.
+
+If these packets disturb network's peace or even get forwarded by (other) edges through the
+n2n network, this behavior can be disabled, just add
+
+`-DSKIP_MULTICAST_PEERS_DISCOVERY`
+
+to your `CFLAGS` when configuring, e.g.
+
+`./configure --with-zstd CFLAGS="-O3 -march=native -DSKIP_MULTICAST_PEERS_DISCOVERY"`
