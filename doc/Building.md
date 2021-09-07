@@ -169,7 +169,7 @@ Your specific ARM mileage may vary, so it can be enabled by configuring the defi
 
 Just make sure that the correct architecture is set, too. `-march=native` usually works quite well.
 
-## Disable Nulticast Local Peer Detection
+## Disable Multicast Local Peer Detection
 
 For better local peer detection, the edges try to detect local peers by sending REGISTER
 packets to a certain multicast address. Also, edges listen to this address to eventually
