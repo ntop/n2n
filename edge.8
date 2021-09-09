@@ -28,10 +28,14 @@ truncated to take the first 16 bytes.
 sets the n2n supernode IP address and port to register to. Multiple supernodes
 can be specified.
 .TP
-\fB\-p \fR<\fIlocal port\fR>
+\fB\-p \fR[<\fIlocal_ip_address\fR>:]<\fIlocal_port\fR>
 binds edge to the given UDP port. Useful for keeping the same external socket
 across restarts of edge. This allows peer edges which know the edge socket to
-continue p2p operation without going back to the supernode.
+continue p2p operation without going back to the supernode. Also, home router's
+port forwarding feature can refer to that fixed port.
+Optionally, the edge can bind to the provided local ip address only. This is
+useful in case restriction to a certain LAN or WiFi interface is desired.
+By default, the edge binds to any interface.
 .TP
 \fB\-T \fR<\fItos\fR>
 TOS for packets, e.g. 0x48 for SSH like priority
@@ -39,10 +43,6 @@ TOS for packets, e.g. 0x48 for SSH like priority
 \fB\-D\fR
 enable PMTU discovery, it can reduce fragmentation but
 causes connections to stall if not properly supported
-.TP
-\fB\-b \fR<\fIbind ip\fR>
-binds edge to the provided local IP address only, defaults to 'any' ip address
-if not provided
 .TP
 \fB\-S1\fR ... \fB\-S2\fR
 do not connect p2p, always use the supernode,
