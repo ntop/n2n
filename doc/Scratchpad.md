@@ -32,7 +32,8 @@ rpmbuild -bb ./n2n.spec
 - Network interface metric can be set by command-line option `-x` (Windows only)
 - Re-enabled local peer detection by multicast on Windows
 - Edge identifier (`-I`) helps to identify edges more easily in management port output
-- Optionally bind edge to one local IP address only (`-b`)
+- Optionally bind edge to one local IP address only (extension to `-p`)
+- A preferred local socket can be advertised to other edges for better local peer-to-peer connections (`-e`)
 - Optional edge user and password authentication (`-J`, `-P`, `doc/Authentication.md`)
 
 
