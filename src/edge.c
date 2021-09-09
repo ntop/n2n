@@ -768,11 +768,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
     u_char c;
 
     while ((c = getopt_long(argc, argv,
-<<<<<<< HEAD
-                            "k:a:c:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:"
-=======
-                            "k:a:b:c:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:e:"
->>>>>>> 9772d7b (first draft)
+                            "k:a:c:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:e:"
 #ifdef __linux__
                             "T:"
 #endif
