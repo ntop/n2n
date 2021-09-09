@@ -20,19 +20,12 @@
 #define _N2N_TYPEDEFS_H_
 
 
-
-typedef uint8_t n2n_community_t[N2N_COMMUNITY_SIZE];
-typedef uint8_t n2n_private_public_key_t[N2N_PRIVATE_PUBLIC_KEY_SIZE];
-typedef uint8_t n2n_mac_t[N2N_MAC_SIZE];
-typedef uint8_t n2n_cookie_t[N2N_COOKIE_SIZE];
-typedef uint8_t n2n_desc_t[N2N_DESC_SIZE];
-typedef char    n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
-
-// those are definitely not typedefs (with a view to the filename) but neither are they defines
-static const n2n_mac_t broadcast_mac      = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-static const n2n_mac_t multicast_mac      = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
-static const n2n_mac_t ipv6_multicast_mac = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
-static const n2n_mac_t null_mac           = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+typedef uint8_t  n2n_community_t[N2N_COMMUNITY_SIZE];
+typedef uint8_t  n2n_private_public_key_t[N2N_PRIVATE_PUBLIC_KEY_SIZE];
+typedef uint8_t  n2n_mac_t[N2N_MAC_SIZE];
+typedef uint32_t n2n_cookie_t;
+typedef uint8_t  n2n_desc_t[N2N_DESC_SIZE];
+typedef char     n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
 
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -124,6 +117,14 @@ typedef unsigned long in_addr_t;
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #pragma pack(push,1)
 #endif
+
+
+// those are definitely not typedefs (with a view to the filename) but neither are they defines
+static const n2n_mac_t broadcast_mac      = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+static const n2n_mac_t multicast_mac      = { 0x01, 0x00, 0x5E, 0x00, 0x00, 0x00 }; /* First 3 bytes are meaningful */
+static const n2n_mac_t ipv6_multicast_mac = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 }; /* First 2 bytes are meaningful */
+static const n2n_mac_t null_mac           = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
 
 #define ETH_ADDR_LEN 6
 
@@ -328,7 +329,7 @@ typedef struct n2n_REGISTER {
     n2n_cookie_t       cookie;      /**< Link REGISTER and REGISTER_ACK */
     n2n_mac_t          srcMac;      /**< MAC of registering party */
     n2n_mac_t          dstMac;      /**< MAC of target edge */
-    n2n_sock_t         sock;        /**< REVISIT: unused? */
+    n2n_sock_t         sock;        /**< Supernode's view of edge socket OR edge's preferred local socket */
     n2n_ip_subnet_t    dev_addr;    /**< IP address of the tuntap adapter. */
     n2n_desc_t         dev_desc;    /**< Hint description correlated with the edge */
 } n2n_REGISTER_t;
@@ -408,6 +409,7 @@ typedef struct n2n_PEER_INFO {
     n2n_mac_t                        srcMac;
     n2n_mac_t                        mac;
     n2n_sock_t                       sock;
+    n2n_sock_t                       preferred_sock;
     SN_SELECTION_CRITERION_DATA_TYPE data;
 } n2n_PEER_INFO_t;
 
@@ -426,6 +428,8 @@ struct peer_info {
     n2n_desc_t                       dev_desc;
     n2n_sock_t                       sock;
     SOCKET                           socket_fd;
+    n2n_sock_t                       preferred_sock;
+    time_t                           last_local_reg;
     n2n_cookie_t                     last_cookie;
     n2n_auth_t                       auth;
     int                              timeout;
@@ -647,6 +651,7 @@ typedef struct n2n_edge_conf {
     int                      register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
     int                      register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
     in_addr_t                bind_address;           /**< The address to bind to if provided (-b) */
+    n2n_sock_t               preferred_sock;         /**< propagated local sock for better p2p in LAN (-e) */
     int                      local_port;
     int                      mgmt_port;
     uint8_t                  connect_tcp;            /** connection to supernode 0 = UDP; 1 = TCP */

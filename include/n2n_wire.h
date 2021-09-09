@@ -91,6 +91,15 @@ int decode_mac (n2n_mac_t out,
                 size_t * rem,
                 size_t * idx);
 
+int encode_cookie (uint8_t * base,
+                   size_t * idx,
+                   const n2n_cookie_t c);
+
+int decode_cookie (n2n_cookie_t * out,
+                   const uint8_t * base,
+                   size_t * rem,
+                   size_t * idx);
+
 int encode_common (uint8_t * base,
                    size_t * idx,
                    const n2n_common_t * common);
