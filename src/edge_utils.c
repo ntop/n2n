@@ -203,6 +203,8 @@ void reset_sup_attempts (n2n_edge_t *eee) {
 int supernode_connect(n2n_edge_t *eee) {
 
     int sockopt;
+    struct sockaddr_in sock;
+    int sock_len = sizeof(sock);
 
     if((eee->conf.connect_tcp) && (eee->sock >= 0)) {
         closesocket(eee->sock);
@@ -225,10 +227,15 @@ int supernode_connect(n2n_edge_t *eee) {
             return -1;
         }
 
-        if(eee->cb.sock_opened)
-            eee->cb.sock_opened(eee);
+        // detetct local port, even/especially if chosen by OS...
+        if((getsockname(eee->sock, (struct sockaddr *)&sock, &sock_len) == 0)
+        && (sock.sin_family == AF_INET)
+        && (sock_len == sizeof(sock))) {
+            // ... and write to local preferred socket -- no matter if used or not
+            eee->conf.preferred_sock.port = ntohs(sock.sin_port);
+        }
 
-        struct sockaddr_in sock;
+        // variable 'sock' gets re-used from here on (for sn)
         sock.sin_family = eee->curr_sn->sock.family;
         sock.sin_port = htons(eee->curr_sn->sock.port);
         memcpy(&(sock.sin_addr.s_addr), &(eee->curr_sn->sock.addr.v4), IPV4_SIZE);
@@ -267,6 +274,9 @@ int supernode_connect(n2n_edge_t *eee) {
         else
             traceEvent(TRACE_INFO, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
 #endif
+
+        if(eee->cb.sock_opened)
+            eee->cb.sock_opened(eee);
     }
 
     return 0;
