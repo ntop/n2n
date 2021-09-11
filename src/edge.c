@@ -626,8 +626,9 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
                     break;
                 } else {
                     conf->preferred_sock.family = AF_INET;
-                    // port is set after parsing all cli parameters
+                    // port is set after parsing all cli parameters during supernode_connect()
                 }
+
             }
 
             break;
@@ -1062,18 +1063,6 @@ int main (int argc, char* argv[]) {
 
     if(conf.encrypt_key && !strcmp((char*)conf.community_name, conf.encrypt_key))
         traceEvent(TRACE_WARNING, "community and encryption key must differ, otherwise security will be compromised");
-
-    // so far, preferred local sock (-e) only works with a fixed port provided (-p)
-    if(conf.preferred_sock.family != AF_INVALID) {
-        conf.preferred_sock.port = conf.local_port;
-        if(conf.local_port == 0) {
-            traceEvent(TRACE_WARNING, "preferred local socket requires a port to be provided (-p), skipping");
-            conf.preferred_sock.family = AF_INVALID;
-            in_addr_t address_tmp = INADDR_NONE;
-            memcpy(&(conf.preferred_sock.addr.v4), &(address_tmp), IPV4_SIZE);
-        }
-    }
-
 
     if((eee = edge_init(&conf, &rc)) == NULL) {
         traceEvent(TRACE_ERROR, "failed in edge_init");
