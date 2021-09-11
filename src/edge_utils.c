@@ -203,8 +203,10 @@ void reset_sup_attempts (n2n_edge_t *eee) {
 int supernode_connect(n2n_edge_t *eee) {
 
     int sockopt;
-    struct sockaddr_in sock;
-    int sock_len = sizeof(sock);
+    struct sockaddr_in sn_sock;
+    struct sockaddr_in local_sock;
+    int sock_len = sizeof(local_sock);
+    SOCKET probe_sock;
 
     if((eee->conf.connect_tcp) && (eee->sock >= 0)) {
         closesocket(eee->sock);
@@ -227,18 +229,7 @@ int supernode_connect(n2n_edge_t *eee) {
             return -1;
         }
 
-        // detetct local port, even/especially if chosen by OS...
-        if((getsockname(eee->sock, (struct sockaddr *)&sock, &sock_len) == 0)
-        && (sock.sin_family == AF_INET)
-        && (sock_len == sizeof(sock))) {
-            // ... and write to local preferred socket -- no matter if used or not
-            eee->conf.preferred_sock.port = ntohs(sock.sin_port);
-        }
-
-        // variable 'sock' gets re-used from here on (for sn)
-        sock.sin_family = eee->curr_sn->sock.family;
-        sock.sin_port = htons(eee->curr_sn->sock.port);
-        memcpy(&(sock.sin_addr.s_addr), &(eee->curr_sn->sock.addr.v4), IPV4_SIZE);
+        fill_sockaddr((struct sockaddr*)&sn_sock, sizeof(sn_sock), &eee->curr_sn->sock);
 
         // set tcp socket to O_NONBLOCK so connect does not hang
         // requires checking the socket for readiness before sending and receving
@@ -249,7 +240,7 @@ int supernode_connect(n2n_edge_t *eee) {
 #else
             fcntl(eee->sock, F_SETFL, O_NONBLOCK);
 #endif
-            if((connect(eee->sock, (struct sockaddr*)&(sock), sizeof(struct sockaddr)) < 0)
+            if((connect(eee->sock, (struct sockaddr*)&(sn_sock), sizeof(struct sockaddr)) < 0)
                && (errno != EINPROGRESS)) {
                 eee->sock = -1;
                 return -1;
@@ -274,6 +265,28 @@ int supernode_connect(n2n_edge_t *eee) {
         else
             traceEvent(TRACE_INFO, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
 #endif
+
+        // detetct local port even/especially if chosen by OS...
+        if((getsockname(eee->sock, (struct sockaddr *)&local_sock, &sock_len) == 0)
+        && (local_sock.sin_family == AF_INET)
+        && (sock_len == sizeof(local_sock))) {
+            // ... and write to local preferred socket -- no matter if used or not
+            eee->conf.preferred_sock.port = ntohs(local_sock.sin_port);
+            // probe for & overwrite local address only if auto-detection mode
+            if(eee->conf.preferred_sock_auto) {
+                probe_sock = socket(PF_INET, SOCK_DGRAM, 0);
+                // connecting the UDP socket makes getsockname read the local address it uses to connect (to the sn in this case)
+                // we cannot do it with the real (eee->sock) socket because socket does not accept any conenction from elsewhere then,
+                // e.g. from another edge instead of the supernode; hence, we use a temporary socket
+                connect(probe_sock, (struct sockaddr *)&sn_sock, sizeof(sn_sock));
+                if((getsockname(probe_sock, (struct sockaddr *)&local_sock, &sock_len) == 0)
+                && (local_sock.sin_family == AF_INET)
+                && (sock_len == sizeof(local_sock))) {
+                    memcpy(&(eee->conf.preferred_sock.addr.v4), &(local_sock.sin_addr.s_addr), IPV4_SIZE);
+                }
+                close(probe_sock);
+            }
+        }
 
         if(eee->cb.sock_opened)
             eee->cb.sock_opened(eee);
