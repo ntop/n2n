@@ -255,7 +255,8 @@ static void help (int level) {
                "                   | causes connections to stall if not properly supported\n");
 #endif
         printf(" -e <local ip>     | advertises the provided local IP address as preferred,\n"
-               "                   | useful if multicast peer detection is not available\n");
+               "                   | useful if multicast peer detection is not available,\n"
+               "                   | '-e auto' tries IP address auto-detection\n");
         printf(" -S1 ... -S2       | do not connect p2p, always use the supernode,\n"
                "                   | -S1 = via UDP"
 
@@ -615,8 +616,16 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 
         case 'e': {
+            in_addr_t address_tmp;
+
             if(optargument) {
-                in_addr_t address_tmp = inet_addr(optargument);
+
+                if(!strcmp(optargument, "auto")) {
+                    address_tmp = INADDR_ANY;
+                    conf->preferred_sock_auto = 1;
+                } else {
+                    address_tmp = inet_addr(optargument);
+                }
 
                 memcpy(&(conf->preferred_sock.addr.v4), &(address_tmp), IPV4_SIZE);
 
@@ -1098,7 +1107,6 @@ int main (int argc, char* argv[]) {
     eee->last_sup = 0; /* if it wasn't zero yet */
     eee->curr_sn = eee->conf.supernodes;
     supernode_connect(eee);
-
     while(runlevel < 5) {
 
         now = time(NULL);
