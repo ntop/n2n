@@ -540,7 +540,8 @@ static int find_peer_time_stamp_and_verify (n2n_edge_t * eee,
  */
 static void register_with_local_peers (n2n_edge_t * eee) {
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-    if(eee->multicast_joined && eee->conf.allow_p2p) {
+    if((eee->multicast_joined && eee->conf.allow_p2p)
+    && (eee->conf.preferred_sock.family == (uint8_t)AF_INVALID)) {
         /* send registration to the local multicast group */
         traceEvent(TRACE_DEBUG, "registering with multicast group %s:%u",
                    N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
@@ -708,6 +709,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
 
         if(via_multicast)
             scan->local = 1;
+
 
         if(((now - scan->last_seen) > 0 /* >= 1 sec */)
           ||(cookie == N2N_LOCAL_REG_COOKIE)) {
@@ -1063,7 +1065,8 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 static void check_join_multicast_group (n2n_edge_t *eee) {
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-    if(eee->conf.allow_p2p) {
+    if((eee->conf.allow_p2p)
+    && (eee->conf.preferred_sock.family == (uint8_t)AF_INVALID)) {
         if(!eee->multicast_joined) {
             struct ip_mreq mreq;
             mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
@@ -2768,6 +2771,9 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 } else {
                     // regular PEER_INFO
                     HASH_FIND_PEER(eee->pending_peers, pi.mac, scan);
+                    if(!scan)
+                        // just in case the remote edge has been upgraded by the REG/ACK mechanism in the meantime
+                        HASH_FIND_PEER(eee->known_peers, pi.mac, scan);
 
                     if(scan) {
                         scan->sock = pi.sock;
@@ -2984,7 +2990,8 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
             max_sock = max(eee->sock, eee->udp_mgmt_sock);
         }
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-        if(eee->conf.allow_p2p) {
+        if((eee->conf.allow_p2p)
+        && (eee->conf.preferred_sock.family == (uint8_t)AF_INVALID)) {
             FD_SET(eee->udp_multicast_sock, &socket_mask);
             max_sock = max(eee->sock, eee->udp_multicast_sock);
         }
