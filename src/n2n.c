@@ -87,7 +87,7 @@ int detect_local_ip_address (n2n_sock_t* out_sock, const n2n_edge_t* eee) {
     // we cannot do it with the real (eee->sock) socket because socket does not accept any conenction from elsewhere then,
     // e.g. from another edge instead of the supernode; as re-connecting to AF_UNSPEC might not work to release the socket
     // on non-UNIXoids, we use a temporary socket
-    if(probe_sock >= 0) {
+    if((int)probe_sock >= 0) {
         fill_sockaddr((struct sockaddr*)&sn_sock, sizeof(sn_sock), &eee->curr_sn->sock);
         if(connect(probe_sock, (struct sockaddr *)&sn_sock, sizeof(sn_sock)) == 0) {
             if((getsockname(probe_sock, (struct sockaddr *)&local_sock, &sock_len) == 0)
