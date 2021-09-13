@@ -98,7 +98,7 @@ int detect_local_ip_address (n2n_sock_t* out_sock, const n2n_edge_t* eee) {
                 return -4;
         } else
             return -3;
-        close(probe_sock);
+        closesocket(probe_sock);
     } else
         return -2;
 
