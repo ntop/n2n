@@ -204,9 +204,8 @@ int supernode_connect(n2n_edge_t *eee) {
 
     int sockopt;
     struct sockaddr_in sn_sock;
-    struct sockaddr_in local_sock;
-    int sock_len = sizeof(local_sock);
-    SOCKET probe_sock;
+    n2n_sock_t local_sock;
+    n2n_sock_str_t sockbuf;
 
     if((eee->conf.connect_tcp) && (eee->sock >= 0)) {
         closesocket(eee->sock);
@@ -266,25 +265,16 @@ int supernode_connect(n2n_edge_t *eee) {
             traceEvent(TRACE_INFO, "PMTU discovery %s", (eee->conf.disable_pmtu_discovery) ? "disabled" : "enabled");
 #endif
 
-        // detetct local port even/especially if chosen by OS...
-        if((getsockname(eee->sock, (struct sockaddr *)&local_sock, &sock_len) == 0)
-        && (local_sock.sin_family == AF_INET)
-        && (sock_len == sizeof(local_sock))) {
-            // ... and write to local preferred socket -- no matter if used or not
-            eee->conf.preferred_sock.port = ntohs(local_sock.sin_port);
-            // probe for & overwrite local address only if auto-detection mode
+        memset(&local_sock, 0, sizeof(n2n_sock_t));
+        if(detect_local_ip_address(&local_sock, eee) == 0) {
+            // always overwrite local port even/especially if chosen by OS...
+            eee->conf.preferred_sock.port = local_sock.port;
+            // only if auto-detection mode, ...
             if(eee->conf.preferred_sock_auto) {
-                probe_sock = socket(PF_INET, SOCK_DGRAM, 0);
-                // connecting the UDP socket makes getsockname read the local address it uses to connect (to the sn in this case)
-                // we cannot do it with the real (eee->sock) socket because socket does not accept any conenction from elsewhere then,
-                // e.g. from another edge instead of the supernode; hence, we use a temporary socket
-                connect(probe_sock, (struct sockaddr *)&sn_sock, sizeof(sn_sock));
-                if((getsockname(probe_sock, (struct sockaddr *)&local_sock, &sock_len) == 0)
-                && (local_sock.sin_family == AF_INET)
-                && (sock_len == sizeof(local_sock))) {
-                    memcpy(&(eee->conf.preferred_sock.addr.v4), &(local_sock.sin_addr.s_addr), IPV4_SIZE);
-                }
-                close(probe_sock);
+                // ... overwrite IP address, too (whole socket struct here)
+                memcpy(&eee->conf.preferred_sock, &local_sock, sizeof(n2n_sock_t));
+                traceEvent(TRACE_INFO, "determined local socket [%s]",
+                                       sock_to_cstr(sockbuf, &local_sock));
             }
         }
 
