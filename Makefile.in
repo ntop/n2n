@@ -22,6 +22,7 @@ ifeq ($(OPENSSL_CFLAGS), 0)
   CFLAGS+=$(shell pkg-config --cflags-only-I openssl)
 endif
 
+WARN=-Wall
 CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
 INSTALL=install

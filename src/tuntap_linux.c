@@ -148,7 +148,6 @@ int tuntap_open (tuntap_dev *device,
         // set an explicit random MAC to know the exact MAC in use, manually
         // reading the MAC address is not safe as it may change internally
         // also after the TAP interface UP status has been notified
-        int i;
 
         memrnd(device->mac_addr, N2N_MAC_SIZE);
 

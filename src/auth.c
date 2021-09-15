@@ -136,7 +136,6 @@ int generate_shared_secret (n2n_private_public_key_t shared, n2n_private_public_
 int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *username) {
 
     uint8_t tmp[32];
-    size_t i;
 
     pearson_hash_256(tmp, username, strlen(username));
     memxor(prv, tmp, sizeof(n2n_private_public_key_t));

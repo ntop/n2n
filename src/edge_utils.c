@@ -308,7 +308,6 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     n2n_edge_t *eee = calloc(1, sizeof(n2n_edge_t));
     int rc = -1, i = 0;
     struct peer_info *scan, *tmp;
-    size_t idx = 0;
     uint8_t tmp_key[N2N_AUTH_CHALLENGE_SIZE];
 
     if((rc = edge_verify_conf(conf)) != 0) {
@@ -793,8 +792,6 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
 
 // provides the current / a new local auth token
 static int get_local_auth (n2n_edge_t *eee, n2n_auth_t *auth) {
-
-    static const uint8_t null_block[16] = { 0 };
 
     switch(eee->conf.auth.scheme) {
         case n2n_auth_simple_id:
@@ -1724,6 +1721,7 @@ static int handle_PACKET (n2n_edge_t * eee,
 /* ************************************** */
 
 
+#if 0
 #ifndef WIN32
 
 static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
@@ -1759,6 +1757,7 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
     return buf;
 }
 
+#endif
 #endif
 
 
@@ -2681,8 +2680,6 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
             case MSG_TYPE_REGISTER_SUPER_NAK: {
 
                 n2n_REGISTER_SUPER_NAK_t nak;
-                struct peer_info *peer, *scan;
-
 
                 if(!(eee->sn_wait)) {
                     traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER_NAK with no outstanding REGISTER_SUPER");
@@ -3525,8 +3522,8 @@ static int edge_init_routes_linux (n2n_edge_t *eee, n2n_route_t *routes, uint16_
 
 /* ************************************** */
 
-static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes, uint8_t verb /* 0 = add, 1 = delete */) {
 #ifdef WIN32
+static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes, uint8_t verb /* 0 = add, 1 = delete */) {
     int i;
     struct in_addr net_addr, gateway;
     char c_net_addr[32];
@@ -3562,10 +3559,10 @@ static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t 
             system(cmd);
         }
     }
-#endif // WIN32
 
     return (0);
 }
+#endif // WIN32
 
 /* ************************************** */
 

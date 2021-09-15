@@ -82,7 +82,6 @@ int packet_header_encrypt (uint8_t packet[], uint16_t header_len, uint16_t packe
                            he_context_t *ctx, he_context_t *ctx_iv,
                            uint64_t stamp) {
 
-    static const uint8_t null_block[16] = { 0 };
     uint32_t *p32 = (uint32_t*)packet;
     uint64_t *p64 = (uint64_t*)packet;
     uint64_t checksum = 0;

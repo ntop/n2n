@@ -65,8 +65,7 @@ int detect_local_ip_address (n2n_sock_t* out_sock, const n2n_edge_t* eee) {
 
     struct sockaddr_in local_sock;
     struct sockaddr_in sn_sock;
-    int sock_len = sizeof(local_sock);
-    int port = 0;
+    socklen_t sock_len = sizeof(local_sock);
     SOCKET probe_sock;
 
     out_sock->family = AF_INVALID;
@@ -350,8 +349,8 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
             rv = -3;
         }
     } else {
-        traceEvent(TRACE_WARNING, "supernode2sock sees malformed supernode parameter (-l <host:port>) %s %s:%s",
-                   addr, supernode_host, supernode_port);
+        traceEvent(TRACE_WARNING, "supernode2sock sees malformed supernode parameter (-l <host:port>) %s",
+                   addrIn);
         rv = -4;
     }
 
