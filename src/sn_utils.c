@@ -307,7 +307,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
     re_register_and_purge_supernodes(sss, sss->federation, &any_time, any_time, 1 /* forced */);
 
     // format definition for possible user-key entries
-    sprintf(format, "%c %%%ds %%%ds", N2N_USER_KEY_LINE_STARTER, N2N_DESC_SIZE - 1, sizeof(ascii_public_key)-1);
+    sprintf(format, "%c %%%ds %%%lds", N2N_USER_KEY_LINE_STARTER, N2N_DESC_SIZE - 1, sizeof(ascii_public_key)-1);
 
     while((line = fgets(buffer, sizeof(buffer), fd)) != NULL) {
         int len = strlen(line);
@@ -730,10 +730,6 @@ int comm_init (struct sn_community *comm, char *cmn) {
 
 /** Initialise the supernode structure */
 int sn_init_defaults (n2n_sn_t *sss) {
-
-    int i;
-    size_t idx;
-
 #ifdef WIN32
     initWin32();
 #endif
@@ -790,7 +786,7 @@ int sn_init_defaults (n2n_sn_t *sss) {
 
 
 /** Initialise the supernode */
-int sn_init (n2n_sn_t *sss) {
+void sn_init (n2n_sn_t *sss) {
 
     if(resolve_create_thread(&(sss->resolve_parameter), sss->federation->edges) == 0) {
          traceEvent(TRACE_NORMAL, "successfully created resolver thread");
@@ -1356,7 +1352,6 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
             size_t idx;
             /* ssize_t sent; */
             n2n_common_t cmn;
-            n2n_cookie_t cookie;
             n2n_REGISTER_SUPER_t reg;
             n2n_sock_str_t sockbuf;
 
@@ -2701,7 +2696,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         ssize_t bread;
         int max_sock;
         fd_set socket_mask;
-        n2n_tcp_connection_t *conn, *next, *tmp_conn;
+        n2n_tcp_connection_t *conn, *tmp_conn;
 
         SOCKET tmp_sock;
         n2n_sock_str_t sockbuf;
