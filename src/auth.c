@@ -35,7 +35,7 @@ static uint8_t a2b[256] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
                             0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0xff, 0xff, 0xff, 0xff, 0xff }; /* 0x70 ... 0x7f */
 
 
-int bin_to_ascii (uint8_t *out, uint8_t *in, size_t in_len) {
+int bin_to_ascii (char *out, uint8_t *in, size_t in_len) {
 
     // in buffer contains binary data of length in_len
 
@@ -64,7 +64,7 @@ int bin_to_ascii (uint8_t *out, uint8_t *in, size_t in_len) {
 }
 
 
-int ascii_to_bin (uint8_t *out, uint8_t *in) {
+int ascii_to_bin (uint8_t *out, char *in) {
 
     // in buffer contains 0x00-terminated string to be decoded
 
@@ -79,9 +79,10 @@ int ascii_to_bin (uint8_t *out, uint8_t *in) {
     for(in_count = 0; in_count < strlen(in); in_count++) {
         buf <<= 6;
 
-        if((in[in_count] > 0x20) && (in[in_count] < 0x80)) {
-            if(a2b[in[in_count]] != 0xFF) {
-                buf |= a2b[in[in_count] - 0x20];
+        int ch = in[in_count];
+        if((ch > 0x20) && (ch < 0x80)) {
+            if(a2b[ch] != 0xFF) {
+                buf |= a2b[ch - 0x20];
             } else {
                 traceEvent(TRACE_NORMAL, "ascii_to_bin encountered the unknown character '%c'", in[in_count]);
             }
@@ -101,11 +102,11 @@ int ascii_to_bin (uint8_t *out, uint8_t *in) {
 }
 
 
-int generate_private_key (n2n_private_public_key_t key, uint8_t *in) {
+int generate_private_key (n2n_private_public_key_t key, char *in) {
 
     // hash the 0-terminated string input twice to generate private key
 
-    pearson_hash_256(key, in, strlen(in));
+    pearson_hash_256(key, (uint8_t *)in, strlen(in));
     pearson_hash_256(key, key, sizeof(n2n_private_public_key_t));
 
     return 0;
@@ -133,11 +134,11 @@ int generate_shared_secret (n2n_private_public_key_t shared, n2n_private_public_
 }
 
 
-int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *username) {
+int bind_private_key_to_username (n2n_private_public_key_t prv, char *username) {
 
     uint8_t tmp[32];
 
-    pearson_hash_256(tmp, username, strlen(username));
+    pearson_hash_256(tmp, (uint8_t *)username, strlen(username));
     memxor(prv, tmp, sizeof(n2n_private_public_key_t));
 
     return 0;

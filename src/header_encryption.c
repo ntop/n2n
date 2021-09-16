@@ -153,11 +153,11 @@ void packet_header_setup_key (const char *community_name,
 }
 
 
-void packet_header_change_dynamic_key (const char *key_dynamic,
+void packet_header_change_dynamic_key (uint8_t *key_dynamic,
                                        he_context_t **ctx_dynamic, he_context_t **ctx_iv_dynamic) {
 
     uint8_t key[16];
-    pearson_hash_128(key, (uint8_t*)key_dynamic, N2N_AUTH_CHALLENGE_SIZE);
+    pearson_hash_128(key, key_dynamic, N2N_AUTH_CHALLENGE_SIZE);
 
     // for REGISTER_SUPER, REGISTER_SUPER_ACK, REGISTER_SUPER_NAK only
     // for all other packets, same as static by default (changed by user/pw auth scheme)
