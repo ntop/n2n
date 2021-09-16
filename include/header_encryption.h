@@ -30,6 +30,6 @@ void packet_header_setup_key (const char *community_name,
                               he_context_t **ctx_static, he_context_t **ctx_dynamic,
                               he_context_t **ctx_iv_static, he_context_t **ctx_iv_dynamic);
 
-void packet_header_change_dynamic_key (const char *key_dynamic,
+void packet_header_change_dynamic_key (uint8_t *key_dynamic,
                                        he_context_t **ctx_dynamic,
                                        he_context_t **ctx_iv_dynamic);

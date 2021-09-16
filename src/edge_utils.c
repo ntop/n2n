@@ -2692,11 +2692,15 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 if(eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_SN_ASSIGN) {
                     if((ra.dev_addr.net_addr != 0) && (ra.dev_addr.net_bitlen != 0)) {
                         net = htonl(ra.dev_addr.net_addr);
-                        if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL)
-                            strncpy(eee->tuntap_priv_conf.ip_addr, ip_str, N2N_NETMASK_STR_SIZE);
+                        if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL) {
+                            strncpy(eee->tuntap_priv_conf.ip_addr, ip_str, N2N_NETMASK_STR_SIZE-1);
+                            eee->tuntap_priv_conf.ip_addr[N2N_NETMASK_STR_SIZE-1] = '\0';
+                        }
                         net = htonl(bitlen2mask(ra.dev_addr.net_bitlen));
-                        if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL)
-                            strncpy(eee->tuntap_priv_conf.netmask, ip_str, N2N_NETMASK_STR_SIZE);
+                        if((ip_str = inet_ntoa(*(struct in_addr *) &net)) != NULL) {
+                            strncpy(eee->tuntap_priv_conf.netmask, ip_str, N2N_NETMASK_STR_SIZE-1);
+                            eee->tuntap_priv_conf.netmask[N2N_NETMASK_STR_SIZE-1] = '\0';
+                        }
                     }
                 }
 

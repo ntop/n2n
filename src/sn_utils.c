@@ -153,8 +153,8 @@ void calculate_dynamic_keys (n2n_sn_t *sss) {
         if(comm->allowed_users) {
             calculate_dynamic_key(comm->dynamic_key,           /* destination */
                                   sss->dynamic_key_time,       /* time - same for all */
-                                  comm->community,             /* community name */
-                                  sss->federation->community); /* federation name */
+                                  (uint8_t *)comm->community,  /* community name */
+                                  (uint8_t *)sss->federation->community); /* federation name */
             packet_header_change_dynamic_key(comm->dynamic_key,
                                              &(comm->header_encryption_ctx_dynamic),
                                              &(comm->header_iv_ctx_dynamic));
@@ -217,7 +217,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
     sn_user_t *user, *tmp_user;
     n2n_desc_t username;
     n2n_private_public_key_t public_key;
-    uint8_t ascii_public_key[(N2N_PRIVATE_PUBLIC_KEY_SIZE * 8 + 5) / 6 + 1];
+    char ascii_public_key[(N2N_PRIVATE_PUBLIC_KEY_SIZE * 8 + 5) / 6 + 1];
 
     dec_ip_str_t ip_str = {'\0'};
     uint8_t bitlen;

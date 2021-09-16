@@ -24,17 +24,17 @@
 #define AUTH_H
 
 
-int bin_to_ascii (uint8_t *out, uint8_t *in, size_t in_len);
+int bin_to_ascii (char *out, uint8_t *in, size_t in_len);
 
-int ascii_to_bin (uint8_t *out, uint8_t *in);
+int ascii_to_bin (uint8_t *out, char *in);
 
-int generate_private_key(n2n_private_public_key_t key, uint8_t *in);
+int generate_private_key(n2n_private_public_key_t key, char *in);
 
 int generate_public_key (n2n_private_public_key_t pub, n2n_private_public_key_t prv);
 
 int generate_shared_secret (n2n_private_public_key_t shared, n2n_private_public_key_t prv, n2n_private_public_key_t pub);
 
-int bind_private_key_to_username (n2n_private_public_key_t prv, uint8_t *username);
+int bind_private_key_to_username (n2n_private_public_key_t prv, char *username);
 
 int calculate_dynamic_key (uint8_t out_key[N2N_AUTH_CHALLENGE_SIZE],
                            uint32_t key_time, n2n_community_t comm, n2n_community_t fed);

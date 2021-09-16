@@ -167,11 +167,17 @@ extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_in
     // easier to sort to the end of the list).
     // Alternatively, typecast to (int16_t) and check for greater or equal zero
     if(peer->selection_criterion < (UINT32_MAX >> 2)) {
+
 #ifndef SN_SELECTION_RTT
-      snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
+      int chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
 #else
-      snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6d ms", peer->selection_criterion);
+      int chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6d ms", peer->selection_criterion);
 #endif
+
+      /* this test is to make "-Wformat-truncation" less sad */
+      if (chars > SN_SELECTION_CRITERION_BUF_SIZE) {
+        traceEvent(TRACE_INFO, "selection_criterion buffer overflow");
+      }
     }
 
     return out;

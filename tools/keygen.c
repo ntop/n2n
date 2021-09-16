@@ -24,7 +24,7 @@ int main(int argc, char * argv[]) {
 
     n2n_private_public_key_t prv;  /* 32 bytes private key                        */
     n2n_private_public_key_t bin;  /* 32 bytes public key binary output buffer    */
-    uint8_t asc[44];               /* 43 bytes + 0-terminator ascii string output */
+    char asc[44];               /* 43 bytes + 0-terminator ascii string output */
     uint8_t fed = 0;
 
     // exactly two parameters required
@@ -50,11 +50,11 @@ int main(int argc, char * argv[]) {
     // to username but username and password are not interchangeable),
     // finally xor the result
     // in federation mode: only hash federation name, twice
-    generate_private_key(prv, (uint8_t*)argv[2]);
+    generate_private_key(prv, argv[2]);
 
     // hash user name only if required
     if(!fed) {
-        bind_private_key_to_username(prv, (uint8_t*)argv[1]);
+        bind_private_key_to_username(prv, argv[1]);
     }
 
     // calculate the public key into binary output buffer
