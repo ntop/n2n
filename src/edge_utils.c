@@ -2610,6 +2610,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 char * ip_str = NULL;
                 n2n_REGISTER_SUPER_ACK_t ra;
                 uint8_t tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
+                char ip_tmp[N2N_EDGE_SN_HOST_SIZE];
                 n2n_REGISTER_SUPER_ACK_payload_t *payload;
                 int i;
                 int skip_add;
@@ -2679,7 +2680,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                             inet_ntop(payload->sock.family,
                                       (payload->sock.family == AF_INET) ? (void*)&(payload->sock.addr.v4) : (void*)&(payload->sock.addr.v6),
                                       sn->ip_addr, N2N_EDGE_SN_HOST_SIZE - 1);
-                            sprintf (sn->ip_addr, "%s:%u", sn->ip_addr, (uint16_t)(payload->sock.port));
+                            sprintf(ip_tmp, "%s:%u", (char*)sn->ip_addr, (uint16_t)(payload->sock.port));
+                            memcpy(sn->ip_addr, ip_tmp, sizeof(ip_tmp));
                         }
                         sn_selection_criterion_default(&(sn->selection_criterion));
                         sn->last_seen = 0; /* as opposed to payload handling in supernode */
@@ -3721,7 +3723,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
     sn = add_sn_to_list_by_mac_or_sock(&(conf->supernodes), sock, null_mac, &skip_add);
 
     if(sn != NULL) {
-        sn->ip_addr = calloc(1,N2N_EDGE_SN_HOST_SIZE);
+        sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
 
         if(sn->ip_addr != NULL) {
             strncpy(sn->ip_addr, ip_and_port, N2N_EDGE_SN_HOST_SIZE - 1);
