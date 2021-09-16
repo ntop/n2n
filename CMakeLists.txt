@@ -201,6 +201,17 @@ target_link_libraries(n2n-benchmark n2n)
 add_executable(n2n-keygen tools/n2n-keygen.c)
 target_link_libraries(n2n-keygen n2n)
 
+add_executable(tests-compress tools/tests-compress.c)
+target_link_libraries(tests-compress n2n)
+add_executable(tests-elliptic tools/tests-elliptic.c)
+target_link_libraries(tests-elliptic n2n)
+add_executable(tests-hashing tools/tests-hashing.c)
+target_link_libraries(tests-hashing n2n)
+add_executable(tests-transform tools/tests-transform.c)
+target_link_libraries(tests-transform n2n)
+add_executable(tests-wire tools/tests-wire.c)
+target_link_libraries(tests-wire n2n)
+
 if(N2N_OPTION_USE_PCAPLIB)
   find_library(PCAP_LIB pcap)
   if(PCAP_LIB)
@@ -253,4 +264,8 @@ install(FILES ${PROJECT_BINARY_DIR}/doc/supernode.1.gz
         DESTINATION /usr/share/man/man1)
 install(FILES ${PROJECT_BINARY_DIR}/doc/n2n.7.gz
         DESTINATION /usr/share/man/man7)
+
+enable_testing()
+add_test(tests tools/test_harness)
+
 endif(DEFINED UNIX)
