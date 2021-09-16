@@ -27,9 +27,10 @@ N2N_LIB=../libn2n.a
 TOOLS=n2n-benchmark n2n-keygen
 TOOLS+=@ADDITIONAL_TOOLS@
 
-.PHONY: all clean install
-all: $(TOOLS)
+TESTS=tests-compress
 
+.PHONY: all clean install
+all: $(TOOLS) $(TESTS)
 
 n2n-benchmark.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile

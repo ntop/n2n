@@ -65,7 +65,7 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-.PHONY: steps build push all clean install tools
+.PHONY: steps build push all clean install tools test
 all: $(APPS) $(DOCS) tools
 
 tools: $(N2N_LIB)
@@ -93,9 +93,13 @@ $(N2N_LIB): $(N2N_OBJS)
 	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)
 #	$(RANLIB) $@
 
+test: tools
+	tools/tests-compress >tests/tests-compress.out
+	@cmp tests/tests-compress.expected tests/tests-compress.out
+
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
-	-rm src/*.gcno src/*.gcda
+	rm -f tests/*.out src/*.gcno src/*.gcda
 	$(MAKE) -C tools clean
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
