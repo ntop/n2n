@@ -14,6 +14,7 @@ supernode
 tools/n2n-benchmark
 tools/n2n-decode
 tools/tests-compress
+tools/tests-transform
 build
 .idea
 cmake-build-default
@@ -29,5 +30,11 @@ packages/etc/systemd/system/supernode.service
 
 cmake-build-*/
 
-
+# Files generated while running tests
 tests/*.out
+
+# Files generated while running coverage reports
+*.gcno
+*.gcda
+*.gcov
+cover.*html

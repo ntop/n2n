@@ -40,6 +40,7 @@ n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 
 clean:
 	rm -rf $(TOOLS) *.o *.dSYM *~
+	rm -f $(TESTS) *.gcno *.gcda
 
 install: $(TOOLS)
 	$(INSTALL_PROG) $(TOOLS) $(SBINDIR)/

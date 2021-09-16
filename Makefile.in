@@ -65,7 +65,7 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-.PHONY: steps build push all clean install tools test
+.PHONY: steps build push all clean install tools test cover
 all: $(APPS) $(DOCS) tools
 
 tools: $(N2N_LIB)
@@ -96,6 +96,12 @@ $(N2N_LIB): $(N2N_OBJS)
 test: tools
 	tools/tests-compress >tests/tests-compress.out
 	@cmp tests/tests-compress.expected tests/tests-compress.out
+
+# To generate coverage information, run configure with
+# CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
+# and ensure that package gcovr is installed
+cover:
+	gcovr -s --html-details cover.html
 
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
