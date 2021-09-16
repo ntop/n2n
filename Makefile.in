@@ -47,7 +47,7 @@ MAN8DIR=$(MANDIR)/man8
 
 N2N_LIB=libn2n.a
 N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
-N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile $(N2N_LIB)
+N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 
 LDLIBS+=-ln2n
 LDLIBS+=@N2N_LIBS@
@@ -71,20 +71,20 @@ all: $(APPS) $(DOCS) tools
 tools: $(N2N_LIB)
 	$(MAKE) -C $@
 
-edge: src/edge.c $(N2N_LIB) $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
+src/edge.o: $(N2N_DEPS)
+src/supernode.o: $(N2N_DEPS)
+src/example_edge_embed_quick_edge_init.o: $(N2N_DEPS)
+src/example_sn_embed.o: $(N2N_DEPS)
+src/example_edge_embed.o: $(N2N_DEPS)
 
-supernode: src/sn.c $(N2N_LIB) $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
+src/edge: $(N2N_LIB)
+src/supernode: $(N2N_LIB)
+src/example_edge_embed_quick_edge_init: $(N2N_LIB)
+src/example_sn_embed: $(N2N_LIB)
+src/example_edge_embed: $(N2N_LIB)
 
-example_edge_embed_quick_edge_init: src/example_edge_embed_quick_edge_init.c $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
-
-example_sn_embed: src/example_sn_embed.c $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
-
-example_edge_embed: src/example_edge_embed.c $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
+%: src/%
+	cp $< $@
 
 %.gz : %
 	gzip -c $< > $@
@@ -94,7 +94,8 @@ $(N2N_LIB): $(N2N_OBJS)
 #	$(RANLIB) $@
 
 clean:
-	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test n2n-decode *.dSYM *~
+	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
+	-rm src/*.gcno src/*.gcda
 	$(MAKE) -C tools clean
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz

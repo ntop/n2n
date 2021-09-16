@@ -30,17 +30,12 @@ TOOLS+=@ADDITIONAL_TOOLS@
 .PHONY: all clean install
 all: $(TOOLS)
 
-n2n-benchmark: benchmark.c $(N2N_LIB) $(HEADERS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
 
-n2n-keygen: keygen.c $(N2N_LIB) $(HEADERS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -o $@
+n2n-benchmark.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
+n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 
-n2n-decode: n2n_decode.c $(N2N_LIB) $(HEADERS)
+n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -lpcap -o $@
-
-.c.o: $(HEADERS) ../Makefile Makefile
-	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(TOOLS) *.o *.dSYM *~
