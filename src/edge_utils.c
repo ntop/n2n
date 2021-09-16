@@ -1961,7 +1961,6 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "SUPERNODES\n");
-
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
         snprintf (time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
