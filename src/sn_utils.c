@@ -738,6 +738,7 @@ int sn_init_defaults (n2n_sn_t *sss) {
 
     memset(sss, 0, sizeof(n2n_sn_t));
 
+    strncpy(sss->version, GIT_RELEASE, sizeof(n2n_version_t) - 1);
     sss->daemon = 1; /* By defult run as a daemon. */
     sss->lport = N2N_SN_LPORT_DEFAULT;
     sss->mport = N2N_SN_MGMT_PORT;
@@ -2537,7 +2538,7 @@ static int process_udp (n2n_sn_t * sss,
                 memcpy(pi.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
                 pi.data = sn_selection_criterion_gather_data(sss);
 
-                snprintf(pi.version, sizeof(pi.version), "%s", GIT_RELEASE);
+                snprintf(pi.version, sizeof(pi.version), "%s", sss->version);
                 pi.uptime = now - sss->start_time;
 
                 encode_PEER_INFO(encbuf, &encx, &cmn2, &pi);

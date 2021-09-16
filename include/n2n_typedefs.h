@@ -802,6 +802,7 @@ typedef struct n2n_tcp_connection {
 
 typedef struct n2n_sn {
     time_t                                 start_time;      /* Used to measure uptime. */
+    n2n_version_t                          version;         /* version string sent to edges along with PEER_INFO a.k.a. PONG */
     sn_stats_t                             stats;
     int                                    daemon;          /* If non-zero then daemonise. */
     n2n_mac_t                              mac_addr;
