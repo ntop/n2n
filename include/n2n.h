@@ -223,8 +223,6 @@ char * ip_subnet_to_str (dec_ip_bit_str_t buf, const n2n_ip_subnet_t *ipaddr);
 SOCKET open_socket (int local_port, in_addr_t address, int type);
 int sock_equal (const n2n_sock_t * a,
                 const n2n_sock_t * b);
-int detect_local_ip_address (n2n_sock_t* out_sock,
-                             const n2n_edge_t* eee);
 
 /* Header encryption */
 uint64_t time_stamp (void);
