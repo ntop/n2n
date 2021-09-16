@@ -37,4 +37,4 @@ tests/*.out
 *.gcno
 *.gcda
 *.gcov
-cover.*html
+coverage/

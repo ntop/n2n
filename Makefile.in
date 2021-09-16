@@ -101,10 +101,11 @@ test: tools
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
 # and ensure that package gcovr is installed
 cover:
-	gcovr -s --html-details cover.html
+	mkdir -p coverage
+	gcovr -s --html-details coverage/index.html
 
 clean:
-	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
+	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) coverage/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	$(MAKE) -C tools clean
 
