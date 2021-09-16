@@ -28,6 +28,7 @@ TOOLS=n2n-benchmark n2n-keygen
 TOOLS+=@ADDITIONAL_TOOLS@
 
 TESTS=tests-compress tests-elliptic tests-hashing tests-transform
+TESTS+=tests-wire
 
 .PHONY: all clean install
 all: $(TOOLS) $(TESTS)

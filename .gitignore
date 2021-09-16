@@ -34,6 +34,7 @@ tools/tests-compress
 tools/tests-elliptic
 tools/tests-hashing
 tools/tests-transform
+tools/tests-wire
 
 # Files generated while running tests
 tests/*.out
