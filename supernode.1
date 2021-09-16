@@ -26,22 +26,27 @@ Lines starting with a "#" are ignored.
 An equal sign ('=') should be used between key and value. Example: -p=7777
 .SH OPTIONS FOR THE UNDERLYING NETWORK CONNECTION
 .TP
-\fB\-p \fR<\fIlocal port\fR>, \fB\-\-local-port\fR=<\fIlocal port\fR>
+\fB\-p \fR<\fIlocal_port\fR>, \fB\-\-local-port\fR=<\fIlocal_port\fR>
 listen on this fixed local UDP port, defaults to 7654
 .TP
-\fB\-F \fR<\fIfed name\fR>
+\fB\-F \fR<\fIfed_name\fR>
 name of the supernode's federation, defaults to '*Federation'
 .TP
 \fB\-l \fR<\fIhost:port\fR>
 ip address or name, and port of known supernode
 .TP
-\fB\-m \fR<\fImac address\fR>
+\fB\-m \fR<\fImac_address\fR>
 fixed MAC address for the supernode, e.g.
  '-m 10:20:30:40:50:60', random otherwise
 .TP
 \fB\-M\fR
 disable MAC and IP address spoofing protection for all
 non-username-password-authenticating communities
+.TP
+\fB\-V \fR<\fIversion_string\fR>
+modify the supernode version string which is distributed to the
+edges and shown at their management port output, up to 19 characters
+.TP
 .SH TAP DEVICE AND OVERLAY NETWORK CONFIGURATION
 .TP
 \fB\-c \fR<\fIpath\fR>, \fB\-\-communities\fR=<\fIpath\fR>
