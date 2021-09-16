@@ -2,6 +2,7 @@
 # NOTE: these are needed by the configure.in inside the packages folder
 N2N_VERSION_SHORT=@N2N_VERSION_SHORT@
 GIT_COMMITS=@GIT_COMMITS@
+GIT_DESCRIBE=$(shell git describe --always --dirty)
 
 ########
 
@@ -102,7 +103,7 @@ test: tools
 # and ensure that package gcovr is installed
 cover:
 	mkdir -p coverage
-	gcovr -s --html-details coverage/index.html
+	gcovr -s --html-details coverage/index.html --html-title $(GIT_DESCRIBE)
 
 # This is the superset of all packages that might be needed.
 # It is a convinent target to use during development or from a CI/CD system
