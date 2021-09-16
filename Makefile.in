@@ -65,7 +65,7 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-.PHONY: steps build push all clean install tools test cover
+.PHONY: steps build push all clean install tools test cover build-dep
 all: $(APPS) $(DOCS) tools
 
 tools: $(N2N_LIB)
@@ -103,6 +103,11 @@ test: tools
 cover:
 	mkdir -p coverage
 	gcovr -s --html-details coverage/index.html
+
+# This is the superset of all packages that might be needed.
+# It is a convinent target to use during development or from a CI/CD system
+build-dep:
+	sudo apt install build-essential libzstd-dev gcovr
 
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) coverage/ *.dSYM *~

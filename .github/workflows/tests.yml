@@ -1,0 +1,31 @@
+
+name: Continuous testing
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    name: Run test environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential
+          make build-dep
+
+      - name: Run embedded tests
+        run: make test
+
+      - name: Generate a coverage report
+        run: make cover
+
+      - name: Upload coverage report
+        uses: JamesIves/github-pages-deploy-action@4.1.4
+        with:
+          branch: gh-pages
+          folder: coverage
+          single-commit: true
