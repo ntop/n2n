@@ -166,7 +166,7 @@ endif(DEFINED WIN32)
 add_executable(edge src/edge.c)
 target_link_libraries(edge n2n)
 
-add_executable(supernode src/sn.c)
+add_executable(supernode src/supernode.c)
 target_link_libraries(supernode n2n)
 
 add_executable(example_edge_embed_quick_edge_init src/example_edge_embed_quick_edge_init.c)
@@ -196,15 +196,15 @@ install(TARGETS edge supernode
 
 
 # Tools
-add_executable(n2n-benchmark tools/benchmark.c)
+add_executable(n2n-benchmark tools/n2n-benchmark.c)
 target_link_libraries(n2n-benchmark n2n)
-add_executable(n2n-keygen tools/keygen.c)
+add_executable(n2n-keygen tools/n2n-keygen.c)
 target_link_libraries(n2n-keygen n2n)
 
 if(N2N_OPTION_USE_PCAPLIB)
   find_library(PCAP_LIB pcap)
   if(PCAP_LIB)
-    add_executable(n2n-decode tools/n2n_decode.c)
+    add_executable(n2n-decode tools/n2n-decode.c)
     target_link_libraries(n2n-decode n2n pcap)
     install(TARGETS n2n-decode RUNTIME DESTINATION bin)
 

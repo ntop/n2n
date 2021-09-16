@@ -13,9 +13,8 @@ AR=@AR@
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
 N2N_OBJS_OPT=
-LIBS_EDGE_OPT=@N2N_LIBS@
 CFLAGS=@CFLAGS@ -I ./include
-LDFLAGS=@LDFLAGS@
+LDFLAGS=@LDFLAGS@ -L .
 
 OPENSSL_CFLAGS=$(shell pkg-config openssl; echo $$?)
 ifeq ($(OPENSSL_CFLAGS), 0)
@@ -48,15 +47,14 @@ MAN8DIR=$(MANDIR)/man8
 
 N2N_LIB=libn2n.a
 N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
-N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile $(N2N_LIB)
+N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 
-LIBS_EDGE+=$(LIBS_EDGE_OPT)
-LIBS_SN=
+LDLIBS+=-ln2n
+LDLIBS+=@N2N_LIBS@
 
 #For OpenSolaris (Solaris too?)
 ifeq ($(shell uname), SunOS)
-LIBS_EDGE+=-lsocket -lnsl
-LIBS_SN+=-lsocket -lnsl
+LDLIBS+=-lsocket -lnsl
 endif
 
 APPS=edge
@@ -73,20 +71,20 @@ all: $(APPS) $(DOCS) tools
 tools: $(N2N_LIB)
 	$(MAKE) -C $@
 
-edge: src/edge.c $(N2N_LIB) $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
+src/edge.o: $(N2N_DEPS)
+src/supernode.o: $(N2N_DEPS)
+src/example_edge_embed_quick_edge_init.o: $(N2N_DEPS)
+src/example_sn_embed.o: $(N2N_DEPS)
+src/example_edge_embed.o: $(N2N_DEPS)
 
-supernode: src/sn.c $(N2N_LIB) $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_SN) -o $@
+src/edge: $(N2N_LIB)
+src/supernode: $(N2N_LIB)
+src/example_edge_embed_quick_edge_init: $(N2N_LIB)
+src/example_sn_embed: $(N2N_LIB)
+src/example_edge_embed: $(N2N_LIB)
 
-example_edge_embed_quick_edge_init: src/example_edge_embed_quick_edge_init.c $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
-
-example_sn_embed: src/example_sn_embed.c $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
-
-example_edge_embed: src/example_edge_embed.c $(N2N_DEPS)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
+%: src/%
+	cp $< $@
 
 %.gz : %
 	gzip -c $< > $@
@@ -96,7 +94,8 @@ $(N2N_LIB): $(N2N_OBJS)
 #	$(RANLIB) $@
 
 clean:
-	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test n2n-decode *.dSYM *~
+	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
+	-rm src/*.gcno src/*.gcda
 	$(MAKE) -C tools clean
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
