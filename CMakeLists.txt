@@ -120,6 +120,7 @@ add_library(n2n STATIC
         src/edge_utils.c
         src/sn_utils.c
         src/wire.c
+        src/hexdump.c
         src/minilzo.c
         src/tf.c
         src/cc20.c
