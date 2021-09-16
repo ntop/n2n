@@ -1960,20 +1960,23 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                         "------------------------------------------------------------------------------------------------\n");
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "SUPERNODES\n");
+                        "SUPERNODES\n"
+                        "                                                                                                 | VERSION              | UPTIME ---\n");
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
         snprintf (time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "%4u | %-3s %-11s | %-17s | %-21s | %-15s | %9s\n",
+                            "%4u | %-3s %-11s | %-17s | %-21s | %-15s | %9s | %-20s | %10lu\n",
                             ++num,
                             (peer->purgeable == SN_UNPURGEABLE) ? "-l" : "",
                             (peer == eee->curr_sn) ? (eee->sn_wait ? ">>..." : ">>>>>" ) : "",
                             is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
                             sn_selection_criterion_str(sel_buf, peer),
-                            (peer->last_seen) ? time_buf : "");
+                            (peer->last_seen) ? time_buf : "",
+                            peer->version,
+                            peer->uptime);
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1982,7 +1985,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     // further stats
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "================================================================================================\n");
+                        "====================================================================================================================================\n");
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "uptime %lu | ",
@@ -2797,7 +2800,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     }
                 }
 
-                if(!is_valid_peer_sock(&pi.sock)) {
+                if((cmn.flags & N2N_FLAGS_SOCKET) && !is_valid_peer_sock(&pi.sock)) {
                     traceEvent(TRACE_DEBUG, "skip invalid PEER_INFO from %s [%s]",
                               macaddr_str(mac_buf1, pi.mac),
                               sock_to_cstr(sockbuf1, &pi.sock));
@@ -2811,8 +2814,11 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     if(scan != NULL) {
                         eee->sn_pong = 1;
                         scan->last_seen = now;
+                        scan->uptime = pi.uptime;
+                        memcpy(scan->version, pi.version, sizeof(n2n_version_t));
                         /* The data type depends on the actual selection strategy that has been chosen. */
                         sn_selection_criterion_calculate(eee, scan, &pi.data);
+
                         traceEvent(TRACE_INFO, "Rx PONG from supernode %s",
                                    macaddr_str(mac_buf1, pi.srcMac));
 

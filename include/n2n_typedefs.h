@@ -282,6 +282,10 @@ typedef enum n2n_pc {
 #define N2N_ENOSPACE                     -4
 
 
+#define N2N_VERSION_STRING_SIZE           20
+typedef char n2n_version_t[N2N_VERSION_STRING_SIZE];
+
+
 typedef struct n2n_ip_subnet {
     uint32_t	    net_addr;       /* Host order IP address. */
     uint8_t         net_bitlen;     /* Subnet prefix. */
@@ -411,6 +415,8 @@ typedef struct n2n_PEER_INFO {
     n2n_sock_t                       sock;
     n2n_sock_t                       preferred_sock;
     SN_SELECTION_CRITERION_DATA_TYPE data;
+    n2n_version_t                    version;
+    time_t                           uptime;
 } n2n_PEER_INFO_t;
 
 
@@ -418,6 +424,7 @@ typedef struct n2n_QUERY_PEER {
     n2n_mac_t                     srcMac;
     n2n_sock_t                    sock;
     n2n_mac_t                     targetMac;
+
 } n2n_QUERY_PEER_t;
 
 typedef struct n2n_buf n2n_buf_t;
@@ -441,6 +448,8 @@ struct peer_info {
     uint64_t                         last_valid_time_stamp;
     char                             *ip_addr;
     uint8_t                          local;
+    time_t                           uptime;
+    n2n_version_t                    version;
 
     UT_hash_handle     hh; /* makes this structure hashable */
 };

@@ -2537,6 +2537,9 @@ static int process_udp (n2n_sn_t * sss,
                 memcpy(pi.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
                 pi.data = sn_selection_criterion_gather_data(sss);
 
+                snprintf(pi.version, sizeof(pi.version), "%s", GIT_RELEASE);
+                pi.uptime = now - sss->start_time;
+
                 encode_PEER_INFO(encbuf, &encx, &cmn2, &pi);
 
                 if(comm) {
