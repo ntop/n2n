@@ -70,6 +70,7 @@ static void help (int level) {
                "[-m <mac address>] "
 #endif
                "[-M] "
+               "[-V <version text>] "
           "\n\n overlay network           "
                "[-c <community list file>] "
             "\n configuration             "
@@ -120,6 +121,8 @@ static void help (int level) {
 #endif
         printf(" -M                | disable MAC and IP address spoofing protection for all\n"
                "                   | non-username-password-authenticating communities\n");
+        printf(" -V <version text> | sends a custom supernode version string of max 19 letters \n"
+               "                   | length to edges, visible in their management port output\n");
         printf ("\n");
         printf (" TAP DEVICE AND OVERLAY NETWORK CONFIGURATION\n");
         printf (" --------------------------------------------\n\n");
@@ -290,6 +293,10 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
         case 'M': /* override spoofing protection */
             sss->override_spoofing_protection = 1;
             break;
+
+        case 'V': /* community file */
+            strncpy(sss->version, _optarg, sizeof(n2n_version_t) - 1); /* mind the \0 terminator */
+
         case 'c': /* community file */
             sss->community_file = calloc(1, strlen(_optarg) + 1);
             if(sss->community_file)
@@ -342,7 +349,7 @@ static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
     u_char c;
 
     while((c = getopt_long(argc, argv,
-                           "p:l:t:a:c:F:vhM"
+                           "p:l:t:a:c:F:vhMV:"
 #ifdef SN_MANUAL_MAC
                            "m:"
 #endif
