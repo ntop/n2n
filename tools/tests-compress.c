@@ -16,6 +16,8 @@
  *
  */
 
+#include <assert.h>
+
 #include "n2n.h"
 #include "hexdump.h"
 
