@@ -97,6 +97,8 @@ $(N2N_LIB): $(N2N_OBJS)
 test: tools
 	tools/tests-compress >tests/tests-compress.out
 	@cmp tests/tests-compress.expected tests/tests-compress.out
+	tools/tests-transform >tests/tests-transform.out
+	@cmp tests/tests-transform.expected tests/tests-transform.out
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"

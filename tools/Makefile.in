@@ -27,7 +27,7 @@ N2N_LIB=../libn2n.a
 TOOLS=n2n-benchmark n2n-keygen
 TOOLS+=@ADDITIONAL_TOOLS@
 
-TESTS=tests-compress
+TESTS=tests-compress tests-transform
 
 .PHONY: all clean install
 all: $(TOOLS) $(TESTS)
