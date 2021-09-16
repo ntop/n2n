@@ -136,12 +136,6 @@ void test_zstd() {
 
 
 int main(int argc, char * argv[]) {
-    n2n_edge_conf_t conf;
-
-    /* Init configuration */
-    edge_init_conf_defaults(&conf);
-    strncpy((char*)conf.community_name, "abc123def456", sizeof(conf.community_name));
-    conf.encrypt_key = "SoMEVer!S$cUREPassWORD";
 
     /* Also for compression (init moved here for ciphers get run before in case of lzo init error) */
     init_compression_for_benchmark();
