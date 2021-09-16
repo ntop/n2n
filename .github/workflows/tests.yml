@@ -13,11 +13,20 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install Dependancies
+      - name: Install essential
         run: |
           sudo apt-get update
           sudo apt-get install build-essential
+
+      - name: generate a makefile and use it to install more packages
+        run: |
+          ./configure
           make build-dep
+
+      - name: Run the autoconf
+        run: |
+          ./autogen.sh
+          CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
 
       - name: Run embedded tests
         run: make test
