@@ -40,3 +40,4 @@ jobs:
           branch: gh-pages
           folder: coverage
           single-commit: true
+        if: ${{ github.event_name == 'push' }}
