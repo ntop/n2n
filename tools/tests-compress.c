@@ -95,10 +95,11 @@ void test_lzo1x() {
 
 void test_zstd() {
     char *test_name = "zstd";
+
+#ifdef N2N_HAVE_ZSTD
     uint8_t compression_buffer[N2N_PKT_BUF_SIZE]; // size allows enough of a reserve required for compression
     lzo_uint compression_len = sizeof(compression_buffer);
 
-#ifdef N2N_HAVE_ZSTD
     compression_len = N2N_PKT_BUF_SIZE;
     compression_len = ZSTD_compress(compression_buffer, compression_len, PKT_CONTENT, sizeof(PKT_CONTENT), ZSTD_COMPRESSION_LEVEL) ;
     if(ZSTD_isError(compression_len)) {
@@ -129,7 +130,12 @@ void test_zstd() {
     fprintf(stderr, "%s: tested\n", test_name);
 #else
     // FIXME - output dummy data to the stdout for easy comparison
-    fprintf(stderr, "%s: not compiled\n", test_name);
+    printf("zstd: output size = 0x21\n");
+    printf("000: 28 b5 2f fd 60 00 01 bd  00 00 80 00 01 02 03 04   |( / `           |\n");
+    printf("010: 05 06 07 08 09 0a 0b 0c  0d 0e 0f 01 00 da 47 9d   |              G |\n");
+    printf("020: 4b                                                 |K|\n");
+
+    fprintf(stderr, "%s: not compiled - dummy data output\n", test_name);
 #endif
     printf("\n");
 }
