@@ -294,9 +294,9 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             sss->override_spoofing_protection = 1;
             break;
 
-        case 'V': /* community file */
+        case 'V': /* version text */
             strncpy(sss->version, _optarg, sizeof(n2n_version_t) - 1); /* mind the \0 terminator */
-
+            break;
         case 'c': /* community file */
             sss->community_file = calloc(1, strlen(_optarg) + 1);
             if(sss->community_file)
