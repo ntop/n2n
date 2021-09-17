@@ -267,8 +267,8 @@ install(FILES ${PROJECT_BINARY_DIR}/doc/n2n.7.gz
         DESTINATION /usr/share/man/man7)
 
 # TODO:
-# - this works for me locally, but doesnt on the github CI build
-# enable_testing()
-# add_test(tests tools/test_harness)
+# - Add the right dependancy so that the tests binaries get built first
+enable_testing()
+add_test(tests ${PROJECT_SOURCE_DIR}/tools/test_harness ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/tests)
 
 endif(DEFINED UNIX)

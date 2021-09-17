@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # This expects to find the tests in the tools dir and the expected results
-# in the tests dir
+# in the tests dir.
 
 TESTS="
     tests-compress
@@ -14,11 +14,23 @@ TESTS="
 TOOLSDIR=tools
 TESTDATA=tests
 
-if [ ! -d "$TOOLSDIR" -o ! -d "$TESTDATA" ]; then
-    echo Could not find either TOOLSDIR or TESTDATA, run from top dir
-    exit 1
-fi
+# Allow both dirs be overidden
+[ -n "$1" ] && TOOLSDIR="$1"
+[ -n "$2" ] && TESTDATA="$2"
 
+# Confirm we have all the tools and data
+for i in $TESTS; do
+    if [ ! -e $TOOLSDIR/$i ]; then
+        echo "Could not find test $TOOLSDIR/$i"
+        exit 1
+    fi
+    if [ ! -e $TESTDATA/$i.expected ]; then
+        echo "Could not find testdata $TESTDATA/$i.expected"
+        exit 1
+    fi
+done
+
+# Actually run the tests
 set -e
 for i in $TESTS; do
     echo "$TOOLSDIR/$i >$TESTDATA/$i.out"
