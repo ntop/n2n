@@ -78,6 +78,8 @@ src/example_sn_embed.o: $(N2N_DEPS)
 src/example_edge_embed.o: $(N2N_DEPS)
 
 src/edge: $(N2N_LIB)
+	$(CC) $(CFLAGS) $< $(LDFLAGS) $(N2N_LIB) $(LIBS_EDGE) -o $@
+
 src/supernode: $(N2N_LIB)
 src/example_edge_embed_quick_edge_init: $(N2N_LIB)
 src/example_sn_embed: $(N2N_LIB)
