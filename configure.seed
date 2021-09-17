@@ -77,7 +77,7 @@ fi
 
 AC_CHECK_LIB([cap], [cap_get_proc], cap=true)
 if test x$cap != x; then
-  LDFLAGS="${LDFLAGS} -lcap"
+  N2N_LIBS="${N2N_LIBS} -lcap"
   AC_DEFINE([HAVE_LIBCAP],[1],[Support for linux capabilities])
 fi
 
