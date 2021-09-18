@@ -2899,7 +2899,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
                                        time_t now) {
 
-    size_t bread = 0;
+    ssize_t bread = 0;
 
     if((!eee->conf.connect_tcp)
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
@@ -3488,9 +3488,9 @@ static int routectl (int cmd, int flags, n2n_route_t *route, int if_idx) {
 
 /* ************************************** */
 
-static int edge_init_routes_linux (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
-
 #ifdef __linux__
+
+static int edge_init_routes_linux (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
     int i;
     for(i = 0; i<num_routes; i++) {
         n2n_route_t *route = &routes[i];
@@ -3573,10 +3573,10 @@ static int edge_init_routes_linux (n2n_edge_t *eee, n2n_route_t *routes, uint16_
                 return(-1);
         }
     }
-#endif
 
     return(0);
 }
+#endif
 
 /* ************************************** */
 
