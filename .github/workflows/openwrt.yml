@@ -1,5 +1,5 @@
 
-name: Continuous testing (Openwrt)
+name: Continuous build (Openwrt)
 
 on:
   push:
