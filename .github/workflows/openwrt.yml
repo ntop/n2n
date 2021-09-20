@@ -31,10 +31,12 @@ jobs:
           make defconfig
 
       - name: Build openwrt build environment
+        run: |
           make
           ./scripts/feeds update -a
 
       - name: Build configured openwrt packages
+        run: |
           make package/n2n/compile V=s
 
 # FIXME: add a way to run the test suite!
