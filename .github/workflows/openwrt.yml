@@ -1,0 +1,42 @@
+
+name: Continuous testing (Openwrt)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    name: Run test environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout openwrt
+        uses: actions/checkout@v2
+        with:
+          repository: openwrt/openwrt
+
+      - name: Checkout n2n
+        uses: actions/checkout@v2
+        with:
+          path: n2n
+
+      - name: Setup openwrt config and environment
+        run: |
+          cp -r n2n/packages/openwrt package/n2n
+          echo "CONFIG_TARGET_x86=y" >.config
+          echo "CONFIG_TARGET_x86_64=y" >>.config
+          echo "CONFIG_PACKAGE_n2n-edge=y" >>.config
+          echo "CONFIG_PACKAGE_n2n-supernode=y" >>.config
+          make defconfig
+
+      - name: Build openwrt build environment
+          make
+          ./scripts/feeds update -a
+
+      - name: Build configured openwrt packages
+          make package/n2n/compile V=s
+
+# FIXME: add a way to run the test suite!
+#      - name: Run embedded tests
+#        run: make test
