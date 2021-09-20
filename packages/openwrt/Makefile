@@ -52,8 +52,9 @@ The supernode for the N2N infrastructure
 endef
 
 define Build/Configure
-	( cd $(PKG_BUILD_DIR); ./autogen.sh )
-	$(call Build/Configure/Default)
+	( cd $(PKG_BUILD_DIR); \
+	./autogen.sh; \
+	./configure --with-openssl )
 endef
 
 define Package/n2n-edge/conffiles
