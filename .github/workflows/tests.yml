@@ -35,9 +35,7 @@ jobs:
         run: make cover
 
       - name: Upload coverage report
-        uses: JamesIves/github-pages-deploy-action@4.1.4
+        uses: actions/upload-artifact@v2
         with:
-          branch: gh-pages
+          name: code-coverage-report
           folder: coverage
-          single-commit: true
-        if: ${{ github.event_name == 'push' }}
