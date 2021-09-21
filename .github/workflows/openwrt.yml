@@ -23,17 +23,21 @@ jobs:
 
       - name: Setup openwrt config and environment
         run: |
-          cp -r n2n/packages/openwrt package/n2n
           echo "CONFIG_TARGET_x86=y" >.config
           echo "CONFIG_TARGET_x86_64=y" >>.config
-          echo "CONFIG_PACKAGE_n2n-edge=y" >>.config
-          echo "CONFIG_PACKAGE_n2n-supernode=y" >>.config
           make defconfig
 
       - name: Build openwrt build environment
         run: |
           make
           ./scripts/feeds update -a
+
+      - name: Add n2n package
+        run: |
+          cp -r n2n/packages/openwrt package/n2n
+          echo "CONFIG_PACKAGE_n2n-edge=y" >>.config
+          echo "CONFIG_PACKAGE_n2n-supernode=y" >>.config
+          make defconfig
 
       - name: Build configured openwrt packages
         run: |
