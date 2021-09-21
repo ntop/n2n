@@ -21,25 +21,38 @@ jobs:
         with:
           path: n2n
 
+      - name: Cache openwrt source downloads
+        uses: actions/cache@v2
+        with:
+          path: dl
+          key: openwrt-dl-1 # FIXME: add the openwrt git ref
+
       - name: Setup openwrt config and environment
         run: |
           echo "CONFIG_TARGET_x86=y" >.config
           echo "CONFIG_TARGET_x86_64=y" >>.config
           make defconfig
 
+      - name: Download openwrt sources
+        run: |
+          make download
+
       - name: Build openwrt build environment
         run: |
-          make
-          ./scripts/feeds update -a
+          make -j3 tools/install toolchain/install
+
+      - name: Build n2n dependancies
+        run: |
+          make package/libs/libpcap/compile
 
       - name: Add n2n package
         run: |
           cp -r n2n/packages/openwrt package/n2n
-          echo "CONFIG_PACKAGE_n2n-edge=y" >>.config
-          echo "CONFIG_PACKAGE_n2n-supernode=y" >>.config
+          echo "CONFIG_PACKAGE_n2n-edge=m" >>.config
+          echo "CONFIG_PACKAGE_n2n-supernode=m" >>.config
           make defconfig
 
-      - name: Build configured openwrt packages
+      - name: Build n2n openwrt packages
         run: |
           make package/n2n/compile V=s
 
