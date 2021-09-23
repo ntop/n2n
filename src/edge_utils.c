@@ -3163,11 +3163,11 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
     } /* while */
 
+    send_unregister_super(eee);
+
 #ifdef WIN32
     WaitForSingleObject(tun_read_thread, INFINITE);
 #endif
-
-    send_unregister_super(eee);
 
     closesocket(eee->sock);
 
