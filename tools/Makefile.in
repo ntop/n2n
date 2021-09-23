@@ -40,9 +40,9 @@ n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -lpcap -o $@
 
 # See comments in the topdir Makefile about how to generate coverage
-# data
+# data.
 gcov:
-	gcov *.o
+	gcov $(TOOLS) $(TESTS)
 
 clean:
 	rm -rf $(TOOLS) *.o *.dSYM *~

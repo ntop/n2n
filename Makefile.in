@@ -116,7 +116,7 @@ gcov:
 # This is the superset of all packages that might be needed.
 # It is a convinent target to use during development or from a CI/CD system
 build-dep:
-	sudo apt install build-essential libcap-dev libzstd-dev gcovr
+	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
 
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) coverage/ *.dSYM *~
