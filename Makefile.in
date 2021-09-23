@@ -66,7 +66,7 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-.PHONY: steps build push all clean install tools test cover build-dep
+.PHONY: steps build push all clean install tools test cover gcov build-dep
 all: $(APPS) $(DOCS) tools
 
 tools: $(N2N_LIB)
@@ -99,10 +99,19 @@ test: tools
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
-# and ensure that package gcovr is installed
+# and run the desired tests.  Ensure that package gcovr is installed
+# and then run "make cover"
 cover:
 	mkdir -p coverage
 	gcovr -s --html-details coverage/index.html --html-title $(GIT_DESCRIBE)
+
+# Use coverage data to generate gcov text report files.
+# Unfortunately, these end up in the wrong directory due to the
+# makefile layout
+# The steps to use this are similar to the "make cover" above
+gcov:
+	gcov $(N2N_OBJS)
+	$(MAKE) -C tools gcov
 
 # This is the superset of all packages that might be needed.
 # It is a convinent target to use during development or from a CI/CD system

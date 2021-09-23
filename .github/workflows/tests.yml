@@ -42,8 +42,3 @@ jobs:
 
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
-        with:
-          directory: src/
-          # TODO:
-          # - dont want to manually add each gcov file in a files: key, but
-          #   do want multiple directories (both src/ and tools/)
