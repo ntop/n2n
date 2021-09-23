@@ -42,3 +42,5 @@ jobs:
 
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
+        with:
+          directory: [ "src/", "tools/" ]
