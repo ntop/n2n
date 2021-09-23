@@ -2878,6 +2878,10 @@ void print_edge_stats (const n2n_edge_t *eee) {
 
 /* ************************************** */
 
+int endEEE(n2n_edge_t* eee) {
+    send_unregister_super(eee);
+    closesocket(eee->sock);
+}
 
 int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
