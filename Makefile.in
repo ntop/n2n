@@ -103,7 +103,7 @@ test: tools
 # and then run "make cover"
 cover:
 	mkdir -p coverage
-	gcovr -s --html-details coverage/index.html
+	gcovr -s --html --html-details --output=coverage/index.html
 
 # Use coverage data to generate gcov text report files.
 # Unfortunately, these end up in the wrong directory due to the
