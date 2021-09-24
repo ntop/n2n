@@ -1815,9 +1815,17 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     traceEvent(TRACE_DEBUG, "mgmt status requested");
 
     msg_len = 0;
-    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+	if(getenv("N2N_CMTY")) {
+        msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+                        "COMMUNITY 'COMMUNITY_NAME'\n\n"
+                       );
+    }else{
+		 msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "COMMUNITY '%s'\n\n",
                         eee->conf.community_name);
+	}
+   
+						
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         " ### | TAP             | MAC               | EDGE                  | HINT            | LAST SEEN\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
@@ -3562,7 +3570,7 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         conf->encrypt_key = strdup(getenv("N2N_KEY"));
         conf->transop_id = N2N_TRANSFORM_ID_AES;
     }
-	 if(getenv("N2N_CMTY")) {
+	if(getenv("N2N_CMTY")) {
         conf->conf->community_name= strdup(getenv("N2N_CMTY"));
         conf->transop_id = N2N_TRANSFORM_ID_AES;
     }
