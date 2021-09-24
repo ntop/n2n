@@ -3571,7 +3571,7 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         conf->transop_id = N2N_TRANSFORM_ID_AES;
     }
 	if(getenv("N2N_CMTY")) {
-        conf->conf->community_name= strdup(getenv("N2N_CMTY"));
+        strncpy((char*)conf->community_name, strdup(getenv("N2N_CMTY")), N2N_COMMUNITY_SIZE);
         conf->transop_id = N2N_TRANSFORM_ID_AES;
     }
     conf->metric = 0;
