@@ -59,3 +59,9 @@ jobs:
 # FIXME: add a way to run the test suite!
 #      - name: Run embedded tests
 #        run: make test
+
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: built-ipkgs
+          path: bin/packages/*/base/*.ipk
