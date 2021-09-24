@@ -54,7 +54,7 @@ endef
 define Build/Configure
 	( cd $(PKG_BUILD_DIR); \
 	./autogen.sh; \
-	./configure --with-openssl )
+	./configure )
 endef
 
 define Package/n2n-edge/conffiles
