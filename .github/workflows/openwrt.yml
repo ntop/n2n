@@ -16,17 +16,15 @@ jobs:
         with:
           repository: openwrt/openwrt
 
+      - name: Set openwrt ref
+        id: ref
+        run: echo ::set-output name=OPENWRT::$(git rev-parse --short HEAD)
+
       - name: Cache openwrt source downloads
         uses: actions/cache@v2
         with:
           path: dl
-          key: openwrt-dl-1 # FIXME: add the openwrt git ref
-
-      - name: Cache openwrt build_dir
-        uses: actions/cache@v2
-        with:
-          path: build_dir
-          key: openwrt-build_dir-1 # FIXME: add the openwrt git ref
+          key: openwrt-dl-${{ steps.ref.outputs.OPENWRT }}
 
       - name: Setup openwrt config and environment
         run: |
