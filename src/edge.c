@@ -216,6 +216,9 @@ static void help (int level) {
           "\n variables            "
                "N2N_COMMUNITY   instead of -c <community>"
           "\n                      "
+               "N2N_PASSWORD    instead of [-J <password>]"
+
+          "\n                      "
 
           "\n meaning of the       "
 #ifndef __APPLE__
@@ -328,6 +331,8 @@ static void help (int level) {
         printf (" ---------------------\n\n");
         printf(" N2N_KEY           | encryption key (ASCII), not with '-k ...'\n");
         printf(" N2N_COMMUNITY     | community name (ASCII), overwritten by '-c ...'\n");
+        printf(" N2N_PASSWORD      | password (ASCII) for user-password authentication,\n"
+               "                   | overwritten by '-J ...'\n");
 #ifdef WIN32
         printf ("\n");
         printf (" AVAILABLE TAP ADAPTERS\n");
@@ -561,7 +566,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 
         case 'J': /* password for user-password authentication */ {
-            conf->shared_secret = calloc(1, sizeof(n2n_private_public_key_t));
+            if(!conf->shared_secret) /* we could already have it from environment variable, see edge_init_conf_defaults() */
+                conf->shared_secret = calloc(1, sizeof(n2n_private_public_key_t));
             if(conf->shared_secret)
                 generate_private_key(*(conf->shared_secret), optargument);
 
