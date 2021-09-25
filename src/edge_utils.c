@@ -1815,17 +1815,9 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     traceEvent(TRACE_DEBUG, "mgmt status requested");
 
     msg_len = 0;
-	if(getenv("N2N_CMTY")) {
-        msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                        "COMMUNITY 'COMMUNITY_NAME'\n\n"
-                       );
-    }else{
-		 msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "COMMUNITY '%s'\n\n",
                         eee->conf.community_name);
-	}
-   
-						
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         " ### | TAP             | MAC               | EDGE                  | HINT            | LAST SEEN\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
@@ -2886,10 +2878,6 @@ void print_edge_stats (const n2n_edge_t *eee) {
 
 /* ************************************** */
 
-int endEEE(n2n_edge_t* eee) {
-    send_unregister_super(eee);
-    closesocket(eee->sock);
-}
 
 int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 

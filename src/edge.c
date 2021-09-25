@@ -17,7 +17,7 @@
  */
 
 #include "n2n.h"
-static n2n_edge_t* _eee;
+
 /* *************************************************** */
 
 /** maximum length of command line arguments */
@@ -889,7 +889,6 @@ BOOL WINAPI term_handler(DWORD sig)
         traceEvent(TRACE_NORMAL, "ok, I am leaving now");
         _exit(0);
     } else {
-		endEEE(_eee);
         traceEvent(TRACE_NORMAL, "shutting down...");
         called = 1;
     }
@@ -1042,7 +1041,7 @@ int main (int argc, char* argv[]) {
         traceEvent(TRACE_ERROR, "failed in edge_init");
         exit(1);
     }
-    _eee = eee;
+
     memcpy(&(eee->tuntap_priv_conf), &ec, sizeof(ec));
 
     if((0 == strcmp("static", eee->tuntap_priv_conf.ip_mode)) ||
