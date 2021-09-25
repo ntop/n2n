@@ -212,8 +212,9 @@ static void help (int level) {
                "[-g <numerical group id>] "
 #endif
           "\n\n environment          "
-               "N2N_KEY   instead of [-k <key>]"
+               "N2N_KEY         instead of [-k <key>]"
           "\n variables            "
+               "N2N_COMMUNITY   instead of -c <community>"
           "\n                      "
 
           "\n meaning of the       "
@@ -325,7 +326,8 @@ static void help (int level) {
         printf ("\n");
         printf (" ENVIRONMENT VARIABLES\n");
         printf (" ---------------------\n\n");
-        printf("     N2N_KEY       | encryption key (ASCII), not with '-k ...'\n");
+        printf(" N2N_KEY           | encryption key (ASCII), not with '-k ...'\n");
+        printf(" N2N_COMMUNITY     | community name (ASCII), overwritten by '-c ...'\n");
 #ifdef WIN32
         printf ("\n");
         printf (" AVAILABLE TAP ADAPTERS\n");
