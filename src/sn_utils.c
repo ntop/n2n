@@ -720,7 +720,7 @@ static int try_forward (n2n_sn_t * sss,
 /** Initialise some fields of the community structure **/
 int comm_init (struct sn_community *comm, char *cmn) {
 
-    strncpy((char*)comm->community, cmn, N2N_COMMUNITY_SIZE - 1);
+    strncpy((char*)comm->community, cmn, N2N_COMMUNITY_SIZE);
     comm->community[N2N_COMMUNITY_SIZE - 1] = '\0';
     comm->is_federation = IS_NO_FEDERATION;
 
@@ -738,7 +738,8 @@ int sn_init_defaults (n2n_sn_t *sss) {
 
     memset(sss, 0, sizeof(n2n_sn_t));
 
-    strncpy(sss->version, GIT_RELEASE, sizeof(n2n_version_t) - 1);
+    strncpy(sss->version, GIT_RELEASE, sizeof(n2n_version_t));
+    sss->version[sizeof(n2n_version_t) - 1] = '\0';
     sss->daemon = 1; /* By defult run as a daemon. */
     sss->lport = N2N_SN_LPORT_DEFAULT;
     sss->mport = N2N_SN_MGMT_PORT;
@@ -754,7 +755,7 @@ int sn_init_defaults (n2n_sn_t *sss) {
 
     /* Initialize the federation */
     if(sss->federation) {
-        strncpy(sss->federation->community, (char*)FEDERATION_NAME, N2N_COMMUNITY_SIZE - 1);
+        strncpy(sss->federation->community, (char*)FEDERATION_NAME, N2N_COMMUNITY_SIZE);
         sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
         /* enable the flag for federation */
         sss->federation->is_federation = IS_FEDERATION;

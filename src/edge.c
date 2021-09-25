@@ -434,7 +434,6 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 
         case 'c': /* community as a string */ {
-            memset(conf->community_name, 0, N2N_COMMUNITY_SIZE);
             strncpy((char *)conf->community_name, optargument, N2N_COMMUNITY_SIZE);
             conf->community_name[N2N_COMMUNITY_SIZE - 1] = '\0';
             break;
@@ -559,9 +558,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 #endif
         case 'I': /* Device Description (hint) or username */ {
-            memset(conf->dev_desc, 0, N2N_DESC_SIZE);
-            /* reserve possible last char as null terminator. */
-            strncpy((char *)conf->dev_desc, optargument, N2N_DESC_SIZE-1);
+            strncpy((char *)conf->dev_desc, optargument, N2N_DESC_SIZE);
+            conf->dev_desc[N2N_DESC_SIZE - 1] = '\0';
             break;
         }
 
