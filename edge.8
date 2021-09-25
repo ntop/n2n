@@ -137,7 +137,7 @@ annotate the edge's description used for easier
 identification in management port output or username
 .TP
 \fB\-J \fR<\fIpassword\fR>
-password for user-password edge authentication
+password for user-password edge authentication (see also N2N_PASSWORD in ENVIRONMENT)
 .TP
 \fB\-P \fR<\fIpublic key\fR>
 federation public key for user-password authentication
@@ -203,10 +203,13 @@ shows detailed parameter description
 .SH ENVIRONMENT
 .TP
 .B N2N_KEY
-set the encryption key so it is not visible on the command line
+set the encryption key so it is not visible at the command line
 .TP
 .B N2N_COMMUNITY
-set the community name so it is not visible on the command line
+set the community name so it is not visible at the command line
+.TP
+.B N2N_PASSWORD
+set the password for user-password authentication so it is not visible at the command line
 .SH EXAMPLES
 .TP
 .B edge \-d n2n0 \-c mynetwork \-k encryptme \-u 99 \-g 99 \-m DE:AD:BE:EF:01:23 \-a 192.168.254.7 \-p 50001 \-l 123.121.120.119:7654

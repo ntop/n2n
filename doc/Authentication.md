@@ -87,7 +87,7 @@ Considering all this, our example expands to
 [user@host n2n]$ sudo ./edge -l <supernode:port> -c netleo -I logan -J 007 -A5 -k mySecretKey -P opIyaWhWjKLJSNOHNpKnGmelhHWRqkmY5pAx7lbDHp4
 ```
 
-You might want to consider the use of [`.conf` files](https://github.com/ntop/n2n/blob/dev/doc/ConfigurationFiles.md) to accomodate all the command line parameters more easily.
+You might want to consider the use of [`.conf` files](https://github.com/ntop/n2n/blob/dev/doc/ConfigurationFiles.md) to accomodate all the command line parameters more easily. Alternatively, the `N2N_PASSWORD` environment variable can be used to set the password without having it show up as part of the command line.
 
 
 #### How Does It Work?

@@ -3684,6 +3684,11 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         strncpy((char*)conf->community_name, getenv("N2N_COMMUNITY"), N2N_COMMUNITY_SIZE);
         conf->community_name[N2N_COMMUNITY_SIZE - 1] = '\0';
     }
+    if(getenv("N2N_PASSWORD")) {
+        conf->shared_secret = calloc(1, sizeof(n2n_private_public_key_t));
+        if(conf->shared_secret)
+            generate_private_key(*(conf->shared_secret), getenv("N2N_PASSWORD"));
+    }
 
     conf->metric = 0;
 }
