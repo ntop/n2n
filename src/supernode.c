@@ -217,7 +217,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
                     anchor_sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
                     if(anchor_sn->ip_addr) {
                         strncpy(anchor_sn->ip_addr, _optarg, N2N_EDGE_SN_HOST_SIZE - 1);
-	                      memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
+	                memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
                         memcpy(anchor_sn->mac_addr, null_mac, sizeof(n2n_mac_t));
                         anchor_sn->purgeable = SN_UNPURGEABLE;
                         anchor_sn->last_valid_time_stamp = initial_time_stamp();
@@ -295,7 +295,8 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             break;
 
         case 'V': /* version text */
-            strncpy(sss->version, _optarg, sizeof(n2n_version_t) - 1); /* mind the \0 terminator */
+            strncpy(sss->version, _optarg, sizeof(n2n_version_t));
+            sss->version[sizeof(n2n_version_t) - 1] = '\0';
             break;
         case 'c': /* community file */
             sss->community_file = calloc(1, strlen(_optarg) + 1);
