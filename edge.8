@@ -19,10 +19,10 @@ An equal sign ('=') should be used between key and value. Example: -p=7777
 .SH OPTIONS FOR THE UNDERLYING NETWORK CONNECTION
 .TP
 \fB\-c \fR<\fIcommunity\fR>, \fB\-\-community\fR=<\fIcommunity\fR>
-sets the n2n community name. All edges within the same community appear on the
-same LAN (layer 2 network segment). Community name is 16 bytes in length. A name
-smaller than this is padded with 0x00 bytes and a name longer than this is
-truncated to take the first 16 bytes.
+sets the n2n community name (see also N2N_COMMUNITY in ENVIRONMENT). All edges
+within the same community appear on the same LAN (layer 2 network segment).
+Community name is 16 bytes in length. A name smaller than this is padded with
+0x00 bytes and a name longer than this is truncated to take the first 16 bytes.
 .TP
 \fB\-l \fR<\fIhost:port\fR>, \fB\-\-supernode-list\fR=<\fIhost:port\fR>
 sets the n2n supernode IP address and port to register to. Multiple supernodes
@@ -198,6 +198,9 @@ shows detailed parameter description
 .TP
 .B N2N_KEY
 set the encryption key so it is not visible on the command line
+.TP
+.B N2N_COMMUNITY
+set the community name so it is not visible on the command line
 .SH EXAMPLES
 .TP
 .B edge \-d n2n0 \-c mynetwork \-k encryptme \-u 99 \-g 99 \-m DE:AD:BE:EF:01:23 \-a 192.168.254.7 \-p 50001 \-l 123.121.120.119:7654

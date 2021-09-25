@@ -7,6 +7,8 @@ As communities designate virtual networks, they must be distinguishable from eac
 
 To make full use of character space, hex values could be used, e.g. from Linux bash applying the `edge … -c $(echo -en '\x3a\x3b\x4a\x6a\xfa') …` command line syntax. If used with a configuration file, the bytes must be directly filled as characters into a corresponding `-c :;Jjþ` line.
 
+Apart from command line `-c` and configuration file, the community name can be supplied through the `N2N_COMMUNITY` environment variable. This might prove useful to hide the community name from command line if used with header encryption enabled, see below.
+
 
 ## Restrict Supernode Access
 
