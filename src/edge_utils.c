@@ -1904,7 +1904,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     msg_len = 0;
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "COMMUNITY '%s'\n\n",
-                        eee->conf.community_name);
+                        (eee->conf.header_encryption == HEADER_ENCRYPTION_NONE) ? (char*)eee->conf.community_name : "-- header encrypted --");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         " ### | TAP             | MAC               | EDGE                  | HINT            | LAST SEEN |     UPTIME\n");
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
