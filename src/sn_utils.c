@@ -751,11 +751,14 @@ int sn_init_defaults (n2n_sn_t *sss) {
     sss->max_auto_ip_net.net_addr = inet_addr(N2N_SN_MAX_AUTO_IP_NET_DEFAULT);
     sss->max_auto_ip_net.net_addr = ntohl(sss->max_auto_ip_net.net_addr);
     sss->max_auto_ip_net.net_bitlen = N2N_SN_AUTO_IP_NET_BIT_DEFAULT;
-    sss->federation = (struct sn_community *)calloc(1, sizeof(struct sn_community));
 
+    sss->federation = (struct sn_community *)calloc(1, sizeof(struct sn_community));
     /* Initialize the federation */
     if(sss->federation) {
-        strncpy(sss->federation->community, (char*)FEDERATION_NAME, N2N_COMMUNITY_SIZE);
+        if(getenv("N2N_FEDERATION"))
+            snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1 ,"*%s", getenv("N2N_FEDERATION"));
+        else
+            strncpy(sss->federation->community, (char*)FEDERATION_NAME, N2N_COMMUNITY_SIZE);
         sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
         /* enable the flag for federation */
         sss->federation->is_federation = IS_FEDERATION;

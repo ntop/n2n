@@ -61,7 +61,7 @@ If a user chooses a new password or needs to be excluded from accessing the comm
 
 When using this feature federation-wide, i.e. across several supernodes, please make sure to keep all supernodes' `community.list` files in sync. So, if you delete or change a user one supernode (or add it), you need to do it at all supernodes. There is no built-in sync for the `community.list` files across the federation. External tools such as _Syncthing_ or your very own script-driven scp-based-file-distribution might be of assistance. Also, with every change, you need to restart the supernode or issue the `reload_communites` command to the management port as outlined above.
 
-With a view to the detailed explanations below, your supernode(s) should have a non-default federation name given by the `-F <federation name>` command line parameter, e.g. `-F secretFed`. It is used to derive a private key at the supernode side and is only to be shared among supernodes.
+With a view to the detailed explanations below, your supernode(s) should have a non-default federation name given by the `-F <federation name>` command line parameter, e.g. `-F secretFed`. Alternatively, it can be passed through the environment variable `N2N_FEDERATION`. It is used to derive a private key at the supernode side and is only to be shared among supernodes.
 
 
 #### Edge

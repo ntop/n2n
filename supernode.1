@@ -30,7 +30,7 @@ An equal sign ('=') should be used between key and value. Example: -p=7777
 listen on this fixed local UDP port, defaults to 7654
 .TP
 \fB\-F \fR<\fIfed_name\fR>
-name of the supernode's federation, defaults to '*Federation'
+name of the supernode's federation, defaults to '*Federation' (see also N2N_FEDERATION in ENVIRONMENT)
 .TP
 \fB\-l \fR<\fIhost:port\fR>
 ip address or name, and port of known supernode
@@ -101,6 +101,10 @@ netleo
 .fi
 .PP
 More details on creating the allowed communities file are found in the Communities.md and Authentication.md documentation included with this package.
+.SH ENVIRONMENT
+.TP
+.B N2N_FEDERATION
+set the federation name so it is not visible at the command line
 .SH EXAMPLES
 .TP
 .B supernode -p 7654 -v
