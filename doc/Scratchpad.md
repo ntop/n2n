@@ -45,6 +45,7 @@ rpmbuild -bb ./n2n.spec
 - Clean-up management port output
 - Polished benchmark tool output
 - Spun-off the name resolution into a separate thread avoiding lags
+- Added support for additional environment variables (`N2N_COMMUNITY` and `N2N_PASSWORD`)
 - Implemented new `reload_communities` command to make supernode hot-reload the `-c` provided `community.list` file, issued through management port
 - Reactivated send out of gratuitous ARP packet on establishing connection
 - Enhanced documentation (`doc/` folder) including the man pages and command-line help text (`-h` and more detailed `--help`)
