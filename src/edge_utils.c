@@ -758,7 +758,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
 
 
         if(((now - scan->last_seen) > 0 /* >= 1 sec */)
-          ||(cookie == N2N_LOCAL_REG_COOKIE)) {
+          ||(cookie & N2N_LOCAL_REG_COOKIE)) {
             /* Don't register too often */
             check_known_peer_sock_change(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer, now);
         }
@@ -804,14 +804,14 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
         } else {
             // ignore regular ACKs's socket update for a while if we have recently received a local (!) ACK
             if(((now - scan->last_local_reg) > REGISTRATION_TIMEOUT)
-             ||(cookie == N2N_LOCAL_REG_COOKIE)) {
+             ||(cookie & N2N_LOCAL_REG_COOKIE)) {
                 scan->sock = *peer;
             }
         }
 
         HASH_ADD_PEER(eee->known_peers, scan);
         scan->last_p2p = now;
-        if(cookie == N2N_LOCAL_REG_COOKIE)
+        if(cookie & N2N_LOCAL_REG_COOKIE)
             scan->last_local_reg = now;
 
         traceEvent(TRACE_DEBUG, "p2p connection established: %s [%s]",
@@ -2561,7 +2561,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     traceEvent(TRACE_INFO, "[p2p] Rx REGISTER from %s [%s]%s",
                                            macaddr_str(mac_buf1, reg.srcMac),
                                            sock_to_cstr(sockbuf1, &sender),
-                                           (reg.cookie == N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
+                                           (reg.cookie & N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
                     find_and_remove_peer(&eee->pending_peers, reg.srcMac);
 
                     /* NOTE: only ACK to peers */
@@ -2598,7 +2598,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                            sock_to_cstr(sockbuf2, orig_sender),
                            macaddr_str(mac_buf2, ra.dstMac),
                            sock_to_cstr(sockbuf1, &sender),
-                          (ra.cookie == N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
+                          (ra.cookie & N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
 
 
                 peer_set_p2p_confirmed(eee, ra.srcMac,
