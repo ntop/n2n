@@ -1,105 +1,76 @@
-.TH "n2n_v2" 7 "Sep 21, 2009" "revision 3909" "Background"
+.TH "n2n_v3" 7 "Sep 27, 2021" "version 3" "Background"
 .SH NAME
-N2n Version 2 \- version 2 of the n2n decentralised peer-to-peer network overlay
+n2n version 3 \- version 3 of the n2n decentralised peer-to-peer network overlay
 VPN.
 .SH DESCRIPTION
-N2n is a peer-to-peer network overlay or VPN system that provides layer 2 over
+n2n is a peer-to-peer network overlay or VPN system that provides layer 2 over
 layer 3 encapsulation with data transform capabilities such as encryption and
-compression. This guide discusses the differences of version 2 or n2n from
-version 1.
+compression. This guide also discusses the differences of version 3 of n2n from
+version 2.
 .SH PROTOCOLS
-N2n-2 uses a different set of messages to communicate with edges and
-supernodes. The n2n-2 messages are not compatible with n2n-1. There is no
-backward compatibility for n2n-1.
+n2n-3 basically uses the same set of messages to communicate with edges and
+supernodes. However, due to slight packet format changes, the n2n-3 messages
+are not compatible with n2n-2. There is no backward compatibility for n2n-2.
 .SH ENCRYPTION
-N2n-2 offers a new way of handling encryption compared to n2n-1. N2n-1 provided
-facility for a single community password with no expiration. In n2n-2 this
-method is preserved but a new mechanism has been added using a key schedule
-file.
-.TP
-Key Schedule
-A key schedule file lists a number of keys with the period for which each is
-valid along with the encryption type identifier and the actual key value. This
-allows the user to define up to 32 keys in advance with a pre-set time at which
-they keys will change. The key schedule file can be reloaded while the edge is
-running to allow new keys to be loaded and unused keys expunged.
-.TP
-Timing Requirements When a key rolls over to the next in the schedule, the new
-key is used for all transmitted packets; however any packets received using an
-older key can still be decoded as the keys from the key schedule are still
-known. As a result edges do not need to have accurate time synchronisation. The
-accuracy of required synchronisation depends to a large degree on the key
-schedule. Rapid key roll-overs requires more accurate time synchronisation.
-.P
-N2n-2 provides the following encryption ciphers; more can be added as required:
+n2n-3 offers four different ciphers for payload encryption as well as optional
+header encryption. Earlier versions of n2n-2 provided a mechanism using a key
+schedule which has been removed in n2n-3. A basic user authentication scheme
+relying on asymmetric cryptography has been added to n2n-3.
+
+n2n-3 provides the following ciphers to chose from for payload encryption; more
+can be added as required:
 .TP
 .B (1) NULL
 Data is encapsulated unchanged. Useful for testing and high-performance, low
 sensitivity applications.
 .TP
-.B (2) TF
-Twofish AES candidate.
-.P
-The following additional ciphers are specified but not yet implemented:
+.B (2) TF-CTS
+Twofish AES candidate in CTS mode.
 .TP
-.B (3) AES-CBC
-AES in CBC mode with 256-bit key.
+.B (3) AES-CTS
+AES in CTS mode with up to 256-bit key.
 .TP
-.B (4) LZO
-LZO compression of data (no encryption).
+.B (4) CHACHA20
+ChaCha20, a well known stream cipher developped by Daniel J. Bernstein.
 .TP
-.B (5) TF-LZO
-TF cipher with LZO compression of data prior to encryption.
+.B (5) SPECK-CTR
+A fast block cipher developped by the NSA used as stream cipher in CTR mode.
 .TP
-.B (6) AES-CBC-LZO
-AES-CBC ciper with LZO compression of data prior to encryption.
-
+Full Header Encyption
+The optional full header encryption also encrypts packets' header which include
+some administrative data. In addition, it adds replay protection.
+.TP
+User Password Authentication
+n2n-3 implements an optional user-password authentication scheme. A key
+generator assists in generating user's public keys to be stored at the
+supernode side.
+.SH COPMPRESSION
+LZO for payload compression is an always available option at n2n-3. If compiled with
+zstdlib support, ZSTD is at optional service as well.
 .SH EXTENSIBILITY
-N2n-2 decouples the data transform system from the core of the edge
+n2n-3 decouples the data transform system from the core of the edge
 operation. This allows for easier addition of new data transform
-operations. N2n-2 reserves 64 standard transform identifiers (such as TwoFish
-encryption) but allocates transform identifiers 64 - 65536 for user-defined
+operations. n2n-3 reserves some standard transform identifiers (such as TwoFish
+encryption) but allocates transform identifiers for user-defined
 transforms. This allows anyone to add to n2n new private transforms without
 breaking compatibility with the standard offering.
-
-.SH MULTIPLE SUPERNODES
-N2n-2 introduces the capability of multiple supernodes to be used by an
-edge. N2n-2 offers supernode in several flavours:
-.TP
-Stand-alone supernode
-
-This is the same concept as from n2n-1. Supernode is a small efficient C program
-which operates in isolation.
-.TP
-Federated supernodes
-
-This is a cluster of supernodes which share information. Edges registered to any
-of the cooperating supernodes can relay packets through the supernode federation
-and switch supernodes if required. Supernodes can send PACKET or REGISTER
-messages to other supernodes to try and find the destination edge.
-
+.SH FEDERATED SUPERNODES
+n2n-3 incorporates the capability of multiple supernodes to be federated.
+Federation acts transparently and balances the workload evenly among the
+federated supernodes. Supernodes keep track of edges connected to different
+supernodes and forward packets as required. This feature naturally supports
+fail-over and this increases redundancy and resilience.
 .P
-The n2n-2 edge implementation allows multiple supernodes to be specified on the
+Information on additional supernodes is propagated to all edges. In addition,
+the n2n-3 edge implementation allows multiple supernodes to be specified on the
 command line. Edges monitor the current supernode for responses to
-REGISTER_SUPER messages. If 3 responses are missed then the edge starts looking
-for a new supernode. It cycles through the list of supernodes specified until it
-finds a working one.
-
-.SH EFFICIENCY
-The n2n-2 message formats have been made more efficient. The amount of data
-overhead has been reduced by ensuring the messages contain only the data fields
-required. Some optional fields do not consume data if they are not present.
-
-.SH DAEMON OPERATION
-The supernode and edge use daemon mode of operation by default. This sense is
-inverted from n2n-1 where they ran in the foreground by default. They can be
-made to run in the foreground so tools such a DJB's daemontools can work with
-them. See the 
-.B -f
-option
+REGISTER_SUPER as well as PING messages. After three responses from current
+supernode are missed or when a better supernode in terms of significant lower workload
+is found, the edge tries to connect to another supernode. It cycles through the list
+f supernodes which over and over again is sorted according to reported workload.
 
 .SH MANAGEMENT CONSOLE
-Edge and supernode in n2n-2 provide a UDP-based management console. Both listen
+Edge and supernode in n2n-3 provide a UDP-based management console. Both listen
 on the localhost address 127.0.0.1. Commands can be sent to the programs by
 sending to the UDP socket. Responses are returned to the socket from which
 commands were issued. This only works from the computer on which the programs
@@ -108,20 +79,21 @@ is all that is required; but more sophisticated tools could be built on the
 interface.
 
 .SH SUPERNODE AUTHENTICATION
-.B (To be implemented)
-Space has been reserved in the supernode registration messages for an
-authentication mechanism.
+The supernode federation name serves as private key shared between the supernodes only.
+The corresponding public key can be provided to the edges.
 
 .SH MESSAGE SUMMARY
-The following message types work within n2n-2.
+The following message types work within n2n-3.
 .TP
 REGISTER_SUPER
 Sent from an edge to its local supernode to register its MAC with the community.
+Also, federated supernodes use this packet format to register to each other.
 .TP
 REGISTER_SUPER_ACK
 Sent from a supernode to an edge to confirm registration. This also carries the
 definition of the edge socket as seen at the supernode so NAT can be detected
-and described.
+and described. Furthermore, it carries information about additional federated
+supernodes.
 .TP
 REGISTER_SUPER_NAK
 Supernode refusing to register an edge.
@@ -138,14 +110,14 @@ REGISTER_ACK
 Complete peer-to-peer mode setup between two edges. These messages need to
 travel direct between edges.
 .TP
-FEDERATION
-Federated supernodes exchanging community information.
-
-.SH OTHER DIFFERENCES
-.TP 
-HTTP Tunneling
-This experimental feature (-t option in n2n_v1) of n2n_v1 has been removed
-entirely from n2n_v2.
+QUERY_PEER
+Queries a supernode about another edge, especially its public socket in case of
+no peer-to-peer communication can be established. Additionally, it serves as PING
+to query supernodes about themselves.
+.TP
+PEER_INFO
+Answers the QUERY_PEER; it also covers the special case of the PING query, internally
+called PONG.
 .SH AUTHORS
 .TP
 Richard Andrews andrews (at) ntop.org - main author of n2n-2
@@ -155,4 +127,6 @@ deri (at) ntop.org - code inherited from n2n-1
 .SH SEE ALSO
 ifconfig(8) edge(8) supernode(1)
 .br
-The extensive documentation contained in the source code
+the documentation contained in the source code
+.br
+the extensive documentation found in n2n's \fBdoc/\fR folder
