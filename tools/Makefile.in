@@ -27,9 +27,11 @@ N2N_LIB=../libn2n.a
 TOOLS=n2n-benchmark n2n-keygen
 TOOLS+=@ADDITIONAL_TOOLS@
 
-.PHONY: all clean install
-all: $(TOOLS)
+TESTS=tests-compress tests-elliptic tests-hashing tests-transform
+TESTS+=tests-wire
 
+.PHONY: all clean install
+all: $(TOOLS) $(TESTS)
 
 n2n-benchmark.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
@@ -37,8 +39,14 @@ n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -lpcap -o $@
 
+# See comments in the topdir Makefile about how to generate coverage
+# data.
+gcov:
+	gcov $(TOOLS) $(TESTS)
+
 clean:
 	rm -rf $(TOOLS) *.o *.dSYM *~
+	rm -f $(TESTS) *.gcno *.gcda
 
 install: $(TOOLS)
 	$(INSTALL_PROG) $(TOOLS) $(SBINDIR)/

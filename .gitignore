@@ -13,6 +13,7 @@ example_sn_embed
 supernode
 tools/n2n-benchmark
 tools/n2n-decode
+tools/n2n-keygen
 build
 .idea
 cmake-build-default
@@ -27,3 +28,19 @@ packages/etc/systemd/system/supernode.service
 *dSYM*
 
 cmake-build-*/
+
+# Binaries built to run tests
+tools/tests-compress
+tools/tests-elliptic
+tools/tests-hashing
+tools/tests-transform
+tools/tests-wire
+
+# Files generated while running tests
+tests/*.out
+
+# Files generated while running coverage reports
+*.gcno
+*.gcda
+*.gcov
+coverage/

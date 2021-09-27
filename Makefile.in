@@ -2,6 +2,7 @@
 # NOTE: these are needed by the configure.in inside the packages folder
 N2N_VERSION_SHORT=@N2N_VERSION_SHORT@
 GIT_COMMITS=@GIT_COMMITS@
+GIT_DESCRIBE=$(shell git describe --always --dirty)
 
 ########
 
@@ -65,7 +66,7 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-.PHONY: steps build push all clean install tools
+.PHONY: steps build push all clean install tools test cover gcov build-dep
 all: $(APPS) $(DOCS) tools
 
 tools: $(N2N_LIB)
@@ -93,9 +94,33 @@ $(N2N_LIB): $(N2N_OBJS)
 	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)
 #	$(RANLIB) $@
 
+test: tools
+	tools/test_harness
+
+# To generate coverage information, run configure with
+# CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
+# and run the desired tests.  Ensure that package gcovr is installed
+# and then run "make cover"
+cover:
+	mkdir -p coverage
+	gcovr -s --html --html-details --output=coverage/index.html
+
+# Use coverage data to generate gcov text report files.
+# Unfortunately, these end up in the wrong directory due to the
+# makefile layout
+# The steps to use this are similar to the "make cover" above
+gcov:
+	gcov $(N2N_OBJS)
+	$(MAKE) -C tools gcov
+
+# This is the superset of all packages that might be needed.
+# It is a convinent target to use during development or from a CI/CD system
+build-dep:
+	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
+
 clean:
-	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) test *.dSYM *~
-	-rm src/*.gcno src/*.gcda
+	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) coverage/ *.dSYM *~
+	rm -f tests/*.out src/*.gcno src/*.gcda
 	$(MAKE) -C tools clean
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz

@@ -1,0 +1,52 @@
+
+name: Continuous testing
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    name: Run test environment
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install essential
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential
+
+      - name: generate a makefile and use it to install more packages
+        run: |
+          ./autogen.sh
+          ./configure
+          make build-dep
+
+      - name: Run the real configure step
+        run: |
+          CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
+
+      - name: Run embedded tests
+        run: make test
+
+      - name: Generate a coverage report
+        run: |
+          make cover
+          make gcov
+
+      - name: Upload gcovr report artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: code-coverage-report
+          path: coverage
+
+      - name: Upload data to codecov
+        uses: codecov/codecov-action@v2

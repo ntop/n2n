@@ -1,0 +1,17 @@
+environment: common.ttl = 2
+environment: common.flags = 0
+environment: common.community = "abc123def456z"
+
+REGISTER: common.pc = 1
+REGISTER: reg.cookie = 0
+REGISTER: reg.dev_addr.net_addr = 0x20212223
+REGISTER: reg.dev_addr.net_bitlen = 25
+REGISTER: reg.dev_desc = "Dummy_Dev_Desc"
+
+REGISTER: output retval = 0x24
+REGISTER: output idx = 0x3d
+000: 03 02 00 01 61 62 63 31  32 33 64 65 66 34 35 36   |    abc123def456|
+010: 7a 00 00 00 00 00 00 00  00 00 00 00 00 01 02 03   |z               |
+020: 04 05 10 11 12 13 14 15  20 21 22 23 19 44 75 6d   |         !"# Dum|
+030: 6d 79 5f 44 65 76 5f 44  65 73 63 00 00            |my_Dev_Desc  |
+
