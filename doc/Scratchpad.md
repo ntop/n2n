@@ -18,7 +18,7 @@ rpmbuild -bb ./n2n.spec
 - Better ming Windows build support.
 - Added `-E` flag to allow multicast ethernet traffic.
 
-## Draft changelog between 2.8.x and 2.9.x (as of August 29, 2021)
+## Draft changelog between 2.8 and 3.0 (as of September 27, 2021)
 
 ### New Features
 
@@ -42,10 +42,11 @@ rpmbuild -bb ./n2n.spec
 - Increased edges' resilience to temporary supernode failure
 - Fixed a compression-related memory leak
 - Ciphers partly come with platform-specific hardware acceleration
+- Added a test framework (`tools/test-*.c` and `tests/`)
 - Clean-up management port output
 - Polished benchmark tool output
 - Spun-off the name resolution into a separate thread avoiding lags
-- Added support for additional environment variables (`N2N_COMMUNITY` and `N2N_PASSWORD`)
+- Added support for additional environment variables (`N2N_COMMUNITY`, `N2N_PASSWORD`, and `N2N_FEDERATION`)
 - Implemented new `reload_communities` command to make supernode hot-reload the `-c` provided `community.list` file, issued through management port
 - Reactivated send out of gratuitous ARP packet on establishing connection
 - Enhanced documentation (`doc/` folder) including the man pages and command-line help text (`-h` and more detailed `--help`)
