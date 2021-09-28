@@ -20,11 +20,11 @@ TESTDATA=tests
 
 # Confirm we have all the tools and data
 for i in $TESTS; do
-    if [ ! -e $TOOLSDIR/$i ]; then
+    if [ ! -e "$TOOLSDIR/$i" ]; then
         echo "Could not find test $TOOLSDIR/$i"
         exit 1
     fi
-    if [ ! -e $TESTDATA/$i.expected ]; then
+    if [ ! -e "$TESTDATA/$i.expected" ]; then
         echo "Could not find testdata $TESTDATA/$i.expected"
         exit 1
     fi
@@ -34,6 +34,6 @@ done
 set -e
 for i in $TESTS; do
     echo "$TOOLSDIR/$i >$TESTDATA/$i.out"
-    $TOOLSDIR/$i >$TESTDATA/$i.out
-    cmp $TESTDATA/$i.expected $TESTDATA/$i.out
+    "$TOOLSDIR/$i" >"$TESTDATA/$i.out"
+    cmp "$TESTDATA/$i.expected" "$TESTDATA/$i.out"
 done
