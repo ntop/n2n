@@ -108,6 +108,16 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
+# This is the superset of all packages that might be needed during the build.
+# Mostly of use in automated build systems.
+BUILD_DEP:=\
+	autoconf \
+	build-essential \
+	flake8 \
+	gcovr \
+	libcap-dev \
+	libzstd-dev \
+
 SUBDIRS+=tools
 
 COVERAGEDIR?=coverage
@@ -168,11 +178,10 @@ gcov:
 	gcov $(N2N_OBJS)
 	$(MAKE) -C tools gcov
 
-# This is the superset of all packages that might be needed.
-# It is a convinent target to use during development or from a CI/CD system
+# This is a convinent target to use during development or from a CI/CD system
 build-dep:
 ifeq ($(CONFIG_TARGET),generic)
-	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr flake8
+	sudo apt install $(BUILD_DEP)
 else ifeq ($(CONFIG_TARGET),darwin)
 	brew install automake gcovr
 else
