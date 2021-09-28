@@ -7,7 +7,7 @@ on:
 
 jobs:
   quicktest:
-    name: Run quick test suite
+    name: Quick test
     runs-on: ubuntu-latest
 
     steps:
@@ -20,7 +20,7 @@ jobs:
 
   fulltest:
     needs: quicktest
-    name: Run test environment
+    name: Full test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
