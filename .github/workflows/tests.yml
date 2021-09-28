@@ -37,18 +37,22 @@ jobs:
           ./autogen.sh
           ./configure
           make build-dep
+        shell: bash
 
       - name: Run the real configure step
         run: |
           CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
+        shell: bash
 
       - name: Run embedded tests
         run: make test
+        shell: bash
 
       - name: Generate a coverage report
         run: |
           make cover
           make gcov
+        shell: bash
 
       - name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
