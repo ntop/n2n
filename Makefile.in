@@ -123,7 +123,7 @@ SUBDIRS+=tools
 COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
-.PHONY: steps build push all clean install test cover gcov build-dep
+.PHONY: steps build push all clean distclean install test cover gcov build-dep
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
 tools: $(N2N_LIB)
@@ -192,6 +192,12 @@ clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
+
+distclean:
+	rm -rf autom4te.cache/
+	rm -f config.log config.status configure configure.ac Makefile tools/Makefile include/config.h include/config.h.in
+	rm -f doc/edge.8.gz doc/n2n.7.gz doc/supernode.1.gz
+	rm -f $(addprefix src/,$(APPS))
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"
