@@ -3,6 +3,9 @@
 # Specifically for windows, where installing autoconf looks suspiciously
 # like boiling the ocean.
 
+if [ "$RUNNER_OS" == "Windows" ]; then
+    CFLAGS="$CFLAGS -I win32"
+fi
 
 cat Makefile.in | sed \
     -e "s/@N2N_VERSION_SHORT@/FIXME/g" \
