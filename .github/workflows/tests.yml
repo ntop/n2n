@@ -51,6 +51,7 @@ jobs:
         run: |
           echo true >autogen.sh
           cp scripts/hack_fakeautoconf configure
+        shell: bash
 
       - name: generate a makefile and use it to install more packages
         run: |
