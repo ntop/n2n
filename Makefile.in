@@ -117,13 +117,14 @@ BUILD_DEP:=\
 	gcovr \
 	libcap-dev \
 	libzstd-dev \
+	uncrustify \
 
 SUBDIRS+=tools
 
 COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
-.PHONY: steps build push all clean distclean install test cover gcov build-dep
+.PHONY: steps build push all clean distclean install test cover gcov build-dep lint
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
 tools: $(N2N_LIB)
@@ -162,6 +163,9 @@ test: tools
 lint.python:
 	flake8 scripts/n2nctl scripts/n2nhttpd
 
+lint.ccode:
+	scripts/indent $(wildcard src/*.c)
+
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
 # and run the desired tests.  Ensure that package gcovr is installed
@@ -194,6 +198,7 @@ clean:
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
 
 distclean:
+	rm -f tests/*.out src/*.gcno src/*.gcda src/*.indent src/*.unc-backup*
 	rm -rf autom4te.cache/
 	rm -f config.log config.status configure configure.ac Makefile tools/Makefile include/config.h include/config.h.in
 	rm -f doc/edge.8.gz doc/n2n.7.gz doc/supernode.1.gz

@@ -1,0 +1,28 @@
+
+name: Code lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linting:
+    name: Run test environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install essential
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential
+
+      - name: generate a makefile
+        run: |
+          ./autogen.sh
+          ./configure
+
+      - name: Run the styleguide lint
+        run: |
+          make lint
