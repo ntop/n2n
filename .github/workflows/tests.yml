@@ -47,6 +47,13 @@ jobs:
         run: make test
         shell: bash
 
+      - if: ${{ always() }}
+        name: Upload tests output
+        uses: actions/upload-artifact@v2
+        with:
+          name: tests-out-${{matrix.os}}
+          path: tests/*.out
+
       - name: Generate coverage reports
         run: |
           make cover
