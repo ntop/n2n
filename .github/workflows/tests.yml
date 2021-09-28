@@ -27,6 +27,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install build-essential
 
+      - if: runner.os == 'macOS'
+        name: Install essential
+        run: |
+          brew install autoconf automake libtool
+
       - name: generate a makefile and use it to install more packages
         run: |
           ./autogen.sh
