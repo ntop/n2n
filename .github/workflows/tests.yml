@@ -27,9 +27,9 @@ jobs:
           sudo apt-get install build-essential
 
       - if: runner.os == 'macOS'
-        name: Install essential
+        name: Install packages
         run: |
-          brew install automake
+          brew install automake gcovr
 
       - name: generate a makefile and use it to install more packages
         run: |
@@ -47,23 +47,17 @@ jobs:
         run: make test
         shell: bash
 
-      - if: matrix.os == 'ubuntu-latest'
-        name: Generate a html coverage report
+      - name: Generate coverage reports
         run: |
           make cover
-        shell: bash
-
-      - if: matrix.os == 'ubuntu-latest'
-        name: Upload gcovr report artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: code-coverage-report
-          path: coverage
-
-      - name: Generate gcov coverage files (for codecov)
-        run: |
           make gcov
         shell: bash
+
+      - name: Upload gcovr report artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-${{matrix.os}}
+          path: coverage
 
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
