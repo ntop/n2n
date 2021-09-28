@@ -18,10 +18,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install build-essential
 
-      - name: generate a makefile
+      - name: generate a makefile and use it to install more packages
         run: |
           ./autogen.sh
           ./configure
+          make build-dep
 
       - name: Run the styleguide lint
         run: |
