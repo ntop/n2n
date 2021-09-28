@@ -3,7 +3,7 @@
 # Specifically for windows, where installing autoconf looks suspiciously
 # like boiling the ocean.
 
-if [ "$RUNNER_OS" == "Windows" ]; then
+if [ "$RUNNER_OS" = "Windows" ]; then
     CFLAGS="$CFLAGS -I . -I ./win32"
 fi
 
@@ -17,7 +17,7 @@ cat Makefile.in | sed \
     -e "s%@N2N_LIBS@%%g" \
     > Makefile
 
-cat tools%Makefile.in | sed \
+cat tools/Makefile.in | sed \
     -e "s%@CC@%gcc%g" \
     -e "s%@N2N_LIBS@%%g" \
     -e "s%@CFLAGS@%$CFLAGS%g" \
