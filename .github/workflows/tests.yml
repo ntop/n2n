@@ -29,7 +29,7 @@ jobs:
       - if: runner.os == 'macOS'
         name: Install essential
         run: |
-          brew install autoconf automake libtool
+          brew install autoconf
 
       - name: generate a makefile and use it to install more packages
         run: |
@@ -47,17 +47,23 @@ jobs:
         run: make test
         shell: bash
 
-      - name: Generate a coverage report
+      - if: matrix.os == 'ubuntu-latest'
+        name: Generate a html coverage report
         run: |
           make cover
-          make gcov
         shell: bash
 
-      - name: Upload gcovr report artifact
+      - if: matrix.os == 'ubuntu-latest'
+        name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
           name: code-coverage-report
           path: coverage
+
+      - name: Generate gcov coverage files (for codecov)
+        run: |
+          make gcov
+        shell: bash
 
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
