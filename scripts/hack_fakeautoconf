@@ -4,7 +4,7 @@
 # like boiling the ocean.
 
 if [ "$RUNNER_OS" = "Windows" ]; then
-    CFLAGS="$CFLAGS -I . -I ./win32"
+    CFLAGS="$CFLAGS -I $(pwd)/. -I $(pwd)/win32"
 fi
 
 cat Makefile.in | sed \
