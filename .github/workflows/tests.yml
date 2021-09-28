@@ -1,12 +1,25 @@
 
-name: Continuous testing
+name: testing
 
 on:
   push:
   pull_request:
 
 jobs:
-  tests:
+  quicktest:
+    name: Run quick test suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run minimal test set
+        run: |
+          ./autogen.sh
+          ./configure
+          make test
+
+  fulltest:
+    needs: quicktest
     name: Run test environment
     runs-on: ${{ matrix.os }}
     strategy:
