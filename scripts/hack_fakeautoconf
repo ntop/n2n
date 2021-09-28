@@ -5,6 +5,7 @@
 
 if [ "$RUNNER_OS" = "Windows" ]; then
     CFLAGS="$CFLAGS -I. -I./win32"
+    LDFLAGS="$LDFLAGS -lws2_32"
 fi
 
 cat Makefile.in | sed \
@@ -19,6 +20,7 @@ cat Makefile.in | sed \
 
 if [ "$RUNNER_OS" = "Windows" ]; then
     CFLAGS="$CFLAGS -I.. -I../win32"
+    #LDFLAGS inherited from above
 fi
 
 cat tools/Makefile.in | sed \
