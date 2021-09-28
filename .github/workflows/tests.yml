@@ -21,7 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install essential
+      - if: runner.os == 'Linux'
+        name: Install essential
         run: |
           sudo apt-get update
           sudo apt-get install build-essential
