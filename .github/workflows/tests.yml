@@ -29,6 +29,7 @@ jobs:
           - ubuntu-latest
           - ubuntu-18.04
           - macos-latest
+          - windows-latest
 
     steps:
       - uses: actions/checkout@v2
