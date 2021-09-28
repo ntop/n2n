@@ -50,7 +50,7 @@ jobs:
         name: Hack up a fake autoconf
         run: |
           echo true >autogen.sh
-          cp scripts/hack_fakeautoconf configure.sh
+          cp scripts/hack_fakeautoconf configure
 
       - name: generate a makefile and use it to install more packages
         run: |
