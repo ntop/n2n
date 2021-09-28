@@ -44,6 +44,13 @@ jobs:
         run: |
           brew install automake gcovr
 
+      - if: runner.os == 'Windows'
+        # This is a pretty big hammer, but gets the windows compile moving
+        name: Hack up a fake autoconf
+        run: |
+          echo true >autogen.sh
+          cp scripts/hack_fakeautoconf configure.sh
+
       - name: generate a makefile and use it to install more packages
         run: |
           ./autogen.sh
