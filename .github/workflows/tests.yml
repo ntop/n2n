@@ -15,7 +15,6 @@ jobs:
         os:
           - ubuntu-latest
           - ubuntu-18.04
-          - windows-latest
           - macos-latest
 
     steps:
