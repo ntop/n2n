@@ -5,7 +5,7 @@
 
 if [ "$RUNNER_OS" = "Windows" ]; then
     CFLAGS="$CFLAGS -I. -I./win32"
-    LDLIBS="$LDLIBS -lws2_32"
+    LDLIBS="$LDLIBS -lws2_32 -liphlpapi"
 fi
 
 cat Makefile.in | sed \
