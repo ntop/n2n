@@ -88,7 +88,7 @@ This will produce a broken n2n build, but may be useful for testing and fixing t
 - Install Chocolatey (Following instructions on https://chocolatey.org/install)
 - from an admin cmd prompt
     - choco install git mingw make
-- Start, Run, "bash"
+- All the remaining commands need be run from inside a bash shell (Either Start, Run, "bash" or "C:\Program Files\Git\usr\bin\bash")
     - git clone https://github.com/hamishcoleman/n2n
     - cd n2n
     - git checkout test_platform_mingw
