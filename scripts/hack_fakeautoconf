@@ -19,16 +19,8 @@ cat Makefile.in | sed \
     -e "s%@N2N_LIBS@%$LDLIBS%g" \
     > Makefile
 
-if [ "$RUNNER_OS" = "Windows" ]; then
-    CFLAGS="$CFLAGS -I.. -I../win32"
-    #LDLIBS inherited from above
-fi
-
 cat tools/Makefile.in | sed \
     -e "s%@CC@%gcc%g" \
-    -e "s%@N2N_LIBS@%$LDLIBS%g" \
-    -e "s%@CFLAGS@%$CFLAGS%g" \
-    -e "s%@LDFLAGS@%$LDFLAGS%g" \
     -e "s%@ADDITIONAL_TOOLS@%%g" \
     > tools/Makefile
 
