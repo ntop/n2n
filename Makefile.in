@@ -31,7 +31,7 @@ CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
 INSTALL=install
 MKDIR=mkdir -p
-OS := $(shell uname -o)
+OS := $(shell uname -s)
 
 ifndef OS
 # This could happen if the Makefile is unable to run "uname", which can
@@ -69,7 +69,7 @@ ifeq ($(shell uname), SunOS)
 LDLIBS+=-lsocket -lnsl
 endif
 
-ifeq ($(OS),Msys)
+ifeq ($(findstring MSYS_NT,$(OS)),MSYS_NT)
 CFLAGS+=-I. -I./win32
 LDLIBS+=$(abspath win32/n2n_win32.a)
 LDLIBS+=-lws2_32 -liphlpapi
@@ -143,7 +143,7 @@ gcov:
 # This is the superset of all packages that might be needed.
 # It is a convinent target to use during development or from a CI/CD system
 build-dep:
-ifeq ($(OS),GNU/Linux)
+ifeq ($(OS),Linux)
 	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
 else
 	echo Not attempting to install dependancies for non dpkg system $(OS)
