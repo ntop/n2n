@@ -84,7 +84,10 @@ SUBDIRS+=tools
 .PHONY: steps build push all clean install est cover gcov build-dep
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
-$(SUBDIRS): $(N2N_LIB)
+tools: $(N2N_LIB)
+	$(MAKE) -C $@
+
+win32:
 	$(MAKE) -C $@
 
 src/edge.o: $(N2N_DEPS)
