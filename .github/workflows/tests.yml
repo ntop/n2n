@@ -1,13 +1,26 @@
 
-name: Continuous testing
+name: testing
 
 on:
   push:
   pull_request:
 
 jobs:
-  tests:
-    name: Run test environment
+  quicktest:
+    name: Quick test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run minimal test set
+        run: |
+          ./autogen.sh
+          ./configure
+          make test
+
+  fulltest:
+    needs: quicktest
+    name: Full test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -15,37 +28,55 @@ jobs:
         os:
           - ubuntu-latest
           - ubuntu-18.04
+          - macos-latest
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install essential
+      - if: runner.os == 'Linux'
+        name: Install essential
         run: |
           sudo apt-get update
           sudo apt-get install build-essential
+
+      - if: runner.os == 'macOS'
+        name: Install packages
+        run: |
+          brew install automake gcovr
 
       - name: generate a makefile and use it to install more packages
         run: |
           ./autogen.sh
           ./configure
           make build-dep
+        shell: bash
 
       - name: Run the real configure step
         run: |
           CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
+        shell: bash
 
       - name: Run embedded tests
         run: make test
+        shell: bash
 
-      - name: Generate a coverage report
+      - if: ${{ always() }}
+        name: Upload tests output
+        uses: actions/upload-artifact@v2
+        with:
+          name: tests-out-${{matrix.os}}
+          path: tests/*.out
+
+      - name: Generate coverage reports
         run: |
           make cover
           make gcov
+        shell: bash
 
       - name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
-          name: code-coverage-report
+          name: coverage-${{matrix.os}}
           path: coverage
 
       - name: Upload data to codecov
