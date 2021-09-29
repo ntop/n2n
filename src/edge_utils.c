@@ -2882,11 +2882,11 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
             default:
                 /* Not a known message type */
-                traceEvent(TRACE_WARNING, "unable to handle packet type %d: ignored", (signed int)msg_type);
+                traceEvent(TRACE_INFO, "unable to handle packet type %d: ignored", (signed int)msg_type);
                 return;
         } /* switch(msg_type) */
     } else if(from_supernode) /* if(community match) */
-        traceEvent(TRACE_WARNING, "received packet with unknown community");
+        traceEvent(TRACE_INFO, "received packet with unknown community");
     else
         traceEvent(TRACE_INFO, "ignoring packet with unknown community");
 }
