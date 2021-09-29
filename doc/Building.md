@@ -80,6 +80,26 @@ Here is an example `edge.conf` file:
 -c=mycommunity
 -k=mysecretpass
 
+## Windows make and mingw
+
+This will produce a broken n2n build, but may be useful for testing and fixing this brokenness
+
+- Start with a fresh install of Windows 10 Pro with all patches applied as of 2021-09-29
+- Install Chocolatey (Following instructions on https://chocolatey.org/install)
+- from an admin cmd prompt
+    - choco install git mingw make
+- Start, Run, "bash"
+    - git clone https://github.com/hamishcoleman/n2n
+    - cd n2n
+    - git checkout test_platforms
+    - ./scripts/hack_fakeautoconf
+    - make
+    - make test
+
+The final make test will clearly show that there are errors in the calculated results
+from all the transform functions.
+
+
 # supernode IP address
 -l=1.2.3.4:5678
 
