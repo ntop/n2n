@@ -13,7 +13,6 @@ AR=@AR@
 #(thanks to Robert Gibbon)
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
-N2N_OBJS_OPT=
 CFLAGS=@CFLAGS@ -I ./include
 LDFLAGS=@LDFLAGS@ -L .
 
