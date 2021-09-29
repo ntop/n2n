@@ -91,7 +91,7 @@ This will produce a broken n2n build, but may be useful for testing and fixing t
 - Start, Run, "bash"
     - git clone https://github.com/hamishcoleman/n2n
     - cd n2n
-    - git checkout test_platforms
+    - git checkout test_platform_mingw
     - ./scripts/hack_fakeautoconf
     - make
     - make test
