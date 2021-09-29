@@ -3,12 +3,6 @@
 # Specifically for windows, where installing autoconf looks suspiciously
 # like boiling the ocean.
 
-OS=$(uname -o)
-if [ "$OS" = "Msys" ]; then
-    CFLAGS="$CFLAGS -I. -I./win32"
-    LDLIBS="$LDLIBS -lws2_32 -liphlpapi"
-fi
-
 cat Makefile.in | sed \
     -e "s%@N2N_VERSION_SHORT@%FIXME%g" \
     -e "s%@GIT_COMMITS@%FIXME%g" \
@@ -20,7 +14,6 @@ cat Makefile.in | sed \
     > Makefile
 
 cat tools/Makefile.in | sed \
-    -e "s%@CC@%gcc%g" \
     -e "s%@ADDITIONAL_TOOLS@%%g" \
     > tools/Makefile
 

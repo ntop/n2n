@@ -1,4 +1,3 @@
-CC=@CC@
 DEBUG?=-g3
 
 OS:=$(shell uname -o)

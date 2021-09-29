@@ -4,7 +4,8 @@
 configure
 configure.ac
 config.*
-Makefile
+./Makefile
+tools/Makefile
 autom4te.cache
 edge
 example_edge_embed_quick_edge_init

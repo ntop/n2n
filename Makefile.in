@@ -6,6 +6,8 @@ GIT_DESCRIBE=$(shell git describe --always --dirty)
 
 ########
 
+export CC
+export AR
 CC=@CC@
 AR=@AR@
 
@@ -29,7 +31,7 @@ CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
 INSTALL=install
 MKDIR=mkdir -p
-OS := $(shell uname -s)
+OS := $(shell uname -o)
 
 INSTALL_PROG=$(INSTALL) -m755
 INSTALL_DOC=$(INSTALL) -m644
@@ -59,6 +61,13 @@ LDLIBS+=@N2N_LIBS@
 #For OpenSolaris (Solaris too?)
 ifeq ($(shell uname), SunOS)
 LDLIBS+=-lsocket -lnsl
+endif
+
+ifeq ($(OS),Msys)
+CFLAGS+=-I. -I./win32
+LDLIBS+=-lws2_32 -liphlpapi win32/n2n_win32.a
+N2N_DEPS+=win32/n2n_win32.a
+SUBDIRS+=win32
 endif
 
 APPS=edge
@@ -100,6 +109,8 @@ $(N2N_LIB): $(N2N_OBJS)
 	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)
 #	$(RANLIB) $@
 
+win32/n2n_win32.a: win32
+
 test: tools
 	tools/test_harness
 
@@ -122,7 +133,7 @@ gcov:
 # This is the superset of all packages that might be needed.
 # It is a convinent target to use during development or from a CI/CD system
 build-dep:
-ifeq ($(OS),Linux)
+ifeq ($(OS),GNU/Linux)
 	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
 else
 	echo Not attempting to install dependancies for non dpkg system $(OS)
@@ -131,7 +142,7 @@ endif
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) coverage/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
-	$(MAKE) -C tools clean
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"
