@@ -3,7 +3,8 @@
 # Specifically for windows, where installing autoconf looks suspiciously
 # like boiling the ocean.
 
-if [ "$RUNNER_OS" = "Windows" ]; then
+OS=$(uname -o)
+if [ "$OS" = "Msys" ]; then
     CFLAGS="$CFLAGS -I. -I./win32"
     LDLIBS="$LDLIBS -lws2_32 -liphlpapi"
 fi
