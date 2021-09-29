@@ -135,8 +135,8 @@
 #       define be32toh(x) _byteswap_ulong(x)
 #       define le32toh(x) (x)
 
-#       define htobe64(x) _byteswap_uint64(x)
-#       define be64toh(x) _byteswap_uint64(x)
+#       define htobe64(x) (((uint64_t)htonl(((uint32_t)(((uint64_t)(x)) >> 32))) & 0x00000000FFFFFFFFULL) | (((uint64_t)htonl(((uint32_t)(x)))) << 32))
+#       define be64toh(x) (((uint64_t)htonl(((uint32_t)(((uint64_t)(x)) >> 32))) & 0x00000000FFFFFFFFULL) | (((uint64_t)htonl(((uint32_t)(x)))) << 32))
 #       define htole64(x) (x)
 #       define le64toh(x) (x)
 
