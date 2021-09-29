@@ -33,6 +33,12 @@ INSTALL=install
 MKDIR=mkdir -p
 OS := $(shell uname -o)
 
+ifndef OS
+# This could happen if the Makefile is unable to run "uname", which can
+# happen if the shell has a bad path (or is the wrong shell)
+$(error Could not determine the OS, cannot continue)
+endif
+
 INSTALL_PROG=$(INSTALL) -m755
 INSTALL_DOC=$(INSTALL) -m644
 
