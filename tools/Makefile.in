@@ -1,6 +1,8 @@
 CC=@CC@
 DEBUG?=-g3
 
+OS:=$(shell uname -o)
+
 INSTALL=install
 INSTALL_PROG=$(INSTALL) -m755
 MKDIR=mkdir -p
@@ -14,8 +16,11 @@ endif
 
 HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
-LDFLAGS+=-L..
+ifeq ($(OS),Msys)
+CFLAGS+=-I../win32
+endif
 CFLAGS+=$(DEBUG)
+LDFLAGS+=-L..
 
 N2N_LIB=../libn2n.a
 
