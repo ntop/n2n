@@ -13,6 +13,9 @@ AR=@AR@
 #(thanks to Robert Gibbon)
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
+export CFLAGS
+export LDFLAGS
+
 CFLAGS=@CFLAGS@ -I ./include
 LDFLAGS=@LDFLAGS@ -L .
 
@@ -49,6 +52,7 @@ N2N_LIB=libn2n.a
 N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
 N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 
+export LDLIBS
 LDLIBS+=-ln2n
 LDLIBS+=@N2N_LIBS@
 
@@ -65,10 +69,13 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-.PHONY: steps build push all clean install tools test cover gcov build-dep
-all: $(APPS) $(DOCS) tools
+SUBDIRS+=tools
 
-tools: $(N2N_LIB)
+.PHONY: $(SUBDIRS)
+.PHONY: steps build push all clean install est cover gcov build-dep
+all: $(APPS) $(DOCS) $(SUBDIRS)
+
+$(SUBDIRS): $(N2N_LIB)
 	$(MAKE) -C $@
 
 src/edge.o: $(N2N_DEPS)

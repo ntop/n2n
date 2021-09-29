@@ -1,7 +1,5 @@
 CC=@CC@
 DEBUG?=-g3
-OPTIMIZATION?=-O2 #-march=native
-WARN?=-Wall
 
 INSTALL=install
 INSTALL_PROG=$(INSTALL) -m755
@@ -14,13 +12,10 @@ else
 SBINDIR=$(PREFIX)/sbin
 endif
 
-LDLIBS+=-ln2n
-LDLIBS+=@N2N_LIBS@
 HEADERS=$(wildcard include/*.h)
-CFLAGS+=-I../include @CFLAGS@
+CFLAGS+=-I../include
 LDFLAGS+=-L..
-CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN)
-LDFLAGS+=@LDFLAGS@
+CFLAGS+=$(DEBUG)
 
 N2N_LIB=../libn2n.a
 
