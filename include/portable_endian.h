@@ -123,6 +123,11 @@
 
 #elif defined(__WINDOWS__)
 
+#   if defined(_MSC_VER)
+#       include <winsock2.h>
+#       pragma comment(lib,"Ws2_32.lib")
+#   endif
+
 #   if BYTE_ORDER == LITTLE_ENDIAN
 
 #       define htobe16(x) _byteswap_ushort(x)
