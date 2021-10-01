@@ -31,12 +31,20 @@ CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
 INSTALL=install
 MKDIR=mkdir -p
+
 OS := $(shell uname -s)
+
+export MINGW
+MINGW?=0
 
 ifndef OS
 # This could happen if the Makefile is unable to run "uname", which can
 # happen if the shell has a bad path (or is the wrong shell)
 $(error Could not determine the OS, cannot continue)
+endif
+
+ifeq ($(shell uname -o),Msys)
+MINGW=1
 endif
 
 INSTALL_PROG=$(INSTALL) -m755
@@ -69,8 +77,8 @@ ifeq ($(shell uname), SunOS)
 LDLIBS+=-lsocket -lnsl
 endif
 
-ifeq ($(findstring MSYS_NT,$(OS)),MSYS_NT)
-CFLAGS+=-I. -I./win32
+ifeq ($(MINGW),1)
+CFLAGS+=-I. -I./win32 -DWIN32
 LDLIBS+=$(abspath win32/n2n_win32.a)
 LDLIBS+=-lws2_32 -liphlpapi
 N2N_DEPS+=win32/n2n_win32.a

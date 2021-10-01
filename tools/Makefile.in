@@ -1,7 +1,5 @@
 DEBUG?=-g3
 
-OS:=$(shell uname -o)
-
 INSTALL=install
 INSTALL_PROG=$(INSTALL) -m755
 MKDIR=mkdir -p
@@ -15,7 +13,7 @@ endif
 
 HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
-ifeq ($(findstring MSYS_NT,$(OS)),MSYS_NT)
+ifeq ($(MINGW),1)
 CFLAGS+=-I../win32 -I../
 endif
 CFLAGS+=$(DEBUG)
