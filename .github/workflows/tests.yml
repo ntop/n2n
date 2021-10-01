@@ -78,13 +78,13 @@ jobs:
 
       - name: Generate coverage data
         run: |
-          make cover
+          make gcov
         shell: bash
 
       - if: runner.os != 'Windows'
         name: Generate gcovr report
         run: |
-          make gcov
+          make cover
         shell: bash
 
       - if: runner.os != 'Windows'
