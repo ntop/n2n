@@ -76,13 +76,19 @@ jobs:
           name: tests-out-${{matrix.os}}
           path: tests/*.out
 
-      - name: Generate coverage reports
+      - name: Generate coverage data
         run: |
           make cover
+        shell: bash
+
+      - if: runner.os != 'Windows'
+        name: Generate gcovr report
+        run: |
           make gcov
         shell: bash
 
-      - name: Upload gcovr report artifact
+      - if: runner.os != 'Windows'
+        name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
           name: coverage-${{matrix.os}}
