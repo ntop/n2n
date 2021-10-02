@@ -696,7 +696,7 @@ static void register_with_new_peer (n2n_edge_t *eee,
                 /* Normal STUN */
                 send_register(eee, &(scan->sock), mac, N2N_REGULAR_REG_COOKIE);
             }
-            send_register(eee, &(eee->curr_sn->sock), mac, N2N_REGULAR_REG_COOKIE);
+            send_register(eee, &(eee->curr_sn->sock), mac, N2N_FORWARDED_REG_COOKIE);
         } else {
             /* P2P register, send directly */
             send_register(eee, &(scan->sock), mac, N2N_REGULAR_REG_COOKIE);
