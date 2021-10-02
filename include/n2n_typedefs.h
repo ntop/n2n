@@ -421,6 +421,7 @@ typedef struct n2n_PEER_INFO {
 
 
 typedef struct n2n_QUERY_PEER {
+    uint16_t                      aflags;
     n2n_mac_t                     srcMac;
     n2n_sock_t                    sock;
     n2n_mac_t                     targetMac;

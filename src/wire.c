@@ -705,6 +705,7 @@ int encode_QUERY_PEER (uint8_t * base,
     retval += encode_common(base, idx, common);
     retval += encode_mac(base, idx, pkt->srcMac);
     retval += encode_mac(base, idx, pkt->targetMac);
+    retval += encode_uint16(base, idx, pkt->aflags);
 
     return retval;
 }
@@ -720,6 +721,7 @@ int decode_QUERY_PEER (n2n_QUERY_PEER_t * pkt,
 
     retval += decode_mac(pkt->srcMac, base, rem, idx);
     retval += decode_mac(pkt->targetMac, base, rem, idx);
+    retval += decode_uint16(&(pkt->aflags), base, rem, idx);
 
     return retval;
 }
