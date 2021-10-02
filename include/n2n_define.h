@@ -167,6 +167,7 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define N2N_MAC_SIZE               6
 #define N2N_LOCAL_REG_COOKIE       0x00100000
 #define N2N_REGULAR_REG_COOKIE     0x01000000
+#define N2N_FORWARDED_REG_COOKIE   0x10000000
 #define N2N_DESC_SIZE              16
 #define N2N_PKT_BUF_SIZE           2048
 #define N2N_SOCKBUF_SIZE           64  /* string representation of INET or INET6 sockets */
