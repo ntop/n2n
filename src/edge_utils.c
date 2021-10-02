@@ -1148,7 +1148,7 @@ void send_query_peer (n2n_edge_t * eee,
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
     n2n_common_t cmn = {0};
-    n2n_QUERY_PEER_t query = {{0}};
+    n2n_QUERY_PEER_t query = {0};
     struct peer_info *peer, *tmp;
     int n_o_pings = 0;
     int n_o_top_sn = 0;
