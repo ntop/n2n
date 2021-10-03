@@ -96,7 +96,7 @@ DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 SUBDIRS+=tools
 
 .PHONY: $(SUBDIRS)
-.PHONY: steps build push all clean install est cover gcov build-dep
+.PHONY: steps build push all clean install test cover gcov build-dep
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
 tools: $(N2N_LIB)
