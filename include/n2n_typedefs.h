@@ -437,7 +437,6 @@ struct peer_info {
     n2n_sock_t                       sock;
     SOCKET                           socket_fd;
     n2n_sock_t                       preferred_sock;
-    time_t                           last_local_reg;
     n2n_cookie_t                     last_cookie;
     n2n_auth_t                       auth;
     int                              timeout;

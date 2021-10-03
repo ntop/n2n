@@ -591,7 +591,7 @@ static void register_with_local_peers (n2n_edge_t * eee) {
         /* send registration to the local multicast group */
         traceEvent(TRACE_DEBUG, "registering with multicast group %s:%u",
                    N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
-        send_register(eee, &(eee->multicast_peer), NULL, N2N_LOCAL_REG_COOKIE);
+        send_register(eee, &(eee->multicast_peer), NULL, N2N_MCAST_REG_COOKIE);
     }
 #else
     traceEvent(TRACE_DEBUG, "multicast peers discovery is disabled, skipping");
@@ -688,7 +688,7 @@ static void register_with_new_peer (n2n_edge_t *eee,
                            (void *) (char *) &eee->conf.register_ttl,
                            sizeof(eee->conf.register_ttl));
                 for(; alter > 0; alter--, sock.port++) {
-                    send_register(eee, &sock, mac, N2N_REGULAR_REG_COOKIE);
+                    send_register(eee, &sock, mac, N2N_PORT_REG_COOKIE);
                 }
                 setsockopt(eee->sock, IPPROTO_IP, IP_TTL, (void *) (char *) &curTTL, sizeof(curTTL));
 #endif
@@ -739,7 +739,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
             memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
             HASH_ADD_PEER(eee->known_peers, scan);
             // reset last_local_reg to allow re-registration
-            scan->last_local_reg = 0;
+            scan->last_cookie = N2N_NO_REG_COOKIE;
         }
     }
 
@@ -756,9 +756,8 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
         if(via_multicast)
             scan->local = 1;
 
-
         if(((now - scan->last_seen) > 0 /* >= 1 sec */)
-          ||(cookie & N2N_LOCAL_REG_COOKIE)) {
+          ||(cookie > scan->last_cookie)) {
             /* Don't register too often */
             check_known_peer_sock_change(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer, now);
         }
@@ -787,7 +786,7 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
         scan = find_peer_by_sock(peer, eee->pending_peers);
         // in case of MAC change, reset last_local_reg to allow re-registration
         if(scan)
-            scan->last_local_reg = 0;
+            scan->last_cookie = N2N_NO_REG_COOKIE;
     }
 
     if(scan) {
@@ -799,20 +798,20 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
             free(scan);
             scan = scan_tmp;
             memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
-            // in case of MAC change, reset last_local_reg to allow re-registration
-            scan->last_local_reg = 0;
+            // in case of MAC change, reset cookie to allow immediate re-registration
+            scan->last_cookie = N2N_NO_REG_COOKIE;
         } else {
-            // ignore regular ACKs's socket update for a while if we have recently received a local (!) ACK
-            if(((now - scan->last_local_reg) > REGISTRATION_TIMEOUT)
-             ||(cookie & N2N_LOCAL_REG_COOKIE)) {
+            // update sock but ...
+            // ... ignore ACKs's (and their socks) from lower ranked inbound ways for a while
+            if(((now - scan->last_seen) > REGISTRATION_TIMEOUT / 4)
+             ||(cookie > scan->last_cookie)) {
                 scan->sock = *peer;
+                scan->last_cookie = cookie;
             }
         }
 
         HASH_ADD_PEER(eee->known_peers, scan);
         scan->last_p2p = now;
-        if(cookie & N2N_LOCAL_REG_COOKIE)
-            scan->last_local_reg = now;
 
         traceEvent(TRACE_DEBUG, "p2p connection established: %s [%s]",
                    macaddr_str(mac_buf, mac),
@@ -1594,7 +1593,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
     if(eee->sn_wait == 1)
         HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
             if((now - peer->last_seen) > REGISTER_SUPER_INTERVAL_DFL)
-                send_register(eee, &(peer->sock), peer->mac_addr, N2N_REGULAR_REG_COOKIE);
+                send_register(eee, &(peer->sock), peer->mac_addr, peer->last_cookie);
 
     eee->sn_wait = 1;
 
@@ -2517,7 +2516,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                 /* Update the sender in peer table entry */
                 check_peer_registration_needed(eee, from_supernode, via_multicast,
-                                               pkt.srcMac, N2N_REGULAR_REG_COOKIE, NULL, NULL, orig_sender);
+                                               pkt.srcMac,
+                                               // REVISIT: also consider PORT_REG_COOKIEs when implemented
+                                               from_supernode ? N2N_FORWARDED_REG_COOKIE : N2N_REGULAR_REG_COOKIE,
+                                               NULL, NULL, orig_sender);
 
                 handle_PACKET(eee, from_supernode, &pkt, orig_sender, udp_buf + idx, udp_size - idx);
                 break;
@@ -2599,7 +2601,6 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                            macaddr_str(mac_buf2, ra.dstMac),
                            sock_to_cstr(sockbuf1, &sender),
                           (ra.cookie & N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
-
 
                 peer_set_p2p_confirmed(eee, ra.srcMac,
                                       ra.cookie,
