@@ -2575,35 +2575,55 @@ static int process_udp (n2n_sn_t * sss,
 
                 HASH_FIND_PEER(comm->edges, query.targetMac, scan);
                 if(scan) {
-                    cmn2.ttl = N2N_DEFAULT_TTL;
-                    cmn2.pc = n2n_peer_info;
-                    cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
-                    memcpy(cmn2.community, cmn.community, sizeof(n2n_community_t));
+                    if(query.aflags & N2N_AFLAGS_PASS_THROUGH) {
+                        // pass on to edge
+// !!!
+                        memcpy(&cmn2, &cmn, sizeof(n2n_common_t));
+                        cmn2.flags |= N2N_FLAGS_FROM_SUPERNODE;
 
-                    pi.aflags = 0;
-                    memcpy(pi.srcMac, query.srcMac, sizeof(n2n_mac_t));
-                    memcpy(pi.mac, query.targetMac, sizeof(n2n_mac_t));
-                    pi.sock = scan->sock;
-                    if(scan->preferred_sock.family != (uint8_t)AF_INVALID) {
-                        cmn2.flags |= N2N_FLAGS_SOCKET;
-                        pi.preferred_sock = scan->preferred_sock;
+                        encode_QUERY_PEER(encbuf, &encx, &cmn2, &query);
+
+                        if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                            packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx_dynamic,
+                                                  comm->header_iv_ctx_dynamic,
+                                                  time_stamp());
+                        }
+
+                        sendto_peer(sss, scan, encbuf, encx);
+
+                        traceEvent(TRACE_DEBUG, "Tx QUERY_PEER pass through to %s",
+                                   macaddr_str(mac_buf, query.targetMac));
+                    } else {
+                        // handle from here
+                        cmn2.ttl = N2N_DEFAULT_TTL;
+                        cmn2.pc = n2n_peer_info;
+                        cmn2.flags = N2N_FLAGS_FROM_SUPERNODE;
+                        memcpy(cmn2.community, cmn.community, sizeof(n2n_community_t));
+
+                        pi.aflags = 0;
+                        memcpy(pi.srcMac, query.srcMac, sizeof(n2n_mac_t));
+                        memcpy(pi.mac, query.targetMac, sizeof(n2n_mac_t));
+                        pi.sock = scan->sock;
+                        if(scan->preferred_sock.family != (uint8_t)AF_INVALID) {
+                            cmn2.flags |= N2N_FLAGS_SOCKET;
+                            pi.preferred_sock = scan->preferred_sock;
+                        }
+
+                        encode_PEER_INFO(encbuf, &encx, &cmn2, &pi);
+
+                        if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                            packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx_dynamic,
+                                                  comm->header_iv_ctx_dynamic,
+                                                  time_stamp());
+                        }
+
+                        // back to sender, be it edge or supernode (which will forward to edge)
+                        sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, encbuf, encx);
+
+                        traceEvent(TRACE_DEBUG, "Tx PEER_INFO to %s",
+                                   macaddr_str(mac_buf, query.srcMac));
                     }
-
-                    encode_PEER_INFO(encbuf, &encx, &cmn2, &pi);
-
-                    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        packet_header_encrypt(encbuf, encx, encx, comm->header_encryption_ctx_dynamic,
-                                              comm->header_iv_ctx_dynamic,
-                                              time_stamp());
-                    }
-                    // back to sender, be it edge or supernode (which will forward to edge)
-                    sendto_sock(sss, socket_fd, (struct sockaddr *)sender_sock, encbuf, encx);
-
-                    traceEvent(TRACE_DEBUG, "Tx PEER_INFO to %s",
-                               macaddr_str(mac_buf, query.srcMac));
-
                 } else {
-
                     if(from_supernode) {
                         traceEvent(TRACE_DEBUG, "QUERY_PEER on unknown edge from supernode %s, dropping the packet",
                                    macaddr_str(mac_buf, query.srcMac));
@@ -2622,6 +2642,8 @@ static int process_udp (n2n_sn_t * sss,
                                                   time_stamp());
                         }
 
+                        // REVISIT: can't we find the associated supernode and send only to that one?
+                        //          would try_forward()? be a better match here?
                         try_broadcast(sss, NULL, &cmn, query.srcMac, from_supernode, encbuf, encx);
                     }
                 }
@@ -2633,7 +2655,6 @@ static int process_udp (n2n_sn_t * sss,
             n2n_PEER_INFO_t                        pi;
             uint8_t                                encbuf[N2N_SN_PKTBUF_SIZE];
             size_t                                 encx = 0;
-            struct peer_info                       *peer;
 
             if(!comm) {
                 traceEvent(TRACE_DEBUG, "PEER_INFO with unknown community %s", cmn.community);
@@ -2653,29 +2674,25 @@ static int process_udp (n2n_sn_t * sss,
                        macaddr_str(mac_buf, pi.srcMac),
                        sock_to_cstr(sockbuf, &sender));
 
-            HASH_FIND_PEER(comm->edges, pi.srcMac, peer);
-            if(peer != NULL) {
-                if((comm->is_federation == IS_NO_FEDERATION) && (!is_null_mac(pi.srcMac))) {
-                    // snoop on the information to use for supernode forwarding (do not wait until first remote REGISTER_SUPER)
-                    update_node_supernode_association(comm, &(pi.mac), sender_sock, now);
+            // forward with flag set
+            cmn.flags |= N2N_FLAGS_FROM_SUPERNODE;
+            encode_PEER_INFO(encbuf, &encx, &cmn, &pi);
 
-                    // this is a PEER_INFO for one of the edges conencted to this supernode, forward,
-                    // i.e. re-assemble (memcpy of udpbuf to encbuf could be sufficient as well)
-
-                    // use incoming cmn (with already decreased TTL)
-                    // PEER_INFO remains unchanged
-
-                    encode_PEER_INFO(encbuf, &encx, &cmn, &pi);
-
-                    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
-                        packet_header_encrypt(encbuf, encx, encx,
-                                              comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
-                                              time_stamp());
-                    }
-
-                    sendto_peer(sss, peer, encbuf, encx);
-                }
+            if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                packet_header_encrypt(encbuf, encx, encx,
+                                      comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
+                                      time_stamp());
             }
+
+            if((comm->is_federation == IS_NO_FEDERATION) && (!is_null_mac(pi.srcMac)))
+                try_forward(sss, comm, &cmn, pi.srcMac, from_supernode, encbuf, encx);
+
+            traceEvent(TRACE_DEBUG, "Tx PEER_INFO forwarding to %s",
+                       macaddr_str(mac_buf, pi.srcMac));
+
+            if(from_supernode)
+                update_node_supernode_association(comm, &(pi.mac), sender_sock, now);
+
             break;
         }
 

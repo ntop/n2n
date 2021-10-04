@@ -812,6 +812,7 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
 
         HASH_ADD_PEER(eee->known_peers, scan);
         scan->last_p2p = now;
+        scan->query_number = 0;
 
         traceEvent(TRACE_DEBUG, "p2p connection established: %s [%s]",
                    macaddr_str(mac_buf, mac),
@@ -1142,7 +1143,8 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
 
 /** Send a QUERY_PEER packet to the current supernode. */
 void send_query_peer (n2n_edge_t * eee,
-                      const n2n_mac_t dst_mac) {
+                      const n2n_mac_t dst_mac,
+                      uint16_t aflags) {
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
@@ -1164,6 +1166,8 @@ void send_query_peer (n2n_edge_t * eee,
 
     idx = 0;
     encode_mac(query.targetMac, &idx, dst_mac);
+
+    query.aflags = aflags;
 
     idx = 0;
     encode_QUERY_PEER(pktbuf, &idx, &cmn, &query);
@@ -1352,7 +1356,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
 
         // send PING to all the supernodes
         if(!eee->conf.connect_tcp)
-            send_query_peer(eee, null_mac);
+            send_query_peer(eee, null_mac, 0 /* no aflags for PING */);
         eee->last_sweep = now;
 
         // no answer yet (so far, unused in regular edge code; mainly used during bootstrap loading)
@@ -2215,12 +2219,13 @@ static int check_query_peer_info (n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
 
     if(now - scan->last_sent_query > eee->conf.register_interval) {
         send_register(eee, &(eee->curr_sn->sock), mac, N2N_FORWARDED_REG_COOKIE);
-        send_query_peer(eee, scan->mac_addr);
+// !!! criterion & 1
+        send_query_peer(eee, scan->mac_addr, ((scan->query_number++) & 1) ? N2N_AFLAGS_PASS_THROUGH : 0);
         scan->last_sent_query = now;
-        return(0);
+        return 0;
     }
 
-    return(1);
+    return 1;
 }
 
 /* ************************************** */
@@ -2821,8 +2826,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     return;
                 }
 
-                if(is_valid_peer_sock(&ra.sock))
+                if(is_valid_peer_sock(&ra.sock)) {
                     orig_sender = &(ra.sock);
+                    eee->external_sock = ra.sock;
+                }
 
                 traceEvent(TRACE_INFO, "Rx REGISTER_SUPER_ACK from %s [%s] (external %s) with %u attempts left",
                            macaddr_str(mac_buf1, ra.srcMac),
@@ -3013,6 +3020,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                        sock_to_cstr(sockbuf1, &pi.preferred_sock));
                         }
 
+                        if(pi.aflags & N2N_AFLAGS_PASS_THROUGH) {
+                            // REVISIT and add some p2p-related action !!!
+                        }
+
                         send_register(eee, &scan->sock, scan->mac_addr, N2N_REGULAR_REG_COOKIE);
 
                     } else {
@@ -3020,6 +3031,52 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                    macaddr_str(mac_buf1, pi.mac));
                     }
                 }
+                break;
+            }
+
+            case MSG_TYPE_QUERY_PEER: {
+
+                n2n_QUERY_PEER_t query;
+                n2n_PEER_INFO_t  pi;
+                uint8_t          encbuf[N2N_SN_PKTBUF_SIZE];
+                size_t           encx = 0;
+
+                decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
+
+                if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                    if(!find_peer_time_stamp_and_verify(eee, sn, null_mac, stamp, TIME_STAMP_ALLOW_JITTER)) {
+                        traceEvent(TRACE_DEBUG, "dropped QUERY_PEER due to time stamp error");
+                        return;
+                    }
+                }
+
+                cmn.ttl = N2N_DEFAULT_TTL;
+                cmn.pc = n2n_peer_info;
+                cmn.flags = 0;
+
+                pi.aflags = query.aflags;
+                memcpy(pi.srcMac, query.srcMac, sizeof(n2n_mac_t));
+                memcpy(pi.mac, query.targetMac, sizeof(n2n_mac_t));
+                if(is_valid_peer_sock(&eee->external_sock))
+                    pi.sock = eee->external_sock;
+
+                encode_PEER_INFO(encbuf, &encx, &cmn, &pi);
+
+                if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
+                    packet_header_encrypt(encbuf, encx, encx, eee->conf.header_encryption_ctx_dynamic,
+                                          eee->conf.header_iv_ctx_dynamic,
+                                          time_stamp());
+                }
+
+                sendto_sock(eee, encbuf, encx, &(eee->curr_sn->sock));
+
+                traceEvent(TRACE_DEBUG, "Tx PEER_INFO to %s",
+                           macaddr_str(mac_buf1, query.srcMac));
+
+                if(query.aflags & N2N_AFLAGS_PASS_THROUGH) {
+                    // REVISIT and add some p2p-related action !!!
+                }
+
                 break;
             }
 

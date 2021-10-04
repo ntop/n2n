@@ -444,6 +444,7 @@ struct peer_info {
     time_t                           last_seen;
     time_t                           last_p2p;
     time_t                           last_sent_query;
+    uint8_t                          query_number;             /* number of PEER_QUERies sent so far, can roll-over */
     SN_SELECTION_CRITERION_DATA_TYPE selection_criterion;
     uint64_t                         last_valid_time_stamp;
     char                             *ip_addr;
@@ -707,6 +708,8 @@ struct n2n_edge {
     int                              udp_multicast_sock;                 /**< socket for local multicast registrations. */
     int                              multicast_joined;                   /**< 1 if the group has been joined.*/
 #endif
+
+    n2n_sock_t                       external_sock;                      /**< the socket the supernode sees the edge at */
 
     /* Peers */
     struct peer_info *               known_peers;                        /**< Edges we are connected to. */

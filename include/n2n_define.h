@@ -130,6 +130,9 @@ enum sn_purge{SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 /* flag used in add_sn_to_list_by_mac_or_sock */
 enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
+#define N2N_AFLAGS_PASS_THROUGH    1 /* indicate that QUERY_PEER is to be passed through to the edge in question      */
+                                     /* if set in PEER_INFO, it indicates the same for the corresponding QUERY_PEER   */
+
 #define N2N_NETMASK_STR_SIZE      16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ             18 /* AA:BB:CC:DD:EE:FF + NULL*/
 #define N2N_IF_MODE_SIZE          16 /* static | dhcp */
