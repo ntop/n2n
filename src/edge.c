@@ -869,8 +869,8 @@ static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_pri
 
 /* ************************************** */
 
-static void daemonize () {
 #ifndef WIN32
+static void daemonize () {
     int childpid;
 
     traceEvent(TRACE_NORMAL, "parent process is exiting (this is normal)");
@@ -911,8 +911,8 @@ static void daemonize () {
         } else /* father */
             exit(0);
     }
-#endif
 }
+#endif
 
 /* *************************************************** */
 
@@ -1258,9 +1258,6 @@ int main (int argc, char* argv[]) {
         setUseSyslog(1); /* traceEvent output now goes to syslog. */
         daemonize();
     }
-#endif /* #ifndef WIN32 */
-
-#ifndef WIN32
 
 #ifdef HAVE_LIBCAP
     /* Before dropping the privileges, retain capabilities to regain them in future. */

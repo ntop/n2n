@@ -16,6 +16,8 @@
  *
  */
 
+#include <sys/time.h>
+
 #include "n2n.h"
 
 #define DURATION                2.5   // test duration per algorithm

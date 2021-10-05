@@ -477,7 +477,7 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
     ssize_t sent = 0;
     n2n_tcp_connection_t *conn;
 
-    sent = sendto(socket_fd, pktbuf, pktsize, 0 /* flags */,
+    sent = sendto(socket_fd, (void *)pktbuf, pktsize, 0 /* flags */,
                   socket, sizeof(struct sockaddr_in));
 
     if((sent <= 0) && (errno)) {
@@ -1634,7 +1634,7 @@ static int sendto_mgmt (n2n_sn_t *sss,
                         const uint8_t *mgmt_buf,
                         size_t mgmt_size) {
 
-    ssize_t r = sendto(sss->mgmt_sock, mgmt_buf, mgmt_size, 0 /*flags*/,
+    ssize_t r = sendto(sss->mgmt_sock, (void *)mgmt_buf, mgmt_size, 0 /*flags*/,
                        (struct sockaddr *)sender_sock, sizeof (struct sockaddr_in));
 
     if(r <= 0) {
@@ -2706,8 +2706,10 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
         fd_set socket_mask;
         n2n_tcp_connection_t *conn, *tmp_conn;
 
+#ifdef N2N_HAVE_TCP
         SOCKET tmp_sock;
         n2n_sock_str_t sockbuf;
+#endif
         struct timeval wait_time;
         time_t before, now = 0;
 
@@ -2748,7 +2750,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 socklen_t i;
 
                 i = sizeof(sender_sock);
-                bread = recvfrom(sss->sock, pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
+                bread = recvfrom(sss->sock, (void *)pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
                                  (struct sockaddr *)&sender_sock, (socklen_t *)&i);
 
                 if((bread < 0)
@@ -2873,7 +2875,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
                 size_t i;
 
                 i = sizeof(sender_sock);
-                bread = recvfrom(sss->mgmt_sock, pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
+                bread = recvfrom(sss->mgmt_sock, (void *)pktbuf, N2N_SN_PKTBUF_SIZE, 0 /*flags*/,
                                  (struct sockaddr *)&sender_sock, (socklen_t *)&i);
 
                 if(bread <= 0) {
