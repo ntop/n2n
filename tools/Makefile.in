@@ -1,3 +1,7 @@
+#
+# This is not a standalone makefile, it must be called from the toplevel
+# makefile to inherit the correct environment
+
 DEBUG?=-g3
 
 INSTALL=install
@@ -14,7 +18,7 @@ endif
 HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
 ifeq ($(MINGW),1)
-CFLAGS+=-I../win32 -I../
+CFLAGS+=-I../win32
 endif
 CFLAGS+=$(DEBUG)
 LDFLAGS+=-L..
