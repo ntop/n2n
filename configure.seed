@@ -13,8 +13,13 @@ else
 GIT_RELEASE=${N2N_VERSION_SHORT}
 fi
 
-CC=gcc
-AR=ar
+if test "${CC+set}" != set; then
+    CC=gcc
+fi
+if test "${AR+set}" != set; then
+    AR=ar
+fi
+
 N2N_LIBS=
 
 AC_PROG_CC
