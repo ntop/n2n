@@ -6,6 +6,8 @@ GIT_DESCRIBE=$(shell git describe --always --dirty)
 
 ########
 
+export CC
+export AR
 CC=@CC@
 AR=@AR@
 
@@ -13,7 +15,9 @@ AR=@AR@
 #(thanks to Robert Gibbon)
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
 
-N2N_OBJS_OPT=
+export CFLAGS
+export LDFLAGS
+
 CFLAGS=@CFLAGS@ -I ./include
 LDFLAGS=@LDFLAGS@ -L .
 
@@ -25,17 +29,47 @@ endif
 WARN=-Wall
 CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
-INSTALL=install
-MKDIR=mkdir -p
-OS := $(shell uname -s)
+# Quick sanity check on our build environment
+UNAME_S := $(shell uname -s)
+ifndef UNAME_S
+# This could happen if the Makefile is unable to run "uname", which can
+# happen if the shell has a bad path (or is the wrong shell)
+$(error Could not run uname command, cannot continue)
+endif
 
+# Any compile environment that needs different flags, libraries, includes or
+# other settings will get its own CONFIG_TARGET value.  For cross compiling,
+# this might be set externally to the Makefile, but if not set we try to
+# set a reasonable default.
+
+export CONFIG_TARGET
+ifndef CONFIG_TARGET
+ifeq ($(shell uname -o),Msys)
+CONFIG_TARGET=mingw
+else ifeq ($(shell uname -s),Darwin)
+CONFIG_TARGET=darwin
+else ifeq ($(shell uname), SunOS)
+CONFIG_TARGET=sunos
+else
+CONFIG_TARGET=generic
+endif
+endif
+
+export MKDIR
+export INSTALL
+export INSTALL_PROG
+export INSTALL_DOC
+export PREFIX
+export SBINDIR
+
+MKDIR=mkdir -p
+INSTALL=install
 INSTALL_PROG=$(INSTALL) -m755
 INSTALL_DOC=$(INSTALL) -m644
 
 # DESTDIR set in debian make system
 PREFIX?=$(DESTDIR)/usr
-#BINDIR=$(PREFIX)/bin
-ifeq ($(OS),Darwin)
+ifeq ($(CONFIG_TARGET),darwin)
 SBINDIR=$(PREFIX)/local/sbin
 else
 SBINDIR=$(PREFIX)/sbin
@@ -50,12 +84,21 @@ N2N_LIB=libn2n.a
 N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
 N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 
+export LDLIBS
 LDLIBS+=-ln2n
 LDLIBS+=@N2N_LIBS@
 
 #For OpenSolaris (Solaris too?)
-ifeq ($(shell uname), SunOS)
+ifeq ($(CONFIG_TARGET), sunos)
 LDLIBS+=-lsocket -lnsl
+endif
+
+ifeq ($(CONFIG_TARGET),mingw)
+CFLAGS+=-I. -I./win32 -DWIN32
+LDLIBS+=$(abspath win32/n2n_win32.a)
+LDLIBS+=-lws2_32 -liphlpapi
+N2N_DEPS+=win32/n2n_win32.a
+SUBDIRS+=win32
 endif
 
 APPS=edge
@@ -66,10 +109,16 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-.PHONY: steps build push all clean install tools test cover gcov build-dep
-all: $(APPS) $(DOCS) tools
+SUBDIRS+=tools
+
+.PHONY: $(SUBDIRS)
+.PHONY: steps build push all clean install test cover gcov build-dep
+all: $(APPS) $(DOCS) $(SUBDIRS)
 
 tools: $(N2N_LIB)
+	$(MAKE) -C $@
+
+win32:
 	$(MAKE) -C $@
 
 src/edge.o: $(N2N_DEPS)
@@ -94,6 +143,8 @@ $(N2N_LIB): $(N2N_OBJS)
 	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)
 #	$(RANLIB) $@
 
+win32/n2n_win32.a: win32
+
 test: tools
 	tools/test_harness
 
@@ -116,16 +167,18 @@ gcov:
 # This is the superset of all packages that might be needed.
 # It is a convinent target to use during development or from a CI/CD system
 build-dep:
-ifeq ($(OS),Linux)
+ifeq ($(CONFIG_TARGET),generic)
 	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
+else ifeq ($(CONFIG_TARGET),darwin)
+	brew install automake gcovr
 else
-	echo Not attempting to handle build dependancies for non dpkg systems
+	echo Not attempting to install dependancies for system $(CONFIG_TARGET)
 endif
 
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) coverage/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
-	$(MAKE) -C tools clean
+	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"

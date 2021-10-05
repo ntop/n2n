@@ -12,7 +12,7 @@ If you are on a modern version of macOS (i.e. Catalina), the commands above will
 For more information refer to vendor documentation or the [Apple Technical Note](https://developer.apple.com/library/content/technotes/tn2459/_index.html).
 
 
-# Build on Windows
+# Build on Windows (Visual Studio)
 
 ## Requirements
 
@@ -46,8 +46,9 @@ In order to run n2n, you will need the following:
 - If OpenSSL has been linked dynamically, the corresponding `.dll` file should be available
   onto the target computer.
   
-NOTE: Sticking to this tool chain ensures that resulting executables are able to communicate with Linux or other OS builds.
-Especialy MinGW builds are reported to not be compatible to other OS builds, please see [#617](https://github.com/ntop/n2n/issues/617) and [#642](https://github.com/ntop/n2n/issues/642).
+NOTE: Sticking to this tool chain has historically meant that resulting
+executables are more likely to be able to communicate with Linux or other
+OS builds, however efforts are being made to address this concern.
 
 ## Build (CLI)
 
@@ -96,6 +97,29 @@ Here is an example `supernode.conf` file:
 ```
 
 See `edge.exe --help` and `supernode.exe --help` for a full list of supported options.
+
+# Build on Windows (MinGW)
+
+These steps were tested on a fresh install of Windows 10 Pro with all patches
+applied as of 2021-09-29.
+
+- Install Chocolatey (Following instructions on https://chocolatey.org/install)
+- from an admin cmd prompt
+    - choco install git mingw make
+- All the remaining commands must be run from inside a bash shell ("C:\Program Files\Git\usr\bin\bash.exe")
+    - git clone $THIS_REPO
+    - cd n2n
+    - ./scripts/hack_fakeautoconf
+    - make
+    - make test
+
+Due to the hack used to replace autotools on windows, any build created this
+way will currently have inaccurate build version numbers.
+
+Note: MinGW builds have a history of incompatibility reports with other OS
+builds, please see [#617](https://github.com/ntop/n2n/issues/617) and [#642](https://github.com/ntop/n2n/issues/642).
+However, if the tests pass, you should have a high confidence that your build
+will be compatible.
 
 # General Building Options
 

@@ -16,6 +16,8 @@
  *
  */
 
+#include <inttypes.h>
+
 #include "n2n.h"
 #include "hexdump.h"
 
@@ -63,7 +65,7 @@ int main(int argc, char * argv[]) {
     char *test_name = "environment";
     printf("%s: community_name = \"%s\"\n", test_name, conf.community_name);
     printf("%s: encrypt_key = \"%s\"\n", test_name, conf.encrypt_key);
-    printf("%s: input size = 0x%lx\n", test_name, sizeof(PKT_CONTENT));
+    printf("%s: input size = 0x%"PRIx64"\n", test_name, sizeof(PKT_CONTENT));
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 
@@ -111,7 +113,7 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
         pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
         PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
     
-    printf("%s: output size = 0x%lx\n", op_name, nw);
+    printf("%s: output size = 0x%"PRIx64"\n", op_name, nw);
     fhexdump(0, pktbuf, nw, stdout);
 
     // decrpytion

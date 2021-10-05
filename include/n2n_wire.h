@@ -26,7 +26,7 @@
 #endif
 
 #if defined(WIN32)
-#include "win32/n2n_win32.h"
+#include "n2n_win32.h"
 #else /* #if defined(WIN32) */
 #include <netinet/in.h>
 #include <sys/socket.h> /* AF_INET and AF_INET6 */

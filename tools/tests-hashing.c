@@ -16,6 +16,8 @@
  *
  */
 
+#include <inttypes.h>
+
 #include "n2n.h"
 #include "hexdump.h"
 
@@ -43,7 +45,7 @@ void test_pearson(void *buf, unsigned int bufsize) {
 
     uint64_t hash = pearson_hash_64(buf, bufsize);
 
-    printf("%s: output = 0x%lx\n", test_name, hash);
+    printf("%s: output = 0x%"PRIx64"\n", test_name, hash);
 
     fprintf(stderr, "%s: tested\n", test_name);
     printf("\n");
@@ -53,7 +55,7 @@ int main(int argc, char * argv[]) {
     pearson_hash_init();
 
     char *test_name = "environment";
-    printf("%s: input size = 0x%lx\n", test_name, sizeof(PKT_CONTENT));
+    printf("%s: input size = 0x%"PRIx64"\n", test_name, sizeof(PKT_CONTENT));
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 

@@ -29,6 +29,7 @@ jobs:
           - ubuntu-latest
           - ubuntu-18.04
           - macos-latest
+          - windows-latest
 
     steps:
       - uses: actions/checkout@v2
@@ -43,6 +44,14 @@ jobs:
         name: Install packages
         run: |
           brew install automake gcovr
+
+      - if: runner.os == 'Windows'
+        # This is a pretty big hammer, but gets the windows compile moving
+        name: Hack up a fake autoconf
+        run: |
+          echo true >autogen.sh
+          cp scripts/hack_fakeautoconf configure
+        shell: bash
 
       - name: generate a makefile and use it to install more packages
         run: |
@@ -67,13 +76,19 @@ jobs:
           name: tests-out-${{matrix.os}}
           path: tests/*.out
 
-      - name: Generate coverage reports
+      - name: Generate coverage data
         run: |
-          make cover
           make gcov
         shell: bash
 
-      - name: Upload gcovr report artifact
+      - if: runner.os != 'Windows'
+        name: Generate gcovr report
+        run: |
+          make cover
+        shell: bash
+
+      - if: runner.os != 'Windows'
+        name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
           name: coverage-${{matrix.os}}

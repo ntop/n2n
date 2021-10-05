@@ -16,6 +16,8 @@
  *
  */
 
+#include <inttypes.h>
+
 #include "n2n.h"
 #include "hexdump.h"
 
@@ -47,8 +49,8 @@ void test_REGISTER(n2n_common_t *common) {
     size_t idx = 0;
     size_t retval = encode_REGISTER( pktbuf, &idx, common, &reg);
 
-    printf("%s: output retval = 0x%lx\n", test_name, retval);
-    printf("%s: output idx = 0x%lx\n", test_name, idx);
+    printf("%s: output retval = 0x%"PRIx64"\n", test_name, retval);
+    printf("%s: output idx = 0x%"PRIx64"\n", test_name, idx);
     fhexdump(0, pktbuf, idx, stdout);
 
     // TODO: decode_REGISTER() and print

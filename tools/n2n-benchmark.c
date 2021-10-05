@@ -16,6 +16,12 @@
  *
  */
 
+#ifndef _MSC_VER
+/* MinGW has undefined function gettimeofday() warnings without this header
+ * but Visual C++ doesnt even have the header */
+#include <sys/time.h>
+#endif
+
 #include "n2n.h"
 
 #define DURATION                2.5   // test duration per algorithm

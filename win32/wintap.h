@@ -7,7 +7,9 @@
 
 #undef UNICODE
 #undef _UNICODE
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 
 #include <ws2tcpip.h>
 #include <stdio.h>

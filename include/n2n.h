@@ -41,7 +41,7 @@
 #ifndef CMAKE_BUILD
 #include "config.h" /* Visual C++ */
 #else
-#include "win32/winconfig.h"
+#include "winconfig.h"
 #endif
 #define N2N_CAN_NAME_IFACE 1
 #undef N2N_HAVE_DAEMON
@@ -137,7 +137,7 @@
 #ifdef WIN32
 #include <winsock2.h>           /* for tcp */
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
-#include "win32/wintap.h"
+#include "wintap.h"
 #include <sys/stat.h>
 #else
 #include <pwd.h>

@@ -1,26 +1,16 @@
-CC=@CC@
+#
+# This is not a standalone makefile, it must be called from the toplevel
+# makefile to inherit the correct environment
+
 DEBUG?=-g3
-OPTIMIZATION?=-O2 #-march=native
-WARN?=-Wall
 
-INSTALL=install
-INSTALL_PROG=$(INSTALL) -m755
-MKDIR=mkdir -p
-
-PREFIX?=$(DESTDIR)/usr
-ifeq ($(OS),Darwin)
-SBINDIR=$(PREFIX)/local/sbin
-else
-SBINDIR=$(PREFIX)/sbin
-endif
-
-LDLIBS+=-ln2n
-LDLIBS+=@N2N_LIBS@
 HEADERS=$(wildcard include/*.h)
-CFLAGS+=-I../include @CFLAGS@
+CFLAGS+=-I../include
+ifeq ($(CONFIG_TARGET),mingw)
+CFLAGS+=-I../win32
+endif
+CFLAGS+=$(DEBUG)
 LDFLAGS+=-L..
-CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN)
-LDFLAGS+=@LDFLAGS@
 
 N2N_LIB=../libn2n.a
 
