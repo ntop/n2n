@@ -55,7 +55,7 @@ int main(int argc, char * argv[]) {
     pearson_hash_init();
 
     char *test_name = "environment";
-    printf("%s: input size = 0x%lx\n", test_name, sizeof(PKT_CONTENT));
+    printf("%s: input size = 0x%"PRIx64"\n", test_name, sizeof(PKT_CONTENT));
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 

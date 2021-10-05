@@ -16,6 +16,8 @@
  *
  */
 
+#include <inttypes.h>
+
 #include <assert.h>
 
 #include "n2n.h"
@@ -78,7 +80,7 @@ void test_lzo1x() {
 
     assert(compression_len == 47);
 
-    printf("%s: output size = 0x%lx\n", test_name, compression_len);
+    printf("%s: output size = 0x%"PRIx64"\n", test_name, compression_len);
     fhexdump(0, compression_buffer, compression_len, stdout);
 
     uint8_t deflation_buffer[N2N_PKT_BUF_SIZE];
@@ -111,7 +113,7 @@ void test_zstd() {
 
     assert(compression_len == 33);
     
-    printf("%s: output size = 0x%lx\n", test_name, compression_len);
+    printf("%s: output size = 0x%"PRIx64"\n", test_name, compression_len);
     fhexdump(0, compression_buffer, compression_len, stdout);
 
     uint8_t deflation_buffer[N2N_PKT_BUF_SIZE];
@@ -148,7 +150,7 @@ int main(int argc, char * argv[]) {
     /* Also for compression (init moved here for ciphers get run before in case of lzo init error) */
     init_compression_for_benchmark();
 
-    printf("%s: input size = 0x%lx\n", "original", sizeof(PKT_CONTENT));
+    printf("%s: input size = 0x%"PRIx64"\n", "original", sizeof(PKT_CONTENT));
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 
