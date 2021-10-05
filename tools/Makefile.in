@@ -4,20 +4,9 @@
 
 DEBUG?=-g3
 
-INSTALL=install
-INSTALL_PROG=$(INSTALL) -m755
-MKDIR=mkdir -p
-
-PREFIX?=$(DESTDIR)/usr
-ifeq ($(OS),Darwin)
-SBINDIR=$(PREFIX)/local/sbin
-else
-SBINDIR=$(PREFIX)/sbin
-endif
-
 HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
-ifeq ($(MINGW),1)
+ifeq ($(CONFIG_TARGET),mingw)
 CFLAGS+=-I../win32
 endif
 CFLAGS+=$(DEBUG)

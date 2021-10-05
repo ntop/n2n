@@ -29,31 +29,47 @@ endif
 WARN=-Wall
 CFLAGS+=$(DEBUG) $(OPTIMIZATION) $(WARN) $(OPTIONS) $(PLATOPTS)
 
-INSTALL=install
-MKDIR=mkdir -p
-
-OS := $(shell uname -s)
-
-export MINGW
-MINGW?=0
-
-ifndef OS
+# Quick sanity check on our build environment
+UNAME_S := $(shell uname -s)
+ifndef UNAME_S
 # This could happen if the Makefile is unable to run "uname", which can
 # happen if the shell has a bad path (or is the wrong shell)
-$(error Could not determine the OS, cannot continue)
+$(error Could not run uname command, cannot continue)
 endif
 
+# Any compile environment that needs different flags, libraries, includes or
+# other settings will get its own CONFIG_TARGET value.  For cross compiling,
+# this might be set externally to the Makefile, but if not set we try to
+# set a reasonable default.
+
+export CONFIG_TARGET
+ifndef CONFIG_TARGET
 ifeq ($(shell uname -o),Msys)
-MINGW=1
+CONFIG_TARGET=mingw
+else ifeq ($(shell uname -s),Darwin)
+CONFIG_TARGET=darwin
+else ifeq ($(shell uname), SunOS)
+CONFIG_TARGET=sunos
+else
+CONFIG_TARGET=generic
+endif
 endif
 
+export MKDIR
+export INSTALL
+export INSTALL_PROG
+export INSTALL_DOC
+export PREFIX
+export SBINDIR
+
+MKDIR=mkdir -p
+INSTALL=install
 INSTALL_PROG=$(INSTALL) -m755
 INSTALL_DOC=$(INSTALL) -m644
 
 # DESTDIR set in debian make system
 PREFIX?=$(DESTDIR)/usr
-#BINDIR=$(PREFIX)/bin
-ifeq ($(OS),Darwin)
+ifeq ($(CONFIG_TARGET),darwin)
 SBINDIR=$(PREFIX)/local/sbin
 else
 SBINDIR=$(PREFIX)/sbin
@@ -73,11 +89,11 @@ LDLIBS+=-ln2n
 LDLIBS+=@N2N_LIBS@
 
 #For OpenSolaris (Solaris too?)
-ifeq ($(shell uname), SunOS)
+ifeq ($(CONFIG_TARGET), sunos)
 LDLIBS+=-lsocket -lnsl
 endif
 
-ifeq ($(MINGW),1)
+ifeq ($(CONFIG_TARGET),mingw)
 CFLAGS+=-I. -I./win32 -DWIN32
 LDLIBS+=$(abspath win32/n2n_win32.a)
 LDLIBS+=-lws2_32 -liphlpapi
@@ -151,10 +167,12 @@ gcov:
 # This is the superset of all packages that might be needed.
 # It is a convinent target to use during development or from a CI/CD system
 build-dep:
-ifeq ($(OS),Linux)
+ifeq ($(CONFIG_TARGET),generic)
 	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
+else ifeq ($(CONFIG_TARGET),darwin)
+	brew install automake gcovr
 else
-	echo Not attempting to install dependancies for non dpkg system $(OS)
+	echo Not attempting to install dependancies for system $(CONFIG_TARGET)
 endif
 
 clean:
