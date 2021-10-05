@@ -100,13 +100,13 @@ See `edge.exe --help` and `supernode.exe --help` for a full list of supported op
 
 # Build on Windows (MinGW)
 
-These steps were test on a fresh install of Windows 10 Pro with all patches
+These steps were tested on a fresh install of Windows 10 Pro with all patches
 applied as of 2021-09-29.
 
 - Install Chocolatey (Following instructions on https://chocolatey.org/install)
 - from an admin cmd prompt
     - choco install git mingw make
-- All the remaining commands need be run from inside a bash shell ("C:\Program Files\Git\usr\bin\bash.exe")
+- All the remaining commands must be run from inside a bash shell ("C:\Program Files\Git\usr\bin\bash.exe")
     - git clone $THIS_REPO
     - cd n2n
     - ./scripts/hack_fakeautoconf
