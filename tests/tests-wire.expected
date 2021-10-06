@@ -4,6 +4,8 @@ environment: common.community = "abc123def456z"
 
 REGISTER: common.pc = 1
 REGISTER: reg.cookie = 0
+REGISTER: reg.srcMac[] = 0x00,0x01,0x02,0x03,0x04,0x05
+REGISTER: reg.dstMac[] = 0x10,0x11,0x12,0x13,0x14,0x15
 REGISTER: reg.dev_addr.net_addr = 0x20212223
 REGISTER: reg.dev_addr.net_bitlen = 25
 REGISTER: reg.dev_desc = "Dummy_Dev_Desc"
