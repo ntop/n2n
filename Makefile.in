@@ -83,7 +83,14 @@ N2N_LIB=libn2n.a
 N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
 N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 
+# As source files pass the linter, they can be added here (If all the source
+# is passing the linter tests, this can be refactored)
+N2N_LINT=\
+	tools/tests-elliptic.c \
+
+
 export LDLIBS
+
 LDLIBS+=-ln2n
 LDLIBS+=@N2N_LIBS@
 
@@ -164,7 +171,7 @@ lint.python:
 	flake8 scripts/n2nctl scripts/n2nhttpd
 
 lint.ccode:
-	scripts/indent $(wildcard src/*.c)
+	scripts/indent $(N2N_LINT)
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
