@@ -50,6 +50,21 @@ void print_mac(char *test_name, char *field, n2n_mac_t mac) {
             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
+void init_auth(n2n_auth_t *auth) {
+    auth->scheme = n2n_auth_simple_id;
+    auth->token_size = 16;
+    auth->token[0] = 0xfe;
+    auth->token[4] = 0xfd;
+    auth->token[8] = 0xfc;
+    auth->token[15] = 0xfb;
+}
+
+void print_auth(char *test_name, char *field, n2n_auth_t *auth) {
+    printf("%s: %s.scheme = %i\n", test_name, field, auth->scheme);
+    printf("%s: %s.token_size = %i\n", test_name, field, auth->token_size);
+    printf("%s: %s.token[0] = 0x%02x\n", test_name, field, auth->token[0]);
+}
+
 void init_common(n2n_common_t *common, char *community) {
     memset( common, 0, sizeof(*common) );
     common->ttl = N2N_DEFAULT_TTL;
@@ -98,6 +113,75 @@ void test_REGISTER(n2n_common_t *common) {
     printf("\n");
 }
 
+void test_REGISTER_SUPER(n2n_common_t *common) {
+    char *test_name = "REGISTER_SUPER";
+
+    common->pc = n2n_register_super;
+    printf("%s: common.pc = %i\n", test_name, common->pc);
+
+    n2n_REGISTER_SUPER_t reg;
+    memset( &reg, 0, sizeof(reg) );
+    init_mac( reg.edgeMac, 0x20,0x21,0x22,0x23,0x24,0x25);
+    // n2n_sock_t sock
+    init_ip_subnet(&reg.dev_addr);
+    strcpy( (char *)reg.dev_desc, "Dummy_Dev_Desc" );
+    init_auth(&reg.auth);
+    reg.key_time = 600;
+
+
+    printf("%s: reg.cookie = %i\n", test_name, reg.cookie);
+    print_mac(test_name, "reg.edgeMac", reg.edgeMac);
+    // TODO: print reg.sock
+    print_ip_subnet(test_name, "reg.dev_addr", &reg.dev_addr);
+    printf("%s: reg.dev_desc = \"%s\"\n", test_name, reg.dev_desc);
+    print_auth(test_name, "reg.auth", &reg.auth);
+    printf("%s: reg.key_time = %"PRIi32"\n", test_name, reg.key_time);
+    printf("\n");
+
+    uint8_t pktbuf[N2N_PKT_BUF_SIZE];
+    size_t idx = 0;
+    size_t retval = encode_REGISTER_SUPER( pktbuf, &idx, common, &reg);
+
+    printf("%s: output retval = 0x%"PRIx64"\n", test_name, retval);
+    printf("%s: output idx = 0x%"PRIx64"\n", test_name, idx);
+    fhexdump(0, pktbuf, idx, stdout);
+
+    // TODO: decode_REGISTER_SUPER() and print
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
+void test_UNREGISTER_SUPER(n2n_common_t *common) {
+    char *test_name = "UNREGISTER_SUPER";
+
+    common->pc = n2n_unregister_super;
+    printf("%s: common.pc = %i\n", test_name, common->pc);
+
+    n2n_UNREGISTER_SUPER_t unreg;
+    memset( &unreg, 0, sizeof(unreg) );
+    init_auth(&unreg.auth);
+    init_mac( unreg.srcMac, 0x30,0x31,0x32,0x33,0x34,0x35);
+
+
+    print_auth(test_name, "unreg.auth", &unreg.auth);
+    print_mac(test_name, "unreg.srcMac", unreg.srcMac);
+    printf("\n");
+
+    uint8_t pktbuf[N2N_PKT_BUF_SIZE];
+    size_t idx = 0;
+    size_t retval = encode_UNREGISTER_SUPER( pktbuf, &idx, common, &unreg);
+
+    printf("%s: output retval = 0x%"PRIx64"\n", test_name, retval);
+    printf("%s: output idx = 0x%"PRIx64"\n", test_name, idx);
+    fhexdump(0, pktbuf, idx, stdout);
+
+    // TODO: decode_UNREGISTER_SUPER() and print
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
 int main(int argc, char * argv[]) {
     char *test_name = "environment";
 
@@ -107,6 +191,8 @@ int main(int argc, char * argv[]) {
     printf("\n");
 
     test_REGISTER(&common);
+    test_REGISTER_SUPER(&common);
+    test_UNREGISTER_SUPER(&common);
     // TODO: add more wire tests
 
     return 0;
