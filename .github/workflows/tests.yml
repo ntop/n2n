@@ -20,7 +20,24 @@ jobs:
           ./autogen.sh
           ./configure
           make test
+
+  lint:
+    name: Code syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install essential
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential uncrustify
+
+      - name: Run the lint tools
+        run: |
+          ./autogen.sh
+          ./configure
           make lint.python
+          make lint.ccode
 
   test_linux:
     needs: smoketest
