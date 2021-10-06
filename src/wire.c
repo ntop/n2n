@@ -71,7 +71,7 @@ int decode_uint16 (uint16_t * out,
                    size_t * rem,
                    size_t * idx) {
 
-    if (*rem < 2) {
+    if(*rem < 2) {
         return 0;
     }
 
@@ -101,7 +101,7 @@ int decode_uint32 (uint32_t * out,
                    size_t * rem,
                    size_t * idx) {
 
-    if (*rem < 4) {
+    if(*rem < 4) {
         return 0;
     }
 
@@ -130,7 +130,7 @@ int decode_uint64 (uint64_t * out,
                    size_t * rem,
                    size_t * idx) {
 
-    if (*rem < 8) {
+    if(*rem < 8) {
         return 0;
     }
 
@@ -159,7 +159,7 @@ int decode_buf (uint8_t * out,
                 size_t * rem,
                 size_t * idx) {
 
-    if (*rem < bufsize) {
+    if(*rem < bufsize) {
         return 0;
     }
 
