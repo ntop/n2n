@@ -1560,7 +1560,7 @@ static int process_mgmt (n2n_sn_t *sss,
                             "%s '%s'\n",
                             (community->is_federation) ? "FEDERATION" :
                                                                       ((community->purgeable == COMMUNITY_UNPURGEABLE) ? "FIXED NAME COMMUNITY" : "COMMUNITY"),
-                            community->community);
+                            (community->is_federation) ? "-/-" : community->community);
         sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
         ressize = 0;
 
