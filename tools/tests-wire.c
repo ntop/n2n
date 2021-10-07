@@ -69,7 +69,8 @@ void init_common(n2n_common_t *common, char *community) {
     memset( common, 0, sizeof(*common) );
     common->ttl = N2N_DEFAULT_TTL;
     common->flags = 0;
-    strncpy( (char *)common->community, community, N2N_COMMUNITY_SIZE );
+    strncpy( (char *)common->community, community, N2N_COMMUNITY_SIZE);
+    common->community[N2N_COMMUNITY_SIZE - 1] = '\0';
 }
 
 void print_common(char *test_name, n2n_common_t *common) {
