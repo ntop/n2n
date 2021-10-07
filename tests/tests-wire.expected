@@ -4,6 +4,8 @@ environment: common.community = "abc123def456z"
 
 REGISTER: common.pc = 1
 REGISTER: reg.cookie = 0
+REGISTER: reg.srcMac[] = 0:1:2:3:4:5
+REGISTER: reg.dstMac[] = 10:11:12:13:14:15
 REGISTER: reg.dev_addr.net_addr = 0x20212223
 REGISTER: reg.dev_addr.net_bitlen = 25
 REGISTER: reg.dev_desc = "Dummy_Dev_Desc"
@@ -14,4 +16,36 @@ REGISTER: output idx = 0x3d
 010: 7a 00 00 00 00 00 00 00  00 00 00 00 00 01 02 03   |z               |
 020: 04 05 10 11 12 13 14 15  20 21 22 23 19 44 75 6d   |         !"# Dum|
 030: 6d 79 5f 44 65 76 5f 44  65 73 63 00 00            |my_Dev_Desc  |
+
+REGISTER_SUPER: common.pc = 5
+REGISTER_SUPER: reg.cookie = 0
+REGISTER_SUPER: reg.edgeMac[] = 20:21:22:23:24:25
+REGISTER_SUPER: reg.dev_addr.net_addr = 0x20212223
+REGISTER_SUPER: reg.dev_addr.net_bitlen = 25
+REGISTER_SUPER: reg.dev_desc = "Dummy_Dev_Desc"
+REGISTER_SUPER: reg.auth.scheme = 1
+REGISTER_SUPER: reg.auth.token_size = 16
+REGISTER_SUPER: reg.auth.token[0] = 0xfe
+REGISTER_SUPER: reg.key_time = 600
+
+REGISTER_SUPER: output retval = 0x36
+REGISTER_SUPER: output idx = 0x4f
+000: 03 02 00 05 61 62 63 31  32 33 64 65 66 34 35 36   |    abc123def456|
+010: 7a 00 00 00 00 00 00 00  00 00 00 00 20 21 22 23   |z            !"#|
+020: 24 25 20 21 22 23 19 44  75 6d 6d 79 5f 44 65 76   |$% !"# Dummy_Dev|
+030: 5f 44 65 73 63 00 00 00  01 00 10 fe 00 00 00 fd   |_Desc           |
+040: 00 00 00 fc 00 00 00 00  00 00 fb 00 00 02 58      |              X|
+
+UNREGISTER_SUPER: common.pc = 6
+UNREGISTER_SUPER: unreg.auth.scheme = 1
+UNREGISTER_SUPER: unreg.auth.token_size = 16
+UNREGISTER_SUPER: unreg.auth.token[0] = 0xfe
+UNREGISTER_SUPER: unreg.srcMac[] = 30:31:32:33:34:35
+
+UNREGISTER_SUPER: output retval = 0x19
+UNREGISTER_SUPER: output idx = 0x32
+000: 03 02 00 06 61 62 63 31  32 33 64 65 66 34 35 36   |    abc123def456|
+010: 7a 00 00 00 00 00 00 00  00 01 00 10 fe 00 00 00   |z               |
+020: fd 00 00 00 fc 00 00 00  00 00 00 fb 30 31 32 33   |            0123|
+030: 34 35                                              |45|
 
