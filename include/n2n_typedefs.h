@@ -633,6 +633,18 @@ typedef struct n2n_resolve_parameter {
 /* *************************************************** */
 
 
+typedef struct n2n_receptor_socket {
+    SOCKET     socket_fd;    /* file descriptor for tcp socket */
+    n2n_mac_t  mac;          /* mac of remote edge */
+    time_t     opened;       /* the time at which the socket has been opened */
+
+    UT_hash_handle hh; /* makes this structure hashable */
+} n2n_receptor_socket_t;
+
+
+/* *************************************************** */
+
+
 typedef struct n2n_edge_conf {
     struct peer_info         *supernodes;            /**< List of supernodes */
     n2n_route_t              *routes;                /**< Networks to route through n2n */
@@ -665,7 +677,7 @@ typedef struct n2n_edge_conf {
     uint8_t                  preferred_sock_auto;    /**< indicates desired auto detect for preferred sock */
     int                      local_port;
     int                      mgmt_port;
-    uint8_t                  connect_tcp;            /** connection to supernode 0 = UDP; 1 = TCP */
+    uint8_t                  connect_tcp;            /**< connection to supernode 0 = UDP; 1 = TCP */
     n2n_auth_t               auth;
     filter_rule_t            *network_traffic_filter_rules;
     int                      metric;                /**< Network interface metric (Windows only). */
@@ -710,6 +722,7 @@ struct n2n_edge {
 #endif
 
     n2n_sock_t                       external_sock;                      /**< the socket the supernode sees the edge at */
+    n2n_receptor_socket_t            *receptor_sockets;                  /**< list of currently opened receptor sockets */
 
     /* Peers */
     struct peer_info *               known_peers;                        /**< Edges we are connected to. */

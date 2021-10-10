@@ -2577,9 +2577,12 @@ static int process_udp (n2n_sn_t * sss,
                 if(scan) {
                     if(query.aflags & N2N_AFLAGS_PASS_THROUGH) {
                         // pass on to edge
-// !!!
                         memcpy(&cmn2, &cmn, sizeof(n2n_common_t));
-                        cmn2.flags |= N2N_FLAGS_FROM_SUPERNODE;
+                        cmn2.flags |= N2N_FLAGS_FROM_SUPERNODE | N2N_FLAGS_SOCKET;
+
+                        query.sock.family = AF_INET;
+                        query.sock.port = ntohs(sender_sock->sin_port);
+                        memcpy(query.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
 
                         encode_QUERY_PEER(encbuf, &encx, &cmn2, &query);
 

@@ -2219,8 +2219,8 @@ static int check_query_peer_info (n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
 
     if(now - scan->last_sent_query > eee->conf.register_interval) {
         send_register(eee, &(eee->curr_sn->sock), mac, N2N_FORWARDED_REG_COOKIE);
-// !!! criterion & 1
-        send_query_peer(eee, scan->mac_addr, ((scan->query_number++) & 1) ? N2N_AFLAGS_PASS_THROUGH : 0);
+        scan->query_number = scan->query_number + 1;
+        send_query_peer(eee, scan->mac_addr, (((scan->query_number) % N2N_RECEPTOR_FREQUENCY) != 0) ? 0 : N2N_AFLAGS_PASS_THROUGH);
         scan->last_sent_query = now;
         return 0;
     }
@@ -2735,7 +2735,20 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                            macaddr_str(mac_buf1, reg.srcMac),
                                            sock_to_cstr(sockbuf1, &sender),
                                            (reg.cookie & N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
+
                     find_and_remove_peer(&eee->pending_peers, reg.srcMac);
+
+                    if(reg.cookie == N2N_PORT_REG_COOKIE) {
+
+                        printf("!!! incoming at receptor socket !!!\n");
+                        // !!! store this socket's fd in peer.socket_fd
+                        // !!!  use this socket for comm with this peer (also for ACK) from now on
+                        // !!! optionally close all others and remove (all) from receptor_socket_list
+                        // !!! adapt sendto_peer() and sendto_fd() to handle fd field
+                        // !!! adapt peer deletion / status change to take care of the fd, i.e. close it
+
+                        traceEvent(TRACE_INFO, "[p2p] connection through receptor socket");
+                    }
 
                     /* NOTE: only ACK to peers */
                     send_register_ack(eee, orig_sender, &reg);
@@ -2963,6 +2976,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 n2n_PEER_INFO_t pi;
                 struct peer_info * scan;
                 int skip_add;
+                n2n_sock_t sock_tmp;
+                int i;
 
                 decode_PEER_INFO(&pi, &cmn, udp_buf, &rem, &idx);
 
@@ -3020,8 +3035,19 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                        sock_to_cstr(sockbuf1, &pi.preferred_sock));
                         }
 
-                        if(pi.aflags & N2N_AFLAGS_PASS_THROUGH) {
-                            // REVISIT and add some p2p-related action !!!
+                        if((pi.aflags & N2N_AFLAGS_PASS_THROUGH)
+                         &&(eee->conf.allow_p2p)) {
+
+                            sock_tmp = scan->sock;
+
+                            traceEvent(TRACE_INFO, "Tx REGISTERs to %s at [%s] using random ports",
+                                       macaddr_str(mac_buf1, pi.mac),
+                                       sock_to_cstr(sockbuf1, &sock_tmp));
+
+                            for(i = 0; i < N2N_RECEPTOR_REGISTERS; i++) {
+                                sock_tmp.port = n2n_rand();
+                                send_register(eee, &sock_tmp, scan->mac_addr, N2N_PORT_REG_COOKIE);
+                            }
                         }
 
                         send_register(eee, &scan->sock, scan->mac_addr, N2N_REGULAR_REG_COOKIE);
@@ -3036,10 +3062,15 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
             case MSG_TYPE_QUERY_PEER: {
 
-                n2n_QUERY_PEER_t query;
-                n2n_PEER_INFO_t  pi;
-                uint8_t          encbuf[N2N_SN_PKTBUF_SIZE];
-                size_t           encx = 0;
+                n2n_QUERY_PEER_t        query;
+                n2n_PEER_INFO_t         pi;
+                uint8_t                 encbuf[N2N_SN_PKTBUF_SIZE];
+                size_t                  encx = 0;
+                int                     i;
+                n2n_receptor_socket_t   *receptor_socket;
+                SOCKET                  socket_fd;
+                struct sockaddr_in      original_socket;
+                uint8_t                 random_data;
 
                 decode_QUERY_PEER( &query, &cmn, udp_buf, &rem, &idx );
 
@@ -3073,8 +3104,36 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 traceEvent(TRACE_DEBUG, "Tx PEER_INFO to %s",
                            macaddr_str(mac_buf1, query.srcMac));
 
-                if(query.aflags & N2N_AFLAGS_PASS_THROUGH) {
-                    // REVISIT and add some p2p-related action !!!
+                if(eee->conf.allow_p2p) {
+                    if(query.aflags & N2N_AFLAGS_PASS_THROUGH) {
+                        // open receptor sockets and send a short message to remote edge's port
+                        if(is_valid_peer_sock(&query.sock))
+                            orig_sender = &(query.sock);
+
+                        fill_sockaddr((struct sockaddr*)&original_socket, sizeof(original_socket), orig_sender);
+
+                        traceEvent(TRACE_DEBUG, "opening receptor sockets for %s [%s]",
+                                   macaddr_str(mac_buf1, query.srcMac),
+                                   sock_to_cstr(sockbuf1, orig_sender));
+
+                        for(i = 0; i < N2N_RECEPTOR_SOCKETS; i++) {
+                            socket_fd = open_socket(0, eee->conf.bind_address, 0);
+                            if(!(socket_fd < 0)) {
+                                receptor_socket = (n2n_receptor_socket_t*)calloc(1, sizeof(n2n_receptor_socket_t));
+                                if(receptor_socket) {
+                                    receptor_socket->socket_fd = socket_fd;
+                                    receptor_socket->opened = now;
+                                    memcpy(&receptor_socket->mac, &pi.mac, N2N_MAC_SIZE);
+                                    HASH_ADD(hh, eee->receptor_sockets, socket_fd, sizeof(n2n_receptor_socket_t), receptor_socket);
+                                    random_data = n2n_rand();
+                                    sendto(socket_fd, &random_data, 1 /* just one byte */, 0 /*flags*/,
+                                          (struct sockaddr *)&original_socket, sizeof(original_socket));
+                                } else {
+                                    closesocket(socket_fd);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 break;
@@ -3231,6 +3290,8 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
     time_t last_purge_known = 0;
     time_t last_purge_pending = 0;
 
+    n2n_receptor_socket_t *receptor_socket, *receptor_socket_tmp;
+
     uint16_t expected = sizeof(uint16_t);
     uint16_t position = 0;
     uint8_t  pktbuf[N2N_PKT_BUF_SIZE + sizeof(uint16_t)]; /* buffer + prepended buffer length in case of tcp */
@@ -3281,6 +3342,11 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
         max_sock = max(max_sock, eee->device.fd);
 #endif
 
+        HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
+            FD_SET(receptor_socket->socket_fd, &socket_mask);
+            max_sock = max(max_sock, receptor_socket->socket_fd);
+        }
+
         wait_time.tv_sec = (eee->sn_wait) ? (SOCKET_TIMEOUT_INTERVAL_SECS / 10 + 1) : (SOCKET_TIMEOUT_INTERVAL_SECS);
         wait_time.tv_usec = 0;
         rc = select(max_sock + 1, &socket_mask, NULL, NULL, &wait_time);
@@ -3316,6 +3382,20 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                     }
                 }
             }
+
+            // receptor sockets
+            HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
+                if(FD_ISSET(receptor_socket->socket_fd, &socket_mask)) {
+                    if (0 != fetch_and_eventually_process_data(eee, receptor_socket->socket_fd,
+                                                               pktbuf, &expected, &position,
+                                                               now)) {
+                        *keep_running = 0;
+                    }
+                    // do not iterate any further because sockets could have been closed while processing data
+                    break;
+                }
+            }
+            if(*keep_running == 0) break;
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
             if(FD_ISSET(eee->udp_multicast_sock, &socket_mask)) {
@@ -3381,6 +3461,14 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
         sort_supernodes(eee, now);
 
         eee->resolution_request = resolve_check(eee->resolve_parameter, eee->resolution_request, now);
+
+// !!! move to separate function
+        HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
+            if(receptor_socket->opened < now - N2N_RECEPTOR_TIME) {
+                closesocket(receptor_socket->socket_fd);
+                HASH_DEL(eee->receptor_sockets, receptor_socket);
+            }
+        }
 
         if(eee->cb.main_loop_period)
             eee->cb.main_loop_period(eee, now);
@@ -4029,3 +4117,4 @@ int quick_edge_init (char *device_name, char *community_name,
 }
 
 /* ************************************** */
+
