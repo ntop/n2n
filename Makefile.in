@@ -187,7 +187,7 @@ install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	$(INSTALL_DOC) edge.8.gz $(MAN8DIR)/
 	$(INSTALL_DOC) supernode.1.gz $(MAN1DIR)/
 	$(INSTALL_DOC) n2n.7.gz $(MAN7DIR)/
-	$(MAKE) -C tools install PREFIX=$(abspath $(PREFIX))
+	$(MAKE) -C tools install SBINDIR=$(abspath $(SBINDIR))
 
 # Docker builder section
 DOCKER_IMAGE_NAME=ntop/supernode
