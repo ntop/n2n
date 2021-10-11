@@ -1,5 +1,5 @@
 
-name: testing
+name: Testing
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   quicktest:
-    name: Quick test
+    name: Smoke test
     runs-on: ubuntu-latest
 
     steps:
@@ -96,3 +96,126 @@ jobs:
 
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
+
+  package_dpkg:
+    needs: fulltest
+    name: Create packages for Debian/Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install packages needed for build
+        run: |
+          sudo apt-get install debhelper
+
+      - name: Configure
+        run: |
+          ./autogen.sh
+          ./configure
+          cd packages/debian/
+          ./configure
+
+      - name: Build
+        run: |
+          cd packages/debian/
+          make
+
+      - name: Upload dpkg
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-amd64-dpkg
+          path: packages/debian/*.deb
+
+  package_rpm:
+    needs: fulltest
+    name: Create packages for Redhat
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install packages needed for build
+        run: |
+          sudo apt-get install rpm
+
+      - name: Configure
+        run: |
+          ./autogen.sh
+          ./configure
+          cd packages/rpm/
+          ./configure
+
+      - name: Build
+        run: |
+          make
+          HOME=$(pwd)/../
+          cd packages/rpm/
+          make
+          cd ../../
+          mv ../rpmbuild ./
+
+      - name: Upload rpm
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-amd64-rpm
+          path: rpmbuild/RPMS/x86_64/*.rpm
+
+  package_windows:
+    needs: fulltest
+    name: Create packages for Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          ./scripts/hack_fakeautoconf
+          make
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=package
+
+      - name: Upload binary zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-amd64-windows
+          path: package
+
+  package_macos:
+    needs: fulltest
+    name: Create packages for MacOS
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install packages needed for build
+        run: |
+          brew install automake
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          ./autogen.sh
+          ./configure
+          make
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=package
+
+      - name: Upload binary zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-amd64-macos
+          path: package

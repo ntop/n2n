@@ -10,7 +10,7 @@ all: clean pkg
 
 pkg:
 	rpmbuild -bb ./n2n.spec
-	@@RPM_SIGN_CMD@ $(HOME)/rpmbuild/RPMS/$(PLATFORM)/$(RPM_PKG)
+	-@@RPM_SIGN_CMD@ $(HOME)/rpmbuild/RPMS/$(PLATFORM)/$(RPM_PKG)
 	@echo ""
 	@echo "Package contents:"
 	@rpm -qpl $(HOME)/rpmbuild/RPMS/$(PLATFORM)/$(RPM_PKG)
