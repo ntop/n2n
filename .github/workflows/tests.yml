@@ -104,6 +104,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Install packages needed for build
+        run: |
+          sudo apt-get install debhelper
+
       - name: Configure
         run: |
           ./autogen.sh
