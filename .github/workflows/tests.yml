@@ -156,6 +156,7 @@ jobs:
           HOME=$(pwd)/../
           cd packages/rpm/
           make
+          cd ../../
           mv ../rpmbuild ./
 
       - name: Upload rpm
