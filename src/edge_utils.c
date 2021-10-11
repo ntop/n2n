@@ -2220,7 +2220,7 @@ static int check_query_peer_info (n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
     if(now - scan->last_sent_query > eee->conf.register_interval) {
         send_register(eee, &(eee->curr_sn->sock), mac, N2N_FORWARDED_REG_COOKIE);
         scan->query_number = scan->query_number + 1;
-        send_query_peer(eee, scan->mac_addr, (((scan->query_number) % N2N_RECEPTOR_FREQUENCY) != 0) ? 0 : N2N_AFLAGS_PASS_THROUGH);
+        send_query_peer(eee, scan->mac_addr, (((scan->query_number) % (N2N_RECEPTOR_FREQUENCY + 1)) != 0) ? 0 : N2N_AFLAGS_PASS_THROUGH);
         scan->last_sent_query = now;
         return 0;
     }
@@ -2742,7 +2742,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                         printf("!!! incoming at receptor socket !!!\n");
                         // !!! store this socket's fd in peer.socket_fd
-                        // !!!  use this socket for comm with this peer (also for ACK) from now on
+                        // !!! use this socket for comm with this peer (also for ACK) from now on
                         // !!! optionally close all others and remove (all) from receptor_socket_list
                         // !!! adapt sendto_peer() and sendto_fd() to handle fd field
                         // !!! adapt peer deletion / status change to take care of the fd, i.e. close it
@@ -2976,8 +2976,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                 n2n_PEER_INFO_t pi;
                 struct peer_info * scan;
                 int skip_add;
-                n2n_sock_t sock_tmp;
-                int i;
+                n2n_receptor_register_t *receptor_register;
 
                 decode_PEER_INFO(&pi, &cmn, udp_buf, &rem, &idx);
 
@@ -3038,15 +3037,19 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                         if((pi.aflags & N2N_AFLAGS_PASS_THROUGH)
                          &&(eee->conf.allow_p2p)) {
 
-                            sock_tmp = scan->sock;
-
                             traceEvent(TRACE_INFO, "Tx REGISTERs to %s at [%s] using random ports",
                                        macaddr_str(mac_buf1, pi.mac),
-                                       sock_to_cstr(sockbuf1, &sock_tmp));
+                                       sock_to_cstr(sockbuf1, &scan->sock));
 
-                            for(i = 0; i < N2N_RECEPTOR_REGISTERS; i++) {
-                                sock_tmp.port = n2n_rand();
-                                send_register(eee, &sock_tmp, scan->mac_addr, N2N_PORT_REG_COOKIE);
+                            HASH_FIND(hh, eee->receptor_registers, pi.mac, sizeof(n2n_mac_t), receptor_register);
+                            if(!receptor_register)
+                                receptor_register = (n2n_receptor_register_t*)calloc(1, sizeof(n2n_receptor_register_t));
+
+                            if(receptor_register) {
+                                receptor_register->started = now;
+                                memcpy(receptor_register->mac, pi.mac, sizeof(n2n_mac_t));
+                                receptor_register->sock = scan->sock;
+                                HASH_ADD(hh, eee->receptor_registers, mac, sizeof(n2n_receptor_register_t), receptor_register);
                             }
                         }
 
@@ -3348,6 +3351,8 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
         }
 
         wait_time.tv_sec = (eee->sn_wait) ? (SOCKET_TIMEOUT_INTERVAL_SECS / 10 + 1) : (SOCKET_TIMEOUT_INTERVAL_SECS);
+        if(eee->receptor_registers)
+            wait_time.tv_sec = 1;
         wait_time.tv_usec = 0;
         rc = select(max_sock + 1, &socket_mask, NULL, NULL, &wait_time);
         now = time(NULL);
@@ -3463,12 +3468,46 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
         eee->resolution_request = resolve_check(eee->resolve_parameter, eee->resolution_request, now);
 
 // !!! move to separate function
-        HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
-            if(receptor_socket->opened < now - N2N_RECEPTOR_TIME) {
-                closesocket(receptor_socket->socket_fd);
-                HASH_DEL(eee->receptor_sockets, receptor_socket);
+//
+//
+        n2n_receptor_register_t *receptor_register, *receptor_register_tmp;
+        n2n_sock_t sock_tmp;
+        int i = 0;
+
+        HASH_ITER(hh, eee->receptor_registers, receptor_register, receptor_register_tmp) {
+            if(receptor_register->started < now - N2N_RECEPTOR_TIME) {
+                HASH_DEL(eee->receptor_registers, receptor_register);
+                free(receptor_register);
+            } else {
+                if(receptor_register->last < now) {
+                    sock_tmp = receptor_register->sock;
+                    receptor_register->last = now;
+                    for(i = 0; i < (N2N_RECEPTOR_REGISTERS / N2N_RECEPTOR_TIME); i++) {
+                        sock_tmp.port = n2n_rand();
+                        send_register(eee, &sock_tmp, receptor_register->mac, N2N_PORT_REG_COOKIE);
+                    }
+                }
             }
         }
+//
+//
+// !!!
+
+
+
+// !!! move to separate function
+//        n2n_receptor_socket_t *receptor_socket, *receptor_socket_tmp;
+//
+        HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
+            if(receptor_socket->opened < now - N2N_RECEPTOR_TIME - 2 /* allow 2 extra seconds for packets still on the line */) {
+                closesocket(receptor_socket->socket_fd);
+                HASH_DEL(eee->receptor_sockets, receptor_socket);
+                free(receptor_socket);
+            }
+        }
+//
+//
+// !!!
 
         if(eee->cb.main_loop_period)
             eee->cb.main_loop_period(eee, now);

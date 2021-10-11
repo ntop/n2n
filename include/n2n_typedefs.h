@@ -638,8 +638,18 @@ typedef struct n2n_receptor_socket {
     n2n_mac_t  mac;          /* mac of remote edge */
     time_t     opened;       /* the time at which the socket has been opened */
 
-    UT_hash_handle hh; /* makes this structure hashable */
+    UT_hash_handle hh;       /* makes this structure hashable */
 } n2n_receptor_socket_t;
+
+
+typedef struct n2n_receptor_register {
+    n2n_mac_t  mac;          /* mac of remote edge */
+    n2n_sock_t sock;         /* sock of remote edge (port to be altered) */
+    time_t     started;      /* the time at which the edge started to send REGISTERs */
+    time_t     last;         /* the time at which the edge sent REGISTERs the last time*/
+
+    UT_hash_handle hh;       /* makes this structure hashable */
+} n2n_receptor_register_t;
 
 
 /* *************************************************** */
@@ -723,6 +733,7 @@ struct n2n_edge {
 
     n2n_sock_t                       external_sock;                      /**< the socket the supernode sees the edge at */
     n2n_receptor_socket_t            *receptor_sockets;                  /**< list of currently opened receptor sockets */
+    n2n_receptor_register_t          *receptor_registers;                /**< list of edges to whose receptor sockets REGISTERs need to be sent */
 
     /* Peers */
     struct peer_info *               known_peers;                        /**< Edges we are connected to. */

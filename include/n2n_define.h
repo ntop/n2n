@@ -135,8 +135,8 @@ enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
 #define N2N_RECEPTOR_SOCKETS     400 /* number of receptor sockets to be temporarily opened */
 #define N2N_RECEPTOR_REGISTERS  2000 /* number of REGISTERs sent to the assumed recpetor sockets */
-#define N2N_RECEPTOR_TIME          4 /* secondes to keep the receptor sockets open */
-#define N2N_RECEPTOR_FREQUENCY     2 /* determines, how often to try establishing a connection through  receptor sockets */
+#define N2N_RECEPTOR_TIME         15 /* seconds to keep the receptor sockets open */
+#define N2N_RECEPTOR_FREQUENCY     1 /* determines, how often to try establishing a connection through receptor sockets */
 
 #define N2N_NETMASK_STR_SIZE      16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ             18 /* AA:BB:CC:DD:EE:FF + NULL*/
