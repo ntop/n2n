@@ -129,6 +129,39 @@ jobs:
           name: package-amd64-dpkg
           path: packages/debian/*.deb
 
+  package_rpm:
+    needs: fulltest
+    name: Create packages for Redhat
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install packages needed for build
+        run: |
+          sudo apt-get install rpm
+
+      - name: Configure
+        run: |
+          ./autogen.sh
+          ./configure
+          cd packages/rpm/
+          ./configure
+
+      - name: Build
+        run: |
+          make
+          cd packages/rpm/
+          HOME=$(pwd)/../ make
+
+      - name: Upload rpm
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-amd64-rpm
+          path: ../rpmbuild/RPMS/x86_64/*.rpm
+
   package_windows:
     needs: fulltest
     name: Create packages for Windows
