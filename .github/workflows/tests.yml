@@ -99,7 +99,7 @@ jobs:
 
   package_dpkg:
     needs: fulltest
-    name: Test packages for Debian/Ubuntu
+    name: Create test packages for Debian/Ubuntu
     runs-on: ubuntu-latest
 
     steps:
@@ -124,5 +124,5 @@ jobs:
       - name: Upload dpkg
         uses: actions/upload-artifact@v2
         with:
-          name: dpkg-ubuntu-amd64
+          name: package-amd64-dpkg
           path: packages/debian/*.deb
