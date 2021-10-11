@@ -99,7 +99,7 @@ jobs:
 
   package_dpkg:
     needs: fulltest
-    name: Create test packages for Debian/Ubuntu
+    name: Create packages for Debian/Ubuntu
     runs-on: ubuntu-latest
 
     steps:
@@ -129,7 +129,7 @@ jobs:
 
   package_windows:
     needs: fulltest
-    name: Create test packages for Windows
+    name: Create packages for Windows
     runs-on: windows-latest
 
     steps:
@@ -150,4 +150,34 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: package-amd64-windows
+          path: package
+
+  package_macos:
+    needs: fulltest
+    name: Create packages for MacOS
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install packages needed for build
+        run: |
+          brew install automake
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          ./autogen.sh
+          ./configure
+          make
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=package
+
+      - name: Upload binary zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-amd64-macos
           path: package
