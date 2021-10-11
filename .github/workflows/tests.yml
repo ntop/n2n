@@ -156,12 +156,13 @@ jobs:
           HOME=$(pwd)/../
           cd packages/rpm/
           make
+          mv ../rpmbuild ./
 
       - name: Upload rpm
         uses: actions/upload-artifact@v2
         with:
           name: package-amd64-rpm
-          path: ../rpmbuild/RPMS/x86_64/*.rpm
+          path: rpmbuild/RPMS/x86_64/*.rpm
 
   package_windows:
     needs: fulltest
