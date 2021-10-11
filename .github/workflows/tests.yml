@@ -96,3 +96,28 @@ jobs:
 
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
+
+  package_dpkg:
+    needs: fulltest
+    name: Test packages for Debian/Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure
+        run: |
+          ./autogen.sh
+          ./configure
+          cd packages/debian/
+          ./configure
+
+      - name: Build
+        run: |
+          cd packages/debian/
+          make
+
+      - name: Upload dpkg
+        uses: actions/upload-artifact@v2
+        with:
+          name: dpkg-ubuntu-amd64
+          path: packages/debian/*.deb
