@@ -144,7 +144,7 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install PREFIX=package
+          make install DESTDIR=package
 
       - name: Upload binary zip
         uses: actions/upload-artifact@v2
