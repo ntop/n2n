@@ -126,3 +126,28 @@ jobs:
         with:
           name: package-amd64-dpkg
           path: packages/debian/*.deb
+
+  package_windows:
+    needs: fulltest
+    name: Create test packages for Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          ./scripts/hack_fakeautoconf
+          make
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install PREFIX=package
+
+      - name: Upload binary zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-amd64-windows
+          path: package
