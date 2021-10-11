@@ -993,7 +993,7 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
 
 /** Send a datagram to a socket file descriptor */
 static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
-                            size_t len, struct sockaddr_in *dest) {
+                            size_t len, struct sockaddr_in *dest, SOCKET fd) {
 
     ssize_t sent = 0;
     int rc = 1;
@@ -1005,7 +1005,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
         struct timeval wait_time;
 
         FD_ZERO(&socket_mask);
-        FD_SET(eee->sock, &socket_mask);
+        FD_SET(fd, &socket_mask);
         wait_time.tv_sec = 0;
         wait_time.tv_usec = 500000;
         rc = select(eee->sock + 1, NULL, &socket_mask, NULL, &wait_time);
@@ -1013,7 +1013,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
 
     if (rc > 0) {
 
-        sent = sendto(eee->sock, buf, len, 0 /*flags*/,
+        sent = sendto(fd, buf, len, 0 /*flags*/,
                       (struct sockaddr *)dest, sizeof(struct sockaddr_in));
 
         if((sent <= 0) && (errno)) {
@@ -1052,7 +1052,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
 
 /** Send a datagram to a socket defined by a n2n_sock_t */
 static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
-                            size_t len, const n2n_sock_t * dest) {
+                            size_t len, const n2n_sock_t * dest, SOCKET fd) {
 
     struct sockaddr_in peer_addr;
     ssize_t sent;
@@ -1062,7 +1062,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
         // invalid socket
         return 0;
 
-    if(eee->sock < 0)
+    if(fd < 0)
         // invalid socket file descriptor, e.g. TCP unconnected has fd of '-1'
         return 0;
 
@@ -1072,29 +1072,29 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
 
-        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
         value = 1;
 #ifdef LINUX
-        setsockopt(eee->sock, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
+        setsockopt(fd, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
 #endif
 
         // prepend packet length...
         uint16_t pktsize16 = htobe16(len);
-        sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr);
+        sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr, fd);
 
         if(sent <= 0)
             return -1;
         // ...before sending the actual data
     }
-    sent = sendto_fd(eee, buf, len, &peer_addr);
+    sent = sendto_fd(eee, buf, len, &peer_addr, fd);
 
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
         value = 1; /* value should still be set to 1 */
-        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
 #ifdef LINUX
         value = 0;
-        setsockopt(eee->sock, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
+        setsockopt(fd, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
 #endif
     }
 
@@ -1182,7 +1182,7 @@ void send_query_peer (n2n_edge_t * eee,
                                   time_stamp ());
         }
 
-        sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
+        sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock), eee->sock);
 
     } else {
         traceEvent(TRACE_DEBUG, "send PING to supernodes");
@@ -1218,7 +1218,7 @@ void send_query_peer (n2n_edge_t * eee,
                 // done with the remaining (do not send anymore)
                 break;
             }
-            sendto_sock(eee, pktbuf, idx, &(peer->sock));
+            sendto_sock(eee, pktbuf, idx, &(peer->sock), eee->sock);
         }
     }
 }
@@ -1278,7 +1278,7 @@ void send_register_super (n2n_edge_t *eee) {
         }
     }
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
+    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock), eee->sock);
 }
 
 
@@ -1314,7 +1314,7 @@ static void send_unregister_super (n2n_edge_t *eee) {
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
+    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock), eee->sock);
 
 }
 
@@ -1379,7 +1379,7 @@ static void send_register (n2n_edge_t * eee,
     n2n_REGISTER_t reg;
     n2n_sock_str_t sockbuf;
 
-    if(!eee->conf.allow_p2p) {
+    if((!eee->conf.allow_p2p) && (cookie != N2N_PORT_REG_COOKIE))  {
         traceEvent(TRACE_DEBUG, "skipping register as P2P is disabled");
         return;
     }
@@ -1407,15 +1407,16 @@ static void send_register (n2n_edge_t * eee,
     idx = 0;
     encode_REGISTER(pktbuf, &idx, &cmn, &reg);
 
-    traceEvent(TRACE_INFO, "send REGISTER to [%s]",
-               sock_to_cstr(sockbuf, remote_peer));
+    if(cookie != N2N_PORT_REG_COOKIE)
+        traceEvent(TRACE_INFO, "send REGISTER to [%s]",
+                   sock_to_cstr(sockbuf, remote_peer));
 
     if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED)
         packet_header_encrypt(pktbuf, idx, idx,
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
+    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer, eee->sock); // !!! peer->socket_fd
 }
 
 /* ************************************** */
@@ -1460,7 +1461,7 @@ static void send_register_ack (n2n_edge_t * eee,
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
+    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer, eee->sock); // !!! peer->socket_fd
 }
 
 /* ************************************** */
@@ -2317,13 +2318,13 @@ static int send_packet (n2n_edge_t * eee,
         // if no supernode around, foward the broadcast to all known peers
         if(eee->sn_wait) {
             HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
-                /* s = */ sendto_sock(eee, pktbuf, pktlen, &peer->sock);
+                /* s = */ sendto_sock(eee, pktbuf, pktlen, &peer->sock, eee->sock); // !!! peer->socket_fd
             return 0;
         }
         // fall through otherwise
     }
 
-    /* s = */ sendto_sock(eee, pktbuf, pktlen, &destination);
+    /* s = */ sendto_sock(eee, pktbuf, pktlen, &destination, eee->sock); // !!! peer->socket_fd
 
     return 0;
 }
@@ -2740,14 +2741,13 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                     if(reg.cookie == N2N_PORT_REG_COOKIE) {
 
-                        printf("!!! incoming at receptor socket !!!\n");
                         // !!! store this socket's fd in peer.socket_fd
                         // !!! use this socket for comm with this peer (also for ACK) from now on
                         // !!! optionally close all others and remove (all) from receptor_socket_list
                         // !!! adapt sendto_peer() and sendto_fd() to handle fd field
                         // !!! adapt peer deletion / status change to take care of the fd, i.e. close it
 
-                        traceEvent(TRACE_INFO, "[p2p] connection through receptor socket");
+                        traceEvent(TRACE_INFO, "[p2p] connection attempt through receptor socket");
                     }
 
                     /* NOTE: only ACK to peers */
@@ -3102,7 +3102,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                           time_stamp());
                 }
 
-                sendto_sock(eee, encbuf, encx, &(eee->curr_sn->sock));
+                sendto_sock(eee, encbuf, encx, &(eee->curr_sn->sock), eee->sock);
 
                 traceEvent(TRACE_DEBUG, "Tx PEER_INFO to %s",
                            macaddr_str(mac_buf1, query.srcMac));
