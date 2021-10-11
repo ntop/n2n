@@ -7,7 +7,7 @@ on:
 
 jobs:
   quicktest:
-    name: Quick test
+    name: Smoke test
     runs-on: ubuntu-latest
 
     steps:
