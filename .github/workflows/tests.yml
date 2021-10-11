@@ -153,8 +153,9 @@ jobs:
       - name: Build
         run: |
           make
+          HOME=$(pwd)/../
           cd packages/rpm/
-          HOME=$(pwd)/../ make
+          make
 
       - name: Upload rpm
         uses: actions/upload-artifact@v2
