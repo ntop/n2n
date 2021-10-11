@@ -1,5 +1,5 @@
 
-name: testing
+name: Testing
 
 on:
   push:
