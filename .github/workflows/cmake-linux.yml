@@ -1,6 +1,7 @@
 name: CMake
-
-on: [push]
+on:
+  release:
+    types: [published]
 
 env:
   BUILD_TYPE: Release
@@ -44,14 +45,15 @@ jobs:
       shell: bash
       run: ctest -C $BUILD_TYPE
       
-    - name: zip
+    - name: infomation
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
         df -hT
-        zip --junk-paths n2n${{ matrix.os }} edge* supernode*
-        echo "ls ./"
+        echo "ref:${{ github.ref }} ls ./"
         ls
+        mv supernode n2n_${{ matrix.os }}_superonde
+        mv edge n2n_${{ matrix.os }}edge
 
     - name: Create Release
       id: create_release
@@ -71,6 +73,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: n2n_${{ matrix.os }}.zip
-        asset_name: n2n_${{ matrix.os }}.zip
+        asset_path: n2n_${{ matrix.os }}
+        asset_name: n2n_${{ matrix.os }}
         asset_content_type: application/zip
