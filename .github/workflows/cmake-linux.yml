@@ -55,7 +55,7 @@ jobs:
         df -hT
         echo "ls ./"
         ls
-        zip --junk-paths n2n${{ matrix.os }} n2n/edge* n2n/supernode*
+        zip --junk-paths n2n${{ matrix.os }} edge* supernode*
 
     - name: Create Release
       id: create_release
