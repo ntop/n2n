@@ -47,3 +47,36 @@ jobs:
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: ctest -C $BUILD_TYPE
+      
+    - name: zip
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: |
+        df -hT
+        echo "ls ./"
+        ls
+        echo "ls n2n"
+        ls n2n
+        zip --junk-paths n2n n2n/edge* n2n/supernode*
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./n2n.zip
+        asset_name: n2n.zip
+        asset_content_type: application/zip
