@@ -55,9 +55,7 @@ jobs:
         df -hT
         echo "ls ./"
         ls
-        echo "ls n2n"
-        ls n2n
-        zip --junk-paths n2n n2n/edge* n2n/supernode*
+        zip --junk-paths n2n${{ matrix.os }} n2n/edge* n2n/supernode*
 
     - name: Create Release
       id: create_release
@@ -77,6 +75,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./n2n.zip
-        asset_name: n2n.zip
+        asset_path: ./
+        asset_name: n2n${{ matrix.os }}.zip
         asset_content_type: application/zip
