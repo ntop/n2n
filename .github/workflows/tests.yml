@@ -28,7 +28,6 @@ jobs:
         os:
           - ubuntu-latest
           - ubuntu-18.04
-          - macos-latest
           - windows-latest
 
     steps:
@@ -39,11 +38,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install build-essential
-
-      - if: runner.os == 'macOS'
-        name: Install packages
-        run: |
-          brew install automake gcovr
 
       - if: runner.os == 'Windows'
         # This is a pretty big hammer, but gets the windows compile moving
@@ -188,34 +182,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: package-amd64-windows
-          path: package
-
-  package_macos:
-    needs: fulltest
-    name: Create packages for MacOS
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Install packages needed for build
-        run: |
-          brew install automake
-
-      - name: Configure and Build
-        shell: bash
-        run: |
-          ./autogen.sh
-          ./configure
-          make
-
-      - name: Create binary dir
-        shell: bash
-        run: |
-          make install DESTDIR=package
-
-      - name: Upload binary zip
-        uses: actions/upload-artifact@v2
-        with:
-          name: package-amd64-macos
           path: package
