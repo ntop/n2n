@@ -49,9 +49,9 @@ jobs:
       shell: bash
       run: |
         df -hT
+        zip --junk-paths n2n${{ matrix.os }} edge* supernode*
         echo "ls ./"
         ls
-        zip --junk-paths n2n${{ matrix.os }} edge* supernode*
 
     - name: Create Release
       id: create_release
@@ -59,7 +59,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
+        tag_name: ${{ matrix.os }} ${{ github.ref }}
         release_name: Release ${{ matrix.os }} ${{ github.ref }}
         draft: false
         prerelease: false
@@ -71,6 +71,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./n2n_${{ matrix.os }}.zip
+        asset_path: n2n_${{ matrix.os }}.zip
         asset_name: n2n_${{ matrix.os }}.zip
         asset_content_type: application/zip
