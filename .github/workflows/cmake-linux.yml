@@ -22,10 +22,6 @@ jobs:
           - os: windows-latest
             COMPILER: cl
             LINKER: cl
-          - os: macos-latest
-            TARGET: x86_64-apple-darwin
-            COMPILER: clang
-            LINKER: clang
 
     steps:
     - uses: actions/checkout@v2
@@ -64,7 +60,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        release_name: Release ${{ matrix.os }} ${{ github.ref }}
         draft: false
         prerelease: false
 
@@ -75,6 +71,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./
-        asset_name: n2n${{ matrix.os }}.zip
+        asset_path: ./n2n_${{ matrix.os }}.zip
+        asset_name: n2n_${{ matrix.os }}.zip
         asset_content_type: application/zip
