@@ -207,3 +207,31 @@ n2n network, this behavior can be disabled, just add
 to your `CFLAGS` when configuring, e.g.
 
 `./configure --with-zstd CFLAGS="-O3 -march=native -DSKIP_MULTICAST_PEERS_DISCOVERY"`
+
+# Cross compiling on Linux
+
+## Using the Makefiles and Autoconf
+
+The Makefiles are all setup to allow cross compiling of this code.  You
+will need to have the cross compiler, binutils and any additional libraries
+desired installed for the target architecture.  Then you can run the `./configure`
+with the appropriate CC and AR environment and the right `--host` option.
+
+If compiling on Debian or Ubuntu, this can be as simple as the following example:
+
+```
+HOST_TRIPLET=arm-linux-gnueabi
+sudo apt-get install binutils-$HOST_TRIPLET gcc-$HOST_TRIPLET
+./autogen.sh
+export CC=$HOST_TRIPLET-gcc
+export AR=$HOST_TRIPLET-ar
+./configure --host $HOST_TRIPLET
+make
+```
+
+A good starting point to determine the host triplet for your destination platform
+can be found by copying the `./config.guess` script to it and running it on the
+destination.
+
+This is not a good way to produce binaries for embedded environments (like OpenWRT)
+as they will often use a different libc environment.

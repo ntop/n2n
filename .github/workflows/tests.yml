@@ -99,7 +99,7 @@ jobs:
 
   package_dpkg:
     needs: fulltest
-    name: Create packages for Debian/Ubuntu
+    name: Package for Debian/Ubuntu
     runs-on: ubuntu-latest
 
     steps:
@@ -126,12 +126,12 @@ jobs:
       - name: Upload dpkg
         uses: actions/upload-artifact@v2
         with:
-          name: package-amd64-dpkg
+          name: package-dpkg-amd64
           path: packages/debian/*.deb
 
   package_rpm:
     needs: fulltest
-    name: Create packages for Redhat
+    name: Package for Redhat/RPM
     runs-on: ubuntu-latest
 
     steps:
@@ -162,12 +162,12 @@ jobs:
       - name: Upload rpm
         uses: actions/upload-artifact@v2
         with:
-          name: package-amd64-rpm
+          name: package-rpm-x86_64
           path: rpmbuild/RPMS/x86_64/*.rpm
 
   package_windows:
     needs: fulltest
-    name: Create packages for Windows
+    name: Binaries for Windows (x86_64-pc-mingw64)
     runs-on: windows-latest
 
     steps:
@@ -182,17 +182,17 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=package
+          make install DESTDIR=binaries
 
       - name: Upload binary zip
         uses: actions/upload-artifact@v2
         with:
-          name: package-amd64-windows
-          path: package
+          name: binaries-x86_64-pc-mingw64
+          path: binaries
 
   package_macos:
     needs: fulltest
-    name: Create packages for MacOS
+    name: Binaries for MacOS (x86_64-apple-darwin)
     runs-on: macos-latest
 
     steps:
@@ -212,10 +212,55 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=package
+          make install DESTDIR=binaries
 
       - name: Upload binary zip
         uses: actions/upload-artifact@v2
         with:
-          name: package-amd64-macos
-          path: package
+          name: binaries-x86_64-apple-darwin
+          path: binaries
+
+  package_crosscompile_linux:
+    needs: fulltest
+    name: Binaries for linux
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - arm-linux-gnueabi
+
+          # I assume these architectures produce working code, but this has
+          # not been directly confirmed.
+          # They are compiled dynamically against normal libc, so will not
+          # work on openwrt.
+          - aarch64-linux-gnu
+          - mips-linux-gnu
+          - mipsel-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install cross compiler
+        run: |
+          sudo apt-get install binutils-${{ matrix.arch }} gcc-${{ matrix.arch }}
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          ./autogen.sh
+          export CC=${{ matrix.arch }}-gcc
+          export AR=${{ matrix.arch }}-ar
+          ./configure --host ${{ matrix.arch }}
+          make
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=binaries
+
+      - name: Upload binary zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: binaries
