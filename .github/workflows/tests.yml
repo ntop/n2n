@@ -349,6 +349,12 @@ jobs:
     needs:
       - test_macos
     runs-on: macos-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - x86_64-apple-macos
+          - arm64-apple-macos
 
     steps:
       - uses: actions/checkout@v2
@@ -361,7 +367,7 @@ jobs:
         shell: bash
         run: |
           ./autogen.sh
-          ./configure
+          ./configure CFLAGS="-target ${{ matrix.arch }}" --host=${{ matrix.arch }}
           make
 
       - name: Create binary dir
@@ -372,7 +378,7 @@ jobs:
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries
+          name: binaries-${{ matrix.arch }}
           path: binaries
 
   binaries_linux_crosscompile:
