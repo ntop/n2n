@@ -233,8 +233,10 @@ jobs:
         uses: codecov/codecov-action@v2
 
   package_dpkg:
-    needs: test_linux
     name: Package for Debian/Ubuntu
+    needs:
+      - test_linux
+      - lint
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -277,8 +279,10 @@ jobs:
           path: packages/debian/*.deb
 
   package_rpm:
-    needs: test_linux
     name: Package for Redhat/RPM
+    needs:
+      - test_linux
+      - lint
     runs-on: ubuntu-latest
 
     steps:
@@ -313,8 +317,10 @@ jobs:
           path: rpmbuild/RPMS/x86_64/*.rpm
 
   binaries_windows:
-    needs: test_windows
     name: Binaries for Windows (x86_64-pc-mingw64)
+    needs:
+      - test_windows
+      - lint
     runs-on: windows-latest
 
     steps:
@@ -338,8 +344,10 @@ jobs:
           path: binaries
 
   binaries_macos:
-    needs: test_macos
     name: Binaries for MacOS (x86_64-apple-darwin)
+    needs:
+      - test_macos
+      - lint
     runs-on: macos-latest
 
     steps:
@@ -368,8 +376,10 @@ jobs:
           path: binaries
 
   binaries_linux_crosscompile:
-    needs: test_linux
     name: Binaries for linux
+    needs: 
+      - test_linux
+      - lint
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
