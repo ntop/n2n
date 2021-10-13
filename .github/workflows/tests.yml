@@ -367,6 +367,7 @@ jobs:
         shell: bash
         run: |
           ./autogen.sh
+          export CC=clang
           ./configure CFLAGS="-target ${{ matrix.arch }}" --host=${{ matrix.arch }}
           make
 
