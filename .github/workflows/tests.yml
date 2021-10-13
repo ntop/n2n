@@ -219,3 +219,40 @@ jobs:
         with:
           name: package-amd64-macos
           path: package
+
+  package_crosscompile_linux:
+    needs: fulltest
+    name: Binaries for linux
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - arm-linux-gnueabi
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install cross compiler
+        run: |
+          sudo apt-get install binutils-${{ matrix.arch }} gcc-${{ matrix.arch }}
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          ./autogen.sh
+          export CC=${{ matrix.arch }}-gcc
+          export AR=${{ matrix.arch }}-ar
+          ./configure --host ${{ matrix.arch }}
+          make
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=binaries
+
+      - name: Upload binary zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: binaries
