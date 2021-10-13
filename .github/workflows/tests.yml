@@ -131,7 +131,7 @@ jobs:
 
   package_rpm:
     needs: fulltest
-    name: Packages for Redhat/RPM
+    name: Package for Redhat/RPM
     runs-on: ubuntu-latest
 
     steps:
