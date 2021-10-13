@@ -126,7 +126,7 @@ jobs:
       - name: Upload dpkg
         uses: actions/upload-artifact@v2
         with:
-          name: package-dpkg-x86_64-pc-linux-gnu
+          name: package-dpkg-amd64
           path: packages/debian/*.deb
 
   package_rpm:
@@ -162,7 +162,7 @@ jobs:
       - name: Upload rpm
         uses: actions/upload-artifact@v2
         with:
-          name: package-rpm-x86_64-pc-linux-gnu
+          name: package-rpm-x86_64
           path: rpmbuild/RPMS/x86_64/*.rpm
 
   package_windows:
