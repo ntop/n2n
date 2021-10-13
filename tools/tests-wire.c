@@ -21,21 +21,21 @@
 #include "n2n.h"
 #include "hexdump.h"
 
-void init_ip_subnet(n2n_ip_subnet_t * d) {
+void init_ip_subnet (n2n_ip_subnet_t * d) {
     d->net_addr = 0x20212223;
     d->net_bitlen = 25;
 }
 
-void print_ip_subnet(char *test_name, char *field, n2n_ip_subnet_t * d) {
+void print_ip_subnet (char *test_name, char *field, n2n_ip_subnet_t * d) {
     printf("%s: %s.net_addr = 0x%08x\n",
-            test_name, field, d->net_addr);
+           test_name, field, d->net_addr);
     printf("%s: %s.net_bitlen = %i\n",
-            test_name, field, d->net_bitlen);
+           test_name, field, d->net_bitlen);
 }
 
-void init_mac(n2n_mac_t mac, const uint8_t o0, const uint8_t o1,
-              const uint8_t o2, const uint8_t o3,
-              const uint8_t o4, const uint8_t o5) {
+void init_mac (n2n_mac_t mac, const uint8_t o0, const uint8_t o1,
+               const uint8_t o2, const uint8_t o3,
+               const uint8_t o4, const uint8_t o5) {
     mac[0] = o0;
     mac[1] = o1;
     mac[2] = o2;
@@ -44,13 +44,13 @@ void init_mac(n2n_mac_t mac, const uint8_t o0, const uint8_t o1,
     mac[5] = o5;
 }
 
-void print_mac(char *test_name, char *field, n2n_mac_t mac) {
+void print_mac (char *test_name, char *field, n2n_mac_t mac) {
     printf("%s: %s[] = %x:%x:%x:%x:%x:%x\n",
-            test_name, field,
-            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+           test_name, field,
+           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 }
 
-void init_auth(n2n_auth_t *auth) {
+void init_auth (n2n_auth_t *auth) {
     auth->scheme = n2n_auth_simple_id;
     auth->token_size = 16;
     auth->token[0] = 0xfe;
@@ -59,13 +59,13 @@ void init_auth(n2n_auth_t *auth) {
     auth->token[15] = 0xfb;
 }
 
-void print_auth(char *test_name, char *field, n2n_auth_t *auth) {
+void print_auth (char *test_name, char *field, n2n_auth_t *auth) {
     printf("%s: %s.scheme = %i\n", test_name, field, auth->scheme);
     printf("%s: %s.token_size = %i\n", test_name, field, auth->token_size);
     printf("%s: %s.token[0] = 0x%02x\n", test_name, field, auth->token[0]);
 }
 
-void init_common(n2n_common_t *common, char *community) {
+void init_common (n2n_common_t *common, char *community) {
     memset( common, 0, sizeof(*common) );
     common->ttl = N2N_DEFAULT_TTL;
     common->flags = 0;
@@ -73,13 +73,13 @@ void init_common(n2n_common_t *common, char *community) {
     common->community[N2N_COMMUNITY_SIZE - 1] = '\0';
 }
 
-void print_common(char *test_name, n2n_common_t *common) {
+void print_common (char *test_name, n2n_common_t *common) {
     printf("%s: common.ttl = %i\n", test_name, common->ttl);
     printf("%s: common.flags = %i\n", test_name, common->flags);
     printf("%s: common.community = \"%s\"\n", test_name, common->community);
 }
 
-void test_REGISTER(n2n_common_t *common) {
+void test_REGISTER (n2n_common_t *common) {
     char *test_name = "REGISTER";
 
     common->pc = n2n_register;
@@ -104,8 +104,8 @@ void test_REGISTER(n2n_common_t *common) {
     size_t idx = 0;
     size_t retval = encode_REGISTER( pktbuf, &idx, common, &reg);
 
-    printf("%s: output retval = 0x%"PRIx64"\n", test_name, retval);
-    printf("%s: output idx = 0x%"PRIx64"\n", test_name, idx);
+    printf("%s: output retval = 0x%" PRIx64 "\n", test_name, retval);
+    printf("%s: output idx = 0x%" PRIx64 "\n", test_name, idx);
     fhexdump(0, pktbuf, idx, stdout);
 
     // TODO: decode_REGISTER() and print
@@ -114,7 +114,7 @@ void test_REGISTER(n2n_common_t *common) {
     printf("\n");
 }
 
-void test_REGISTER_SUPER(n2n_common_t *common) {
+void test_REGISTER_SUPER (n2n_common_t *common) {
     char *test_name = "REGISTER_SUPER";
 
     common->pc = n2n_register_super;
@@ -136,15 +136,15 @@ void test_REGISTER_SUPER(n2n_common_t *common) {
     print_ip_subnet(test_name, "reg.dev_addr", &reg.dev_addr);
     printf("%s: reg.dev_desc = \"%s\"\n", test_name, reg.dev_desc);
     print_auth(test_name, "reg.auth", &reg.auth);
-    printf("%s: reg.key_time = %"PRIi32"\n", test_name, reg.key_time);
+    printf("%s: reg.key_time = %" PRIi32 "\n", test_name, reg.key_time);
     printf("\n");
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx = 0;
     size_t retval = encode_REGISTER_SUPER( pktbuf, &idx, common, &reg);
 
-    printf("%s: output retval = 0x%"PRIx64"\n", test_name, retval);
-    printf("%s: output idx = 0x%"PRIx64"\n", test_name, idx);
+    printf("%s: output retval = 0x%" PRIx64 "\n", test_name, retval);
+    printf("%s: output idx = 0x%" PRIx64 "\n", test_name, idx);
     fhexdump(0, pktbuf, idx, stdout);
 
     // TODO: decode_REGISTER_SUPER() and print
@@ -153,7 +153,7 @@ void test_REGISTER_SUPER(n2n_common_t *common) {
     printf("\n");
 }
 
-void test_UNREGISTER_SUPER(n2n_common_t *common) {
+void test_UNREGISTER_SUPER (n2n_common_t *common) {
     char *test_name = "UNREGISTER_SUPER";
 
     common->pc = n2n_unregister_super;
@@ -173,8 +173,8 @@ void test_UNREGISTER_SUPER(n2n_common_t *common) {
     size_t idx = 0;
     size_t retval = encode_UNREGISTER_SUPER( pktbuf, &idx, common, &unreg);
 
-    printf("%s: output retval = 0x%"PRIx64"\n", test_name, retval);
-    printf("%s: output idx = 0x%"PRIx64"\n", test_name, idx);
+    printf("%s: output retval = 0x%" PRIx64 "\n", test_name, retval);
+    printf("%s: output idx = 0x%" PRIx64 "\n", test_name, idx);
     fhexdump(0, pktbuf, idx, stdout);
 
     // TODO: decode_UNREGISTER_SUPER() and print
@@ -183,7 +183,7 @@ void test_UNREGISTER_SUPER(n2n_common_t *common) {
     printf("\n");
 }
 
-int main(int argc, char * argv[]) {
+int main (int argc, char * argv[]) {
     char *test_name = "environment";
 
     n2n_common_t common;

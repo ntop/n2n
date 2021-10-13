@@ -51,7 +51,7 @@ HANDLE startTunReadThread (struct tunread_arg *arg) {
 
 
 
-int get_best_interface_ip(n2n_edge_t * eee, dec_ip_str_t ip_addr){
+int get_best_interface_ip (n2n_edge_t * eee, dec_ip_str_t ip_addr){
     DWORD interface_index = -1;
     DWORD dwRetVal = 0;
     PIP_ADAPTER_INFO pAdapterInfo = NULL, pAdapter = NULL;
@@ -62,15 +62,15 @@ int get_best_interface_ip(n2n_edge_t * eee, dec_ip_str_t ip_addr){
     if(dwRetVal != NO_ERROR) return -1;
 
     pAdapterInfo = (PIP_ADAPTER_INFO)malloc(ulOutBufLen);
-    if (pAdapterInfo == NULL) {
+    if(pAdapterInfo == NULL) {
         traceEvent(TRACE_INFO, "Error allocating memory needed to call GetAdaptersInfo\n");
         return -1;
     }
 
     dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
-    if(dwRetVal == ERROR_BUFFER_OVERFLOW){
+    if(dwRetVal == ERROR_BUFFER_OVERFLOW) {
         pAdapterInfo = (PIP_ADAPTER_INFO)realloc(pAdapterInfo, ulOutBufLen);
-        if (pAdapterInfo == NULL) {
+        if(pAdapterInfo == NULL) {
             traceEvent(TRACE_INFO, "Error allocating memory needed to call GetAdaptersInfo\n");
             return -1;
         }
@@ -78,9 +78,9 @@ int get_best_interface_ip(n2n_edge_t * eee, dec_ip_str_t ip_addr){
 
     dwRetVal = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
 //    hexdump((uint8_t*)pAdapterInfo, ulOutBufLen);
-    if (dwRetVal == NO_ERROR) {
-        for(pAdapter = pAdapterInfo; pAdapter != NULL; pAdapter = pAdapter->Next){
-            if (pAdapter->Index != interface_index) continue;
+    if(dwRetVal == NO_ERROR) {
+        for(pAdapter = pAdapterInfo; pAdapter != NULL; pAdapter = pAdapter->Next) {
+            if(pAdapter->Index != interface_index) continue;
 
             traceEvent(TRACE_DEBUG, "Adapter Index: %ld\n", pAdapter->Index);
             traceEvent(TRACE_DEBUG, "Combo Index:   %ld\n", pAdapter->ComboIndex);
@@ -96,11 +96,10 @@ int get_best_interface_ip(n2n_edge_t * eee, dec_ip_str_t ip_addr){
             traceEvent(TRACE_DEBUG, "Gateway:       %s\n", pAdapter->GatewayList.IpAddress.String);
             strncpy(ip_addr, pAdapter->IpAddressList.IpAddress.String, sizeof(dec_ip_str_t)-1);
         }
-    }
-    else {
+    } else {
         traceEvent(TRACE_WARNING, "GetAdaptersInfo failed with error: %d\n", dwRetVal);
     }
-    if (pAdapterInfo != NULL){
+    if(pAdapterInfo != NULL) {
         free(pAdapterInfo);
         pAdapterInfo = NULL;
     }

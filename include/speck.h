@@ -47,7 +47,7 @@
 
 #define u512 __m512i
 
-#define SPECK_ALIGNED_CTX	64
+#define SPECK_ALIGNED_CTX       64
 
 typedef struct {
     u512 rk[34];
@@ -63,7 +63,7 @@ typedef struct {
 
 #define u256 __m256i
 
-#define SPECK_ALIGNED_CTX	32
+#define SPECK_ALIGNED_CTX       32
 
 typedef struct {
     u256 rk[34];
@@ -79,8 +79,8 @@ typedef struct {
 
 #define u128 __m128i
 
-#define SPECK_ALIGNED_CTX	16
-#define SPECK_CTX_BYVAL		 1
+#define SPECK_ALIGNED_CTX       16
+#define SPECK_CTX_BYVAL          1
 
 typedef struct {
     u128 rk[34];
@@ -117,7 +117,7 @@ typedef struct {
 
 int speck_ctr (unsigned char *out, const unsigned char *in, unsigned long long inlen,
                const unsigned char *n,
-	       speck_context_t *ctx);
+               speck_context_t *ctx);
 
 int speck_init (speck_context_t **ctx, const unsigned char *k, int keysize);
 

@@ -159,7 +159,7 @@ SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_gather_data (n2n_sn_t *s
 extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_info_t *peer) {
 
     if(NULL == out) {
-      return NULL;
+        return NULL;
     }
     memset(out, 0, SN_SELECTION_CRITERION_BUF_SIZE);
 
@@ -169,15 +169,15 @@ extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_in
     if(peer->selection_criterion < (UINT32_MAX >> 2)) {
 
 #ifndef SN_SELECTION_RTT
-      int chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
+        int chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
 #else
-      int chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6d ms", peer->selection_criterion);
+        int chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6d ms", peer->selection_criterion);
 #endif
 
-      /* this test is to make "-Wformat-truncation" less sad */
-      if (chars > SN_SELECTION_CRITERION_BUF_SIZE) {
-        traceEvent(TRACE_INFO, "selection_criterion buffer overflow");
-      }
+        /* this test is to make "-Wformat-truncation" less sad */
+        if(chars > SN_SELECTION_CRITERION_BUF_SIZE) {
+            traceEvent(TRACE_INFO, "selection_criterion buffer overflow");
+        }
     }
 
     return out;

@@ -86,15 +86,23 @@ N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 # As source files pass the linter, they can be added here (If all the source
 # is passing the linter tests, this can be refactored)
 N2N_LINT=\
+	include/auth.h \
+	include/edge_utils_win32.h \
+	include/n2n_define.h \
 	include/pearson.h \
+	include/speck.h \
+	src/edge_utils_win32.c \
 	src/example_edge_embed_quick_edge_init.c \
 	src/header_encryption.c \
+	src/sn_selection.c \
+	src/transform_cc20.c \
 	src/tuntap_linux.c \
 	src/wire.c \
 	tools/tests-compress.c \
 	tools/tests-elliptic.c \
 	tools/tests-hashing.c \
 	tools/tests-transform.c \
+	tools/tests-wire.c \
 
 export LDLIBS
 
