@@ -55,24 +55,10 @@ jobs:
         mv supernode n2n_${{ matrix.os }}_superonde
         mv edge n2n_${{ matrix.os }}edge
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
-        tag_name: ${{ matrix.os }} ${{ github.ref }}
-        release_name: Release ${{ matrix.os }} ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Release Asset
-      id: upload-release-asset 
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: n2n_${{ matrix.os }}
-        asset_name: n2n_${{ matrix.os }}
-        asset_content_type: application/zip
+        files: |
+          n2n_${{ matrix.os }}_superonde
+          n2n_${{ matrix.os }}edge
