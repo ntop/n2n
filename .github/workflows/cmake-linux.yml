@@ -52,8 +52,8 @@ jobs:
       run: |
         df -hT
         echo "ref:${{ github.ref }} ls ./"
-        ls -l
         tar -cvf n2n_${{ matrix.os }}.tar * 
+        ls -l
 
     - name: Create Release
       id: create_release
@@ -61,8 +61,8 @@ jobs:
       env:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-         tag_name: ${{ github.ref }}
-         release_name: Release ${{ github.ref }}
+         tag_name: ${{ github.ref }}${{ matrix.os }}
+         release_name: Release ${{ github.ref }}${{ matrix.os }}
          draft: false
          prerelease: false
 
