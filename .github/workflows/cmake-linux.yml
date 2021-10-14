@@ -52,7 +52,7 @@ jobs:
       run: |
         df -hT
         echo "ref:${{ github.ref }} ls ./"
-        tar -cvf n2n_${{ matrix.os }}.tar * 
+        tar -cvf n2n_${{ matrix.os }}_${{ matrix.TARGET }}.tar * 
         ls -l
 
     - name: Create Release
@@ -61,8 +61,8 @@ jobs:
       env:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-         tag_name: ${{ matrix.os }}
-         release_name: Release${{ matrix.os }}
+         tag_name: ${{ matrix.os }}_${{ matrix.TARGET }}
+         release_name: Release_${{ matrix.os }}_${{ matrix.TARGET }}
          draft: false
          prerelease: false
 
@@ -73,6 +73,6 @@ jobs:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ${{github.workspace}}/build/n2n_${{ matrix.os }}.tar
-        asset_name: n2n_${{ matrix.os }}.tar
+        asset_path: ${{github.workspace}}/build/n2n_${{ matrix.os }}_${{ matrix.TARGET }}.tar
+        asset_name: n2n_${{ matrix.os }}_${{ matrix.TARGET }}.tar
         asset_content_type: application/zip
