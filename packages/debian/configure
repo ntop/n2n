@@ -1701,7 +1701,7 @@ GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
 if test "${MACHINE+set}" != set; then
     MACHINE=`uname -m`
 fi
-SHORT_MACHINE=`uname -m | cut -b1-3`
+SHORT_MACHINE=`echo $MACHINE | cut -b1-3`
 
 DEBIAN_VERSION=`cat /etc/debian_version | grep "^8" | wc -l`
 
