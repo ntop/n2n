@@ -588,7 +588,6 @@ DATE
 EXTN
 GIT_COMMITS
 N2N_VERSION_SHORT
-MACHINE
 APP
 target_alias
 host_alias
@@ -1734,7 +1733,6 @@ fi
 
 APP=n2n
 DATE=`date -R`
-
 
 
 
