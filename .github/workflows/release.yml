@@ -1,0 +1,78 @@
+name: CMake
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            TARGET: x86_64-unknown-linux-musl
+            COMPILER: gcc
+            LINKER: gcc
+          - os: ubuntu-latest
+            TARGET: armv7-unknown-linux-musleabihf
+            COMPILER: arm-linux-gnueabihf-gcc-5
+            LINKER: gcc-5-arm-linux-gnueabihf
+          - os: windows-latest
+            COMPILER: cl
+            LINKER: cl
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{github.workspace}}/build
+
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: ctest -C $BUILD_TYPE
+      
+    - name: infomation
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: |
+        df -hT
+        echo "ref:${{ github.ref }} ls ./"
+        tar -cvf n2n_${{ matrix.os }}_${{ matrix.TARGET }}.tar * 
+        ls -l
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+         tag_name: ${{ matrix.os }}_${{ matrix.TARGET }}
+         release_name: Release_${{ matrix.os }}_${{ matrix.TARGET }}
+         draft: false
+         prerelease: false
+
+    - name: Upload Release Asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{github.workspace}}/build/n2n_${{ matrix.os }}_${{ matrix.TARGET }}.tar
+        asset_name: n2n_${{ matrix.os }}_${{ matrix.TARGET }}.tar
+        asset_content_type: application/zip
