@@ -1697,11 +1697,6 @@ fi
 N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
 GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
 
-if test "${MACHINE+set}" != set; then
-    MACHINE=`uname -m`
-fi
-SHORT_MACHINE=`echo $MACHINE | cut -b1-3`
-
 DEBIAN_VERSION=`cat /etc/debian_version | grep "^8" | wc -l`
 
 EXTRA_DEP=""
@@ -1709,22 +1704,27 @@ if test $DEBIAN_VERSION = "0"; then
 EXTRA_DEP=", libzstd1"
 fi
 
-if test $MACHINE = "x86_64"; then
-   EXTN="amd64"
-else
-  if test $SHORT_MACHINE = "aar"; then
-     EXTN="arm64"
-  else
-    if test $SHORT_MACHINE = "arm"; then
-       EXTN="armhf"
+if test "${EXTN+set}" != set; then
+    MACHINE=`uname -m`
+    SHORT_MACHINE=`echo $MACHINE | cut -b1-3`
+
+    if test $MACHINE = "x86_64"; then
+       EXTN="amd64"
     else
-       if test $SHORT_MACHINE = "mip"; then
-         EXTN="mips"
-       else
-         EXTN="i386"
-       fi
-     fi
-  fi
+      if test $SHORT_MACHINE = "aar"; then
+         EXTN="arm64"
+      else
+        if test $SHORT_MACHINE = "arm"; then
+           EXTN="armhf"
+        else
+           if test $SHORT_MACHINE = "mip"; then
+             EXTN="mips"
+           else
+             EXTN="i386"
+           fi
+         fi
+      fi
+    fi
 fi
 
 if test "${with_edgex+set}" = set; then
