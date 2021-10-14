@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  quicktest:
+  smoketest:
     name: Smoke test
     runs-on: ubuntu-latest
 
@@ -19,7 +19,7 @@ jobs:
           make test
 
   fulltest:
-    needs: quicktest
+    needs: smoketest
     name: Full test
     runs-on: ${{ matrix.os }}
     strategy:
