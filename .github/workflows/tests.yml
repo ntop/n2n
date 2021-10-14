@@ -354,14 +354,19 @@ jobs:
       matrix:
         arch:
           - x86_64-apple-macos
-          - arm64-apple-macos
+
+          # the config.log shows "missing required architecture arm64"
+          # when using the github runner.  I have not found any CLI method
+          # to request the architecture be installed, so need to turn this
+          # architecture off :-(
+          #
+          # - arm64-apple-macos
 
     steps:
       - uses: actions/checkout@v2
 
       - name: Install packages needed for build
         run: |
-          xcode-select --install
           brew install automake
 
       - name: Configure and Build
