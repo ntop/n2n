@@ -1699,7 +1699,9 @@ fi
 N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
 GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
 
-MACHINE=`uname -m`
+if test "${MACHINE+set}" != set; then
+    MACHINE=`uname -m`
+fi
 SHORT_MACHINE=`uname -m | cut -b1-3`
 
 DEBIAN_VERSION=`cat /etc/debian_version | grep "^8" | wc -l`
@@ -1740,7 +1742,6 @@ fi
 
 APP=n2n
 DATE=`date -R`
-
 
 
 
