@@ -84,6 +84,7 @@ jobs:
       matrix:
         os:
           - macos-10.15
+          - macos-11
 
     steps:
       - uses: actions/checkout@v2
@@ -138,7 +139,9 @@ jobs:
       fail-fast: true
       matrix:
         os:
+          - windows-2016
           - windows-2019
+          - windows-2022
 
     steps:
       - uses: actions/checkout@v2
