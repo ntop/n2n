@@ -361,6 +361,7 @@ jobs:
 
       - name: Install packages needed for build
         run: |
+          xcode-select --install
           brew install automake
 
       - name: Configure and Build
@@ -375,7 +376,7 @@ jobs:
         name: Upload config.log output
         uses: actions/upload-artifact@v2
         with:
-          name: config-log-${{matrix.os}}
+          name: config-log-${{ matrix.arch }}
           path: config.log
 
       - name: Create binary dir
