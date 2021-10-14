@@ -46,27 +46,33 @@ jobs:
       shell: bash
       run: ctest -C $BUILD_TYPE
       
-    - if: runner.os != 'Windows'
-      name: Generate gcovr report
-      run: |
-        ls -l x64 || ls -l win32
-      shell: bash
-      
     - name: infomation
       working-directory: ${{github.workspace}}/build
       shell: bash
       run: |
         df -hT
         echo "ref:${{ github.ref }} ls ./"
-        cp supernode n2n_${{ matrix.os }}_superonde
-        cp edge n2n_${{ matrix.os }}edge
         ls -l
+        tar -cvf n2n_${{ matrix.os }}.tar * 
 
-    - name: Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-        files: |
-          n2n_${{ matrix.os }}_superonde
-          n2n_${{ matrix.os }}edge
+         tag_name: ${{ github.ref }}
+         release_name: Release ${{ github.ref }}
+         draft: false
+         prerelease: false
+
+    - name: Upload Release Asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/n2n_${{ matrix.os }}.tar
+        asset_name: n2n_${{ matrix.os }}.tar
+        asset_content_type: application/zip
