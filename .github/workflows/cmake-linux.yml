@@ -73,6 +73,6 @@ jobs:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/n2n_${{ matrix.os }}.tar
+        asset_path: ${{github.workspace}}/build/n2n_${{ matrix.os }}.tar
         asset_name: n2n_${{ matrix.os }}.tar
         asset_content_type: application/zip
