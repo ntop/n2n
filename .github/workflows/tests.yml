@@ -196,8 +196,6 @@ jobs:
           - arm64
           - armhf
           - i386
-          - mips
-          - mipsel
 
     steps:
       - uses: actions/checkout@v2
