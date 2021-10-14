@@ -371,6 +371,13 @@ jobs:
           ./configure CFLAGS="-target ${{ matrix.arch }}" --host=${{ matrix.arch }}
           make
 
+      - if: ${{ failure() }}
+        name: Upload config.log output
+        uses: actions/upload-artifact@v2
+        with:
+          name: config-log-${{matrix.os}}
+          path: config.log
+
       - name: Create binary dir
         shell: bash
         run: |
