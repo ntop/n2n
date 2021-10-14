@@ -588,8 +588,6 @@ DATE
 EXTN
 GIT_COMMITS
 N2N_VERSION_SHORT
-MACHINE
-BUILDPACKAGE_EXTRA
 APP
 target_alias
 host_alias
@@ -1699,9 +1697,6 @@ fi
 N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
 GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
 
-MACHINE=`uname -m`
-SHORT_MACHINE=`uname -m | cut -b1-3`
-
 DEBIAN_VERSION=`cat /etc/debian_version | grep "^8" | wc -l`
 
 EXTRA_DEP=""
@@ -1709,39 +1704,35 @@ if test $DEBIAN_VERSION = "0"; then
 EXTRA_DEP=", libzstd1"
 fi
 
-BUILDPACKAGE_EXTRA=
+if test "${EXTN+set}" != set; then
+    MACHINE=`uname -m`
+    SHORT_MACHINE=`echo $MACHINE | cut -b1-3`
 
-if test $MACHINE = "x86_64"; then
-   EXTN="amd64"
-else
-  if test $SHORT_MACHINE = "aar"; then
-     EXTN="arm64"
-     EXTRA_DEPS=""
-  else
-    if test $SHORT_MACHINE = "arm"; then
-       EXTN="armhf"
-       EXTRA_DEPS=""
+    if test $MACHINE = "x86_64"; then
+       EXTN="amd64"
     else
-       if test $SHORT_MACHINE = "mip"; then
-         EXTN="mips"
-         EXTRA_DEPS=""
-       else
-         EXTN="i386"
-       fi
-     fi
-  fi
+      if test $SHORT_MACHINE = "aar"; then
+         EXTN="arm64"
+      else
+        if test $SHORT_MACHINE = "arm"; then
+           EXTN="armhf"
+        else
+           if test $SHORT_MACHINE = "mip"; then
+             EXTN="mips"
+           else
+             EXTN="i386"
+           fi
+         fi
+      fi
+    fi
 fi
 
 if test "${with_edgex+set}" = set; then
     EXTN="mipsel"
-    EXTRA_DEPS=""
-    BUILDPACKAGE_EXTRA="--host-arch mipsel"
 fi
 
 APP=n2n
 DATE=`date -R`
-
-
 
 
 

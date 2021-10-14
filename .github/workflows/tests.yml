@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  quicktest:
+  smoketest:
     name: Smoke test
     runs-on: ubuntu-latest
 
@@ -18,36 +18,136 @@ jobs:
           ./configure
           make test
 
-  fulltest:
-    needs: quicktest
-    name: Full test
+  test_linux:
+    needs: smoketest
+    name: Test Linux
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
         os:
-          - ubuntu-latest
+          - ubuntu-20.04
           - ubuntu-18.04
-          - macos-latest
-          - windows-latest
 
     steps:
       - uses: actions/checkout@v2
 
-      - if: runner.os == 'Linux'
-        name: Install essential
+      - name: Install essential
         run: |
           sudo apt-get update
           sudo apt-get install build-essential
 
-      - if: runner.os == 'macOS'
-        name: Install packages
+      - name: generate a makefile and use it to install more packages
         run: |
-          brew install automake gcovr
+          ./autogen.sh
+          ./configure
+          make build-dep
+        shell: bash
 
-      - if: runner.os == 'Windows'
+      - name: Run the real configure step
+        run: |
+          CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
+        shell: bash
+
+      - name: Run embedded tests
+        run: make test
+        shell: bash
+
+      - if: ${{ always() }}
+        name: Upload tests output
+        uses: actions/upload-artifact@v2
+        with:
+          name: tests-out-${{matrix.os}}
+          path: tests/*.out
+
+      - name: Generate coverage reports
+        run: |
+          make gcov
+          make cover
+        shell: bash
+
+      - name: Upload gcovr report artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-${{matrix.os}}
+          path: coverage
+
+      - name: Upload data to codecov
+        uses: codecov/codecov-action@v2
+
+  test_macos:
+    needs: smoketest
+    name: Test MacOS
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - macos-10.15
+          - macos-11
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install packages
+        run: |
+          brew install automake
+
+      - name: generate a makefile and use it to install more packages
+        run: |
+          ./autogen.sh
+          ./configure
+          make build-dep
+        shell: bash
+
+      - name: Run the real configure step
+        run: |
+          CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
+        shell: bash
+
+      - name: Run embedded tests
+        run: make test
+        shell: bash
+
+      - if: ${{ always() }}
+        name: Upload tests output
+        uses: actions/upload-artifact@v2
+        with:
+          name: tests-out-${{matrix.os}}
+          path: tests/*.out
+
+      - name: Generate coverage reports
+        run: |
+          make gcov
+          make cover
+        shell: bash
+
+      - name: Upload gcovr report artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-${{matrix.os}}
+          path: coverage
+
+      - name: Upload data to codecov
+        uses: codecov/codecov-action@v2
+
+  test_windows:
+    needs: smoketest
+    name: Test Windows
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - windows-2016
+          - windows-2019
+          - windows-2022
+
+    steps:
+      - uses: actions/checkout@v2
+
         # This is a pretty big hammer, but gets the windows compile moving
-        name: Hack up a fake autoconf
+      - name: Hack up a fake autoconf
         run: |
           echo true >autogen.sh
           cp scripts/hack_fakeautoconf configure
@@ -81,26 +181,21 @@ jobs:
           make gcov
         shell: bash
 
-      - if: runner.os != 'Windows'
-        name: Generate gcovr report
-        run: |
-          make cover
-        shell: bash
-
-      - if: runner.os != 'Windows'
-        name: Upload gcovr report artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: coverage-${{matrix.os}}
-          path: coverage
-
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
 
   package_dpkg:
-    needs: fulltest
+    needs: test_linux
     name: Package for Debian/Ubuntu
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - amd64
+          - arm64
+          - armhf
+          - i386
 
     steps:
       - uses: actions/checkout@v2
@@ -109,14 +204,18 @@ jobs:
 
       - name: Install packages needed for build
         run: |
-          sudo apt-get install debhelper
+          sudo apt-get install debhelper build-essential crossbuild-essential-${{ matrix.arch }}
 
       - name: Configure
         run: |
+          # This will warn about CC, but we cannot set CC until we run it :-S
+          HOST_TRIPLET=$(dpkg-architecture -a${{ matrix.arch }} -q DEB_HOST_GNU_TYPE)
+          export CC=$HOST_TRIPLET-gcc
+          export AR=$HOST_TRIPLET-ar
           ./autogen.sh
-          ./configure
+          ./configure --host $HOST_TRIPLET
           cd packages/debian/
-          ./configure
+          ./configure EXTN=${{ matrix.arch }}
 
       - name: Build
         run: |
@@ -126,11 +225,11 @@ jobs:
       - name: Upload dpkg
         uses: actions/upload-artifact@v2
         with:
-          name: package-dpkg-amd64
+          name: package-dpkg-${{ matrix.arch }}
           path: packages/debian/*.deb
 
   package_rpm:
-    needs: fulltest
+    needs: test_linux
     name: Package for Redhat/RPM
     runs-on: ubuntu-latest
 
@@ -165,8 +264,8 @@ jobs:
           name: package-rpm-x86_64
           path: rpmbuild/RPMS/x86_64/*.rpm
 
-  package_windows:
-    needs: fulltest
+  binaries_windows:
+    needs: test_windows
     name: Binaries for Windows (x86_64-pc-mingw64)
     runs-on: windows-latest
 
@@ -190,8 +289,8 @@ jobs:
           name: binaries-x86_64-pc-mingw64
           path: binaries
 
-  package_macos:
-    needs: fulltest
+  binaries_macos:
+    needs: test_macos
     name: Binaries for MacOS (x86_64-apple-darwin)
     runs-on: macos-latest
 
@@ -220,8 +319,8 @@ jobs:
           name: binaries-x86_64-apple-darwin
           path: binaries
 
-  package_crosscompile_linux:
-    needs: fulltest
+  binaries_linux_crosscompile:
+    needs: test_linux
     name: Binaries for linux
     runs-on: ubuntu-latest
     strategy:

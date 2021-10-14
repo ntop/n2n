@@ -7,7 +7,7 @@ N2N_BUILD=${N2N_HOME}/packages/debian/n2n
 all: clean pkg
 
 pkg:
-	cd ../..; make; cd -
+	make -C ../../
 	if test -e "${N2N_BUILD}"; then /bin/rm -fr ${N2N_BUILD}; fi
 	mkdir -p ${N2N_BUILD}/usr/sbin ${N2N_BUILD}/usr/share/man/man1 ${N2N_BUILD}/usr/share/man/man7 ${N2N_BUILD}/usr/share/man/man8
 	mkdir -p ${N2N_BUILD}/usr/share/doc/n2n/examples
@@ -19,7 +19,7 @@ pkg:
 	install -m644 ../../community.list ${N2N_BUILD}/usr/share/doc/n2n/examples/
 	install -m644 ../../doc/*.md ${N2N_BUILD}/usr/share/doc/n2n/
 	@/bin/rm -f ../n2n*.deb
-	dpkg-buildpackage -rfakeroot -d -us -uc @BUILDPACKAGE_EXTRA@
+	dpkg-buildpackage -rfakeroot -d -us -uc -a@EXTN@
 	-dpkg-sig --sign builder -k D1EB60BE ../n2n_*deb
 	@\rm -f ../n2n_*dsc ../n2n_*.gz ../n2n_*changes
 	@/bin/mv ../n2n_*deb .
