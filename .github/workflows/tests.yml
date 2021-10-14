@@ -188,6 +188,16 @@ jobs:
     needs: test_linux
     name: Package for Debian/Ubuntu
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - amd64
+          - arm64
+          - armhf
+          - i386
+          - mips
+          - mipsel
 
     steps:
       - uses: actions/checkout@v2
@@ -196,14 +206,17 @@ jobs:
 
       - name: Install packages needed for build
         run: |
-          sudo apt-get install debhelper
+          sudo apt-get install debhelper build-essential crossbuild-essential-${{ matrix.arch }}
 
       - name: Configure
         run: |
+          HOST_TRIPLET=$(dpkg-architecture -a${{ matrix.arch }} -q DEB_HOST_GNU_TYPE)
           ./autogen.sh
-          ./configure
+          export CC=$HOST_TRIPLET-gcc
+          export AR=$HOST_TRIPLET-ar
+          ./configure --host $HOST_TRIPLET
           cd packages/debian/
-          ./configure
+          ./configure EXTN=$HOST_TRIPLET
 
       - name: Build
         run: |
@@ -213,7 +226,7 @@ jobs:
       - name: Upload dpkg
         uses: actions/upload-artifact@v2
         with:
-          name: package-dpkg-amd64
+          name: package-dpkg-${{ matrix.arch }}
           path: packages/debian/*.deb
 
   package_rpm:
