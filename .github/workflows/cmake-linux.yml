@@ -61,8 +61,8 @@ jobs:
       env:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-         tag_name: ${{ github.ref }}${{ matrix.os }}
-         release_name: Release ${{ github.ref }}${{ matrix.os }}
+         tag_name: ${{ matrix.os }}
+         release_name: Release${{ matrix.os }}
          draft: false
          prerelease: false
 
