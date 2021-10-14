@@ -19,7 +19,7 @@ pkg:
 	install -m644 ../../community.list ${N2N_BUILD}/usr/share/doc/n2n/examples/
 	install -m644 ../../doc/*.md ${N2N_BUILD}/usr/share/doc/n2n/
 	@/bin/rm -f ../n2n*.deb
-	dpkg-buildpackage -rfakeroot -d -us -uc @BUILDPACKAGE_EXTRA@
+	dpkg-buildpackage -rfakeroot -d -us -uc -a@EXTN@
 	-dpkg-sig --sign builder -k D1EB60BE ../n2n_*deb
 	@\rm -f ../n2n_*dsc ../n2n_*.gz ../n2n_*changes
 	@/bin/mv ../n2n_*deb .

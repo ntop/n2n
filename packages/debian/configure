@@ -589,7 +589,6 @@ EXTN
 GIT_COMMITS
 N2N_VERSION_SHORT
 MACHINE
-BUILDPACKAGE_EXTRA
 APP
 target_alias
 host_alias
@@ -1711,8 +1710,6 @@ if test $DEBIAN_VERSION = "0"; then
 EXTRA_DEP=", libzstd1"
 fi
 
-BUILDPACKAGE_EXTRA=
-
 if test $MACHINE = "x86_64"; then
    EXTN="amd64"
 else
@@ -1737,7 +1734,6 @@ fi
 if test "${with_edgex+set}" = set; then
     EXTN="mipsel"
     EXTRA_DEPS=""
-    BUILDPACKAGE_EXTRA="--host-arch mipsel"
 fi
 
 APP=n2n

@@ -18,8 +18,6 @@ if test $DEBIAN_VERSION = "0"; then
 EXTRA_DEP=", libzstd1"
 fi
 
-BUILDPACKAGE_EXTRA=
-
 if test $MACHINE = "x86_64"; then
    EXTN="amd64"
 else
@@ -44,14 +42,12 @@ fi
 if test "${with_edgex+set}" = set; then
     EXTN="mipsel"
     EXTRA_DEPS=""
-    BUILDPACKAGE_EXTRA="--host-arch mipsel"
 fi
 
 APP=n2n
 DATE=`date -R`
 
 AC_SUBST(APP)
-AC_SUBST(BUILDPACKAGE_EXTRA)
 AC_SUBST(MACHINE)
 AC_SUBST(N2N_VERSION_SHORT)
 AC_SUBST(GIT_COMMITS)
