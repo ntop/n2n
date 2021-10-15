@@ -17,6 +17,7 @@ jobs:
           ./autogen.sh
           ./configure
           make test
+          make lint.python
 
   test_linux:
     needs: smoketest

@@ -149,6 +149,9 @@ win32/n2n_win32.a: win32
 test: tools
 	tools/test_harness
 
+lint.python:
+	flake8 scripts/n2nctl
+
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
 # and run the desired tests.  Ensure that package gcovr is installed
