@@ -3,10 +3,12 @@
 #
 # Simple http server to allow user control of n2n edge nodes
 #
-# Currently only for demonstration - needs javascript written to render the
-# results properly.
+# Currently only for demonstration
+# - needs nicer looking html written
+# - needs more json interfaces in edge
 #
 # Try it out with
+#   http://localhost:8080/
 #   http://localhost:8080/edge/peer
 #   http://localhost:8080/edge/super
 
