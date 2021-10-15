@@ -11,7 +11,7 @@ import collections
 next_tag = 0
 
 
-def send_cmd(port, cmd):
+def send_cmd(port, debug, cmd):
     global next_tag
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -48,6 +48,9 @@ def send_cmd(port, cmd):
         del data['_tag']
         del data['_type']
 
+        if debug:
+            print(data)
+
         result.append(data)
 
 
@@ -69,19 +72,20 @@ def str_table(rows, columns):
     for row in rows:
         for col in columns:
             if col in row:
-                data = str(row[col])
+                data = row[col]
             else:
                 data = ''
-            result += "{:{}.{}} ".format(data, widths[col], widths[col])
+            result += "{:{}} ".format(data, widths[col])
         result += "\n"
 
     return ''.join(result)
 
 
 def subcmd_show_supernodes(args):
-    rows = send_cmd(args.port, 'j.super')
+    rows = send_cmd(args.port, args.debug, 'j.super')
     columns = [
         'version',
+        'current',
         'macaddr',
         'sockaddr',
         'uptime',
@@ -91,7 +95,7 @@ def subcmd_show_supernodes(args):
 
 
 def subcmd_show_peers(args):
-    rows = send_cmd(args.port, 'j.peer')
+    rows = send_cmd(args.port, args.debug, 'j.peer')
     columns = [
         'mode',
         'ip4addr',
@@ -120,6 +124,8 @@ def main():
             description='Query the running local n2n edge')
     ap.add_argument('-t', '--port', action='store', default=5644,
                     help='Management Port (default=5644)')
+    ap.add_argument('-d', '--debug', action='store_true',
+                    help='Also show raw internal data')
 
     subcmd = ap.add_subparsers(help='Subcommand', dest='cmd')
     subcmd.required = True
