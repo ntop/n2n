@@ -225,7 +225,7 @@ jobs:
       - name: Upload dpkg
         uses: actions/upload-artifact@v2
         with:
-          name: package-dpkg-${{ matrix.arch }}
+          name: packages-dpkg
           path: packages/debian/*.deb
 
   package_rpm:
@@ -261,7 +261,7 @@ jobs:
       - name: Upload rpm
         uses: actions/upload-artifact@v2
         with:
-          name: package-rpm-x86_64
+          name: packages-rpm
           path: rpmbuild/RPMS/x86_64/*.rpm
 
   binaries_windows:
