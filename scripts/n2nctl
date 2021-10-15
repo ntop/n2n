@@ -17,7 +17,7 @@ def send_cmd(port, debug, cmd):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     tagstr = str(next_tag)
-    next_tag += 1
+    next_tag = (next_tag + 1) % 1000
 
     message = "{} {}".format(cmd, tagstr).encode('utf8')
     sock.sendto(message, ("127.0.0.1", 5644))
