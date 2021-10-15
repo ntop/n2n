@@ -149,6 +149,9 @@ win32/n2n_win32.a: win32
 test: tools
 	tools/test_harness
 
+lint.python:
+	flake8 scripts/n2nctl scripts/n2nhttpd
+
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
 # and run the desired tests.  Ensure that package gcovr is installed
@@ -169,7 +172,7 @@ gcov:
 # It is a convinent target to use during development or from a CI/CD system
 build-dep:
 ifeq ($(CONFIG_TARGET),generic)
-	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
+	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr flake8
 else ifeq ($(CONFIG_TARGET),darwin)
 	brew install automake gcovr
 else

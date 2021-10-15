@@ -12,11 +12,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Install essential
+        run: |
+          sudo apt-get install flake8
       - name: Run minimal test set
         run: |
           ./autogen.sh
           ./configure
           make test
+          make lint.python
 
   test_linux:
     needs: smoketest

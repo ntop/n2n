@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+# Licensed under GPLv3
+#
+# Simple http server to allow user control of n2n edge nodes
+#
+# Currently only for demonstration - needs javascript written to render the
+# results properly.
+#
+# Try it out with
+#   http://localhost:8080/edge/peer
+#   http://localhost:8080/edge/super
+
+import argparse
+import socket
+import json
+import socketserver
+import http.server
+
+from http import HTTPStatus
+
+next_tag = 0
+
+
+def send_cmd(port, debug, cmd):
+    """Send a text command to the edge and process the JSON reply packets"""
+    global next_tag
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    tagstr = str(next_tag)
+    next_tag = (next_tag + 1) % 1000
+
+    message = "{} {}".format(cmd, tagstr).encode('utf8')
+    sock.sendto(message, ("127.0.0.1", 5644))
+
+    # FIXME:
+    # - there is no timeout for any of the socket handling
+
+    begin, _ = sock.recvfrom(1024)
+    begin = json.loads(begin.decode('utf8'))
+    assert(begin['_tag'] == tagstr)
+    assert(begin['_type'] == 'begin')
+    assert(begin['_cmd'] == cmd)
+
+    result = list()
+
+    while True:
+        data, _ = sock.recvfrom(1024)
+        data = json.loads(data.decode('utf8'))
+        assert(data['_tag'] == tagstr)
+
+        if data['_type'] == 'unknowncmd':
+            raise ValueError('Unknown command {}'.format(cmd))
+
+        if data['_type'] == 'end':
+            return result
+
+        if data['_type'] != 'row':
+            raise ValueError('Unknown data type {} from '
+                             'edge'.format(data['_type']))
+
+        # remove our boring metadata
+        del data['_tag']
+        del data['_type']
+
+        if debug:
+            print(data)
+
+        result.append(data)
+
+
+class SimpleHandler(http.server.BaseHTTPRequestHandler):
+
+    def log_request(self, code='-', size='-'):
+        # Dont spam the output
+        pass
+
+    def do_GET(self):
+        url_tail = self.path
+        if url_tail.startswith("/edge/"):
+            tail = url_tail.split('/')
+            cmd = 'j.' + tail[2]
+
+            try:
+                data = send_cmd(5644, False, cmd)
+            except ValueError:
+                self.send_response(HTTPStatus.BAD_REQUEST)
+                self.end_headers()
+                self.wfile.write(b'Bad Command')
+                return
+
+            self.send_response(HTTPStatus.OK)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode('utf8'))
+
+
+def main():
+    ap = argparse.ArgumentParser(
+            description='Control the running local n2n edge via http')
+    #  TODO - this needs to pass into the handler object
+    # ap.add_argument('-t', '--mgmtport', action='store', default=5644,
+    #                 help='Management Port (default=5644)')
+    # ap.add_argument('-d', '--debug', action='store_true',
+    #                 help='Also show raw internal data')
+    ap.add_argument('port', action='store',
+                    default=8080, type=int, nargs='?',
+                    help='Serve requests on TCP port (default 8080)')
+
+    args = ap.parse_args()
+
+    with socketserver.TCPServer(("", args.port), SimpleHandler) as httpd:
+        httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        httpd.serve_forever()
+
+
+if __name__ == '__main__':
+    main()

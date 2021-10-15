@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+# Licensed under GPLv3
+#
+# Simple script to query the management interface of a running n2n edge node
+
+import argparse
+import socket
+import json
+import collections
+
+next_tag = 0
+
+
+def send_cmd(port, debug, cmd):
+    global next_tag
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    tagstr = str(next_tag)
+    next_tag = (next_tag + 1) % 1000
+
+    message = "{} {}".format(cmd, tagstr).encode('utf8')
+    sock.sendto(message, ("127.0.0.1", 5644))
+
+    # FIXME:
+    # - there is no timeout for any of the socket handling
+
+    begin, _ = sock.recvfrom(1024)
+    begin = json.loads(begin.decode('utf8'))
+    assert(begin['_tag'] == tagstr)
+    assert(begin['_type'] == 'begin')
+    assert(begin['_cmd'] == cmd)
+
+    result = list()
+
+    while True:
+        data, _ = sock.recvfrom(1024)
+        data = json.loads(data.decode('utf8'))
+        assert(data['_tag'] == tagstr)
+
+        if data['_type'] == 'unknowncmd':
+            raise ValueError('Unknown command {}'.format(cmd))
+
+        if data['_type'] == 'end':
+            return result
+
+        if data['_type'] != 'row':
+            raise ValueError('Unknown data type {} from '
+                             'edge'.format(data['_type']))
+
+        # remove our boring metadata
+        del data['_tag']
+        del data['_type']
+
+        if debug:
+            print(data)
+
+        result.append(data)
+
+
+def str_table(rows, columns):
+    """Given an array of dicts, do a simple table print"""
+    result = list()
+    widths = collections.defaultdict(lambda: 0)
+    for row in rows:
+        for col in columns:
+            if col in row:
+                widths[col] = max(widths[col], len(str(row[col])))
+
+    for col in columns:
+        if widths[col] == 0:
+            widths[col] = 1
+        result += "{:{}.{}} ".format(col, widths[col], widths[col])
+    result += "\n"
+
+    for row in rows:
+        for col in columns:
+            if col in row:
+                data = row[col]
+            else:
+                data = ''
+            result += "{:{}} ".format(data, widths[col])
+        result += "\n"
+
+    return ''.join(result)
+
+
+def subcmd_show_supernodes(args):
+    rows = send_cmd(args.port, args.debug, 'j.super')
+    columns = [
+        'version',
+        'current',
+        'macaddr',
+        'sockaddr',
+        'uptime',
+    ]
+
+    return str_table(rows, columns)
+
+
+def subcmd_show_peers(args):
+    rows = send_cmd(args.port, args.debug, 'j.peer')
+    columns = [
+        'mode',
+        'ip4addr',
+        'macaddr',
+        'sockaddr',
+        'desc',
+    ]
+
+    return str_table(rows, columns)
+
+
+subcmds = {
+    'supernodes': {
+        'func': subcmd_show_supernodes,
+        'help': 'Show the list of supernodes',
+    },
+    'peers': {
+        'func': subcmd_show_peers,
+        'help': 'Show the list of peers',
+    },
+}
+
+
+def main():
+    ap = argparse.ArgumentParser(
+            description='Query the running local n2n edge')
+    ap.add_argument('-t', '--port', action='store', default=5644,
+                    help='Management Port (default=5644)')
+    ap.add_argument('-d', '--debug', action='store_true',
+                    help='Also show raw internal data')
+
+    subcmd = ap.add_subparsers(help='Subcommand', dest='cmd')
+    subcmd.required = True
+
+    for key, value in subcmds.items():
+        value['parser'] = subcmd.add_parser(key, help=value['help'])
+        value['parser'].set_defaults(func=value['func'])
+
+    args = ap.parse_args()
+
+    result = args.func(args)
+    print(result)
+
+
+if __name__ == '__main__':
+    main()
