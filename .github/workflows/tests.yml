@@ -54,11 +54,18 @@ jobs:
         shell: bash
 
       - if: ${{ always() }}
+        name: Move test outputs to an arch specific location
+        shell: bash
+        run: |
+          mkdir -p tests/${{ matrix.os }}
+          mv tests/*.out tests/${{ matrix.os }}
+
+      - if: ${{ always() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
-          name: tests-out-${{matrix.os}}
-          path: tests/*.out
+          name: tests-out
+          path: tests/${{ matrix.os }}
 
       - name: Generate coverage reports
         run: |
@@ -110,11 +117,18 @@ jobs:
         shell: bash
 
       - if: ${{ always() }}
+        name: Move test outputs to an arch specific location
+        shell: bash
+        run: |
+          mkdir -p tests/${{ matrix.os }}
+          mv tests/*.out tests/${{ matrix.os }}
+
+      - if: ${{ always() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
-          name: tests-out-${{matrix.os}}
-          path: tests/*.out
+          name: tests-out
+          path: tests/${{ matrix.os }}
 
       - name: Generate coverage reports
         run: |
@@ -170,11 +184,18 @@ jobs:
         shell: bash
 
       - if: ${{ always() }}
+        name: Move test outputs to an arch specific location
+        shell: bash
+        run: |
+          mkdir -p tests/${{ matrix.os }}
+          mv tests/*.out tests/${{ matrix.os }}
+
+      - if: ${{ always() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
-          name: tests-out-${{matrix.os}}
-          path: tests/*.out
+          name: tests-out
+          path: tests/${{ matrix.os }}
 
       - name: Generate coverage data
         run: |
