@@ -150,7 +150,7 @@ test: tools
 	tools/test_harness
 
 lint.python:
-	flake8 scripts/n2nctl
+	flake8 scripts/n2nctl scripts/n2nhttpd
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
