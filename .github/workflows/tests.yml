@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: tests-out
-          path: tests/${{ matrix.os }}
+          path: tests
 
       - name: Generate coverage reports
         run: |
@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: tests-out
-          path: tests/${{ matrix.os }}
+          path: tests
 
       - name: Generate coverage reports
         run: |
@@ -195,7 +195,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: tests-out
-          path: tests/${{ matrix.os }}
+          path: tests
 
       - name: Generate coverage data
         run: |
