@@ -44,6 +44,10 @@ def send_cmd(port, debug, cmd):
         if data['_type'] == 'end':
             return result
 
+        if data['_type'] != 'row':
+            raise ValueError('Unknown data type {} from '
+                             'edge'.format(data['_type']))
+
         # remove our boring metadata
         del data['_tag']
         del data['_type']
