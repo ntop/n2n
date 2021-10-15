@@ -54,22 +54,29 @@ jobs:
         shell: bash
 
       - if: ${{ always() }}
+        name: Move test outputs to an arch specific location
+        shell: bash
+        run: |
+          mkdir -p tests/${{ matrix.os }}
+          mv tests/*.out tests/${{ matrix.os }}
+
+      - if: ${{ always() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
-          name: tests-out-${{matrix.os}}
-          path: tests/*.out
+          name: tests-out
+          path: tests
 
       - name: Generate coverage reports
         run: |
           make gcov
-          make cover
+          make cover COVERAGEDIR=coverage/${{ matrix.os }}
         shell: bash
 
       - name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
-          name: coverage-${{matrix.os}}
+          name: coverage
           path: coverage
 
       - name: Upload data to codecov
@@ -110,22 +117,29 @@ jobs:
         shell: bash
 
       - if: ${{ always() }}
+        name: Move test outputs to an arch specific location
+        shell: bash
+        run: |
+          mkdir -p tests/${{ matrix.os }}
+          mv tests/*.out tests/${{ matrix.os }}
+
+      - if: ${{ always() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
-          name: tests-out-${{matrix.os}}
-          path: tests/*.out
+          name: tests-out
+          path: tests
 
       - name: Generate coverage reports
         run: |
           make gcov
-          make cover
+          make cover COVERAGEDIR=coverage/${{ matrix.os }}
         shell: bash
 
       - name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
-          name: coverage-${{matrix.os}}
+          name: coverage
           path: coverage
 
       - name: Upload data to codecov
@@ -170,11 +184,18 @@ jobs:
         shell: bash
 
       - if: ${{ always() }}
+        name: Move test outputs to an arch specific location
+        shell: bash
+        run: |
+          mkdir -p tests/${{ matrix.os }}
+          mv tests/*.out tests/${{ matrix.os }}
+
+      - if: ${{ always() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
-          name: tests-out-${{matrix.os}}
-          path: tests/*.out
+          name: tests-out
+          path: tests
 
       - name: Generate coverage data
         run: |
@@ -225,7 +246,7 @@ jobs:
       - name: Upload dpkg
         uses: actions/upload-artifact@v2
         with:
-          name: package-dpkg-${{ matrix.arch }}
+          name: packages-dpkg
           path: packages/debian/*.deb
 
   package_rpm:
@@ -261,7 +282,7 @@ jobs:
       - name: Upload rpm
         uses: actions/upload-artifact@v2
         with:
-          name: package-rpm-x86_64
+          name: packages-rpm
           path: rpmbuild/RPMS/x86_64/*.rpm
 
   binaries_windows:
@@ -281,12 +302,12 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries
+          make install DESTDIR=binaries/x86_64-pc-mingw64
 
-      - name: Upload binary zip
+      - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-x86_64-pc-mingw64
+          name: binaries
           path: binaries
 
   binaries_macos:
@@ -311,12 +332,12 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries
+          make install DESTDIR=binaries/x86_64-apple-darwin
 
-      - name: Upload binary zip
+      - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-x86_64-apple-darwin
+          name: binaries
           path: binaries
 
   binaries_linux_crosscompile:
@@ -356,10 +377,10 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries
+          make install DESTDIR=binaries/${{ matrix.arch }}
 
-      - name: Upload binary zip
+      - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-${{ matrix.arch }}
+          name: binaries
           path: binaries
