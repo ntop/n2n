@@ -281,12 +281,12 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries
+          make install DESTDIR=binaries/x86_64-pc-mingw64
 
-      - name: Upload binary zip
+      - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-x86_64-pc-mingw64
+          name: binaries
           path: binaries
 
   binaries_macos:
@@ -311,12 +311,12 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries
+          make install DESTDIR=binaries/x86_64-apple-darwin
 
-      - name: Upload binary zip
+      - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-x86_64-apple-darwin
+          name: binaries
           path: binaries
 
   binaries_linux_crosscompile:
@@ -356,10 +356,10 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries
+          make install DESTDIR=binaries/${{ matrix.arch }}
 
-      - name: Upload binary zip
+      - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-${{ matrix.arch }}
+          name: binaries
           path: binaries
