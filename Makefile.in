@@ -172,7 +172,7 @@ gcov:
 # It is a convinent target to use during development or from a CI/CD system
 build-dep:
 ifeq ($(CONFIG_TARGET),generic)
-	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr
+	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr flake8
 else ifeq ($(CONFIG_TARGET),darwin)
 	brew install automake gcovr
 else
