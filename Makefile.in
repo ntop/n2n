@@ -110,6 +110,8 @@ DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
 SUBDIRS+=tools
 
+COVERAGEDIR?=coverage
+
 .PHONY: $(SUBDIRS)
 .PHONY: steps build push all clean install test cover gcov build-dep
 all: $(APPS) $(DOCS) $(SUBDIRS)
@@ -152,8 +154,8 @@ test: tools
 # and run the desired tests.  Ensure that package gcovr is installed
 # and then run "make cover"
 cover:
-	mkdir -p coverage
-	gcovr -s --html --html-details --output=coverage/index.html
+	mkdir -p $(COVERAGEDIR)
+	gcovr -s --html --html-details --output=$(COVERAGEDIR)/index.html
 
 # Use coverage data to generate gcov text report files.
 # Unfortunately, these end up in the wrong directory due to the
@@ -175,7 +177,7 @@ else
 endif
 
 clean:
-	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) coverage/ *.dSYM *~
+	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
 

@@ -63,13 +63,13 @@ jobs:
       - name: Generate coverage reports
         run: |
           make gcov
-          make cover
+          make cover COVERAGEDIR=coverage/${{ matrix.os }}
         shell: bash
 
       - name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
-          name: coverage-${{matrix.os}}
+          name: coverage
           path: coverage
 
       - name: Upload data to codecov
@@ -119,13 +119,13 @@ jobs:
       - name: Generate coverage reports
         run: |
           make gcov
-          make cover
+          make cover COVERAGEDIR=coverage/${{ matrix.os }}
         shell: bash
 
       - name: Upload gcovr report artifact
         uses: actions/upload-artifact@v2
         with:
-          name: coverage-${{matrix.os}}
+          name: coverage
           path: coverage
 
       - name: Upload data to codecov
