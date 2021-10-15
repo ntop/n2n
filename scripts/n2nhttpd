@@ -98,11 +98,11 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
 def main():
     ap = argparse.ArgumentParser(
             description='Control the running local n2n edge via http')
-    # TODO - this needs to pass into the handler object
-    #ap.add_argument('-t', '--mgmtport', action='store', default=5644,
-    #                help='Management Port (default=5644)')
-    #ap.add_argument('-d', '--debug', action='store_true',
-    #                help='Also show raw internal data')
+    #  TODO - this needs to pass into the handler object
+    # ap.add_argument('-t', '--mgmtport', action='store', default=5644,
+    #                 help='Management Port (default=5644)')
+    # ap.add_argument('-d', '--debug', action='store_true',
+    #                 help='Also show raw internal data')
     ap.add_argument('port', action='store',
                     default=8080, type=int, nargs='?',
                     help='Serve requests on TCP port (default 8080)')
