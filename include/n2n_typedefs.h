@@ -831,6 +831,12 @@ typedef struct n2n_sn {
 } n2n_sn_t;
 
 
+/* *************************************************** */
 
+typedef struct n2n_mgmt_handler {
+    char  *cmd;
+    char  *help;
+    void (*func)(n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *cmd);
+} n2n_mgmt_handler_t;
 
 #endif /* _N2N_TYPEDEFS_H_ */

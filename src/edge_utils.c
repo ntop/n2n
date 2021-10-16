@@ -1819,14 +1819,14 @@ static void handleMgmtJson_error (n2n_edge_t *eee, char *udp_buf, struct sockadd
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void handleMgmtJson_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum mgmt_type type, char *tag, char *cmd) {
+static void handleMgmtJson_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *cmd) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     selection_criterion_str_t sel_buf;
 
-    if(type!=MGMT_READ) {
+    if(type!=N2N_MGMT_READ) {
         handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "readonly");
         return;
     }
@@ -1867,14 +1867,14 @@ static void handleMgmtJson_super (n2n_edge_t *eee, char *udp_buf, struct sockadd
     }
 }
 
-static void handleMgmtJson_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum mgmt_type type, char *tag, char *cmd) {
+static void handleMgmtJson_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *cmd) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     in_addr_t net;
 
-    if(type!=MGMT_READ) {
+    if(type!=N2N_MGMT_READ) {
         handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "readonly");
         return;
     }
@@ -1931,13 +1931,48 @@ static void handleMgmtJson_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr
     }
 }
 
+static void handleMgmtJson_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *cmd);
+
+n2n_mgmt_handler_t mgmt_handlers[] = {
+    { .cmd = "peer", .help = "List current peers", .func = handleMgmtJson_peer},
+    { .cmd = "super", .help = "List current supernodes", .func = handleMgmtJson_super},
+    { .cmd = "help", .help = "Show JSON commands", .func = handleMgmtJson_help},
+    { .cmd = NULL },
+};
+
+static void handleMgmtJson_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *cmd) {
+    size_t msg_len;
+    n2n_mgmt_handler_t *handler;
+
+    /*
+     * Even though this command is readonly, we deliberately do not check
+     * the type - allowing help replys to both read and write requests
+     */
+
+    for( handler=mgmt_handlers; handler->cmd; handler++ ) {
+        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                            "{"
+                            "\"_tag\":\"%s\","
+                            "\"_type\":\"row\","
+                            "\"cmd\":\"%s\","
+                            "\"help\":\"%s\"}\n",
+                            tag,
+                            handler->cmd,
+                            handler->help);
+
+        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    }
+}
+
 static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock) {
 
     char cmdlinebuf[80];
-    enum mgmt_type type;
+    enum n2n_mgmt_type type;
     char *typechar;
     char *tag;
     char *cmd;
+    n2n_mgmt_handler_t *handler;
     size_t msg_len;
 
     /* save a copy of the commandline before we reuse the udp_buf */
@@ -1953,9 +1988,9 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
         return;
     }
     if(*typechar == 'r') {
-        type=MGMT_READ;
+        type=N2N_MGMT_READ;
     } else if(*typechar == 'w') {
-        type=MGMT_WRITE;
+        type=N2N_MGMT_WRITE;
     } else {
         /* dunno how we got here */
         handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "badtype");
@@ -1975,6 +2010,16 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
         return;
     }
 
+    for( handler=mgmt_handlers; handler->cmd; handler++ ) {
+        if(0 == strcmp(handler->cmd, cmd)) {
+            break;
+        }
+    }
+    if(!handler->cmd) {
+        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "unknowncmd");
+        return;
+    }
+
     /*
      * TODO:
      * The tag provided by the requester could contain chars
@@ -1986,13 +2031,7 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 
-    if(0 == strcmp(cmd, "super")) {
-        handleMgmtJson_super(eee, udp_buf, sender_sock, type, tag, cmd);
-    } else if(0 == strcmp(cmd, "peer")) {
-        handleMgmtJson_peer(eee, udp_buf, sender_sock, type, tag, cmd);
-    } else {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "unknowncmd");
-    }
+    handler->func(eee, udp_buf, sender_sock, type, tag, cmd);
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                         "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", tag);
