@@ -1806,14 +1806,30 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
 #endif
 #endif
 
-static void handleMgmtJson_super (n2n_edge_t *eee, char *tag, char *udp_buf, struct sockaddr_in sender_sock) {
+static void handleMgmtJson_error (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, char *tag, char *msg) {
+    size_t msg_len;
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"error\","
+                       "\"error\":\"%s\"}\n",
+                       tag,
+                       msg);
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+}
+
+static void handleMgmtJson_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum mgmt_type type, char *tag, char *cmd) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     selection_criterion_str_t sel_buf;
 
-    traceEvent(TRACE_DEBUG, "mgmt j.super");
+    if(type!=MGMT_READ) {
+        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "readonly");
+        return;
+    }
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
 
@@ -1851,14 +1867,17 @@ static void handleMgmtJson_super (n2n_edge_t *eee, char *tag, char *udp_buf, str
     }
 }
 
-static void handleMgmtJson_peer (n2n_edge_t *eee, char *tag, char *udp_buf, struct sockaddr_in sender_sock) {
+static void handleMgmtJson_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum mgmt_type type, char *tag, char *cmd) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     in_addr_t net;
 
-    traceEvent(TRACE_DEBUG, "mgmt j.peer");
+    if(type!=MGMT_READ) {
+        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "readonly");
+        return;
+    }
 
     /* FIXME:
      * dont repeat yourself - the body of these two loops is identical
@@ -1912,24 +1931,48 @@ static void handleMgmtJson_peer (n2n_edge_t *eee, char *tag, char *udp_buf, stru
     }
 }
 
-static void handleMgmtJson (n2n_edge_t *eee, char *cmdp, char *udp_buf, struct sockaddr_in sender_sock) {
+static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock) {
+
+    char cmdlinebuf[80];
+    enum mgmt_type type;
+    char *typechar;
+    char *tag;
+    char *cmd;
     size_t msg_len;
 
-    char cmd[10];
-    char tag[10];
+    /* save a copy of the commandline before we reuse the udp_buf */
+    strncpy(cmdlinebuf, udp_buf, sizeof(cmdlinebuf)-1);
+    cmdlinebuf[sizeof(cmdlinebuf)-1] = 0;
 
-    /* save the command name before we reuse the buffer */
-    strncpy(cmd, cmdp, sizeof(cmd)-1);
-    cmd[sizeof(cmd)-1] = 0;
+    traceEvent(TRACE_DEBUG, "mgmt json %s", cmdlinebuf);
+
+    typechar = strtok(cmdlinebuf, " \r\n");
+    if(!typechar) {
+        /* should not happen */
+        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "notype");
+        return;
+    }
+    if(*typechar == 'r') {
+        type=MGMT_READ;
+    } else if(*typechar == 'w') {
+        type=MGMT_WRITE;
+    } else {
+        /* dunno how we got here */
+        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "badtype");
+        return;
+    }
 
     /* Extract the tag to use in all reply packets */
-    char *tagp = strtok(NULL, " \r\n");
-    if(tagp) {
-        strncpy(tag, tagp, sizeof(tag)-1);
-        tag[sizeof(tag)-1] = 0;
-    } else {
-        tag[0] = '0';
-        tag[1] = 0;
+    tag = strtok(NULL, " \r\n");
+    if(!tag) {
+        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "notag");
+        return;
+    }
+
+    cmd = strtok(NULL, " \r\n");
+    if(!cmd) {
+        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "nocmd");
+        return;
     }
 
     /*
@@ -1939,19 +1982,16 @@ static void handleMgmtJson (n2n_edge_t *eee, char *cmdp, char *udp_buf, struct s
      * - do we care?
      */
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                        "{\"_tag\":\"%s\",\"_type\":\"begin\",\"_cmd\":\"%s\"}\n", tag, cmd);
+                        "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", tag, cmd);
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 
-    if(0 == strcmp(cmd, "j.super")) {
-        handleMgmtJson_super(eee, tag, udp_buf, sender_sock);
-    } else if(0 == strcmp(cmd, "j.peer")) {
-        handleMgmtJson_peer(eee, tag, udp_buf, sender_sock);
+    if(0 == strcmp(cmd, "super")) {
+        handleMgmtJson_super(eee, udp_buf, sender_sock, type, tag, cmd);
+    } else if(0 == strcmp(cmd, "peer")) {
+        handleMgmtJson_peer(eee, udp_buf, sender_sock, type, tag, cmd);
     } else {
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{\"_tag\":\"%s\",\"_type\":\"unknowncmd\"}\n", tag);
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "unknowncmd");
     }
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
@@ -2008,8 +2048,8 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                             "\thelp    | This help message\n"
                             "\t+verb   | Increase verbosity of logging\n"
                             "\t-verb   | Decrease verbosity of logging\n"
-                            "\tj.super | JSON supernode info\n"
-                            "\tj.peer  | JSON peer info\n"
+                            "\tr ...   | start query with JSON reply\n"
+                            "\tw ...   | start update with JSON reply\n"
                             "\t<enter> | Display statistics\n\n");
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
@@ -2057,10 +2097,9 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
         return;
     }
 
-    char * cmdp = strtok( (char *)udp_buf, " \r\n");
-    if(cmdp && (0 == memcmp(cmdp, "j.", 2))) {
-        /* We think this is a JSON request */
-        handleMgmtJson(eee, cmdp, (char *)udp_buf, sender_sock);
+    if((udp_buf[0] == 'r' || udp_buf[0] == 'w') && (udp_buf[1] == ' ')) {
+        /* this is a JSON request */
+        handleMgmtJson(eee, (char *)udp_buf, sender_sock);
         return;
     }
 
