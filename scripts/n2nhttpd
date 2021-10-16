@@ -3,10 +3,12 @@
 #
 # Simple http server to allow user control of n2n edge nodes
 #
-# Currently only for demonstration - needs javascript written to render the
-# results properly.
+# Currently only for demonstration
+# - needs nicer looking html written
+# - needs more json interfaces in edge
 #
 # Try it out with
+#   http://localhost:8080/
 #   http://localhost:8080/edge/peer
 #   http://localhost:8080/edge/super
 
@@ -69,6 +71,82 @@ def send_cmd(port, debug, cmd):
         result.append(data)
 
 
+indexhtml = """
+<html>
+<head>
+ <title>n2n management</title>
+</head>
+<body>
+ <div id="time"></div>
+ <br>
+ Supernodes:
+ <div id="super"></div>
+ <br>
+ Peers:
+ <div id="peer"></div>
+
+ <script>
+  function rows2table(id, columns, data) {
+    let s = "<table border=1 cellspacing=0>"
+    s += "<tr>"
+    columns.forEach((col) => {
+        s += "<th>" + col
+    });
+    data.forEach((row) => {
+        s += "<tr>"
+        columns.forEach((col) => {
+            s += "<td>" + row[col]
+        });
+    });
+
+    s += "</table>"
+    let div = document.getElementById(id);
+    div.innerHTML=s
+  }
+
+  function fetch_table(url, id, columns) {
+    fetch(url)
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (data) {
+        rows2table(id,columns,data);
+      })
+      .catch(function (err) {
+        console.log('error: ' + err);
+      });
+  }
+
+  function refresh_job() {
+    let now = new Date().getTime();
+
+    let time = document.getElementById('time');
+    time.innerHTML="last updated: " + now;
+
+    fetch_table(
+        'edge/super',
+        'super',
+        ['version','current','macaddr','sockaddr','uptime']
+    );
+    fetch_table(
+        'edge/peer',
+        'peer',
+        ['mode','ip4addr','macaddr','sockaddr','desc']
+    );
+  }
+
+  function refresh_setup(interval) {
+    var timer = setInterval(refresh_job, interval);
+  }
+
+refresh_setup(5000);
+refresh_job();
+ </script>
+</body>
+</html>
+"""
+
+
 class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
     def log_request(self, code='-', size='-'):
@@ -77,9 +155,18 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         url_tail = self.path
+
+        if url_tail == "/":
+            self.send_response(HTTPStatus.OK)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(indexhtml.encode('utf8'))
+            return
+
         if url_tail.startswith("/edge/"):
             tail = url_tail.split('/')
             cmd = 'j.' + tail[2]
+            # if commands ever need args, use more of the path components
 
             try:
                 data = send_cmd(5644, False, cmd)
@@ -93,6 +180,12 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(data).encode('utf8'))
+            return
+
+        self.send_response(HTTPStatus.NOT_FOUND)
+        self.end_headers()
+        self.wfile.write(b'Not Found')
+        return
 
 
 def main():
