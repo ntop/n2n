@@ -1973,14 +1973,15 @@ static void handleMgmtJson_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr
  *   Writes are possibly dangerous, so they need a fake password
  */
 int handleMgmtJson_auth(struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
-    if(type==N2N_MGMT_READ) {
-        return 1;
-    }
-    if(!auth) {
-        /* If we have no auth, we will never compare correctly */
+    if(auth) {
+        /* If we have an auth key, it must match */
+        if(0 == strcmp(auth,"CHANGEME")) {
+            return 1;
+        }
         return 0;
     }
-    if(0 == strcmp(auth,"CHANGEME")) {
+    /* if we dont have an auth key, we can still read */
+    if(type==N2N_MGMT_READ) {
         return 1;
     }
     return 0;
