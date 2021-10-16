@@ -32,17 +32,23 @@ def send_cmd(port, debug, cmd):
     tagstr = str(next_tag)
     next_tag = (next_tag + 1) % 1000
 
-    message = "{} {}".format(cmd, tagstr).encode('utf8')
+    msgtype = "r"
+
+    message = "{} {} {}".format(msgtype, tagstr, cmd).encode('utf8')
     sock.sendto(message, ("127.0.0.1", 5644))
 
     # FIXME:
     # - there is no timeout for any of the socket handling
 
-    begin, _ = sock.recvfrom(1024)
-    begin = json.loads(begin.decode('utf8'))
-    assert(begin['_tag'] == tagstr)
-    assert(begin['_type'] == 'begin')
-    assert(begin['_cmd'] == cmd)
+    data, _ = sock.recvfrom(1024)
+    data = json.loads(data.decode('utf8'))
+    assert(data['_tag'] == tagstr)
+
+    if data['_type'] == 'error':
+        raise ValueError('Error: {}'.format(data['error']))
+
+    assert(data['_type'] == 'begin')
+    assert(data['cmd'] == cmd)
 
     result = list()
 
@@ -51,8 +57,8 @@ def send_cmd(port, debug, cmd):
         data = json.loads(data.decode('utf8'))
         assert(data['_tag'] == tagstr)
 
-        if data['_type'] == 'unknowncmd':
-            raise ValueError('Unknown command {}'.format(cmd))
+        if data['_type'] == 'error':
+            raise ValueError('Error with command {}'.format(cmd))
 
         if data['_type'] == 'end':
             return result
@@ -165,7 +171,7 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
         if url_tail.startswith("/edge/"):
             tail = url_tail.split('/')
-            cmd = 'j.' + tail[2]
+            cmd = tail[2]
             # if commands ever need args, use more of the path components
 
             try:

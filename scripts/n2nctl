@@ -12,6 +12,7 @@ next_tag = 0
 
 
 def send_cmd(port, debug, cmd):
+    """Send a text command to the edge and process the JSON reply packets"""
     global next_tag
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -19,17 +20,23 @@ def send_cmd(port, debug, cmd):
     tagstr = str(next_tag)
     next_tag = (next_tag + 1) % 1000
 
-    message = "{} {}".format(cmd, tagstr).encode('utf8')
+    msgtype = "r"
+
+    message = "{} {} {}".format(msgtype, tagstr, cmd).encode('utf8')
     sock.sendto(message, ("127.0.0.1", 5644))
 
     # FIXME:
     # - there is no timeout for any of the socket handling
 
-    begin, _ = sock.recvfrom(1024)
-    begin = json.loads(begin.decode('utf8'))
-    assert(begin['_tag'] == tagstr)
-    assert(begin['_type'] == 'begin')
-    assert(begin['_cmd'] == cmd)
+    data, _ = sock.recvfrom(1024)
+    data = json.loads(data.decode('utf8'))
+    assert(data['_tag'] == tagstr)
+
+    if data['_type'] == 'error':
+        raise ValueError('Error: {}'.format(data['error']))
+
+    assert(data['_type'] == 'begin')
+    assert(data['cmd'] == cmd)
 
     result = list()
 
@@ -38,8 +45,8 @@ def send_cmd(port, debug, cmd):
         data = json.loads(data.decode('utf8'))
         assert(data['_tag'] == tagstr)
 
-        if data['_type'] == 'unknowncmd':
-            raise ValueError('Unknown command {}'.format(cmd))
+        if data['_type'] == 'error':
+            raise ValueError('Error with command {}'.format(cmd))
 
         if data['_type'] == 'end':
             return result
@@ -86,7 +93,7 @@ def str_table(rows, columns):
 
 
 def subcmd_show_supernodes(args):
-    rows = send_cmd(args.port, args.debug, 'j.super')
+    rows = send_cmd(args.port, args.debug, 'super')
     columns = [
         'version',
         'current',
@@ -99,7 +106,7 @@ def subcmd_show_supernodes(args):
 
 
 def subcmd_show_peers(args):
-    rows = send_cmd(args.port, args.debug, 'j.peer')
+    rows = send_cmd(args.port, args.debug, 'peer')
     columns = [
         'mode',
         'ip4addr',
