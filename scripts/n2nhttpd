@@ -23,7 +23,7 @@ from http import HTTPStatus
 next_tag = 0
 
 
-def send_cmd(port, debug, cmd):
+def send_cmd(port, debug, key, cmd):
     """Send a text command to the edge and process the JSON reply packets"""
     global next_tag
 
@@ -32,9 +32,14 @@ def send_cmd(port, debug, cmd):
     tagstr = str(next_tag)
     next_tag = (next_tag + 1) % 1000
 
+    if key is not None:
+        tagauth = tagstr + ':' + key
+    else:
+        tagauth = tagstr
+
     msgtype = "r"
 
-    message = "{} {} {}".format(msgtype, tagstr, cmd).encode('utf8')
+    message = "{} {} {}".format(msgtype, tagauth, cmd).encode('utf8')
     sock.sendto(message, ("127.0.0.1", 5644))
 
     # FIXME:
@@ -175,7 +180,7 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
             # if commands ever need args, use more of the path components
 
             try:
-                data = send_cmd(5644, False, cmd)
+                data = send_cmd(5644, False, None, cmd)
             except ValueError:
                 self.send_response(HTTPStatus.BAD_REQUEST)
                 self.end_headers()

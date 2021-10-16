@@ -11,7 +11,7 @@ import collections
 next_tag = 0
 
 
-def send_cmd(port, debug, cmd):
+def send_cmd(port, debug, key, cmd):
     """Send a text command to the edge and process the JSON reply packets"""
     global next_tag
 
@@ -20,9 +20,14 @@ def send_cmd(port, debug, cmd):
     tagstr = str(next_tag)
     next_tag = (next_tag + 1) % 1000
 
+    if key is not None:
+        tagauth = tagstr + ':' + key
+    else:
+        tagauth = tagstr
+
     msgtype = "r"
 
-    message = "{} {} {}".format(msgtype, tagstr, cmd).encode('utf8')
+    message = "{} {} {}".format(msgtype, tagauth, cmd).encode('utf8')
     sock.sendto(message, ("127.0.0.1", 5644))
 
     # FIXME:
@@ -93,7 +98,7 @@ def str_table(rows, columns):
 
 
 def subcmd_show_supernodes(args):
-    rows = send_cmd(args.port, args.debug, 'super')
+    rows = send_cmd(args.port, args.debug, args.key, 'super')
     columns = [
         'version',
         'current',
@@ -106,7 +111,7 @@ def subcmd_show_supernodes(args):
 
 
 def subcmd_show_peers(args):
-    rows = send_cmd(args.port, args.debug, 'peer')
+    rows = send_cmd(args.port, args.debug, args.key, 'peer')
     columns = [
         'mode',
         'ip4addr',
@@ -135,6 +140,8 @@ def main():
             description='Query the running local n2n edge')
     ap.add_argument('-t', '--port', action='store', default=5644,
                     help='Management Port (default=5644)')
+    ap.add_argument('-k', '--key', action='store',
+                    help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
                     help='Also show raw internal data')
 
