@@ -220,7 +220,10 @@ def main():
 
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", args.port), SimpleHandler) as httpd:
-        httpd.serve_forever()
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            return
 
 
 if __name__ == '__main__':
