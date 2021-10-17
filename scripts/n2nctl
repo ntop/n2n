@@ -123,7 +123,24 @@ def subcmd_show_peers(args):
     return str_table(rows, columns)
 
 
+def subcmd_show_help(args):
+    result = 'Commands with pretty-printed output:\n\n'
+    for name, cmd in subcmds.items():
+        result += "{:12} {}\n".format(name, cmd['help'])
+
+    result += "\n"
+    result += "Possble remote commands:\n"
+    result += "(those without pretty-printer, will pass-through)\n\n"
+    rows = send_cmd(args.port, args.debug, args.key, args.cmd)
+    result += json.dumps(rows, sort_keys=True, indent=4)
+    return result
+
+
 subcmds = {
+    'help': {
+        'func': subcmd_show_help,
+        'help': 'Show available commands',
+    },
     'supernodes': {
         'func': subcmd_show_supernodes,
         'help': 'Show the list of supernodes',
@@ -135,6 +152,12 @@ subcmds = {
 }
 
 
+def subcmd_default(args):
+    """Just pass command through to edge"""
+    rows = send_cmd(args.port, args.debug, args.key, args.cmd)
+    return json.dumps(rows, sort_keys=True, indent=4)
+
+
 def main():
     ap = argparse.ArgumentParser(
             description='Query the running local n2n edge')
@@ -144,17 +167,21 @@ def main():
                     help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
                     help='Also show raw internal data')
-
-    subcmd = ap.add_subparsers(help='Subcommand', dest='cmd')
-    subcmd.required = True
-
-    for key, value in subcmds.items():
-        value['parser'] = subcmd.add_parser(key, help=value['help'])
-        value['parser'].set_defaults(func=value['func'])
+    ap.add_argument('--read', action='store_true',
+                    help='Make a read request (default)')
+    ap.add_argument('--write', action='store_false', dest='read',
+                    help='Make a write request')
+    ap.add_argument('cmd', action='store',
+                    help='Command to run (try "help" for list)')
 
     args = ap.parse_args()
 
-    result = args.func(args)
+    if args.cmd not in subcmds:
+        func = subcmd_default
+    else:
+        func = subcmds[args.cmd]['func']
+
+    result = func(args)
     print(result)
 
 
