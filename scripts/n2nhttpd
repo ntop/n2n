@@ -218,8 +218,8 @@ def main():
 
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
+    socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", args.port), SimpleHandler) as httpd:
-        httpd.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         httpd.serve_forever()
 
 
