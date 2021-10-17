@@ -184,7 +184,7 @@ subcmds = {
 
 def subcmd_default(rpc, args):
     """Just pass command through to edge"""
-    cmdline = args.cmd
+    cmdline = ' '.join([args.cmd] + args.args)
     if args.write:
         rows = rpc.write(cmdline)
     else:
@@ -210,6 +210,8 @@ def main():
 
     ap.add_argument('cmd', action='store',
                     help='Command to run (try "help" for list)')
+    ap.add_argument('args', action='store', nargs="*",
+                    help='Optional args for the command')
 
     args = ap.parse_args()
 
