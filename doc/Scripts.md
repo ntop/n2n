@@ -11,7 +11,7 @@ Short descriptions of these scripts are below.
 
 This shell script is used during development to help build on Windows
 systems.  An example of how to use it is shown in
-the [Duilding document](Building.md)
+the [Building document](Building.md)
 
 ## `tools/test_harness`
 
