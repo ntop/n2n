@@ -195,7 +195,7 @@ def subcmd_default(rpc, args):
 def main():
     ap = argparse.ArgumentParser(
             description='Query the running local n2n edge')
-    ap.add_argument('-t', '--port', action='store', default=5644,
+    ap.add_argument('-t', '--mgmtport', action='store', default=5644,
                     help='Management Port (default=5644)')
     ap.add_argument('-k', '--key', action='store',
                     help='Password for mgmt commands')
@@ -218,7 +218,7 @@ def main():
     else:
         func = subcmds[args.cmd]['func']
 
-    rpc = JsonUDP(args.port)
+    rpc = JsonUDP(args.mgmtport)
     rpc.debug = args.debug
     rpc.key = args.key
 
