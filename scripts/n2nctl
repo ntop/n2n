@@ -8,54 +8,96 @@ import socket
 import json
 import collections
 
-next_tag = 0
 
+class JsonUDP():
+    """encapsulate communication with the edge"""
 
-def send_cmd(port, debug, cmd):
-    global next_tag
+    def __init__(self, port):
+        self.address = "127.0.0.1"
+        self.port = port
+        self.tag = 0
+        self.key = None
+        self.debug = False
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def _next_tag(self):
+        tagstr = str(self.tag)
+        self.tag = (self.tag + 1) % 1000
+        return tagstr
 
-    tagstr = str(next_tag)
-    next_tag = (next_tag + 1) % 1000
+    def _cmdstr(self, msgtype, cmdline):
+        """Create the full command string to send"""
+        tagstr = self._next_tag()
 
-    message = "{} {}".format(cmd, tagstr).encode('utf8')
-    sock.sendto(message, ("127.0.0.1", 5644))
+        options = [tagstr]
+        if self.key is not None:
+            options += ['1']  # Flags set for auth key field
+            options += [self.key]
+        optionsstr = ':'.join(options)
 
-    # FIXME:
-    # - there is no timeout for any of the socket handling
+        return tagstr, ' '.join((msgtype, optionsstr, cmdline))
 
-    begin, _ = sock.recvfrom(1024)
-    begin = json.loads(begin.decode('utf8'))
-    assert(begin['_tag'] == tagstr)
-    assert(begin['_type'] == 'begin')
-    assert(begin['_cmd'] == cmd)
+    def _rx(self, tagstr):
+        """Wait for rx packets"""
 
-    result = list()
-
-    while True:
-        data, _ = sock.recvfrom(1024)
+        # TODO: there are no timeouts with any of the recv calls
+        data, _ = self.sock.recvfrom(1024)
         data = json.loads(data.decode('utf8'))
+
+        # TODO: We assume the first packet we get will be tagged for us
+        # and be either an "error" or a "begin"
         assert(data['_tag'] == tagstr)
 
-        if data['_type'] == 'unknowncmd':
-            raise ValueError('Unknown command {}'.format(cmd))
+        if data['_type'] == 'error':
+            raise ValueError('Error: {}'.format(data['error']))
 
-        if data['_type'] == 'end':
-            return result
+        assert(data['_type'] == 'begin')
 
-        if data['_type'] != 'row':
-            raise ValueError('Unknown data type {} from '
-                             'edge'.format(data['_type']))
+        # Ideally, we would confirm that this is our "begin", but that
+        # would need the cmd passed into this method, and that would
+        # probably require parsing the cmdline passed to us :-(
+        # assert(data['cmd'] == cmd)
 
-        # remove our boring metadata
-        del data['_tag']
-        del data['_type']
+        result = list()
 
-        if debug:
-            print(data)
+        while True:
+            data, _ = self.sock.recvfrom(1024)
+            data = json.loads(data.decode('utf8'))
 
-        result.append(data)
+            if data['_tag'] != tagstr:
+                # this packet is not for us, ignore it
+                continue
+
+            if data['_type'] == 'error':
+                raise ValueError('Error: {}'.format(data['error']))
+
+            if data['_type'] == 'end':
+                return result
+
+            if data['_type'] != 'row':
+                raise ValueError('Unknown data type {} from '
+                                 'edge'.format(data['_type']))
+
+            # remove our boring metadata
+            del data['_tag']
+            del data['_type']
+
+            if self.debug:
+                print(data)
+
+            result.append(data)
+
+    def _call(self, msgtype, cmdline):
+        """Perform a rpc call"""
+        tagstr, msgstr = self._cmdstr(msgtype, cmdline)
+        self.sock.sendto(msgstr.encode('utf8'), (self.address, self.port))
+        return self._rx(tagstr)
+
+    def read(self, cmdline):
+        return self._call('r', cmdline)
+
+    def write(self, cmdline):
+        return self._call('w', cmdline)
 
 
 def str_table(rows, columns):
@@ -85,8 +127,8 @@ def str_table(rows, columns):
     return ''.join(result)
 
 
-def subcmd_show_supernodes(args):
-    rows = send_cmd(args.port, args.debug, 'j.super')
+def subcmd_show_supernodes(rpc, args):
+    rows = rpc.read('super')
     columns = [
         'version',
         'current',
@@ -98,8 +140,8 @@ def subcmd_show_supernodes(args):
     return str_table(rows, columns)
 
 
-def subcmd_show_peers(args):
-    rows = send_cmd(args.port, args.debug, 'j.peer')
+def subcmd_show_peers(rpc, args):
+    rows = rpc.read('peer')
     columns = [
         'mode',
         'ip4addr',
@@ -111,7 +153,24 @@ def subcmd_show_peers(args):
     return str_table(rows, columns)
 
 
+def subcmd_show_help(rpc, args):
+    result = 'Commands with pretty-printed output:\n\n'
+    for name, cmd in subcmds.items():
+        result += "{:12} {}\n".format(name, cmd['help'])
+
+    result += "\n"
+    result += "Possble remote commands:\n"
+    result += "(those without pretty-printer, will pass-through)\n\n"
+    rows = rpc.read('help')
+    result += json.dumps(rows, sort_keys=True, indent=4)
+    return result
+
+
 subcmds = {
+    'help': {
+        'func': subcmd_show_help,
+        'help': 'Show available commands',
+    },
     'supernodes': {
         'func': subcmd_show_supernodes,
         'help': 'Show the list of supernodes',
@@ -123,24 +182,49 @@ subcmds = {
 }
 
 
+def subcmd_default(rpc, args):
+    """Just pass command through to edge"""
+    cmdline = ' '.join([args.cmd] + args.args)
+    if args.write:
+        rows = rpc.write(cmdline)
+    else:
+        rows = rpc.read(cmdline)
+    return json.dumps(rows, sort_keys=True, indent=4)
+
+
 def main():
     ap = argparse.ArgumentParser(
             description='Query the running local n2n edge')
-    ap.add_argument('-t', '--port', action='store', default=5644,
+    ap.add_argument('-t', '--mgmtport', action='store', default=5644,
                     help='Management Port (default=5644)')
+    ap.add_argument('-k', '--key', action='store',
+                    help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
                     help='Also show raw internal data')
 
-    subcmd = ap.add_subparsers(help='Subcommand', dest='cmd')
-    subcmd.required = True
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument('--read', action='store_true',
+                       help='Make a read request (default)')
+    group.add_argument('--write', action='store_true',
+                       help='Make a write request')
 
-    for key, value in subcmds.items():
-        value['parser'] = subcmd.add_parser(key, help=value['help'])
-        value['parser'].set_defaults(func=value['func'])
+    ap.add_argument('cmd', action='store',
+                    help='Command to run (try "help" for list)')
+    ap.add_argument('args', action='store', nargs="*",
+                    help='Optional args for the command')
 
     args = ap.parse_args()
 
-    result = args.func(args)
+    if args.cmd not in subcmds:
+        func = subcmd_default
+    else:
+        func = subcmds[args.cmd]['func']
+
+    rpc = JsonUDP(args.mgmtport)
+    rpc.debug = args.debug
+    rpc.key = args.key
+
+    result = func(rpc, args)
     print(result)
 
 
