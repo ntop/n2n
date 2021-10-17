@@ -33,13 +33,13 @@ def send_cmd(port, debug, key, cmd):
     next_tag = (next_tag + 1) % 1000
 
     if key is not None:
-        tagauth = tagstr + ':' + key
+        options = tagstr + ':1:' + key
     else:
-        tagauth = tagstr
+        options = tagstr
 
     msgtype = "r"
 
-    message = "{} {} {}".format(msgtype, tagauth, cmd).encode('utf8')
+    message = "{} {} {}".format(msgtype, options, cmd).encode('utf8')
     sock.sendto(message, ("127.0.0.1", 5644))
 
     # FIXME:

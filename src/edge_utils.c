@@ -1992,10 +1992,13 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
     char cmdlinebuf[80];
     enum n2n_mgmt_type type;
     char *typechar;
-    char *tag;
-    char *auth;
+    char *options;
     char *argv0;
     char *argv;
+    char *tag;
+    char *flagstr;
+    int flags;
+    char *auth;
     n2n_mgmt_handler_t *handler;
     size_t msg_len;
 
@@ -2022,9 +2025,9 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
     }
 
     /* Extract the tag to use in all reply packets */
-    tag = strtok(NULL, " \r\n");
-    if(!tag) {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "notag");
+    options = strtok(NULL, " \r\n");
+    if(!options) {
+        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "nooptions");
         return;
     }
 
@@ -2043,8 +2046,21 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
     /*
      * There might be an auth token mixed in with the tag
      */
-    tag = strtok(tag, ":");
-    auth = strtok(NULL, ":");
+    tag = strtok(options, ":");
+    flagstr = strtok(NULL, ":");
+    if (flagstr) {
+        flags = strtoul(flagstr, NULL, 16);
+    } else {
+        flags = 0;
+    }
+
+    /* Only 1 flag bit defined at the moment - "auth option present" */
+    if (flags & 1) {
+        auth = strtok(NULL, ":");
+    } else {
+        auth = NULL;
+    }
+
     if(!handleMgmtJson_auth(sender_sock, type, auth, argv0, argv)) {
         handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "badauth");
         return;
