@@ -166,6 +166,11 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
         # Dont spam the output
         pass
 
+    def _simplereply(self, number, message):
+        self.send_response(number)
+        self.end_headers()
+        self.wfile.write(message.encode('utf8'))
+
     def do_GET(self):
         url_tail = self.path
 
@@ -184,9 +189,7 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
             try:
                 data = send_cmd(5644, False, None, cmd)
             except ValueError:
-                self.send_response(HTTPStatus.BAD_REQUEST)
-                self.end_headers()
-                self.wfile.write(b'Bad Command')
+                self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
                 return
 
             self.send_response(HTTPStatus.OK)
@@ -195,9 +198,7 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(data).encode('utf8'))
             return
 
-        self.send_response(HTTPStatus.NOT_FOUND)
-        self.end_headers()
-        self.wfile.write(b'Not Found')
+        self._simplereply(HTTPStatus.NOT_FOUND, 'Not Found')
         return
 
 
