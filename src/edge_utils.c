@@ -31,11 +31,13 @@ int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, t
 int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
 static const char * supernode_ip (const n2n_edge_t * eee);
-static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac, n2n_cookie_t cookie);
+static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const SOCKET socket_fd, const n2n_mac_t peer_mac, n2n_cookie_t cookie);
 
 static void check_peer_registration_needed (n2n_edge_t *eee,
                                             uint8_t from_supernode,
                                             uint8_t via_multicast,
+                                            uint8_t is_multicast,
+                                            SOCKET socket_fd,
                                             const n2n_mac_t mac,
                                             const n2n_cookie_t cookie,
                                             const n2n_ip_subnet_t *dev_addr,
@@ -49,6 +51,7 @@ static void edge_cleanup_routes (n2n_edge_t *eee);
 static void check_known_peer_sock_change (n2n_edge_t *eee,
                                           uint8_t from_supernode,
                                           uint8_t via_multicast,
+                                          SOCKET socket_fd,
                                           const n2n_mac_t mac,
                                           const n2n_ip_subnet_t *dev_addr,
                                           const n2n_desc_t *dev_desc,
@@ -499,13 +502,15 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
 
 /* ************************************** */
 
-static int find_and_remove_peer (struct peer_info **head, const n2n_mac_t mac) {
+static int find_and_remove_peer (n2n_edge_t * eee, struct peer_info **head, const n2n_mac_t mac) {
 
     struct peer_info *peer;
 
     HASH_FIND_PEER(*head, mac, peer);
     if(peer) {
         HASH_DEL(*head, peer);
+        if(peer->socket_fd != eee->sock)
+            closesocket(peer->socket_fd);
         free(peer);
         return(1);
     }
@@ -591,7 +596,7 @@ static void register_with_local_peers (n2n_edge_t * eee) {
         /* send registration to the local multicast group */
         traceEvent(TRACE_DEBUG, "registering with multicast group %s:%u",
                    N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT);
-        send_register(eee, &(eee->multicast_peer), NULL, N2N_MCAST_REG_COOKIE);
+        send_register(eee, &(eee->multicast_peer), eee->sock, NULL, N2N_MCAST_REG_COOKIE);
     }
 #else
     traceEvent(TRACE_DEBUG, "multicast peers discovery is disabled, skipping");
@@ -632,6 +637,7 @@ static struct peer_info* find_peer_by_sock (const n2n_sock_t *sock, struct peer_
 static void register_with_new_peer (n2n_edge_t *eee,
                                     uint8_t from_supernode,
                                     uint8_t via_multicast,
+                                    SOCKET socket_fd,
                                     const n2n_mac_t mac,
                                     const n2n_ip_subnet_t *dev_addr,
                                     const n2n_desc_t *dev_desc,
@@ -650,6 +656,8 @@ static void register_with_new_peer (n2n_edge_t *eee,
 
         memcpy(scan->mac_addr, mac, N2N_MAC_SIZE);
         scan->sock = *peer;
+        scan->socket_fd = socket_fd;
+
         scan->timeout = eee->conf.register_interval; /* TODO: should correspond to the peer supernode registration timeout */
         scan->last_valid_time_stamp = initial_time_stamp();
         if(via_multicast)
@@ -688,22 +696,23 @@ static void register_with_new_peer (n2n_edge_t *eee,
                            (void *) (char *) &eee->conf.register_ttl,
                            sizeof(eee->conf.register_ttl));
                 for(; alter > 0; alter--, sock.port++) {
-                    send_register(eee, &sock, mac, N2N_PORT_REG_COOKIE);
+                    send_register(eee, &sock, eee->sock, mac, N2N_PORT_REG_COOKIE);
                 }
                 setsockopt(eee->sock, IPPROTO_IP, IP_TTL, (void *) (char *) &curTTL, sizeof(curTTL));
 #endif
             } else { /* eee->conf.register_ttl <= 0 */
                 /* Normal STUN */
-                send_register(eee, &(scan->sock), mac, N2N_REGULAR_REG_COOKIE);
+                send_register(eee, &(scan->sock), eee->sock, mac, N2N_REGULAR_REG_COOKIE);
             }
-            send_register(eee, &(eee->curr_sn->sock), mac, N2N_FORWARDED_REG_COOKIE);
+            send_register(eee, &(eee->curr_sn->sock), eee->sock, mac, N2N_FORWARDED_REG_COOKIE);
         } else {
             /* P2P register, send directly */
-            send_register(eee, &(scan->sock), mac, N2N_REGULAR_REG_COOKIE);
+            send_register(eee, &(scan->sock), scan->socket_fd, mac, (scan->socket_fd == eee->sock) ? N2N_REGULAR_REG_COOKIE : N2N_PORT_REG_COOKIE);
         }
         register_with_local_peers(eee);
-    } else{
+    } else {
         scan->sock = *peer;
+        scan->socket_fd = socket_fd;
     }
     scan->last_seen = time(NULL);
     if(dev_addr != NULL) {
@@ -719,6 +728,8 @@ static void register_with_new_peer (n2n_edge_t *eee,
 static void check_peer_registration_needed (n2n_edge_t *eee,
                                             uint8_t from_supernode,
                                             uint8_t via_multicast,
+                                            uint8_t is_multicast,
+                                            SOCKET socket_fd,
                                             const n2n_mac_t mac,
                                             const n2n_cookie_t cookie,
                                             const n2n_ip_subnet_t *dev_addr,
@@ -745,7 +756,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
 
     if(scan == NULL) {
         /* Not in known_peers - start the REGISTER process. */
-        register_with_new_peer(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer);
+        register_with_new_peer(eee, from_supernode, via_multicast, socket_fd, mac, dev_addr, dev_desc, peer);
     } else {
         /* Already in known_peers. */
         time_t now = time(NULL);
@@ -756,10 +767,17 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
         if(via_multicast)
             scan->local = 1;
 
+        // incoming socket_fd can be supernode's if it is a multi/broadcast, destroying p2p then
+        if(!is_multicast) {
+            if((scan->socket_fd != socket_fd) && (scan->socket_fd != eee->sock))
+                closesocket(scan->socket_fd);
+            scan->socket_fd = socket_fd;
+        }
+
         if(((now - scan->last_seen) > 0 /* >= 1 sec */)
           ||(cookie > scan->last_cookie)) {
             /* Don't register too often */
-            check_known_peer_sock_change(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer, now);
+            check_known_peer_sock_change(eee, from_supernode, via_multicast, socket_fd, mac, dev_addr, dev_desc, peer, now);
         }
     }
 }
@@ -771,7 +789,7 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
  *
  * peer must be a pointer to an element of the pending_peers list.
  */
-static void peer_set_p2p_confirmed (n2n_edge_t * eee,
+static void peer_set_p2p_confirmed (n2n_edge_t * eee, SOCKET socket_fd,
                                     const n2n_mac_t mac,
                                     const n2n_cookie_t cookie,
                                     const n2n_sock_t * peer,
@@ -795,8 +813,13 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
         scan_tmp = find_peer_by_sock(peer, eee->known_peers);
         if(scan_tmp != NULL) {
             HASH_DEL(eee->known_peers, scan_tmp);
+            // close old socket_fd if new and not supernode's socket_fd
+            if((scan->socket_fd != socket_fd) && (scan->socket_fd != eee->sock))
+                closesocket(scan->socket_fd);
             free(scan);
             scan = scan_tmp;
+
+            scan->socket_fd = socket_fd;
             memcpy(scan->mac_addr, mac, sizeof(n2n_mac_t));
             // in case of MAC change, reset cookie to allow immediate re-registration
             scan->last_cookie = N2N_NO_REG_COOKIE;
@@ -806,6 +829,7 @@ static void peer_set_p2p_confirmed (n2n_edge_t * eee,
             if(((now - scan->last_seen) > REGISTRATION_TIMEOUT / 4)
              ||(cookie > scan->last_cookie)) {
                 scan->sock = *peer;
+                scan->socket_fd = socket_fd;
                 scan->last_cookie = cookie;
             }
         }
@@ -946,6 +970,7 @@ int is_empty_ip_address (const n2n_sock_t * sock) {
 static void check_known_peer_sock_change (n2n_edge_t *eee,
                                           uint8_t from_supernode,
                                           uint8_t via_multicast,
+                                          SOCKET socket_fd,
                                           const n2n_mac_t mac,
                                           const n2n_ip_subnet_t *dev_addr,
                                           const n2n_desc_t *dev_desc,
@@ -981,15 +1006,20 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
             HASH_DEL(eee->known_peers, scan);
             free(scan);
 
-            register_with_new_peer(eee, from_supernode, via_multicast, mac, dev_addr, dev_desc, peer);
+            register_with_new_peer(eee, from_supernode, via_multicast, socket_fd, mac, dev_addr, dev_desc, peer);
         } else {
             /* Don't worry about what the supernode reports, it could be seeing a different socket. */
         }
-    } else
+    } else {
         scan->last_seen = when;
+        scan->sock = *peer;
+        scan->socket_fd = socket_fd;
+    }
 }
 
+
 /* ************************************** */
+
 
 /** Send a datagram to a socket file descriptor */
 static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
@@ -1369,6 +1399,7 @@ static int sort_supernodes (n2n_edge_t *eee, time_t now) {
 /** Send a REGISTER packet to another edge. */
 static void send_register (n2n_edge_t * eee,
                            const n2n_sock_t * remote_peer,
+                           const SOCKET socket_fd,
                            const n2n_mac_t peer_mac,
                            const n2n_cookie_t cookie) {
 
@@ -1416,7 +1447,7 @@ static void send_register (n2n_edge_t * eee,
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer, eee->sock); // !!! peer->socket_fd
+    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer, socket_fd);
 }
 
 /* ************************************** */
@@ -1424,7 +1455,7 @@ static void send_register (n2n_edge_t * eee,
 /** Send a REGISTER_ACK packet to a peer edge. */
 static void send_register_ack (n2n_edge_t * eee,
                                const n2n_sock_t * remote_peer,
-                               const n2n_REGISTER_t * reg) {
+                               const n2n_REGISTER_t * reg, SOCKET fd) {
 
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx;
@@ -1461,7 +1492,7 @@ static void send_register_ack (n2n_edge_t * eee,
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer, eee->sock); // !!! peer->socket_fd
+    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer, fd);
 }
 
 /* ************************************** */
@@ -1598,7 +1629,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
     if(eee->sn_wait == 1)
         HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
             if((now - peer->last_seen) > REGISTER_SUPER_INTERVAL_DFL)
-                send_register(eee, &(peer->sock), peer->mac_addr, peer->last_cookie);
+                send_register(eee, &(peer->sock), eee->sock, peer->mac_addr, peer->last_cookie);
 
     eee->sn_wait = 1;
 
@@ -2214,12 +2245,13 @@ static int check_query_peer_info (n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
         scan->timeout = eee->conf.register_interval; /* TODO: should correspond to the peer supernode registration timeout */
         scan->last_seen = now; /* Don't change this it marks the pending peer for removal. */
         scan->last_valid_time_stamp = initial_time_stamp();
+        scan->socket_fd = eee->sock;
 
         HASH_ADD_PEER(eee->pending_peers, scan);
     }
 
     if(now - scan->last_sent_query > eee->conf.register_interval) {
-        send_register(eee, &(eee->curr_sn->sock), mac, N2N_FORWARDED_REG_COOKIE);
+        send_register(eee, &(eee->curr_sn->sock), eee->sock, mac, N2N_FORWARDED_REG_COOKIE);
         scan->query_number = scan->query_number + 1;
         send_query_peer(eee, scan->mac_addr, (((scan->query_number) % (N2N_RECEPTOR_FREQUENCY + 1)) != 0) ? 0 : N2N_AFLAGS_PASS_THROUGH);
         scan->last_sent_query = now;
@@ -2259,6 +2291,10 @@ static int find_peer_destination (n2n_edge_t * eee,
              * since the peer address may have changed. */
             traceEvent(TRACE_DEBUG, "refreshing idle known peer");
             HASH_DEL(eee->known_peers, scan);
+
+            // close old socket_fd if not supernode's
+            if(scan->socket_fd != eee->sock)
+                closesocket(scan->socket_fd);
             free(scan);
             /* NOTE: registration will be performed upon the receival of the next response packet */
         } else {
@@ -2297,7 +2333,8 @@ static int send_packet (n2n_edge_t * eee,
     n2n_sock_str_t sockbuf;
     n2n_sock_t destination;
     macstr_t mac_buf;
-    struct peer_info *peer, *tmp_peer;
+    struct peer_info *peer = NULL;
+    struct peer_info *tmp_peer = NULL;
 
     /* hexdump(pktbuf, pktlen); */
 
@@ -2318,13 +2355,12 @@ static int send_packet (n2n_edge_t * eee,
         // if no supernode around, foward the broadcast to all known peers
         if(eee->sn_wait) {
             HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
-                /* s = */ sendto_sock(eee, pktbuf, pktlen, &peer->sock, eee->sock); // !!! peer->socket_fd
+                /* s = */ sendto_sock(eee, pktbuf, pktlen, &peer->sock, peer->socket_fd);
             return 0;
         }
         // fall through otherwise
     }
-
-    /* s = */ sendto_sock(eee, pktbuf, pktlen, &destination, eee->sock); // !!! peer->socket_fd
+    /* s = */ sendto_sock(eee, pktbuf, pktlen, &destination, (peer) ? peer->socket_fd : eee->sock);
 
     return 0;
 }
@@ -2667,9 +2703,6 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     return;
                 }
 
-                if(is_valid_peer_sock(&pkt.sock))
-                    orig_sender = &(pkt.sock);
-
                 if(!from_supernode) {
                     /* This is a P2P packet from the peer. We purge a pending
                      * registration towards the possibly nat-ted peer address as we now have
@@ -2678,22 +2711,35 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                      */
                     traceEvent(TRACE_DEBUG, "[p2p] from %s",
                                macaddr_str(mac_buf1, pkt.srcMac));
-                    find_and_remove_peer(&eee->pending_peers, pkt.srcMac);
+                    find_and_remove_peer(eee, &eee->pending_peers, pkt.srcMac);
                 } else {
                     /* [PsP] : edge Peer->Supernode->edge Peer */
+
+                    if((is_valid_peer_sock(&pkt.sock)) && (in_sock == eee->sock))
+                        orig_sender = &(pkt.sock);
+
                     traceEvent(TRACE_DEBUG, "[pSp] from %s via [%s]",
                                macaddr_str(mac_buf1, pkt.srcMac),
                                sock_to_cstr(sockbuf1, &sender));
                 }
 
+                // refresh receptor socket if active
+                n2n_receptor_socket_t *receptor_socket = NULL;
+                if(in_sock != eee->sock) {
+                HASH_FIND(hh, eee->receptor_sockets, &in_sock, sizeof(SOCKET), receptor_socket);
+                    if(receptor_socket) {
+                        receptor_socket->opened = now;
+                    }
+                }
+
                 /* Update the sender in peer table entry */
-                check_peer_registration_needed(eee, from_supernode, via_multicast,
+                check_peer_registration_needed(eee, from_supernode, via_multicast, is_multi_broadcast(pkt.dstMac), in_sock,
                                                pkt.srcMac,
-                                               // REVISIT: also consider PORT_REG_COOKIEs when implemented
-                                               from_supernode ? N2N_FORWARDED_REG_COOKIE : N2N_REGULAR_REG_COOKIE,
+                                               from_supernode ? N2N_FORWARDED_REG_COOKIE : ((receptor_socket) ? N2N_PORT_REG_COOKIE : N2N_REGULAR_REG_COOKIE),
                                                NULL, NULL, orig_sender);
 
                 handle_PACKET(eee, from_supernode, &pkt, orig_sender, udp_buf + idx, udp_size - idx);
+
                 break;
             }
 
@@ -2712,9 +2758,6 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                         return;
                     }
                 }
-
-                if(is_valid_peer_sock(&reg.sock))
-                    orig_sender = &(reg.sock);
 
                 if(via_multicast && !memcmp(reg.srcMac, eee->device.mac_addr, N2N_MAC_SIZE)) {
                     traceEvent(TRACE_DEBUG, "skipping REGISTER from self");
@@ -2737,28 +2780,46 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                            sock_to_cstr(sockbuf1, &sender),
                                            (reg.cookie & N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
 
-                    find_and_remove_peer(&eee->pending_peers, reg.srcMac);
+                    find_and_remove_peer(eee, &eee->pending_peers, reg.srcMac);
 
                     if(reg.cookie == N2N_PORT_REG_COOKIE) {
-
-                        // !!! store this socket's fd in peer.socket_fd
-                        // !!! use this socket for comm with this peer (also for ACK) from now on
-                        // !!! optionally close all others and remove (all) from receptor_socket_list
-                        // !!! adapt sendto_peer() and sendto_fd() to handle fd field
-                        // !!! adapt peer deletion / status change to take care of the fd, i.e. close it
+                        // close all other receptor sockets and refresh the active one
+                        n2n_receptor_socket_t *receptor_socket, *receptor_socket_tmp;
+                        n2n_receptor_register_t *receptor_register, *receptor_register_tmp;
+                        HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
+                            if(!memcmp(receptor_socket->mac, reg.srcMac, N2N_MAC_SIZE)) {
+                                if(receptor_socket->socket_fd != in_sock) {
+                                    closesocket(receptor_socket->socket_fd);
+                                    HASH_DEL(eee->receptor_sockets, receptor_socket);
+                                    free(receptor_socket);
+                                } else
+                                    receptor_socket->opened = now;
+                            }
+                        }
+                        // also, no need to send receptor REGISTERs to the other peer (if triggered)
+                        HASH_ITER(hh, eee->receptor_registers, receptor_register, receptor_register_tmp) {
+                            if(!memcmp(receptor_register->mac, reg.srcMac, N2N_MAC_SIZE))  {
+                                HASH_DEL(eee->receptor_registers, receptor_register);
+                                free(receptor_register);
+                            }
+                        }
 
                         traceEvent(TRACE_INFO, "[p2p] connection attempt through receptor socket");
                     }
 
                     /* NOTE: only ACK to peers */
-                    send_register_ack(eee, orig_sender, &reg);
+                    send_register_ack(eee, orig_sender, &reg, in_sock);
                 } else {
+
+                    if(is_valid_peer_sock(&reg.sock))
+                        orig_sender = &(reg.sock);
+
                     traceEvent(TRACE_INFO, "[pSp] Rx REGISTER from %s [%s] to %s via [%s]",
                                macaddr_str(mac_buf1, reg.srcMac), sock_to_cstr(sockbuf2, orig_sender),
                                macaddr_str(mac_buf2, reg.dstMac), sock_to_cstr(sockbuf1, &sender));
                 }
 
-                check_peer_registration_needed(eee, from_supernode, via_multicast,
+                check_peer_registration_needed(eee, from_supernode, via_multicast, 0, in_sock,
                                                reg.srcMac, reg.cookie, &reg.dev_addr, (const n2n_desc_t*)&reg.dev_desc, orig_sender);
                 break;
             }
@@ -2786,7 +2847,28 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                            sock_to_cstr(sockbuf1, &sender),
                           (ra.cookie & N2N_LOCAL_REG_COOKIE) ? " (local)" : "");
 
-                peer_set_p2p_confirmed(eee, ra.srcMac,
+                // close all other receptor sockets and refresh the active one
+                n2n_receptor_socket_t *receptor_socket, *receptor_socket_tmp;
+                n2n_receptor_register_t *receptor_register, *receptor_register_tmp;
+                HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
+                    if(!memcmp(receptor_socket->mac, ra.srcMac, N2N_MAC_SIZE)) {
+                        if(receptor_socket->socket_fd != in_sock) {
+                            closesocket(receptor_socket->socket_fd);
+                            HASH_DEL(eee->receptor_sockets, receptor_socket);
+                            free(receptor_socket);
+                        } else
+                            receptor_socket->opened = now;
+                    }
+                }
+                // also, no need to send receptor REGISTERs to the other peer (if triggered)
+                HASH_ITER(hh, eee->receptor_registers, receptor_register, receptor_register_tmp) {
+                    if(!memcmp(receptor_register->mac, ra.srcMac, N2N_MAC_SIZE))  {
+                        HASH_DEL(eee->receptor_registers, receptor_register);
+                        free(receptor_register);
+                    }
+                }
+
+                peer_set_p2p_confirmed(eee, in_sock, ra.srcMac,
                                       ra.cookie,
                                       &sender, now);
                 break;
@@ -3027,7 +3109,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
 
                         if(cmn.flags & N2N_FLAGS_SOCKET) {
                             scan->preferred_sock = pi.preferred_sock;
-                            send_register(eee, &scan->preferred_sock, scan->mac_addr, N2N_LOCAL_REG_COOKIE);
+                            send_register(eee, &scan->preferred_sock, scan->socket_fd, scan->mac_addr, N2N_LOCAL_REG_COOKIE);
 
                             traceEvent(TRACE_INFO, "%s has preferred local socket at [%s]",
                                        macaddr_str(mac_buf1, pi.mac),
@@ -3049,11 +3131,11 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                 receptor_register->started = now;
                                 memcpy(receptor_register->mac, pi.mac, sizeof(n2n_mac_t));
                                 receptor_register->sock = scan->sock;
-                                HASH_ADD(hh, eee->receptor_registers, mac, sizeof(n2n_receptor_register_t), receptor_register);
+                                HASH_ADD(hh, eee->receptor_registers, mac, N2N_MAC_SIZE, receptor_register);
                             }
                         }
 
-                        send_register(eee, &scan->sock, scan->mac_addr, N2N_REGULAR_REG_COOKIE);
+                        send_register(eee, &scan->sock, scan->socket_fd, scan->mac_addr, N2N_REGULAR_REG_COOKIE);
 
                     } else {
                         traceEvent(TRACE_INFO, "Rx PEER_INFO unknown peer %s",
@@ -3126,8 +3208,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                                 if(receptor_socket) {
                                     receptor_socket->socket_fd = socket_fd;
                                     receptor_socket->opened = now;
-                                    memcpy(&receptor_socket->mac, &pi.mac, N2N_MAC_SIZE);
-                                    HASH_ADD(hh, eee->receptor_sockets, socket_fd, sizeof(n2n_receptor_socket_t), receptor_socket);
+                                    memcpy(receptor_socket->mac, query.srcMac, N2N_MAC_SIZE);
+                                    HASH_ADD(hh, eee->receptor_sockets, socket_fd, sizeof(SOCKET), receptor_socket);
                                     random_data = n2n_rand();
                                     sendto(socket_fd, &random_data, 1 /* just one byte */, 0 /*flags*/,
                                           (struct sockaddr *)&original_socket, sizeof(original_socket));
@@ -3484,7 +3566,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                     receptor_register->last = now;
                     for(i = 0; i < (N2N_RECEPTOR_REGISTERS / N2N_RECEPTOR_TIME); i++) {
                         sock_tmp.port = n2n_rand();
-                        send_register(eee, &sock_tmp, receptor_register->mac, N2N_PORT_REG_COOKIE);
+                        send_register(eee, &sock_tmp, eee->sock, receptor_register->mac, N2N_PORT_REG_COOKIE);
                     }
                 }
             }
@@ -3499,7 +3581,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 //        n2n_receptor_socket_t *receptor_socket, *receptor_socket_tmp;
 //
         HASH_ITER(hh, eee->receptor_sockets, receptor_socket, receptor_socket_tmp) {
-            if(receptor_socket->opened < now - N2N_RECEPTOR_TIME - 2 /* allow 2 extra seconds for packets still on the line */) {
+            if(receptor_socket->opened < (now - N2N_RECEPTOR_TIME - 2 /* allow 2 extra seconds for packets still on the line */)) {
                 closesocket(receptor_socket->socket_fd);
                 HASH_DEL(eee->receptor_sockets, receptor_socket);
                 free(receptor_socket);
