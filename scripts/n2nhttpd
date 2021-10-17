@@ -18,70 +18,100 @@ import json
 import socketserver
 import http.server
 import signal
+import functools
 
 from http import HTTPStatus
 
 
-next_tag = 0
+class JsonUDP():
+    """encapsulate communication with the edge"""
 
+    def __init__(self, port):
+        self.address = "127.0.0.1"
+        self.port = port
+        self.tag = 0
+        self.key = None
+        self.debug = False
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-def send_cmd(port, debug, key, cmd):
-    """Send a text command to the edge and process the JSON reply packets"""
-    global next_tag
+    def _next_tag(self):
+        tagstr = str(self.tag)
+        self.tag = (self.tag + 1) % 1000
+        return tagstr
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def _cmdstr(self, msgtype, cmdline):
+        """Create the full command string to send"""
+        tagstr = self._next_tag()
 
-    tagstr = str(next_tag)
-    next_tag = (next_tag + 1) % 1000
+        options = [tagstr]
+        if self.key is not None:
+            options += ['1']  # Flags set for auth key field
+            options += [self.key]
+        optionsstr = ':'.join(options)
 
-    if key is not None:
-        options = tagstr + ':1:' + key
-    else:
-        options = tagstr
+        return tagstr, ' '.join((msgtype, optionsstr, cmdline))
 
-    msgtype = "r"
+    def _rx(self, tagstr):
+        """Wait for rx packets"""
 
-    message = "{} {} {}".format(msgtype, options, cmd).encode('utf8')
-    sock.sendto(message, ("127.0.0.1", 5644))
-
-    # FIXME:
-    # - there is no timeout for any of the socket handling
-
-    data, _ = sock.recvfrom(1024)
-    data = json.loads(data.decode('utf8'))
-    assert(data['_tag'] == tagstr)
-
-    if data['_type'] == 'error':
-        raise ValueError('Error: {}'.format(data['error']))
-
-    assert(data['_type'] == 'begin')
-    assert(data['cmd'] == cmd)
-
-    result = list()
-
-    while True:
-        data, _ = sock.recvfrom(1024)
+        # TODO: there are no timeouts with any of the recv calls
+        data, _ = self.sock.recvfrom(1024)
         data = json.loads(data.decode('utf8'))
+
+        # TODO: We assume the first packet we get will be tagged for us
+        # and be either an "error" or a "begin"
         assert(data['_tag'] == tagstr)
 
         if data['_type'] == 'error':
-            raise ValueError('Error with command {}'.format(cmd))
+            raise ValueError('Error: {}'.format(data['error']))
 
-        if data['_type'] == 'end':
-            return result
+        assert(data['_type'] == 'begin')
 
-        if data['_type'] != 'row':
-            raise ValueError('Unknown data type {} from '
-                             'edge'.format(data['_type']))
+        # Ideally, we would confirm that this is our "begin", but that
+        # would need the cmd passed into this method, and that would
+        # probably require parsing the cmdline passed to us :-(
+        # assert(data['cmd'] == cmd)
 
-        # remove our boring metadata
-        del data['_tag']
-        del data['_type']
+        result = list()
 
-        if debug:
-            print(data)
+        while True:
+            data, _ = self.sock.recvfrom(1024)
+            data = json.loads(data.decode('utf8'))
 
-        result.append(data)
+            if data['_tag'] != tagstr:
+                # this packet is not for us, ignore it
+                continue
+
+            if data['_type'] == 'error':
+                raise ValueError('Error: {}'.format(data['error']))
+
+            if data['_type'] == 'end':
+                return result
+
+            if data['_type'] != 'row':
+                raise ValueError('Unknown data type {} from '
+                                 'edge'.format(data['_type']))
+
+            # remove our boring metadata
+            del data['_tag']
+            del data['_type']
+
+            if self.debug:
+                print(data)
+
+            result.append(data)
+
+    def _call(self, msgtype, cmdline):
+        """Perform a rpc call"""
+        tagstr, msgstr = self._cmdstr(msgtype, cmdline)
+        self.sock.sendto(msgstr.encode('utf8'), (self.address, self.port))
+        return self._rx(tagstr)
+
+    def read(self, cmdline):
+        return self._call('r', cmdline)
+
+    def write(self, cmdline):
+        return self._call('w', cmdline)
 
 
 indexhtml = """
@@ -162,6 +192,10 @@ refresh_job();
 
 class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
+    def __init__(self, rpc, *args, **kwargs):
+        self.rpc = rpc
+        super().__init__(*args, **kwargs)
+
     def log_request(self, code='-', size='-'):
         # Dont spam the output
         pass
@@ -187,7 +221,7 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
             # if commands ever need args, use more of the path components
 
             try:
-                data = send_cmd(5644, False, None, cmd)
+                data = self.rpc.read(cmd)
             except ValueError:
                 self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
                 return
@@ -205,21 +239,27 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
 def main():
     ap = argparse.ArgumentParser(
             description='Control the running local n2n edge via http')
-    #  TODO - this needs to pass into the handler object
-    # ap.add_argument('-t', '--mgmtport', action='store', default=5644,
-    #                 help='Management Port (default=5644)')
-    # ap.add_argument('-d', '--debug', action='store_true',
-    #                 help='Also show raw internal data')
+    ap.add_argument('-t', '--mgmtport', action='store', default=5644,
+                    help='Management Port (default=5644)')
+    ap.add_argument('-k', '--key', action='store',
+                    help='Password for mgmt commands')
+    ap.add_argument('-d', '--debug', action='store_true',
+                    help='Also show raw internal data')
     ap.add_argument('port', action='store',
                     default=8080, type=int, nargs='?',
                     help='Serve requests on TCP port (default 8080)')
 
     args = ap.parse_args()
 
+    rpc = JsonUDP(args.mgmtport)
+    rpc.debug = args.debug
+    rpc.key = args.key
+
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", args.port), SimpleHandler) as httpd:
+    handler = functools.partial(SimpleHandler, rpc)
+    with socketserver.TCPServer(("", args.port), handler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
