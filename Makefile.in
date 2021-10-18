@@ -146,7 +146,9 @@ SUBDIRS+=tools
 COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
-.PHONY: steps build push all clean distclean install test cover gcov build-dep lint
+.PHONY: steps build push all clean distclean install test cover gcov build-dep
+.PHONY:	lint.python lint.ccode
+
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
 tools: $(N2N_LIB)
