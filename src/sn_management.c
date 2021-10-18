@@ -171,7 +171,7 @@ static void mgmt_communities (n2n_sn_t *sss, char *udp_buf, const struct sockadd
                            community->purgeable,
                            community->is_federation,
                            (community->auto_ip_net.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &community->auto_ip_net));
-                           
+
 
         sendto(sss->mgmt_sock, udp_buf, msg_len, 0,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
