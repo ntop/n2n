@@ -1904,7 +1904,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     if((udp_buf[0] == 'r' || udp_buf[0] == 'w') && (udp_buf[1] == ' ')) {
         /* this is a JSON request */
-        handleMgmtJson(eee, (char *)udp_buf, sender_sock);
+        handleMgmtJson(eee, udp_buf, sender_sock);
         return;
     }
 

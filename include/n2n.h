@@ -279,4 +279,5 @@ int assign_one_ip_subnet (n2n_sn_t *sss, struct sn_community *comm);
 const char* compression_str (uint8_t cmpr);
 const char* transop_str (enum n2n_transform tr);
 
+void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock);
 #endif /* _N2N_H_ */
