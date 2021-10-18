@@ -19,7 +19,13 @@
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
-static void mgmt_error (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, char *tag, char *msg) {
+typedef struct n2n_mgmt_handler {
+    char  *cmd;
+    char  *help;
+    void (*func)(n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
+} n2n_mgmt_handler_t;
+
+static void mgmt_error (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, char *tag, char *msg) {
     size_t msg_len;
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
@@ -32,7 +38,7 @@ static void mgmt_error (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sende
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
     if(type==N2N_MGMT_WRITE) {
@@ -51,7 +57,7 @@ static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sen
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_community (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_community (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
     if(type==N2N_MGMT_WRITE) {
@@ -76,7 +82,7 @@ static void mgmt_community (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_super (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
@@ -124,7 +130,7 @@ static void mgmt_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sende
     }
 }
 
-static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
@@ -188,7 +194,7 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender
     }
 }
 
-static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
     if(type==N2N_MGMT_WRITE) {
@@ -212,7 +218,7 @@ static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in 
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
     if(type==N2N_MGMT_WRITE) {
@@ -263,10 +269,20 @@ static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
+static void mgmt_nop (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+
+}
+
+static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
+    { .cmd = "reload_communities", .help = "Reserved for supernode", .func = mgmt_nop},
+    { .cmd = "communities", .help = "Reserved for supernode", .func = mgmt_nop},
+    { .cmd = "edges", .help = "Reserved for supernode", .func = mgmt_nop},
+
     /* TODO: .cmd = "stop", needs special casing the keep_running variable */
+    { .cmd = "stop", .help = "Reserved for edge", .func = mgmt_nop},
+
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "community", .help = "Show current community", .func = mgmt_community},
     { .cmd = "peer", .help = "List current peers", .func = mgmt_peer},
@@ -277,7 +293,7 @@ n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = NULL },
 };
 
-static void mgmt_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
     n2n_mgmt_handler_t *handler;
 
@@ -309,7 +325,7 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender
  *   Reads are not dangerous, so they are simply allowed
  *   Writes are possibly dangerous, so they need a fake password
  */
-static int mgmt_auth (struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
+static int mgmt_auth (const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
     if(auth) {
         /* If we have an auth key, it must match */
         if(0 == strcmp(auth,"CHANGEME")) {
@@ -324,7 +340,7 @@ static int mgmt_auth (struct sockaddr_in sender_sock, enum n2n_mgmt_type type, c
     return 0;
 }
 
-void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock) {
+void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock) {
 
     char cmdlinebuf[80];
     enum n2n_mgmt_type type;
