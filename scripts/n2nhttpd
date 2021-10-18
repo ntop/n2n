@@ -342,7 +342,7 @@ def main():
     ap = argparse.ArgumentParser(
             description='Control the running local n2n edge via http')
     ap.add_argument('-t', '--mgmtport', action='store', default=5644,
-                    help='Management Port (default=5644)')
+                    help='Management Port (default=5644)', type=int)
     ap.add_argument('-k', '--key', action='store',
                     help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
