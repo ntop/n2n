@@ -122,11 +122,11 @@ indexhtml = """
 <body>
  <table><tr><td>Last Updated: <td><div id="time"></div></table>
  <br>
- Supernodes:
- <div id="super"></div>
- <br>
  Peers:
  <div id="peer"></div>
+ <br>
+ Supernodes:
+ <div id="super"></div>
 
  <script>
   function rows2table(id, columns, data) {
