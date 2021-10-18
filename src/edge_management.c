@@ -43,7 +43,7 @@ static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sen
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
-                       "\"traceLevel\":%i}\n",
+                       "\"traceLevel\":%u}\n",
                        tag,
                        getTraceLevel());
 

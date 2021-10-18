@@ -120,7 +120,18 @@ indexhtml = """
  <title>n2n management</title>
 </head>
 <body>
- <table><tr><td>Last Updated: <td><div id="time"></div></table>
+ <table>
+    <tr><td>Last Updated: <td><div id="time"></div>
+    <tr>
+        <td>Logging Verbosity:
+        <td>
+            <div id="verbose"></div>
+        <td>
+            <button onclick=setverbose(verbose+1)>+</button>
+            <button onclick=setverbose(verbose-1)>-</button>
+ </table>
+ <br>
+ <div id="community"></div>
  <br>
  Peers:
  <div id="peer"></div>
@@ -129,6 +140,31 @@ indexhtml = """
  <div id="super"></div>
 
  <script>
+  var verbose=-1;
+
+  function rows2verbose(id, unused, data) {
+    row0 = data[0]
+    verbose = row0['traceLevel']
+
+    let div = document.getElementById(id);
+    div.innerHTML=verbose
+  }
+
+  function rows2keyvalue(id, keys, data) {
+    let s = "<table border=1 cellspacing=0>"
+    data.forEach((row) => {
+        keys.forEach((key) => {
+            if (key in row) {
+                s += "<tr><th>" + key + "<td>" + row[key];
+            }
+        });
+    });
+
+    s += "</table>"
+    let div = document.getElementById(id);
+    div.innerHTML=s
+  }
+
   function rows2table(id, columns, data) {
     let s = "<table border=1 cellspacing=0>"
     s += "<tr>"
@@ -147,17 +183,40 @@ indexhtml = """
     div.innerHTML=s
   }
 
-  function fetch_table(url, id, columns) {
+  function do_get(url, id, handler, handler_param) {
     fetch(url)
       .then(function (response) {
         return response.json();
       })
       .then(function (data) {
-        rows2table(id,columns,data);
+        handler(id,handler_param,data);
       })
       .catch(function (err) {
         console.log('error: ' + err);
       });
+  }
+
+  function do_post(url, body, id, handler, handler_param) {
+    fetch(url, {method:'POST', body: body})
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (data) {
+        handler(id,handler_param,data);
+      })
+      .catch(function (err) {
+        console.log('error: ' + err);
+      });
+  }
+
+  function setverbose(tracelevel) {
+    if (tracelevel < 0) {
+        tracelevel = 0;
+    }
+    do_post(
+        'edge/verbose', tracelevel, 'verbose',
+        rows2verbose, null
+    );
   }
 
   function refresh_job() {
@@ -166,15 +225,21 @@ indexhtml = """
     let time = document.getElementById('time');
     time.innerHTML=now;
 
-    fetch_table(
-        'edge/super',
-        'super',
-        ['version','current','macaddr','sockaddr','uptime']
+    do_get(
+        'edge/verbose', 'verbose',
+        rows2verbose, null
     );
-    fetch_table(
-        'edge/peer',
-        'peer',
-        ['mode','ip4addr','macaddr','sockaddr','desc']
+    do_get(
+        'edge/community', 'community',
+        rows2keyvalue, ['community']
+    );
+    do_get(
+        'edge/super', 'super',
+        rows2table, ['version','current','macaddr','sockaddr','uptime']
+    );
+    do_get(
+        'edge/peer', 'peer',
+        rows2table, ['mode','ip4addr','macaddr','sockaddr','desc']
     );
   }
 
@@ -205,6 +270,12 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(message.encode('utf8'))
 
+    def _replyjson(self, data):
+        self.send_response(HTTPStatus.OK)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf8'))
+
     def do_GET(self):
         url_tail = self.path
 
@@ -226,14 +297,30 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
                 self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
                 return
 
-            self.send_response(HTTPStatus.OK)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps(data).encode('utf8'))
+            self._replyjson(data)
             return
 
         self._simplereply(HTTPStatus.NOT_FOUND, 'Not Found')
         return
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode('utf8')
+
+        if self.path.startswith("/edge/"):
+            tail = self.path.split('/')
+            cmd = tail[2]
+
+            cmdline = cmd + ' ' + post_data
+
+            try:
+                data = self.rpc.write(cmdline)
+            except ValueError as e:
+                self._simplereply(HTTPStatus.BAD_REQUEST, str(e))
+                return
+
+            self._replyjson(data)
+            return
 
 
 def main():
