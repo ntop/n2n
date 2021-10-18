@@ -32,6 +32,25 @@ static void mgmt_error (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sende
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
+static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+    size_t msg_len;
+
+    if(type==N2N_MGMT_WRITE) {
+        setTraceLevel(strtoul(argv, NULL, 0));
+    }
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"traceLevel\":%i}\n",
+                       tag,
+                       getTraceLevel());
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+}
+
 static void mgmt_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
@@ -147,6 +166,7 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender
 static void mgmt_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
+    { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "peer", .help = "List current peers", .func = mgmt_peer},
     { .cmd = "super", .help = "List current supernodes", .func = mgmt_super},
     { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},
