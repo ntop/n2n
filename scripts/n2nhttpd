@@ -120,7 +120,7 @@ indexhtml = """
  <title>n2n management</title>
 </head>
 <body>
- <div id="time"></div>
+ <table><tr><td>Last Updated: <td><div id="time"></div></table>
  <br>
  Supernodes:
  <div id="super"></div>
@@ -164,7 +164,7 @@ indexhtml = """
     let now = new Date().getTime();
 
     let time = document.getElementById('time');
-    time.innerHTML="last updated: " + now;
+    time.innerHTML=now;
 
     fetch_table(
         'edge/super',
