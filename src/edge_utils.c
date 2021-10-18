@@ -1841,26 +1841,26 @@ static void handleMgmtJson_super (n2n_edge_t *eee, char *udp_buf, struct sockadd
          */
 
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"version\":\"%s\","
-                            "\"purgeable\":%i,"
-                            "\"current\":%i,"
-                            "\"macaddr\":\"%s\","
-                            "\"sockaddr\":\"%s\","
-                            "\"selection\":\"%s\","
-                            "\"lastseen\":%li,"
-                            "\"uptime\":%li}\n",
-                            tag,
-                            peer->version,
-                            peer->purgeable,
-                            (peer == eee->curr_sn) ? (eee->sn_wait ? 2 : 1 ) : 0,
-                            is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                            sock_to_cstr(sockbuf, &(peer->sock)),
-                            sn_selection_criterion_str(sel_buf, peer),
-                            peer->last_seen,
-                            peer->uptime);
+                           "{"
+                           "\"_tag\":\"%s\","
+                           "\"_type\":\"row\","
+                           "\"version\":\"%s\","
+                           "\"purgeable\":%i,"
+                           "\"current\":%i,"
+                           "\"macaddr\":\"%s\","
+                           "\"sockaddr\":\"%s\","
+                           "\"selection\":\"%s\","
+                           "\"lastseen\":%li,"
+                           "\"uptime\":%li}\n",
+                           tag,
+                           peer->version,
+                           peer->purgeable,
+                           (peer == eee->curr_sn) ? (eee->sn_wait ? 2 : 1 ) : 0,
+                           is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
+                           sock_to_cstr(sockbuf, &(peer->sock)),
+                           sn_selection_criterion_str(sel_buf, peer),
+                           peer->last_seen,
+                           peer->uptime);
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1887,23 +1887,23 @@ static void handleMgmtJson_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"mode\":\"pSp\","
-                            "\"ip4addr\":\"%s\","
-                            "\"macaddr\":\"%s\","
-                            "\"sockaddr\":\"%s\","
-                            "\"desc\":\"%s\","
-                            "\"lastseen\":%li}\n",
-                            tag,
-                            (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
-                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                            sock_to_cstr(sockbuf, &(peer->sock)),
-                            peer->dev_desc,
-                            peer->last_seen);
+                           "{"
+                           "\"_tag\":\"%s\","
+                           "\"_type\":\"row\","
+                           "\"mode\":\"pSp\","
+                           "\"ip4addr\":\"%s\","
+                           "\"macaddr\":\"%s\","
+                           "\"sockaddr\":\"%s\","
+                           "\"desc\":\"%s\","
+                           "\"lastseen\":%li}\n",
+                           tag,
+                           (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
+                           (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
+                           sock_to_cstr(sockbuf, &(peer->sock)),
+                           peer->dev_desc,
+                           peer->last_seen);
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
     }
 
@@ -1911,22 +1911,22 @@ static void handleMgmtJson_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr
     HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"mode\":\"p2p\","
-                            "\"ip4addr\":\"%s\","
-                            "\"macaddr\":\"%s\","
-                            "\"sockaddr\":\"%s\","
-                            "\"desc\":\"%s\","
-                            "\"lastseen\":%li}\n",
-                            tag,
-                            (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
-                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                            sock_to_cstr(sockbuf, &(peer->sock)),
-                            peer->dev_desc,
-                            peer->last_seen);
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
+                           "{"
+                           "\"_tag\":\"%s\","
+                           "\"_type\":\"row\","
+                           "\"mode\":\"p2p\","
+                           "\"ip4addr\":\"%s\","
+                           "\"macaddr\":\"%s\","
+                           "\"sockaddr\":\"%s\","
+                           "\"desc\":\"%s\","
+                           "\"lastseen\":%li}\n",
+                           tag,
+                           (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
+                           (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
+                           sock_to_cstr(sockbuf, &(peer->sock)),
+                           peer->dev_desc,
+                           peer->last_seen);
+        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
     }
 }
@@ -1951,14 +1951,14 @@ static void handleMgmtJson_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr
 
     for( handler=mgmt_handlers; handler->cmd; handler++ ) {
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"cmd\":\"%s\","
-                            "\"help\":\"%s\"}\n",
-                            tag,
-                            handler->cmd,
-                            handler->help);
+                           "{"
+                           "\"_tag\":\"%s\","
+                           "\"_type\":\"row\","
+                           "\"cmd\":\"%s\","
+                           "\"help\":\"%s\"}\n",
+                           tag,
+                           handler->cmd,
+                           handler->help);
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
                (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -1972,7 +1972,7 @@ static void handleMgmtJson_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr
  *   Reads are not dangerous, so they are simply allowed
  *   Writes are possibly dangerous, so they need a fake password
  */
-int handleMgmtJson_auth(struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
+int handleMgmtJson_auth (struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
     if(auth) {
         /* If we have an auth key, it must match */
         if(0 == strcmp(auth,"CHANGEME")) {
@@ -2048,14 +2048,14 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
      */
     tag = strtok(options, ":");
     flagstr = strtok(NULL, ":");
-    if (flagstr) {
+    if(flagstr) {
         flags = strtoul(flagstr, NULL, 16);
     } else {
         flags = 0;
     }
 
     /* Only 1 flag bit defined at the moment - "auth option present" */
-    if (flags & 1) {
+    if(flags & 1) {
         auth = strtok(NULL, ":");
     } else {
         auth = NULL;
@@ -2083,14 +2083,14 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in s
      * - do we care?
      */
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                        "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", tag, argv0);
+                       "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", tag, argv0);
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 
     handler->func(eee, udp_buf, sender_sock, type, tag, argv0, argv);
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                        "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", tag);
+                       "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", tag);
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
     return;
