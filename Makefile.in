@@ -182,7 +182,7 @@ $(N2N_LIB): $(N2N_OBJS)
 win32/n2n_win32.a: win32
 
 test: tools
-	scripts/test_harness
+	scripts/test_harness.sh
 
 lint.python:
 	flake8 scripts/n2nctl scripts/n2nhttpd

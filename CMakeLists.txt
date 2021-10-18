@@ -271,6 +271,6 @@ install(FILES ${PROJECT_BINARY_DIR}/doc/n2n.7.gz
 # TODO:
 # - Add the right dependancy so that the tests binaries get built first
 enable_testing()
-add_test(tests ${PROJECT_SOURCE_DIR}/scripts/test_harness ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/tests)
+add_test(tests ${PROJECT_SOURCE_DIR}/scripts/test_harness.sh ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/tests)
 
 endif(DEFINED UNIX)

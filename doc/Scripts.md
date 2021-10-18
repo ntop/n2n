@@ -19,7 +19,7 @@ This shell script is a wrapper for the `uncrustify` C code style checker
 which checks or applies a set of rules to the code.  It is used during
 the automated lint checks.
 
-## `tools/test_harness`
+## `scripts/test_harness.sh`
 
 This shell script is used to run automated tests during development.
 
