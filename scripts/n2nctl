@@ -160,9 +160,10 @@ def subcmd_show_help(rpc, args):
 
     result += "\n"
     result += "Possble remote commands:\n"
-    result += "(those without pretty-printer, will pass-through)\n\n"
+    result += "(those without a pretty-printer will pass-through)\n\n"
     rows = rpc.read('help')
-    result += json.dumps(rows, sort_keys=True, indent=4)
+    for row in rows:
+        result += "{:12} {}\n".format(row['cmd'], row['help'])
     return result
 
 
