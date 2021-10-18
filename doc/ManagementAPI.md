@@ -12,9 +12,8 @@ Default Ports:
 
 ## JSON Query interface
 
-As part of the management interface, A machine readable API exists for the
-edge daemon.  It takes a simple text request and replies with JSON formatted
-data.
+A machine readable API is available for both the edge and supernode.  It
+takes a simple text request and replies with JSON formatted data.
 
 The request is in simple text so that the daemon does not need to include any
 complex parser.
