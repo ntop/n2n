@@ -117,6 +117,7 @@ endif(DEFINED WIN32)
 #add_library(n2n STATIC ${N2N_DIR_SRCS})
 add_library(n2n STATIC
         src/n2n.c
+        src/edge_management.c
         src/edge_utils.c
         src/sn_utils.c
         src/wire.c
