@@ -51,6 +51,31 @@ static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sen
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
+static void mgmt_community (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+    size_t msg_len;
+
+    if(type==N2N_MGMT_WRITE) {
+        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
+        return;
+    }
+
+    if(eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
+        mgmt_error(eee, udp_buf, sender_sock, tag, "noaccess");
+        return;
+    }
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"community\":\"%s\"}\n",
+                       tag,
+                       eee->conf.community_name);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+}
+
 static void mgmt_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
@@ -168,6 +193,7 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender
 n2n_mgmt_handler_t mgmt_handlers[] = {
     /* TODO: .cmd = "stop", needs special casing the keep_running variable */
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
+    { .cmd = "community", .help = "Show current community", .func = mgmt_community},
     { .cmd = "peer", .help = "List current peers", .func = mgmt_peer},
     { .cmd = "super", .help = "List current supernodes", .func = mgmt_super},
     { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},
