@@ -236,7 +236,6 @@ jobs:
     name: Package for Debian/Ubuntu
     needs:
       - test_linux
-      - lint
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -282,7 +281,6 @@ jobs:
     name: Package for Redhat/RPM
     needs:
       - test_linux
-      - lint
     runs-on: ubuntu-latest
 
     steps:
@@ -320,7 +318,6 @@ jobs:
     name: Binaries for Windows (x86_64-pc-mingw64)
     needs:
       - test_windows
-      - lint
     runs-on: windows-latest
 
     steps:
@@ -347,7 +344,6 @@ jobs:
     name: Binaries for MacOS (x86_64-apple-darwin)
     needs:
       - test_macos
-      - lint
     runs-on: macos-latest
 
     steps:
@@ -379,7 +375,6 @@ jobs:
     name: Binaries for linux
     needs: 
       - test_linux
-      - lint
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
