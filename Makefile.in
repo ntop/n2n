@@ -148,7 +148,7 @@ COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
 .PHONY: steps build push all clean distclean install test cover gcov build-dep
-.PHONY:	lint lint.python lint.ccode lint.shell
+.PHONY: lint lint.python lint.ccode lint.shell
 
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
