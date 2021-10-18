@@ -135,7 +135,7 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
-    in_addr_t net;
+    dec_ip_bit_str_t ip_bit_str = {'\0'};
 
     if(type!=N2N_MGMT_READ) {
         mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
@@ -148,7 +148,6 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
 
     // dump nodes with forwarding through supernodes
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
-        net = htonl(peer->dev_addr.net_addr);
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                            "{"
                            "\"_tag\":\"%s\","
@@ -160,7 +159,7 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
                            "\"desc\":\"%s\","
                            "\"lastseen\":%li}\n",
                            tag,
-                           (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
+                           (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                            sock_to_cstr(sockbuf, &(peer->sock)),
                            peer->dev_desc,
@@ -172,7 +171,6 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
 
     // dump peer-to-peer nodes
     HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
-        net = htonl(peer->dev_addr.net_addr);
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                            "{"
                            "\"_tag\":\"%s\","
@@ -184,7 +182,7 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
                            "\"desc\":\"%s\","
                            "\"lastseen\":%li}\n",
                            tag,
-                           (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
+                           (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                            sock_to_cstr(sockbuf, &(peer->sock)),
                            peer->dev_desc,
