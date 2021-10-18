@@ -121,7 +121,10 @@ indexhtml = """
 </head>
 <body>
  <table>
-    <tr><td>Last Updated: <td><div id="time"></div>
+    <tr>
+        <td>Last Updated:
+        <td><div id="time"></div>
+        <td><button onclick=refresh_job()>update</button>
     <tr>
         <td>Logging Verbosity:
         <td>
@@ -138,6 +141,10 @@ indexhtml = """
  <br>
  Supernodes:
  <div id="super"></div>
+ <br>
+ <div id="timestamps"></div>
+ <br>
+ <div id="packetstats"></div>
 
  <script>
   var verbose=-1;
@@ -241,13 +248,21 @@ indexhtml = """
         'edge/peer', 'peer',
         rows2table, ['mode','ip4addr','macaddr','sockaddr','desc']
     );
+    do_get(
+        'edge/timestamps', 'timestamps',
+        rows2keyvalue, ['start_time','last_super','last_p2p']
+    );
+    do_get(
+        'edge/packetstats', 'packetstats',
+        rows2table, ['type','tx_pkt','rx_pkt']
+    );
   }
 
   function refresh_setup(interval) {
     var timer = setInterval(refresh_job, interval);
   }
 
-refresh_setup(5000);
+refresh_setup(10000);
 refresh_job();
  </script>
 </body>

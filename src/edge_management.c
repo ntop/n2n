@@ -188,6 +188,81 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender
     }
 }
 
+static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+    size_t msg_len;
+
+    if(type==N2N_MGMT_WRITE) {
+        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
+        return;
+    }
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"start_time\":%lu,"
+                       "\"last_super\":%ld,"
+                       "\"last_p2p\":%ld}\n",
+                       tag,
+                       eee->start_time,
+                       eee->last_sup,
+                       eee->last_p2p);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+}
+
+static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+    size_t msg_len;
+
+    if(type==N2N_MGMT_WRITE) {
+        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
+        return;
+    }
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"type\":\"transop\","
+                       "\"tx_pkt\":%lu,"
+                       "\"rx_pkt\":%lu}\n",
+                       tag,
+                       eee->transop.tx_cnt,
+                       eee->transop.rx_cnt);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"type\":\"super\","
+                       "\"tx_pkt\":%u,"
+                       "\"rx_pkt\":%u}\n",
+                       tag,
+                       eee->stats.tx_sup,
+                       eee->stats.rx_sup);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"type\":\"p2p\","
+                       "\"tx_pkt\":%u,"
+                       "\"rx_pkt\":%u}\n",
+                       tag,
+                       eee->stats.tx_p2p,
+                       eee->stats.rx_p2p);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+}
+
 static void mgmt_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
@@ -196,6 +271,8 @@ n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "community", .help = "Show current community", .func = mgmt_community},
     { .cmd = "peer", .help = "List current peers", .func = mgmt_peer},
     { .cmd = "super", .help = "List current supernodes", .func = mgmt_super},
+    { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
+    { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
     { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},
     { .cmd = NULL },
 };
