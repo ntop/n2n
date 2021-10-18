@@ -166,6 +166,7 @@ static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender
 static void mgmt_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
+    /* TODO: .cmd = "stop", needs special casing the keep_running variable */
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "peer", .help = "List current peers", .func = mgmt_peer},
     { .cmd = "super", .help = "List current supernodes", .func = mgmt_super},
