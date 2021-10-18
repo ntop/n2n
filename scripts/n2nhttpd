@@ -19,6 +19,7 @@ import socketserver
 import http.server
 import signal
 import functools
+import base64
 
 from http import HTTPStatus
 
@@ -291,7 +292,27 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf8'))
 
+    def _replyunauth(self):
+        self.send_response(HTTPStatus.UNAUTHORIZED)
+        self.send_header('WWW-Authenticate', 'Basic realm="n2n"')
+        self.end_headers()
+
+    def _extractauth(self):
+        # Avoid caching the key inside the object for all clients
+        self.rpc.key = None
+
+        header = self.headers.get('Authorization')
+        if header is not None:
+            authtype, encoded = header.split(' ')
+            if authtype == 'Basic':
+                user, key = base64.b64decode(encoded).decode('utf8').split(':')
+                self.rpc.key = key
+
+        if self.rpc.key is None:
+            self.rpc.key = self.rpc.defaultkey
+
     def do_GET(self):
+        self._extractauth()
         url_tail = self.path
 
         if url_tail == "/":
@@ -308,7 +329,11 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
             try:
                 data = self.rpc.read(cmd)
-            except ValueError:
+            except ValueError as e:
+                if str(e) == "Error: badauth":
+                    self._replyunauth()
+                    return
+
                 self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
                 return
 
@@ -321,6 +346,7 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length).decode('utf8')
+        self._extractauth()
 
         if self.path.startswith("/edge/"):
             tail = self.path.split('/')
@@ -331,6 +357,10 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
             try:
                 data = self.rpc.write(cmdline)
             except ValueError as e:
+                if str(e) == "Error: badauth":
+                    self._replyunauth()
+                    return
+
                 self._simplereply(HTTPStatus.BAD_REQUEST, str(e))
                 return
 
@@ -355,7 +385,7 @@ def main():
 
     rpc = JsonUDP(args.mgmtport)
     rpc.debug = args.debug
-    rpc.key = args.key
+    rpc.defaultkey = args.key
 
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
