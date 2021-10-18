@@ -188,7 +188,7 @@ lint.python:
 	flake8 scripts/n2nctl scripts/n2nhttpd
 
 lint.ccode:
-	scripts/indent $(N2N_LINT)
+	scripts/indent.sh $(N2N_LINT)
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
