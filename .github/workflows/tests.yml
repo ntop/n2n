@@ -24,15 +24,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install essential
-        run: |
-          sudo apt-get update
-          sudo apt-get install build-essential uncrustify flake8
 
-      - name: Run the lint tools
+      - name: Make the makefiles
         run: |
           ./autogen.sh
           ./configure
+
+      - name: Install essential
+        run: |
+          make build-dep
+
+      - name: Run the lint tools
+        run: |
           make lint.python
           make lint.ccode
 
