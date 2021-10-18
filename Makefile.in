@@ -85,7 +85,7 @@ N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 
 # As source files pass the linter, they can be added here (If all the source
 # is passing the linter tests, this can be refactored)
-N2N_LINT=\
+LINT_CCODE=\
 	include/auth.h \
 	include/edge_utils_win32.h \
 	include/n2n_define.h \
@@ -139,6 +139,7 @@ BUILD_DEP:=\
 	gcovr \
 	libcap-dev \
 	libzstd-dev \
+	shellcheck \
 	uncrustify \
 
 SUBDIRS+=tools
@@ -147,7 +148,7 @@ COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
 .PHONY: steps build push all clean distclean install test cover gcov build-dep
-.PHONY:	lint.python lint.ccode
+.PHONY:	lint lint.python lint.ccode lint.shell
 
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
@@ -184,11 +185,16 @@ win32/n2n_win32.a: win32
 test: tools
 	scripts/test_harness.sh
 
+lint: lint.python lint.ccode lint.shell
+
 lint.python:
 	flake8 scripts/n2nctl scripts/n2nhttpd
 
 lint.ccode:
-	scripts/indent.sh $(N2N_LINT)
+	scripts/indent.sh $(LINT_CCODE)
+
+lint.shell:
+	shellcheck scripts/*.sh
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"

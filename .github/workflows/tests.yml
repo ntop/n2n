@@ -36,8 +36,7 @@ jobs:
 
       - name: Run the lint tools
         run: |
-          make lint.python
-          make lint.ccode
+          make lint
 
   test_linux:
     needs: smoketest
