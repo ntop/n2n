@@ -197,6 +197,11 @@ indexhtml = """
       })
       .then(function (data) {
         handler(id,handler_param,data);
+
+        // update the timestamp on success
+        let now = new Date().getTime();
+        let time = document.getElementById('time');
+        time.innerHTML=now;
       })
       .catch(function (err) {
         console.log('error: ' + err);
@@ -227,11 +232,6 @@ indexhtml = """
   }
 
   function refresh_job() {
-    let now = new Date().getTime();
-
-    let time = document.getElementById('time');
-    time.innerHTML=now;
-
     do_get(
         'edge/verbose', 'verbose',
         rows2verbose, null
