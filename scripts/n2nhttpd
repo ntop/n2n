@@ -115,7 +115,10 @@ class JsonUDP():
         return self._call('w', cmdline)
 
 
-indexhtml = """
+pages = {
+    "/": {
+        "content_type": "text/html; charset=utf-8",
+        "content": """
 <html>
 <head>
  <title>n2n management</title>
@@ -273,7 +276,9 @@ refresh_job();
  </script>
 </body>
 </html>
-"""
+""",
+    },
+}
 
 
 class SimpleHandler(http.server.BaseHTTPRequestHandler):
@@ -320,13 +325,6 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
         self._extractauth()
         url_tail = self.path
 
-        if url_tail == "/":
-            self.send_response(HTTPStatus.OK)
-            self.send_header('Content-type', 'text/html; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(indexhtml.encode('utf8'))
-            return
-
         if url_tail.startswith("/edge/"):
             tail = url_tail.split('/')
             cmd = tail[2]
@@ -343,6 +341,15 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             self._replyjson(data)
+            return
+
+        if url_tail in pages:
+            page = pages[url_tail]
+
+            self.send_response(HTTPStatus.OK)
+            self.send_header('Content-type', page['content_type'])
+            self.end_headers()
+            self.wfile.write(page['content'].encode('utf8'))
             return
 
         self._simplereply(HTTPStatus.NOT_FOUND, 'Not Found')
