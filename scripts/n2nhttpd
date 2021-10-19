@@ -216,15 +216,17 @@ function do_post(url, body, id, handler, handler_param) {
 }
 
 function do_stop(tracelevel) {
-    fetch('edge/stop', {method:'POST'})
+    // FIXME: uses global in script library
+    fetch(nodetype + '/stop', {method:'POST'})
 }
 
 function setverbose(tracelevel) {
     if (tracelevel < 0) {
         tracelevel = 0;
     }
+    // FIXME: uses global in script library
     do_post(
-        'edge/verbose', tracelevel, 'verbose',
+        nodetype + '/verbose', tracelevel, 'verbose',
         rows2verbose, null
     );
 }
@@ -239,7 +241,7 @@ function refresh_setup(interval) {
         "content": """
 <html>
 <head>
- <title>n2n management</title>
+ <title>n2n edge management</title>
 </head>
 <body>
  <table>
@@ -247,7 +249,7 @@ function refresh_setup(interval) {
         <td>Last Updated:
         <td><div id="time"></div>
         <td><button onclick=refresh_job()>update</button>
-        <td><button onclick=do_stop()>stop node</button>
+        <td><button onclick=do_stop()>stop edge</button>
     <tr>
         <td>Logging Verbosity:
         <td>
@@ -271,29 +273,105 @@ function refresh_setup(interval) {
 
  <script src="script.js"></script>
  <script>
+// FIXME: hacky global
+var nodetype="edge";
+
 function refresh_job() {
     do_get(
-        'edge/verbose', 'verbose',
+        nodetype + '/verbose', 'verbose',
         rows2verbose, null
     );
     do_get(
-        'edge/communities', 'communities',
+        nodetype + '/communities', 'communities',
         rows2keyvalue, ['community']
     );
     do_get(
-        'edge/supernodes', 'supernodes',
+        nodetype + '/supernodes', 'supernodes',
         rows2table, ['version','current','macaddr','sockaddr','uptime']
     );
     do_get(
-        'edge/edges', 'edges',
+        nodetype + '/edges', 'edges',
         rows2table, ['mode','ip4addr','macaddr','sockaddr','desc']
     );
     do_get(
-        'edge/timestamps', 'timestamps',
-        rows2keyvalue, ['start_time','last_super','last_p2p']
+        nodetype + '/timestamps', 'timestamps',
+        rows2keyvalueall, null
     );
     do_get(
-        'edge/packetstats', 'packetstats',
+        nodetype + '/packetstats', 'packetstats',
+        rows2table, ['type','tx_pkt','rx_pkt']
+    );
+}
+
+refresh_setup(10000);
+refresh_job();
+ </script>
+</body>
+</html>
+""",
+    },
+    "/supernode.html": {
+        "content_type": "text/html; charset=utf-8",
+        "content": """
+<html>
+<head>
+ <title>n2n supernode management</title>
+</head>
+<body>
+ <table>
+    <tr>
+        <td>Last Updated:
+        <td><div id="time"></div>
+        <td><button onclick=refresh_job()>update</button>
+        <td><button onclick=do_stop()>stop supernode</button>
+    <tr>
+        <td>Logging Verbosity:
+        <td>
+            <div id="verbose"></div>
+        <td>
+            <button onclick=setverbose(verbose+1)>+</button>
+            <button onclick=setverbose(verbose-1)>-</button>
+        <td><button onclick=do_reload()>reload communities</button>
+ </table>
+ <br>
+ Communities:
+ <div id="communities"></div>
+ <br>
+ Edges/Peers:
+ <div id="edges"></div>
+ <br>
+ <div id="timestamps"></div>
+ <br>
+ <div id="packetstats"></div>
+
+ <script src="script.js"></script>
+ <script>
+// FIXME: hacky global
+var nodetype="supernode";
+
+function do_reload() {
+    fetch(nodetype + '/reload_communities', {method:'POST'})
+}
+
+function refresh_job() {
+    do_get(
+        nodetype + '/verbose', 'verbose',
+        rows2verbose, null
+    );
+    do_get(
+        nodetype + '/communities', 'communities',
+        rows2table, ['community','ip4addr','is_federation','purgeable']
+    );
+    do_get(
+        nodetype + '/edges', 'edges',
+        rows2table, ['community','ip4addr','macaddr','sockaddr','proto','desc','purgeable']
+    );
+    do_get(
+        nodetype + '/timestamps', 'timestamps',
+        rows2keyvalueall, null
+    );
+    do_get(
+        nodetype + '/packetstats', 'packetstats',
         rows2table, ['type','tx_pkt','rx_pkt']
     );
 }
