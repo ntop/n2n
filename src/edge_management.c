@@ -139,7 +139,6 @@ static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockadd
                        "\"purgeable\":%i,"
                        "\"macaddr\":\"%s\","
                        "\"sockaddr\":\"%s\","
-                       "\"proto\":\"%s\","
                        "\"desc\":\"%s\","
                        "\"last_seen\":%li}\n",
                        tag,
@@ -148,7 +147,6 @@ static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockadd
                        peer->purgeable,
                        (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                        sock_to_cstr(sockbuf, &(peer->sock)),
-                       ((peer->socket_fd >= 0) && (peer->socket_fd != eee->sock)) ? "TCP" : "UDP",
                        peer->dev_desc,
                        peer->last_seen);
 
