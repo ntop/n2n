@@ -105,7 +105,7 @@ static void mgmt_timestamps (n2n_sn_t *sss, char *udp_buf, const struct sockaddr
                        "\"_type\":\"row\","
                        "\"start_time\":%lu,"
                        "\"last_fwd\":%ld,"
-                       "\"last_reg\":%ld}\n",
+                       "\"last_reg_super\":%ld}\n",
                        tag,
                        sss->start_time,
                        sss->stats.last_fwd,
@@ -115,7 +115,7 @@ static void mgmt_timestamps (n2n_sn_t *sss, char *udp_buf, const struct sockaddr
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_stats (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_packetstats (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
     if(type==N2N_MGMT_WRITE) {
@@ -127,19 +127,51 @@ static void mgmt_stats (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in s
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
-                       "\"reg_sup\":%lu,"
-                       "\"reg_nak\":%lu,"
-                       "\"errors\":%lu,"
-                       "\"fwd\":%lu,"
-                       "\"broadcast\":%lu,"
-                       "\"cur_cmnts\":%u}\n",
+                       "\"type\":\"forward\","
+                       "\"tx_pkt\":%lu}\n",
+                       tag,
+                       sss->stats.fwd);
+
+    sendto(sss->mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"type\":\"broadcast\","
+                       "\"tx_pkt\":%lu}\n",
+                       tag,
+                       sss->stats.broadcast);
+
+    sendto(sss->mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"type\":\"reg_super\","
+                       "\"rx_pkt\":%lu,"
+                       "\"nak\":%lu}\n",
                        tag,
                        sss->stats.reg_super,
-                       sss->stats.reg_super_nak,
-                       sss->stats.errors,
-                       sss->stats.fwd,
-                       sss->stats.broadcast,
-                       HASH_COUNT(sss->communities));
+                       sss->stats.reg_super_nak);
+
+    /* Note: reg_super_nak is not currently incremented anywhere */
+
+    sendto(sss->mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+
+    /* Generic errors when trying to sendto() */
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"type\":\"errors\","
+                       "\"tx_pkt\":%lu}\n",
+                       tag,
+                       sss->stats.errors);
 
     sendto(sss->mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -238,7 +270,7 @@ n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "communities", .help = "List current communities", .func = mgmt_communities},
     { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
-    { .cmd = "stats", .help = "Usage statistics", .func = mgmt_stats},
+    { .cmd = "packetstats", .help = "Traffic statistics", .func = mgmt_packetstats},
     { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},
     { .cmd = NULL },
 };
