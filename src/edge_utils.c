@@ -1808,7 +1808,7 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
 
 /** Read a datagram from the management UDP socket and take appropriate
  *    action. */
-static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
+static void readFromMgmtSocket (n2n_edge_t *eee) {
 
     char udp_buf[N2N_PKT_BUF_SIZE]; /* Compete UDP packet */
     ssize_t recvlen;
@@ -1865,7 +1865,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     if(0 == memcmp(udp_buf, "stop", 4)) {
         traceEvent(TRACE_NORMAL, "stop command received");
-        *keep_running = 0;
+        *eee->keep_running = 0;
         return;
     }
 
@@ -3010,7 +3010,7 @@ void print_edge_stats (const n2n_edge_t *eee) {
 /* ************************************** */
 
 
-int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
+int run_edge_loop (n2n_edge_t *eee) {
 
     size_t numPurged;
     time_t lastIfaceCheck = 0;
@@ -3025,11 +3025,10 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 #ifdef WIN32
     struct tunread_arg arg;
     arg.eee = eee;
-    arg.keep_running = keep_running;
     HANDLE tun_read_thread = startTunReadThread(&arg);
 #endif
 
-    *keep_running = 1;
+    *eee->keep_running = 1;
     update_supernode_reg(eee, time(NULL));
 
     /* Main loop
@@ -3039,7 +3038,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
      * readFromIPSocket() or edge_read_from_tap()
      */
 
-    while(*keep_running) {
+    while(*eee->keep_running) {
 
         int rc, max_sock = 0;
         fd_set socket_mask;
@@ -3088,7 +3087,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                 if(0 != fetch_and_eventually_process_data(eee, eee->sock,
                                                           pktbuf, &expected, &position,
                                                           now)) {
-                    *keep_running = 0;
+                    *eee->keep_running = 0;
                     break;
                 }
                 if(eee->conf.connect_tcp) {
@@ -3109,7 +3108,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
                 if(0 != fetch_and_eventually_process_data(eee, eee->udp_multicast_sock,
                                                           pktbuf, &expected, &position,
                                                           now)) {
-                    *keep_running = 0;
+                    *eee->keep_running = 0;
                     break;
                 }
             }
@@ -3117,9 +3116,9 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
             if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
                 // read from the management port socket
-                readFromMgmtSocket(eee, keep_running);
+                readFromMgmtSocket(eee);
 
-                if(!(*keep_running))
+                if(!(*eee->keep_running))
                     break;
             }
 
@@ -3806,7 +3805,8 @@ int quick_edge_init (char *device_name, char *community_name,
     if((eee = edge_init(&conf, &rv)) == NULL)
         goto quick_edge_init_end;
 
-    rv = run_edge_loop(eee, keep_on_running);
+    eee->keep_running = keep_on_running;
+    rv = run_edge_loop(eee);
     edge_term(eee);
     edge_term_conf(&conf);
 

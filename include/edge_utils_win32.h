@@ -37,9 +37,9 @@
  */
 //#define SKIP_MULTICAST_PEERS_DISCOVERY
 
+// TODO: this struct is pretty empty now, collapse it to just n2n_edge_t ?
 struct tunread_arg {
     n2n_edge_t *eee;
-    int *keep_running;
 };
 
 extern HANDLE startTunReadThread (struct tunread_arg *arg);

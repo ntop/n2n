@@ -262,7 +262,7 @@ void edge_send_packet2net (n2n_edge_t *eee, uint8_t *tap_pkt, size_t len);
 void edge_read_from_tap (n2n_edge_t *eee);
 int edge_get_n2n_socket (n2n_edge_t *eee);
 int edge_get_management_socket (n2n_edge_t *eee);
-int run_edge_loop (n2n_edge_t *eee, int *keep_running);
+int run_edge_loop (n2n_edge_t *eee);
 int quick_edge_init (char *device_name, char *community_name,
                      char *encrypt_key, char *device_mac,
                      char *local_ip_address,

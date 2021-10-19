@@ -1300,8 +1300,9 @@ int main (int argc, char* argv[]) {
 #endif
 
     keep_on_running = 1;
+    eee->keep_running = &keep_on_running;
     traceEvent(TRACE_NORMAL, "edge started");
-    rc = run_edge_loop(eee, &keep_on_running);
+    rc = run_edge_loop(eee);
     print_edge_stats(eee);
 
 #ifdef HAVE_LIBCAP

@@ -685,6 +685,7 @@ struct n2n_edge {
     n2n_edge_conf_t         conf;
 
     /* Status */
+    int                              *keep_running;                      /**< Pointer to edge loop stop/go flag */
     struct peer_info                 *curr_sn;                           /**< Currently active supernode. */
     uint8_t                          sn_wait;                            /**< Whether we are waiting for a supernode response. */
     uint8_t                          sn_pong;                            /**< Whether we have seen a PONG since last time reset. */
