@@ -135,7 +135,7 @@ indexhtml = """
             <button onclick=setverbose(verbose-1)>-</button>
  </table>
  <br>
- <div id="community"></div>
+ <div id="communities"></div>
  <br>
  Edges/Peers:
  <div id="edges"></div>
@@ -238,7 +238,7 @@ indexhtml = """
         rows2verbose, null
     );
     do_get(
-        'edge/community', 'community',
+        'edge/communities', 'communities',
         rows2keyvalue, ['community']
     );
     do_get(
