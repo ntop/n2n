@@ -73,11 +73,9 @@ static void mgmt_communities (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
-                       "\"community\":\"%s\","
-                       "\"proto\":\"%s\"}",
+                       "\"community\":\"%s\"}",
                        tag,
-                       eee->conf.community_name,
-                       eee->conf.connect_tcp ? "TCP":"UDP");
+                       eee->conf.community_name);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
