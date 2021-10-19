@@ -233,6 +233,20 @@ static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
+                       "\"type\":\"p2p\","
+                       "\"tx_pkt\":%u,"
+                       "\"rx_pkt\":%u}\n",
+                       tag,
+                       eee->stats.tx_p2p,
+                       eee->stats.rx_p2p);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
                        "\"type\":\"super\","
                        "\"tx_pkt\":%u,"
                        "\"rx_pkt\":%u}\n",
@@ -247,12 +261,12 @@ static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
-                       "\"type\":\"p2p\","
+                       "\"type\":\"super_broadcast\","
                        "\"tx_pkt\":%u,"
                        "\"rx_pkt\":%u}\n",
                        tag,
-                       eee->stats.tx_p2p,
-                       eee->stats.rx_p2p);
+                       eee->stats.tx_sup_broadcast,
+                       eee->stats.rx_sup_broadcast);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
