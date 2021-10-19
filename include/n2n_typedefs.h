@@ -802,6 +802,7 @@ typedef struct n2n_tcp_connection {
 
 
 typedef struct n2n_sn {
+    int                                    *keep_running;   /* Pointer to sn loop stop/go flag */
     time_t                                 start_time;      /* Used to measure uptime. */
     n2n_version_t                          version;         /* version string sent to edges along with PEER_INFO a.k.a. PONG */
     sn_stats_t                             stats;

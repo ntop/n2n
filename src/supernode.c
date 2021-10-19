@@ -658,5 +658,6 @@ int main (int argc, char * const argv[]) {
 #endif
 
     keep_running = 1;
-    return run_sn_loop(&sss_node, &keep_running);
+    sss_node.keep_running = &keep_running;
+    return run_sn_loop(&sss_node);
 }
