@@ -136,14 +136,14 @@ jobs:
 
       - name: Generate coverage reports
         run: |
+          make gcov
           # This was working fine for tens of jobs, up until 2021-10-19T18:53+0100
           # and it still works fine when run from my personal github actions.
           # The next run at 2021-10-19T19:08+0100 didnt work.
           # Assume that they changed something on the runner - I cannot debug it
           # as I do not have a Mac.
           #
-          # make gcov
-          make cover COVERAGEDIR=coverage/${{ matrix.os }}
+          # make cover COVERAGEDIR=coverage/${{ matrix.os }}
         shell: bash
 
 #      - name: Upload gcovr report artifact
