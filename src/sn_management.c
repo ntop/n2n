@@ -231,7 +231,6 @@ static void mgmt_help (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in se
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "stop", .help = "Reserved", .func = mgmt_unimplemented},
-    { .cmd = "community", .help = "Reserved for edge", .func = mgmt_unimplemented},
     { .cmd = "supernodes", .help = "Reserved for edge", .func = mgmt_unimplemented},
 
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},

@@ -57,7 +57,7 @@ static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_community (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_communities (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
     if(type==N2N_MGMT_WRITE) {
@@ -74,9 +74,11 @@ static void mgmt_community (n2n_edge_t *eee, char *udp_buf, const struct sockadd
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
-                       "\"community\":\"%s\"}\n",
+                       "\"community\":\"%s\","
+                       "\"proto\":\"%s\"}",
                        tag,
-                       eee->conf.community_name);
+                       eee->conf.community_name,
+                       eee->conf.connect_tcp ? "TCP":"UDP");
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
@@ -265,13 +267,12 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .help = "Reserved for supernode", .func = mgmt_unimplemented},
-    { .cmd = "communities", .help = "Reserved for supernode", .func = mgmt_unimplemented},
 
     /* TODO: .cmd = "stop", needs special casing the keep_running variable */
     { .cmd = "stop", .help = "Reserved", .func = mgmt_unimplemented},
 
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
-    { .cmd = "community", .help = "Show current community", .func = mgmt_community},
+    { .cmd = "communities", .help = "Show current community", .func = mgmt_communities},
     { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
     { .cmd = "supernodes", .help = "List current supernodes", .func = mgmt_supernodes},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
