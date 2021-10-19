@@ -208,7 +208,7 @@ static void mgmt_edges (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in s
                                "\"desc\":\"%s\","
                                "\"lastseen\":%li}\n",
                                tag,
-                               community->community,
+                               (community->is_federation) ? "-/-" : community->community,
                                (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                                peer->purgeable,
                                (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
