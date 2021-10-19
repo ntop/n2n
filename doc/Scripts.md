@@ -33,8 +33,9 @@ a proxy for REST-like HTTP requests to talk to the Management API.
 
 By default it runs on port 8080.
 
-It also provides a simple HTML page showing some information, which when
-run with default settings can be seen at http://localhost:8080/
+It also provides a simple HTML page showing some edge information, which when
+run with default settings can be seen at http://localhost:8080/ (Also
+a http://localhost:8080/supernode.html page for the supernode)
 
 Example:
 - `scripts/n2nhttpd --help`
