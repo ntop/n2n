@@ -134,7 +134,7 @@ def str_table(rows, columns):
 
 
 def subcmd_show_supernodes(rpc, args):
-    rows = rpc.read('super')
+    rows = rpc.read('supernodes')
     columns = [
         'version',
         'current',

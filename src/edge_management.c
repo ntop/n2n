@@ -82,7 +82,7 @@ static void mgmt_community (n2n_edge_t *eee, char *udp_buf, const struct sockadd
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void mgmt_super (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_supernodes (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
@@ -273,7 +273,7 @@ n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "community", .help = "Show current community", .func = mgmt_community},
     { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
-    { .cmd = "super", .help = "List current supernodes", .func = mgmt_super},
+    { .cmd = "supernodes", .help = "List current supernodes", .func = mgmt_supernodes},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
     { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},

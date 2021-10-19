@@ -10,7 +10,7 @@
 # Try it out with
 #   http://localhost:8080/
 #   http://localhost:8080/edge/edges
-#   http://localhost:8080/edge/super
+#   http://localhost:8080/edge/supernodes
 
 import argparse
 import socket
@@ -141,7 +141,7 @@ indexhtml = """
  <div id="edges"></div>
  <br>
  Supernodes:
- <div id="super"></div>
+ <div id="supernodes"></div>
  <br>
  <div id="timestamps"></div>
  <br>
@@ -242,7 +242,7 @@ indexhtml = """
         rows2keyvalue, ['community']
     );
     do_get(
-        'edge/super', 'super',
+        'edge/supernodes', 'supernodes',
         rows2table, ['version','current','macaddr','sockaddr','uptime']
     );
     do_get(
