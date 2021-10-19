@@ -74,6 +74,7 @@ class JsonUDP():
         # assert(data['cmd'] == cmd)
 
         result = list()
+        error = None
 
         while True:
             data, _ = self.sock.recvfrom(1024)
@@ -84,9 +85,13 @@ class JsonUDP():
                 continue
 
             if data['_type'] == 'error':
-                raise ValueError('Error: {}'.format(data['error']))
+                # we still expect an end packet, so save the error
+                error = ValueError('Error: {}'.format(data['error']))
+                continue
 
             if data['_type'] == 'end':
+                if error:
+                    raise error
                 return result
 
             if data['_type'] != 'row':
