@@ -149,6 +149,19 @@ function rows2keyvalue(id, keys, data) {
     div.innerHTML=s
 }
 
+function rows2keyvalueall(id, unused, data) {
+    let s = "<table border=1 cellspacing=0>"
+    data.forEach((row) => {
+        Object.keys(row).forEach((key) => {
+            s += "<tr><th>" + key + "<td>" + row[key];
+        });
+    });
+
+    s += "</table>"
+    let div = document.getElementById(id);
+    div.innerHTML=s
+}
+
 function rows2table(id, columns, data) {
     let s = "<table border=1 cellspacing=0>"
     s += "<tr>"
