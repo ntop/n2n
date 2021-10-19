@@ -104,10 +104,16 @@ def str_table(rows, columns):
     """Given an array of dicts, do a simple table print"""
     result = list()
     widths = collections.defaultdict(lambda: 0)
-    for row in rows:
+
+    if len(rows) == 0:
+        # No data to show, be sure not to truncate the column headings
         for col in columns:
-            if col in row:
-                widths[col] = max(widths[col], len(str(row[col])))
+            widths[col] = len(col)
+    else:
+        for row in rows:
+            for col in columns:
+                if col in row:
+                    widths[col] = max(widths[col], len(str(row[col])))
 
     for col in columns:
         if widths[col] == 0:
