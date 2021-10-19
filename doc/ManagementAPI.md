@@ -36,6 +36,11 @@ pub/sub asynchronous event channels.
 The replies will also handle some small amount of re-ordering of the
 packets, but that is not an specific goal of the protocol.
 
+Note that this API will reply with a relatively large number of UDP packets
+and that it is not intended for high frequency or high volume data transfer.
+It was written to use a low amount of memory and to support incremental
+generation of the reply data.
+
 With a small amount of effort, the API is intended to be human readable,
 but this is intended for debugging.
 
@@ -163,6 +168,10 @@ e.g:
 The substantial bulk of the data in the reply is contained within one or
 more `row` packets.  The non metadata contents of each `row` packet is
 defined entirely by the method called and may change from version to version.
+
+Each `row` packet contains exactly one complete JSON object. The row replies
+may be processed incrementally as each row arrives and no batching of multiple
+packets will be required.
 
 e.g:
     `{"_tag":"108","_type":"row","mode":"p2p","ip4addr":"10.135.98.84","macaddr":"86:56:21:E4:AA:39","sockaddr":"192.168.7.191:41701","desc":"client4","lastseen":1584682200}`
