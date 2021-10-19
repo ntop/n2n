@@ -293,8 +293,9 @@ refresh_job();
 
 class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
-    def __init__(self, rpc, *args, **kwargs):
+    def __init__(self, rpc, snrpc, *args, **kwargs):
         self.rpc = rpc
+        self.snrpc = snrpc
         super().__init__(*args, **kwargs)
 
     def log_request(self, code='-', size='-'):
@@ -317,44 +318,64 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('WWW-Authenticate', 'Basic realm="n2n"')
         self.end_headers()
 
-    def _extractauth(self):
+    def _extractauth(self, rpc):
         # Avoid caching the key inside the object for all clients
-        self.rpc.key = None
+        rpc.key = None
 
         header = self.headers.get('Authorization')
         if header is not None:
             authtype, encoded = header.split(' ')
             if authtype == 'Basic':
                 user, key = base64.b64decode(encoded).decode('utf8').split(':')
-                self.rpc.key = key
+                rpc.key = key
 
-        if self.rpc.key is None:
-            self.rpc.key = self.rpc.defaultkey
+        if rpc.key is None:
+            rpc.key = rpc.defaultkey
 
-    def do_GET(self):
-        self._extractauth()
-        url_tail = self.path
-
-        if url_tail.startswith("/edge/"):
-            tail = url_tail.split('/')
-            cmd = tail[2]
-            # if commands ever need args, use more of the path components
-
-            try:
-                data = self.rpc.read(cmd)
-            except ValueError as e:
-                if str(e) == "Error: badauth":
-                    self._replyunauth()
-                    return
-
-                self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
+    def _rpc(self, method, cmdline):
+        try:
+            data = method(cmdline)
+        except ValueError as e:
+            if str(e) == "Error: badauth":
+                self._replyunauth()
                 return
 
-            self._replyjson(data)
+            self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
             return
 
-        if url_tail in pages:
-            page = pages[url_tail]
+        self._replyjson(data)
+        return
+
+    def _rpc_read(self, rpc):
+        self._extractauth(rpc)
+        tail = self.path.split('/')
+        cmd = tail[2]
+        # if reads ever need args, could use more of the tail
+
+        self._rpc(rpc.read, cmd)
+
+    def _rpc_write(self, rpc):
+        self._extractauth(rpc)
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode('utf8')
+
+        tail = self.path.split('/')
+        cmd = tail[2]
+        cmdline = cmd + ' ' + post_data
+
+        self._rpc(rpc.write, cmdline)
+
+    def do_GET(self):
+        if self.path.startswith("/edge/"):
+            self._rpc_read(self.rpc)
+            return
+
+        if self.path.startswith("/supernode/"):
+            self._rpc_read(self.snrpc)
+            return
+
+        if self.path in pages:
+            page = pages[self.path]
 
             self.send_response(HTTPStatus.OK)
             self.send_header('Content-type', page['content_type'])
@@ -366,27 +387,12 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
         return
 
     def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = self.rfile.read(content_length).decode('utf8')
-        self._extractauth()
-
         if self.path.startswith("/edge/"):
-            tail = self.path.split('/')
-            cmd = tail[2]
+            self._rpc_write(self.rpc)
+            return
 
-            cmdline = cmd + ' ' + post_data
-
-            try:
-                data = self.rpc.write(cmdline)
-            except ValueError as e:
-                if str(e) == "Error: badauth":
-                    self._replyunauth()
-                    return
-
-                self._simplereply(HTTPStatus.BAD_REQUEST, str(e))
-                return
-
-            self._replyjson(data)
+        if self.path.startswith("/supernode/"):
+            self._rpc_write(self.snrpc)
             return
 
 
@@ -395,6 +401,8 @@ def main():
             description='Control the running local n2n edge via http')
     ap.add_argument('-t', '--mgmtport', action='store', default=5644,
                     help='Management Port (default=5644)', type=int)
+    ap.add_argument('--snmgmtport', action='store', default=5645,
+                    help='Supernode Management Port (default=5645)', type=int)
     ap.add_argument('-k', '--key', action='store',
                     help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
@@ -409,10 +417,14 @@ def main():
     rpc.debug = args.debug
     rpc.defaultkey = args.key
 
+    snrpc = JsonUDP(args.snmgmtport)
+    snrpc.debug = args.debug
+    snrpc.defaultkey = args.key
+
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
     socketserver.TCPServer.allow_reuse_address = True
-    handler = functools.partial(SimpleHandler, rpc)
+    handler = functools.partial(SimpleHandler, rpc, snrpc)
     with socketserver.TCPServer(("", args.port), handler) as httpd:
         try:
             httpd.serve_forever()
