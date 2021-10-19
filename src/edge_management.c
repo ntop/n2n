@@ -19,7 +19,9 @@
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
+#define FLAG_WROK 1
 typedef struct n2n_mgmt_handler {
+    int flags;
     char  *cmd;
     char  *help;
     void (*func)(n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
@@ -60,11 +62,6 @@ static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_
 static void mgmt_communities (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
-    if(type==N2N_MGMT_WRITE) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
-
     if(eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
         mgmt_error(eee, udp_buf, sender_sock, tag, "noaccess");
         return;
@@ -90,11 +87,6 @@ static void mgmt_supernodes (n2n_edge_t *eee, char *udp_buf, const struct sockad
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     selection_criterion_str_t sel_buf;
-
-    if(type!=N2N_MGMT_READ) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
 
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
 
@@ -167,11 +159,6 @@ static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockadd
 static void mgmt_edges (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     struct peer_info *peer, *tmpPeer;
 
-    if(type!=N2N_MGMT_READ) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
-
     // dump nodes with forwarding through supernodes
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
         mgmt_edges_row(eee, udp_buf, sender_sock, tag, peer, "pSp");
@@ -185,11 +172,6 @@ static void mgmt_edges (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in
 
 static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
-
-    if(type==N2N_MGMT_WRITE) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
@@ -209,11 +191,6 @@ static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, const struct sockad
 
 static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
-
-    if(type==N2N_MGMT_WRITE) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
@@ -280,18 +257,18 @@ static void mgmt_unimplemented (n2n_edge_t *eee, char *udp_buf, const struct soc
 static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
-    { .cmd = "reload_communities", .help = "Reserved for supernode", .func = mgmt_unimplemented},
+    { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
 
     /* TODO: .cmd = "stop", needs special casing the keep_running variable */
-    { .cmd = "stop", .help = "Reserved", .func = mgmt_unimplemented},
+    { .cmd = "stop", .flags = FLAG_WROK, .help = "Reserved", .func = mgmt_unimplemented},
 
-    { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
+    { .cmd = "verbose", .flags = FLAG_WROK, .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "communities", .help = "Show current community", .func = mgmt_communities},
     { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
     { .cmd = "supernodes", .help = "List current supernodes", .func = mgmt_supernodes},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
-    { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},
+    { .cmd = "help", .flags = FLAG_WROK, .help = "Show JSON commands", .func = mgmt_help},
     { .cmd = NULL },
 };
 
@@ -301,7 +278,7 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
 
     /*
      * Even though this command is readonly, we deliberately do not check
-     * the type - allowing help replys to both read and write requests
+     * the type - allowing help replies to both read and write requests
      */
 
     for( handler=mgmt_handlers; handler->cmd; handler++ ) {
@@ -428,6 +405,11 @@ void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in se
     }
     if(!handler->cmd) {
         mgmt_error(eee, udp_buf, sender_sock, tag, "unknowncmd");
+        return;
+    }
+
+    if((type==N2N_MGMT_WRITE) && !(handler->flags & FLAG_WROK)) {
+        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
         return;
     }
 

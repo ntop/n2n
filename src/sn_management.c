@@ -26,7 +26,9 @@
 
 int load_allowed_sn_community (n2n_sn_t *sss); /* defined in sn_utils.c */
 
+#define FLAG_WROK 1
 typedef struct n2n_mgmt_handler {
+    int flags;
     char  *cmd;
     char  *help;
     void (*func)(n2n_sn_t *sss, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
@@ -94,11 +96,6 @@ static void mgmt_reload_communities (n2n_sn_t *sss, char *udp_buf, const struct 
 static void mgmt_timestamps (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
-    if(type==N2N_MGMT_WRITE) {
-        mgmt_error(sss, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
-
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
                        "\"_tag\":\"%s\","
@@ -117,11 +114,6 @@ static void mgmt_timestamps (n2n_sn_t *sss, char *udp_buf, const struct sockaddr
 
 static void mgmt_packetstats (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
-
-    if(type==N2N_MGMT_WRITE) {
-        mgmt_error(sss, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
@@ -183,11 +175,6 @@ static void mgmt_communities (n2n_sn_t *sss, char *udp_buf, const struct sockadd
     struct sn_community *community, *tmp;
     dec_ip_bit_str_t ip_bit_str = {'\0'};
 
-    if(type!=N2N_MGMT_READ) {
-        mgmt_error(sss, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
-
     HASH_ITER(hh, sss->communities, community, tmp) {
 
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
@@ -217,12 +204,6 @@ static void mgmt_edges (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in s
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     dec_ip_bit_str_t ip_bit_str = {'\0'};
-
-
-    if(type!=N2N_MGMT_READ) {
-        mgmt_error(sss, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
 
     HASH_ITER(hh, sss->communities, community, tmp) {
         HASH_ITER(hh, community->edges, peer, tmpPeer) {
@@ -262,16 +243,16 @@ static void mgmt_unimplemented (n2n_sn_t *sss, char *udp_buf, const struct socka
 static void mgmt_help (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
 
 n2n_mgmt_handler_t mgmt_handlers[] = {
-    { .cmd = "stop", .help = "Reserved", .func = mgmt_unimplemented},
+    { .cmd = "stop", .flags = FLAG_WROK, .help = "Reserved", .func = mgmt_unimplemented},
     { .cmd = "supernodes", .help = "Reserved for edge", .func = mgmt_unimplemented},
 
-    { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
-    { .cmd = "reload_communities", .help = "Reloads communities and user's public keys", .func = mgmt_reload_communities},
+    { .cmd = "verbose", .flags = FLAG_WROK, .help = "Manage verbosity level", .func = mgmt_verbose},
+    { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reloads communities and user's public keys", .func = mgmt_reload_communities},
     { .cmd = "communities", .help = "List current communities", .func = mgmt_communities},
     { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "Traffic statistics", .func = mgmt_packetstats},
-    { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},
+    { .cmd = "help", .flags = FLAG_WROK, .help = "Show JSON commands", .func = mgmt_help},
     { .cmd = NULL },
 };
 
@@ -281,7 +262,7 @@ static void mgmt_help (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in se
 
     /*
      * Even though this command is readonly, we deliberately do not check
-     * the type - allowing help replys to both read and write requests
+     * the type - allowing help replies to both read and write requests
      */
 
     for( handler=mgmt_handlers; handler->cmd; handler++ ) {
@@ -408,6 +389,11 @@ void handleMgmtJson_sn (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in s
     }
     if(!handler->cmd) {
         mgmt_error(sss, udp_buf, sender_sock, tag, "unknowncmd");
+        return;
+    }
+
+    if((type==N2N_MGMT_WRITE) && !(handler->flags & FLAG_WROK)) {
+        mgmt_error(sss, udp_buf, sender_sock, tag, "readonly");
         return;
     }
 
