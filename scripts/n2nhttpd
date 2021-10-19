@@ -116,6 +116,102 @@ class JsonUDP():
 
 
 pages = {
+    "/script.js": {
+        "content_type": "text/javascript",
+        "content": """
+var verbose=-1;
+
+function rows2verbose(id, unused, data) {
+    row0 = data[0]
+    verbose = row0['traceLevel']
+
+    let div = document.getElementById(id);
+    div.innerHTML=verbose
+}
+
+function rows2keyvalue(id, keys, data) {
+    let s = "<table border=1 cellspacing=0>"
+    data.forEach((row) => {
+        keys.forEach((key) => {
+            if (key in row) {
+                s += "<tr><th>" + key + "<td>" + row[key];
+            }
+        });
+    });
+
+    s += "</table>"
+    let div = document.getElementById(id);
+    div.innerHTML=s
+}
+
+function rows2table(id, columns, data) {
+    let s = "<table border=1 cellspacing=0>"
+    s += "<tr>"
+    columns.forEach((col) => {
+        s += "<th>" + col
+    });
+    data.forEach((row) => {
+        s += "<tr>"
+        columns.forEach((col) => {
+            s += "<td>" + row[col]
+        });
+    });
+
+    s += "</table>"
+    let div = document.getElementById(id);
+    div.innerHTML=s
+}
+
+function do_get(url, id, handler, handler_param) {
+    fetch(url)
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (data) {
+        handler(id,handler_param,data);
+
+        // update the timestamp on success
+        let now = Math.round(new Date().getTime() / 1000);
+        let time = document.getElementById('time');
+        time.innerHTML=now;
+      })
+      .catch(function (err) {
+        console.log('error: ' + err);
+      });
+}
+
+function do_post(url, body, id, handler, handler_param) {
+    fetch(url, {method:'POST', body: body})
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (data) {
+        handler(id,handler_param,data);
+      })
+      .catch(function (err) {
+        console.log('error: ' + err);
+      });
+}
+
+function do_stop(tracelevel) {
+    fetch('edge/stop', {method:'POST'})
+}
+
+function setverbose(tracelevel) {
+    if (tracelevel < 0) {
+        tracelevel = 0;
+    }
+    do_post(
+        'edge/verbose', tracelevel, 'verbose',
+        rows2verbose, null
+    );
+}
+
+function refresh_setup(interval) {
+    var timer = setInterval(refresh_job, interval);
+}
+""",
+    },
     "/": {
         "content_type": "text/html; charset=utf-8",
         "content": """
@@ -151,96 +247,9 @@ pages = {
  <br>
  <div id="packetstats"></div>
 
+ <script src="script.js"></script>
  <script>
-  var verbose=-1;
-
-  function rows2verbose(id, unused, data) {
-    row0 = data[0]
-    verbose = row0['traceLevel']
-
-    let div = document.getElementById(id);
-    div.innerHTML=verbose
-  }
-
-  function rows2keyvalue(id, keys, data) {
-    let s = "<table border=1 cellspacing=0>"
-    data.forEach((row) => {
-        keys.forEach((key) => {
-            if (key in row) {
-                s += "<tr><th>" + key + "<td>" + row[key];
-            }
-        });
-    });
-
-    s += "</table>"
-    let div = document.getElementById(id);
-    div.innerHTML=s
-  }
-
-  function rows2table(id, columns, data) {
-    let s = "<table border=1 cellspacing=0>"
-    s += "<tr>"
-    columns.forEach((col) => {
-        s += "<th>" + col
-    });
-    data.forEach((row) => {
-        s += "<tr>"
-        columns.forEach((col) => {
-            s += "<td>" + row[col]
-        });
-    });
-
-    s += "</table>"
-    let div = document.getElementById(id);
-    div.innerHTML=s
-  }
-
-  function do_get(url, id, handler, handler_param) {
-    fetch(url)
-      .then(function (response) {
-        return response.json();
-      })
-      .then(function (data) {
-        handler(id,handler_param,data);
-
-        // update the timestamp on success
-        let now = Math.round(new Date().getTime() / 1000);
-        let time = document.getElementById('time');
-        time.innerHTML=now;
-      })
-      .catch(function (err) {
-        console.log('error: ' + err);
-      });
-  }
-
-  function do_post(url, body, id, handler, handler_param) {
-    fetch(url, {method:'POST', body: body})
-      .then(function (response) {
-        return response.json();
-      })
-      .then(function (data) {
-        handler(id,handler_param,data);
-      })
-      .catch(function (err) {
-        console.log('error: ' + err);
-      });
-  }
-
-  function do_stop(tracelevel) {
-    fetch('edge/stop', {method:'POST'})
-  }
-
-  function setverbose(tracelevel) {
-    if (tracelevel < 0) {
-        tracelevel = 0;
-    }
-    do_post(
-        'edge/verbose', tracelevel, 'verbose',
-        rows2verbose, null
-    );
-  }
-
-  function refresh_job() {
+function refresh_job() {
     do_get(
         'edge/verbose', 'verbose',
         rows2verbose, null
@@ -265,11 +274,7 @@ pages = {
         'edge/packetstats', 'packetstats',
         rows2table, ['type','tx_pkt','rx_pkt']
     );
-  }
-
-  function refresh_setup(interval) {
-    var timer = setInterval(refresh_job, interval);
-  }
+}
 
 refresh_setup(10000);
 refresh_job();
