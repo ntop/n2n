@@ -130,65 +130,54 @@ static void mgmt_super (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in
     }
 }
 
-static void mgmt_peer (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, char *tag, struct peer_info *peer, char *mode) {
     size_t msg_len;
-    struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     dec_ip_bit_str_t ip_bit_str = {'\0'};
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"mode\":\"%s\","
+                       "\"ip4addr\":\"%s\","
+                       "\"purgeable\":%i,"
+                       "\"macaddr\":\"%s\","
+                       "\"sockaddr\":\"%s\","
+                       "\"proto\":\"%s\","
+                       "\"desc\":\"%s\","
+                       "\"last_seen\":%li}\n",
+                       tag,
+                       mode,
+                       (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
+                       peer->purgeable,
+                       (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
+                       sock_to_cstr(sockbuf, &(peer->sock)),
+                       ((peer->socket_fd >= 0) && (peer->socket_fd != eee->sock)) ? "TCP" : "UDP",
+                       peer->dev_desc,
+                       peer->last_seen);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+}
+
+static void mgmt_edges (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+    struct peer_info *peer, *tmpPeer;
 
     if(type!=N2N_MGMT_READ) {
         mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
         return;
     }
 
-    /* FIXME:
-     * dont repeat yourself - the body of these two loops is identical
-     */
-
     // dump nodes with forwarding through supernodes
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                           "{"
-                           "\"_tag\":\"%s\","
-                           "\"_type\":\"row\","
-                           "\"mode\":\"pSp\","
-                           "\"ip4addr\":\"%s\","
-                           "\"macaddr\":\"%s\","
-                           "\"sockaddr\":\"%s\","
-                           "\"desc\":\"%s\","
-                           "\"lastseen\":%li}\n",
-                           tag,
-                           (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
-                           (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                           sock_to_cstr(sockbuf, &(peer->sock)),
-                           peer->dev_desc,
-                           peer->last_seen);
-
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        mgmt_edges_row(eee, udp_buf, sender_sock, tag, peer, "pSp");
     }
 
     // dump peer-to-peer nodes
     HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                           "{"
-                           "\"_tag\":\"%s\","
-                           "\"_type\":\"row\","
-                           "\"mode\":\"p2p\","
-                           "\"ip4addr\":\"%s\","
-                           "\"macaddr\":\"%s\","
-                           "\"sockaddr\":\"%s\","
-                           "\"desc\":\"%s\","
-                           "\"lastseen\":%li}\n",
-                           tag,
-                           (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
-                           (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                           sock_to_cstr(sockbuf, &(peer->sock)),
-                           peer->dev_desc,
-                           peer->last_seen);
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        mgmt_edges_row(eee, udp_buf, sender_sock, tag, peer, "p2p");
     }
 }
 
@@ -277,14 +266,13 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
 n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .help = "Reserved for supernode", .func = mgmt_unimplemented},
     { .cmd = "communities", .help = "Reserved for supernode", .func = mgmt_unimplemented},
-    { .cmd = "edges", .help = "Reserved for supernode", .func = mgmt_unimplemented},
 
     /* TODO: .cmd = "stop", needs special casing the keep_running variable */
     { .cmd = "stop", .help = "Reserved", .func = mgmt_unimplemented},
 
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "community", .help = "Show current community", .func = mgmt_community},
-    { .cmd = "peer", .help = "List current peers", .func = mgmt_peer},
+    { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
     { .cmd = "super", .help = "List current supernodes", .func = mgmt_super},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},

@@ -140,8 +140,8 @@ def subcmd_show_supernodes(rpc, args):
     return str_table(rows, columns)
 
 
-def subcmd_show_peers(rpc, args):
-    rows = rpc.read('peer')
+def subcmd_show_edges(rpc, args):
+    rows = rpc.read('edges')
     columns = [
         'mode',
         'ip4addr',
@@ -176,9 +176,9 @@ subcmds = {
         'func': subcmd_show_supernodes,
         'help': 'Show the list of supernodes',
     },
-    'peers': {
-        'func': subcmd_show_peers,
-        'help': 'Show the list of peers',
+    'edges': {
+        'func': subcmd_show_edges,
+        'help': 'Show the list of edges/peers',
     },
 }
 

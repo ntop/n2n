@@ -9,7 +9,7 @@
 #
 # Try it out with
 #   http://localhost:8080/
-#   http://localhost:8080/edge/peer
+#   http://localhost:8080/edge/edges
 #   http://localhost:8080/edge/super
 
 import argparse
@@ -137,8 +137,8 @@ indexhtml = """
  <br>
  <div id="community"></div>
  <br>
- Peers:
- <div id="peer"></div>
+ Edges/Peers:
+ <div id="edges"></div>
  <br>
  Supernodes:
  <div id="super"></div>
@@ -246,7 +246,7 @@ indexhtml = """
         rows2table, ['version','current','macaddr','sockaddr','uptime']
     );
     do_get(
-        'edge/peer', 'peer',
+        'edge/edges', 'edges',
         rows2table, ['mode','ip4addr','macaddr','sockaddr','desc']
     );
     do_get(

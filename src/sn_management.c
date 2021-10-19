@@ -206,7 +206,7 @@ static void mgmt_edges (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in s
                                "\"sockaddr\":\"%s\","
                                "\"proto\":\"%s\","
                                "\"desc\":\"%s\","
-                               "\"lastseen\":%li}\n",
+                               "\"last_seen\":%li}\n",
                                tag,
                                (community->is_federation) ? "-/-" : community->community,
                                (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
@@ -232,13 +232,12 @@ static void mgmt_help (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in se
 n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "stop", .help = "Reserved", .func = mgmt_unimplemented},
     { .cmd = "community", .help = "Reserved for edge", .func = mgmt_unimplemented},
-    { .cmd = "peer", .help = "Reserved for edge", .func = mgmt_unimplemented},
     { .cmd = "super", .help = "Reserved for edge", .func = mgmt_unimplemented},
 
     { .cmd = "verbose", .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "reload_communities", .help = "Reloads communities and user's public keys", .func = mgmt_reload_communities},
     { .cmd = "communities", .help = "List current communities", .func = mgmt_communities},
-    { .cmd = "edges", .help = "List current edges", .func = mgmt_edges},
+    { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "stats", .help = "Usage statistics", .func = mgmt_stats},
     { .cmd = "help", .help = "Show JSON commands", .func = mgmt_help},
