@@ -126,6 +126,7 @@ indexhtml = """
         <td>Last Updated:
         <td><div id="time"></div>
         <td><button onclick=refresh_job()>update</button>
+        <td><button onclick=do_stop()>stop node</button>
     <tr>
         <td>Logging Verbosity:
         <td>
@@ -220,6 +221,10 @@ indexhtml = """
       .catch(function (err) {
         console.log('error: ' + err);
       });
+  }
+
+  function do_stop(tracelevel) {
+    fetch('edge/stop', {method:'POST'})
   }
 
   function setverbose(tracelevel) {

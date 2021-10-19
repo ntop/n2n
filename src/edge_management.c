@@ -40,6 +40,25 @@ static void mgmt_error (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in
            (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
 }
 
+static void mgmt_stop (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+    size_t msg_len;
+
+    if(type==N2N_MGMT_WRITE) {
+        *eee->keep_running = 0;
+    }
+
+    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"keep_running\":%u}\n",
+                       tag,
+                       *eee->keep_running);
+
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+}
+
 static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
 
@@ -257,9 +276,7 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
 n2n_mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
 
-    /* TODO: .cmd = "stop", needs special casing the keep_running variable */
-    { .cmd = "stop", .flags = FLAG_WROK, .help = "Reserved", .func = mgmt_unimplemented},
-
+    { .cmd = "stop", .flags = FLAG_WROK, .help = "Gracefully exit edge", .func = mgmt_stop},
     { .cmd = "verbose", .flags = FLAG_WROK, .help = "Manage verbosity level", .func = mgmt_verbose},
     { .cmd = "communities", .help = "Show current community", .func = mgmt_communities},
     { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
