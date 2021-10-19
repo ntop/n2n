@@ -202,6 +202,8 @@ def main():
                     help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
                     help='Also show raw internal data')
+    ap.add_argument('--raw', action='store_true',
+                    help='Force cmd to avoid any pretty printing')
 
     group = ap.add_mutually_exclusive_group()
     group.add_argument('--read', action='store_true',
@@ -216,7 +218,7 @@ def main():
 
     args = ap.parse_args()
 
-    if args.cmd not in subcmds:
+    if args.raw or (args.cmd not in subcmds):
         func = subcmd_default
     else:
         func = subcmds[args.cmd]['func']
