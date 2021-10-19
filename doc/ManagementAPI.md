@@ -10,6 +10,9 @@ Default Ports:
 - UDP/5644 - edge
 - UDP/5645 - supernode
 
+A Quick start example query:
+    `echo r 1 help | nc -w1 -u 127.0.0.1 5644`
+
 ## JSON Query interface
 
 A machine readable API is available for both the edge and supernode.  It
