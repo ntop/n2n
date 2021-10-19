@@ -158,7 +158,11 @@ function rows2table(id, columns, data) {
     data.forEach((row) => {
         s += "<tr>"
         columns.forEach((col) => {
-            s += "<td>" + row[col]
+            val = row[col]
+            if (typeof val === "undefined") {
+                val = ''
+            }
+            s += "<td>" + val
         });
     });
 
