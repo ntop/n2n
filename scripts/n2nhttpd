@@ -200,7 +200,7 @@ indexhtml = """
         handler(id,handler_param,data);
 
         // update the timestamp on success
-        let now = new Date().getTime();
+        let now = Math.round(new Date().getTime() / 1000);
         let time = document.getElementById('time');
         time.innerHTML=now;
       })
