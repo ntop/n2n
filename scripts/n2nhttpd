@@ -364,7 +364,9 @@ function refresh_job() {
     );
     do_get(
         nodetype + '/edges', 'edges',
-        rows2table, ['community','ip4addr','macaddr','sockaddr','proto','desc','purgeable']
+        rows2table,
+        ['community','ip4addr','macaddr','sockaddr','proto','desc',
+         'purgeable']
     );
     do_get(
         nodetype + '/timestamps', 'timestamps',
