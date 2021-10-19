@@ -44,7 +44,9 @@ static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_
     size_t msg_len;
 
     if(type==N2N_MGMT_WRITE) {
-        setTraceLevel(strtoul(argv, NULL, 0));
+        if(argv) {
+            setTraceLevel(strtoul(argv, NULL, 0));
+        }
     }
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
