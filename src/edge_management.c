@@ -126,7 +126,7 @@ static void mgmt_supernodes (n2n_edge_t *eee, char *udp_buf, const struct sockad
                            "\"macaddr\":\"%s\","
                            "\"sockaddr\":\"%s\","
                            "\"selection\":\"%s\","
-                           "\"lastseen\":%li,"
+                           "\"last_seen\":%li,"
                            "\"uptime\":%li}\n",
                            tag,
                            peer->version,
