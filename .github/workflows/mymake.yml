@@ -1,4 +1,4 @@
-name: CMake
+name: MYMake
 on:
   repository_dispatch:
   workflow_dispatch:
