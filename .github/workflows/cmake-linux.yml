@@ -1,6 +1,8 @@
 name: CMake
 
-on: [push]
+on:
+  repository_dispatch:
+  workflow_dispatch:
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
