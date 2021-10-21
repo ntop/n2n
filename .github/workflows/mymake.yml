@@ -1,0 +1,52 @@
+name: CMake
+on:
+  repository_dispatch:
+  workflow_dispatch:
+env:
+  BUILD_TYPE: Release
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            TARGET: x86_64-unknown-linux-musl
+            COMPILER: gcc
+            LINKER: gcc
+          - os: windows-latest
+            COMPILER: cl
+            LINKER: cl
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{github.workspace}}/build
+
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE
+
+    - name: infomation
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: |
+        df -hT
+        echo "ref:${{ github.ref }} ls ./"
+        tar -cvf n2n_${{ matrix.os }}.tar * 
+        ls -l
+    - name: Upload Release Asset
+      id: upload-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: https://uploads.github.com/repos/radaig/n2n/releases/51511970/assets{?name,label}
+        asset_path: ${{github.workspace}}/build/n2n_${{ matrix.os }}.tar
+        asset_name: n2n_${{ matrix.os }}.tar
+        asset_content_type: application/zip
