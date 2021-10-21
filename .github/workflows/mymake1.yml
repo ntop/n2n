@@ -1,4 +1,4 @@
-name: CMake
+name: MYCMake1
 
 on:
   repository_dispatch:
