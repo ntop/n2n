@@ -48,3 +48,8 @@ a http://localhost:8080/supernode.html page for the supernode)
 Example:
 - `scripts/n2nhttpd --help`
 - `scripts/n2nhttpd 8087`
+
+## `scripts/n2n-gateway.sh`
+
+A sample script to route all the host traffic towards a remote gateway,
+which is reachable via the n2n virtual interface.
