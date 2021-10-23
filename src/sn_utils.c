@@ -63,7 +63,7 @@ static int sort_communities (n2n_sn_t *sss,
 
 static int process_mgmt (n2n_sn_t *sss,
                          const struct sockaddr_in *sender_sock,
-                         const uint8_t *mgmt_buf,
+                         char *mgmt_buf,
                          size_t mgmt_size,
                          time_t now);
 
@@ -1493,7 +1493,7 @@ static int sort_communities (n2n_sn_t *sss,
 
 static int process_mgmt (n2n_sn_t *sss,
                          const struct sockaddr_in *sender_sock,
-                         const uint8_t *mgmt_buf,
+                         char *mgmt_buf,
                          size_t mgmt_size,
                          time_t now) {
 
@@ -1510,6 +1510,9 @@ static int process_mgmt (n2n_sn_t *sss,
     dec_ip_bit_str_t ip_bit_str = {'\0'};
 
     traceEvent(TRACE_DEBUG, "process_mgmt");
+
+    /* avoid parsing any uninitialized junk from the stack */
+    mgmt_buf[mgmt_size] = 0;
 
     // process input, if any
         if((0 == memcmp(mgmt_buf, "help", 4)) || (0 == memcmp(mgmt_buf, "?", 1))) {
@@ -1542,6 +1545,12 @@ static int process_mgmt (n2n_sn_t *sss,
             sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
             return 0; /* no status output afterwards */
         }
+
+    if((mgmt_buf[0] == 'r' || mgmt_buf[0] == 'w') && (mgmt_buf[1] == ' ')) {
+        /* this is a JSON request */
+        handleMgmtJson_sn(sss, mgmt_buf, *sender_sock);
+        return 0;
+    }
 
     // output current status
 
@@ -2690,7 +2699,7 @@ static int process_udp (n2n_sn_t * sss,
 
 /** Long lived processing entry point. Split out from main to simply
  *  daemonisation on some platforms. */
-int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
+int run_sn_loop (n2n_sn_t *sss) {
 
     uint8_t pktbuf[N2N_SN_PKTBUF_SIZE];
     time_t last_purge_edges = 0;
@@ -2699,7 +2708,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
 
     sss->start_time = time(NULL);
 
-    while(*keep_running) {
+    while(*sss->keep_running) {
         int rc;
         ssize_t bread;
         int max_sock;
@@ -2764,7 +2773,7 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
 #ifdef WIN32
                     traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
-                    *keep_running = 0;
+                    *sss->keep_running = 0;
                     break;
                 }
 
@@ -2880,16 +2889,16 @@ int run_sn_loop (n2n_sn_t *sss, int *keep_running) {
 
                 if(bread <= 0) {
                     traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
-                    *keep_running = 0;
+                    *sss->keep_running = 0;
                     break;
                 }
 
                 // we have a datagram to process
-                process_mgmt(sss, &sender_sock, pktbuf, bread, now);
+                process_mgmt(sss, &sender_sock, (char *)pktbuf, bread, now);
             }
 
         } else {
-            if(((now - before) < wait_time.tv_sec) && (*keep_running)){
+            if(((now - before) < wait_time.tv_sec) && (*sss->keep_running)){
                 // this is no real timeout, something went wrong with one of the tcp connections (probably)
                 // close them all, edges will re-open if they detect closure
                 traceEvent(TRACE_DEBUG, "falsly claimed timeout, assuming issue with tcp connection, closing them all");

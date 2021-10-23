@@ -42,7 +42,8 @@ int main () {
         sn_init(&sss_node);
 
         keep_running = 1;
-        rc = run_sn_loop(&sss_node, &keep_running);
+        sss_node.keep_running = &keep_running;
+        rc = run_sn_loop(&sss_node);
 
         sn_term(&sss_node);
 

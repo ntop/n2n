@@ -685,6 +685,7 @@ struct n2n_edge {
     n2n_edge_conf_t         conf;
 
     /* Status */
+    int                              *keep_running;                      /**< Pointer to edge loop stop/go flag */
     struct peer_info                 *curr_sn;                           /**< Currently active supernode. */
     uint8_t                          sn_wait;                            /**< Whether we are waiting for a supernode response. */
     uint8_t                          sn_pong;                            /**< Whether we have seen a PONG since last time reset. */
@@ -801,6 +802,7 @@ typedef struct n2n_tcp_connection {
 
 
 typedef struct n2n_sn {
+    int                                    *keep_running;   /* Pointer to sn loop stop/go flag */
     time_t                                 start_time;      /* Used to measure uptime. */
     n2n_version_t                          version;         /* version string sent to edges along with PEER_INFO a.k.a. PONG */
     sn_stats_t                             stats;
@@ -832,11 +834,5 @@ typedef struct n2n_sn {
 
 
 /* *************************************************** */
-
-typedef struct n2n_mgmt_handler {
-    char  *cmd;
-    char  *help;
-    void (*func)(n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
-} n2n_mgmt_handler_t;
 
 #endif /* _N2N_TYPEDEFS_H_ */

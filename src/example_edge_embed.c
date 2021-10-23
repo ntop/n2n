@@ -68,7 +68,8 @@ int main() {
     }
 
     keep_running = 1;
-    rc = run_edge_loop(eee, &keep_running);
+    eee->keep_running = &keep_running;
+    rc = run_edge_loop(eee);
 
     edge_term(eee);
     tuntap_close(&tuntap);

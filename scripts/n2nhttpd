@@ -9,8 +9,8 @@
 #
 # Try it out with
 #   http://localhost:8080/
-#   http://localhost:8080/edge/peer
-#   http://localhost:8080/edge/super
+#   http://localhost:8080/edge/edges
+#   http://localhost:8080/edge/supernodes
 
 import argparse
 import socket
@@ -19,6 +19,7 @@ import socketserver
 import http.server
 import signal
 import functools
+import base64
 
 from http import HTTPStatus
 
@@ -73,6 +74,7 @@ class JsonUDP():
         # assert(data['cmd'] == cmd)
 
         result = list()
+        error = None
 
         while True:
             data, _ = self.sock.recvfrom(1024)
@@ -83,9 +85,13 @@ class JsonUDP():
                 continue
 
             if data['_type'] == 'error':
-                raise ValueError('Error: {}'.format(data['error']))
+                # we still expect an end packet, so save the error
+                error = ValueError('Error: {}'.format(data['error']))
+                continue
 
             if data['_type'] == 'end':
+                if error:
+                    raise error
                 return result
 
             if data['_type'] != 'row':
@@ -114,22 +120,49 @@ class JsonUDP():
         return self._call('w', cmdline)
 
 
-indexhtml = """
-<html>
-<head>
- <title>n2n management</title>
-</head>
-<body>
- <div id="time"></div>
- <br>
- Supernodes:
- <div id="super"></div>
- <br>
- Peers:
- <div id="peer"></div>
+pages = {
+    "/script.js": {
+        "content_type": "text/javascript",
+        "content": """
+var verbose=-1;
 
- <script>
-  function rows2table(id, columns, data) {
+function rows2verbose(id, unused, data) {
+    row0 = data[0]
+    verbose = row0['traceLevel']
+
+    let div = document.getElementById(id);
+    div.innerHTML=verbose
+}
+
+function rows2keyvalue(id, keys, data) {
+    let s = "<table border=1 cellspacing=0>"
+    data.forEach((row) => {
+        keys.forEach((key) => {
+            if (key in row) {
+                s += "<tr><th>" + key + "<td>" + row[key];
+            }
+        });
+    });
+
+    s += "</table>"
+    let div = document.getElementById(id);
+    div.innerHTML=s
+}
+
+function rows2keyvalueall(id, unused, data) {
+    let s = "<table border=1 cellspacing=0>"
+    data.forEach((row) => {
+        Object.keys(row).forEach((key) => {
+            s += "<tr><th>" + key + "<td>" + row[key];
+        });
+    });
+
+    s += "</table>"
+    let div = document.getElementById(id);
+    div.innerHTML=s
+}
+
+function rows2table(id, columns, data) {
     let s = "<table border=1 cellspacing=0>"
     s += "<tr>"
     columns.forEach((col) => {
@@ -138,62 +171,227 @@ indexhtml = """
     data.forEach((row) => {
         s += "<tr>"
         columns.forEach((col) => {
-            s += "<td>" + row[col]
+            val = row[col]
+            if (typeof val === "undefined") {
+                val = ''
+            }
+            s += "<td>" + val
         });
     });
 
     s += "</table>"
     let div = document.getElementById(id);
     div.innerHTML=s
-  }
+}
 
-  function fetch_table(url, id, columns) {
+function do_get(url, id, handler, handler_param) {
     fetch(url)
       .then(function (response) {
         return response.json();
       })
       .then(function (data) {
-        rows2table(id,columns,data);
+        handler(id,handler_param,data);
+
+        // update the timestamp on success
+        let now = Math.round(new Date().getTime() / 1000);
+        let time = document.getElementById('time');
+        time.innerHTML=now;
       })
       .catch(function (err) {
         console.log('error: ' + err);
       });
-  }
+}
 
-  function refresh_job() {
-    let now = new Date().getTime();
+function do_post(url, body, id, handler, handler_param) {
+    fetch(url, {method:'POST', body: body})
+      .then(function (response) {
+        return response.json();
+      })
+      .then(function (data) {
+        handler(id,handler_param,data);
+      })
+      .catch(function (err) {
+        console.log('error: ' + err);
+      });
+}
 
-    let time = document.getElementById('time');
-    time.innerHTML="last updated: " + now;
+function do_stop(tracelevel) {
+    // FIXME: uses global in script library
+    fetch(nodetype + '/stop', {method:'POST'})
+}
 
-    fetch_table(
-        'edge/super',
-        'super',
-        ['version','current','macaddr','sockaddr','uptime']
+function setverbose(tracelevel) {
+    if (tracelevel < 0) {
+        tracelevel = 0;
+    }
+    // FIXME: uses global in script library
+    do_post(
+        nodetype + '/verbose', tracelevel, 'verbose',
+        rows2verbose, null
     );
-    fetch_table(
-        'edge/peer',
-        'peer',
-        ['mode','ip4addr','macaddr','sockaddr','desc']
-    );
-  }
+}
 
-  function refresh_setup(interval) {
+function refresh_setup(interval) {
     var timer = setInterval(refresh_job, interval);
-  }
+}
+""",
+    },
+    "/": {
+        "content_type": "text/html; charset=utf-8",
+        "content": """
+<html>
+<head>
+ <title>n2n edge management</title>
+</head>
+<body>
+ <table>
+    <tr>
+        <td>Last Updated:
+        <td><div id="time"></div>
+        <td><button onclick=refresh_job()>update</button>
+        <td><button onclick=do_stop()>stop edge</button>
+    <tr>
+        <td>Logging Verbosity:
+        <td>
+            <div id="verbose"></div>
+        <td>
+            <button onclick=setverbose(verbose+1)>+</button>
+            <button onclick=setverbose(verbose-1)>-</button>
+ </table>
+ <br>
+ <div id="communities"></div>
+ <br>
+ Edges/Peers:
+ <div id="edges"></div>
+ <br>
+ Supernodes:
+ <div id="supernodes"></div>
+ <br>
+ <div id="timestamps"></div>
+ <br>
+ <div id="packetstats"></div>
 
-refresh_setup(5000);
+ <script src="script.js"></script>
+ <script>
+// FIXME: hacky global
+var nodetype="edge";
+
+function refresh_job() {
+    do_get(
+        nodetype + '/verbose', 'verbose',
+        rows2verbose, null
+    );
+    do_get(
+        nodetype + '/communities', 'communities',
+        rows2keyvalue, ['community']
+    );
+    do_get(
+        nodetype + '/supernodes', 'supernodes',
+        rows2table, ['version','current','macaddr','sockaddr','uptime']
+    );
+    do_get(
+        nodetype + '/edges', 'edges',
+        rows2table, ['mode','ip4addr','macaddr','sockaddr','desc']
+    );
+    do_get(
+        nodetype + '/timestamps', 'timestamps',
+        rows2keyvalueall, null
+    );
+    do_get(
+        nodetype + '/packetstats', 'packetstats',
+        rows2table, ['type','tx_pkt','rx_pkt']
+    );
+}
+
+refresh_setup(10000);
 refresh_job();
  </script>
 </body>
 </html>
-"""
+""",
+    },
+    "/supernode.html": {
+        "content_type": "text/html; charset=utf-8",
+        "content": """
+<html>
+<head>
+ <title>n2n supernode management</title>
+</head>
+<body>
+ <table>
+    <tr>
+        <td>Last Updated:
+        <td><div id="time"></div>
+        <td><button onclick=refresh_job()>update</button>
+        <td><button onclick=do_stop()>stop supernode</button>
+    <tr>
+        <td>Logging Verbosity:
+        <td>
+            <div id="verbose"></div>
+        <td>
+            <button onclick=setverbose(verbose+1)>+</button>
+            <button onclick=setverbose(verbose-1)>-</button>
+        <td><button onclick=do_reload()>reload communities</button>
+ </table>
+ <br>
+ Communities:
+ <div id="communities"></div>
+ <br>
+ Edges/Peers:
+ <div id="edges"></div>
+ <br>
+ <div id="timestamps"></div>
+ <br>
+ <div id="packetstats"></div>
+
+ <script src="script.js"></script>
+ <script>
+// FIXME: hacky global
+var nodetype="supernode";
+
+function do_reload() {
+    fetch(nodetype + '/reload_communities', {method:'POST'})
+}
+
+function refresh_job() {
+    do_get(
+        nodetype + '/verbose', 'verbose',
+        rows2verbose, null
+    );
+    do_get(
+        nodetype + '/communities', 'communities',
+        rows2table, ['community','ip4addr','is_federation','purgeable']
+    );
+    do_get(
+        nodetype + '/edges', 'edges',
+        rows2table,
+        ['community','ip4addr','macaddr','sockaddr','proto','desc']
+    );
+    do_get(
+        nodetype + '/timestamps', 'timestamps',
+        rows2keyvalueall, null
+    );
+    do_get(
+        nodetype + '/packetstats', 'packetstats',
+        rows2table, ['type','tx_pkt','rx_pkt']
+    );
+}
+
+refresh_setup(10000);
+refresh_job();
+ </script>
+</body>
+</html>
+""",
+    },
+}
 
 
 class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
-    def __init__(self, rpc, *args, **kwargs):
+    def __init__(self, rpc, snrpc, *args, **kwargs):
         self.rpc = rpc
+        self.snrpc = snrpc
         super().__init__(*args, **kwargs)
 
     def log_request(self, code='-', size='-'):
@@ -205,42 +403,102 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(message.encode('utf8'))
 
-    def do_GET(self):
-        url_tail = self.path
+    def _replyjson(self, data):
+        self.send_response(HTTPStatus.OK)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf8'))
 
-        if url_tail == "/":
-            self.send_response(HTTPStatus.OK)
-            self.send_header('Content-type', 'text/html; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(indexhtml.encode('utf8'))
-            return
+    def _replyunauth(self):
+        self.send_response(HTTPStatus.UNAUTHORIZED)
+        self.send_header('WWW-Authenticate', 'Basic realm="n2n"')
+        self.end_headers()
 
-        if url_tail.startswith("/edge/"):
-            tail = url_tail.split('/')
-            cmd = tail[2]
-            # if commands ever need args, use more of the path components
+    def _extractauth(self, rpc):
+        # Avoid caching the key inside the object for all clients
+        rpc.key = None
 
-            try:
-                data = self.rpc.read(cmd)
-            except ValueError:
-                self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
+        header = self.headers.get('Authorization')
+        if header is not None:
+            authtype, encoded = header.split(' ')
+            if authtype == 'Basic':
+                user, key = base64.b64decode(encoded).decode('utf8').split(':')
+                rpc.key = key
+
+        if rpc.key is None:
+            rpc.key = rpc.defaultkey
+
+    def _rpc(self, method, cmdline):
+        try:
+            data = method(cmdline)
+        except ValueError as e:
+            if str(e) == "Error: badauth":
+                self._replyunauth()
                 return
 
+            self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
+            return
+
+        self._replyjson(data)
+        return
+
+    def _rpc_read(self, rpc):
+        self._extractauth(rpc)
+        tail = self.path.split('/')
+        cmd = tail[2]
+        # if reads ever need args, could use more of the tail
+
+        self._rpc(rpc.read, cmd)
+
+    def _rpc_write(self, rpc):
+        self._extractauth(rpc)
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length).decode('utf8')
+
+        tail = self.path.split('/')
+        cmd = tail[2]
+        cmdline = cmd + ' ' + post_data
+
+        self._rpc(rpc.write, cmdline)
+
+    def do_GET(self):
+        if self.path.startswith("/edge/"):
+            self._rpc_read(self.rpc)
+            return
+
+        if self.path.startswith("/supernode/"):
+            self._rpc_read(self.snrpc)
+            return
+
+        if self.path in pages:
+            page = pages[self.path]
+
             self.send_response(HTTPStatus.OK)
-            self.send_header('Content-type', 'application/json')
+            self.send_header('Content-type', page['content_type'])
             self.end_headers()
-            self.wfile.write(json.dumps(data).encode('utf8'))
+            self.wfile.write(page['content'].encode('utf8'))
             return
 
         self._simplereply(HTTPStatus.NOT_FOUND, 'Not Found')
         return
+
+    def do_POST(self):
+        if self.path.startswith("/edge/"):
+            self._rpc_write(self.rpc)
+            return
+
+        if self.path.startswith("/supernode/"):
+            self._rpc_write(self.snrpc)
+            return
 
 
 def main():
     ap = argparse.ArgumentParser(
             description='Control the running local n2n edge via http')
     ap.add_argument('-t', '--mgmtport', action='store', default=5644,
-                    help='Management Port (default=5644)')
+                    help='Management Port (default=5644)', type=int)
+    ap.add_argument('--snmgmtport', action='store', default=5645,
+                    help='Supernode Management Port (default=5645)', type=int)
     ap.add_argument('-k', '--key', action='store',
                     help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
@@ -253,12 +511,16 @@ def main():
 
     rpc = JsonUDP(args.mgmtport)
     rpc.debug = args.debug
-    rpc.key = args.key
+    rpc.defaultkey = args.key
+
+    snrpc = JsonUDP(args.snmgmtport)
+    snrpc.debug = args.debug
+    snrpc.defaultkey = args.key
 
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
     socketserver.TCPServer.allow_reuse_address = True
-    handler = functools.partial(SimpleHandler, rpc)
+    handler = functools.partial(SimpleHandler, rpc, snrpc)
     with socketserver.TCPServer(("", args.port), handler) as httpd:
         try:
             httpd.serve_forever()

@@ -20,7 +20,9 @@ This shell script is used to run automated tests during development.
 ## `scripts/n2nctl`
 
 This python script provides an easy command line interface to the running
-edge.  It uses UDP communications to talk to the Management API.
+n2n processes.  It uses UDP communications to talk to the Management API.
+By specifying the right UDP port, it can talk to both the edge and the
+supernode daemons.
 
 Example:
 - `scripts/n2nctl --help`
@@ -33,8 +35,9 @@ a proxy for REST-like HTTP requests to talk to the Management API.
 
 By default it runs on port 8080.
 
-It also provides a simple HTML page showing some information, which when
-run with default settings can be seen at http://localhost:8080/
+It also provides a simple HTML page showing some edge information, which when
+run with default settings can be seen at http://localhost:8080/ (Also
+a http://localhost:8080/supernode.html page for the supernode)
 
 Example:
 - `scripts/n2nhttpd --help`

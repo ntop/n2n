@@ -22,7 +22,7 @@
 
 /* heap allocation for compression as per lzo example doc */
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
-static HEAP_ALLOC (wrkmem, LZO1X_1_MEM_COMPRESS);
+static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
 
 /* ************************************** */
 
@@ -247,7 +247,7 @@ static int detect_local_ip_address (n2n_sock_t* out_sock, const n2n_edge_t* eee)
 
 // open socket, close it before if TCP
 // in case of TCP, 'connect()' is required
-int supernode_connect(n2n_edge_t *eee) {
+int supernode_connect (n2n_edge_t *eee) {
 
     int sockopt;
     struct sockaddr_in sn_sock;
@@ -334,7 +334,7 @@ int supernode_connect(n2n_edge_t *eee) {
 
 
 // always closes the socket
-void supernode_disconnect(n2n_edge_t *eee) {
+void supernode_disconnect (n2n_edge_t *eee) {
 
     if(eee->sock >= 0) {
         closesocket(eee->sock);
@@ -480,7 +480,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     }
 
     if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
-         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
+        traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
 
     eee->network_traffic_filter = create_network_traffic_filter();
@@ -490,7 +490,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     *rv = 0;
     return(eee);
 
- edge_init_error:
+edge_init_error:
     if(eee)
         free(eee);
     *rv = rc;
@@ -859,7 +859,7 @@ static int get_local_auth (n2n_edge_t *eee, n2n_auth_t *auth) {
             speck_128_encrypt(auth->token + N2N_PRIVATE_PUBLIC_KEY_SIZE, (speck_context_t*)eee->conf.shared_secret_ctx);
             break;
         default:
-           break;
+            break;
     }
 
     return 0;
@@ -992,7 +992,7 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
 
 /** Send a datagram to a socket file descriptor */
 static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
-                            size_t len, struct sockaddr_in *dest) {
+                          size_t len, struct sockaddr_in *dest) {
 
     ssize_t sent = 0;
     int rc = 1;
@@ -1010,7 +1010,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
         rc = select(eee->sock + 1, NULL, &socket_mask, NULL, &wait_time);
     }
 
-    if (rc > 0) {
+    if(rc > 0) {
 
         sent = sendto(eee->sock, buf, len, 0 /*flags*/,
                       (struct sockaddr *)dest, sizeof(struct sockaddr_in));
@@ -1175,7 +1175,7 @@ void send_query_peer (n2n_edge_t * eee,
         if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
             packet_header_encrypt(pktbuf, idx, idx,
                                   eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
-                                  time_stamp ());
+                                  time_stamp());
         }
 
         sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
@@ -1186,7 +1186,7 @@ void send_query_peer (n2n_edge_t * eee,
         if(eee->conf.header_encryption == HEADER_ENCRYPTION_ENABLED) {
             packet_header_encrypt(pktbuf, idx, idx,
                                   eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
-                                  time_stamp ());
+                                  time_stamp());
         }
 
         n_o_pings = eee->conf.number_max_sn_pings;
@@ -1525,7 +1525,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
 
     // determine time offset to apply on last_register_req for
     // all edges's next re-registration does not happen all at once
-    if (eee->sn_wait == 2) {
+    if(eee->sn_wait == 2) {
         // remaining 1/4 is greater than 1/10 fast retry allowance;
         // '%' might be expensive but does not happen all too often
         off = n2n_rand() % ((eee->conf.register_interval * 3) / 4);
@@ -1697,7 +1697,7 @@ static int handle_PACKET (n2n_edge_t * eee,
             if(rx_compression_id != N2N_COMPRESSION_ID_NONE) {
                 traceEvent(TRACE_DEBUG, "payload decompression %s: deflated %u bytes to %u bytes",
                            compression_str(rx_compression_id), eth_size, (int)deflated_len);
-                memcpy(eth_payload ,deflation_buffer, deflated_len );
+                memcpy(eth_payload,deflation_buffer, deflated_len );
                 eth_size = deflated_len;
                 free(deflation_buffer);
             }
@@ -1806,299 +1806,9 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
 #endif
 #endif
 
-static void handleMgmtJson_error (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, char *tag, char *msg) {
-    size_t msg_len;
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{"
-                       "\"_tag\":\"%s\","
-                       "\"_type\":\"error\","
-                       "\"error\":\"%s\"}\n",
-                       tag,
-                       msg);
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
-}
-
-static void handleMgmtJson_super (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
-    size_t msg_len;
-    struct peer_info *peer, *tmpPeer;
-    macstr_t mac_buf;
-    n2n_sock_str_t sockbuf;
-    selection_criterion_str_t sel_buf;
-
-    if(type!=N2N_MGMT_READ) {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
-
-    HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
-
-        /*
-         * TODO:
-         * The version string provided by the remote supernode could contain
-         * chars that make our JSON invalid.
-         * - do we care?
-         */
-
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"version\":\"%s\","
-                            "\"purgeable\":%i,"
-                            "\"current\":%i,"
-                            "\"macaddr\":\"%s\","
-                            "\"sockaddr\":\"%s\","
-                            "\"selection\":\"%s\","
-                            "\"lastseen\":%li,"
-                            "\"uptime\":%li}\n",
-                            tag,
-                            peer->version,
-                            peer->purgeable,
-                            (peer == eee->curr_sn) ? (eee->sn_wait ? 2 : 1 ) : 0,
-                            is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                            sock_to_cstr(sockbuf, &(peer->sock)),
-                            sn_selection_criterion_str(sel_buf, peer),
-                            peer->last_seen,
-                            peer->uptime);
-
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
-    }
-}
-
-static void handleMgmtJson_peer (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
-    size_t msg_len;
-    struct peer_info *peer, *tmpPeer;
-    macstr_t mac_buf;
-    n2n_sock_str_t sockbuf;
-    in_addr_t net;
-
-    if(type!=N2N_MGMT_READ) {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "readonly");
-        return;
-    }
-
-    /* FIXME:
-     * dont repeat yourself - the body of these two loops is identical
-     */
-
-    // dump nodes with forwarding through supernodes
-    HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
-        net = htonl(peer->dev_addr.net_addr);
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"mode\":\"pSp\","
-                            "\"ip4addr\":\"%s\","
-                            "\"macaddr\":\"%s\","
-                            "\"sockaddr\":\"%s\","
-                            "\"desc\":\"%s\","
-                            "\"lastseen\":%li}\n",
-                            tag,
-                            (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
-                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                            sock_to_cstr(sockbuf, &(peer->sock)),
-                            peer->dev_desc,
-                            peer->last_seen);
-
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
-    }
-
-    // dump peer-to-peer nodes
-    HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
-        net = htonl(peer->dev_addr.net_addr);
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"mode\":\"p2p\","
-                            "\"ip4addr\":\"%s\","
-                            "\"macaddr\":\"%s\","
-                            "\"sockaddr\":\"%s\","
-                            "\"desc\":\"%s\","
-                            "\"lastseen\":%li}\n",
-                            tag,
-                            (peer->dev_addr.net_addr == 0) ? "" : inet_ntoa(*(struct in_addr *) &net),
-                            (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
-                            sock_to_cstr(sockbuf, &(peer->sock)),
-                            peer->dev_desc,
-                            peer->last_seen);
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0/*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
-    }
-}
-
-static void handleMgmtJson_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
-
-n2n_mgmt_handler_t mgmt_handlers[] = {
-    { .cmd = "peer", .help = "List current peers", .func = handleMgmtJson_peer},
-    { .cmd = "super", .help = "List current supernodes", .func = handleMgmtJson_super},
-    { .cmd = "help", .help = "Show JSON commands", .func = handleMgmtJson_help},
-    { .cmd = NULL },
-};
-
-static void handleMgmtJson_help (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
-    size_t msg_len;
-    n2n_mgmt_handler_t *handler;
-
-    /*
-     * Even though this command is readonly, we deliberately do not check
-     * the type - allowing help replys to both read and write requests
-     */
-
-    for( handler=mgmt_handlers; handler->cmd; handler++ ) {
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                            "{"
-                            "\"_tag\":\"%s\","
-                            "\"_type\":\"row\","
-                            "\"cmd\":\"%s\","
-                            "\"help\":\"%s\"}\n",
-                            tag,
-                            handler->cmd,
-                            handler->help);
-
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
-    }
-}
-
-/*
- * Check if the user is authorised for this command.
- * - this should be more configurable!
- * - for the moment we use some simple heuristics:
- *   Reads are not dangerous, so they are simply allowed
- *   Writes are possibly dangerous, so they need a fake password
- */
-int handleMgmtJson_auth(struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
-    if(auth) {
-        /* If we have an auth key, it must match */
-        if(0 == strcmp(auth,"CHANGEME")) {
-            return 1;
-        }
-        return 0;
-    }
-    /* if we dont have an auth key, we can still read */
-    if(type==N2N_MGMT_READ) {
-        return 1;
-    }
-    return 0;
-}
-
-static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock) {
-
-    char cmdlinebuf[80];
-    enum n2n_mgmt_type type;
-    char *typechar;
-    char *options;
-    char *argv0;
-    char *argv;
-    char *tag;
-    char *flagstr;
-    int flags;
-    char *auth;
-    n2n_mgmt_handler_t *handler;
-    size_t msg_len;
-
-    /* save a copy of the commandline before we reuse the udp_buf */
-    strncpy(cmdlinebuf, udp_buf, sizeof(cmdlinebuf)-1);
-    cmdlinebuf[sizeof(cmdlinebuf)-1] = 0;
-
-    traceEvent(TRACE_DEBUG, "mgmt json %s", cmdlinebuf);
-
-    typechar = strtok(cmdlinebuf, " \r\n");
-    if(!typechar) {
-        /* should not happen */
-        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "notype");
-        return;
-    }
-    if(*typechar == 'r') {
-        type=N2N_MGMT_READ;
-    } else if(*typechar == 'w') {
-        type=N2N_MGMT_WRITE;
-    } else {
-        /* dunno how we got here */
-        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "badtype");
-        return;
-    }
-
-    /* Extract the tag to use in all reply packets */
-    options = strtok(NULL, " \r\n");
-    if(!options) {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "nooptions");
-        return;
-    }
-
-    argv0 = strtok(NULL, " \r\n");
-    if(!argv0) {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, "-1", "nocmd");
-        return;
-    }
-
-    /*
-     * The entire rest of the line is the argv. We apply no processing
-     * or arg separation so that the cmd can use it however it needs.
-     */
-    argv = strtok(NULL, "\r\n");
-
-    /*
-     * There might be an auth token mixed in with the tag
-     */
-    tag = strtok(options, ":");
-    flagstr = strtok(NULL, ":");
-    if (flagstr) {
-        flags = strtoul(flagstr, NULL, 16);
-    } else {
-        flags = 0;
-    }
-
-    /* Only 1 flag bit defined at the moment - "auth option present" */
-    if (flags & 1) {
-        auth = strtok(NULL, ":");
-    } else {
-        auth = NULL;
-    }
-
-    if(!handleMgmtJson_auth(sender_sock, type, auth, argv0, argv)) {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "badauth");
-        return;
-    }
-
-    for( handler=mgmt_handlers; handler->cmd; handler++ ) {
-        if(0 == strcmp(handler->cmd, argv0)) {
-            break;
-        }
-    }
-    if(!handler->cmd) {
-        handleMgmtJson_error(eee, udp_buf, sender_sock, tag, "unknowncmd");
-        return;
-    }
-
-    /*
-     * TODO:
-     * The tag provided by the requester could contain chars
-     * that make our JSON invalid.
-     * - do we care?
-     */
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                        "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", tag, argv0);
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
-
-    handler->func(eee, udp_buf, sender_sock, type, tag, argv0, argv);
-
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                        "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", tag);
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
-    return;
-}
-
 /** Read a datagram from the management UDP socket and take appropriate
  *    action. */
-static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
+static void readFromMgmtSocket (n2n_edge_t *eee) {
 
     char udp_buf[N2N_PKT_BUF_SIZE]; /* Compete UDP packet */
     ssize_t recvlen;
@@ -2155,7 +1865,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     if(0 == memcmp(udp_buf, "stop", 4)) {
         traceEvent(TRACE_NORMAL, "stop command received");
-        *keep_running = 0;
+        *eee->keep_running = 0;
         return;
     }
 
@@ -2194,7 +1904,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
 
     if((udp_buf[0] == 'r' || udp_buf[0] == 'w') && (udp_buf[1] == ' ')) {
         /* this is a JSON request */
-        handleMgmtJson(eee, (char *)udp_buf, sender_sock);
+        handleMgmtJson(eee, udp_buf, sender_sock);
         return;
     }
 
@@ -2216,7 +1926,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
         ++num_pending_peers;
         net = htonl(peer->dev_addr.net_addr);
-        snprintf (time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
+        snprintf(time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%4u | %-15s | %-17s | %-21s | %-15s | %9s |\n",
                             ++num,
@@ -2240,7 +1950,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
     HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
         ++num_known_peers;
         net = htonl(peer->dev_addr.net_addr);
-        snprintf (time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
+        snprintf(time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%4u | %-15s | %-17s | %-21s | %-15s | %9s |\n",
                             ++num,
@@ -2263,8 +1973,8 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                         "SUPERNODES\n");
     HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
         net = htonl(peer->dev_addr.net_addr);
-        snprintf (time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
-        snprintf (uptime_buf, sizeof(uptime_buf), "%10u", (unsigned int)(peer->uptime));
+        snprintf(time_buf, sizeof(time_buf), "%9u", (unsigned int)(now - peer->last_seen));
+        snprintf(uptime_buf, sizeof(uptime_buf), "%10u", (unsigned int)(peer->uptime));
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%-19s %1s%1s | %-17s | %-21s | %-15s | %9s | %10s\n",
                             peer->version,
@@ -2293,9 +2003,9 @@ static void readFromMgmtSocket (n2n_edge_t *eee, int *keep_running) {
                         "pend_peers %u | ",
                         num_pending_peers);
 
-     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                         "known_peers %u | ",
-                         num_known_peers);
+    msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
+                        "known_peers %u | ",
+                        num_known_peers);
 
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "transop %u,%u\n",
@@ -2519,9 +2229,9 @@ void edge_send_packet2net (n2n_edge_t * eee,
         uint8_t * compression_buffer = NULL;
         int32_t   compression_len;
 
-        switch (eee->conf.compression) {
+        switch(eee->conf.compression) {
             case N2N_COMPRESSION_ID_LZO:
-                compression_buffer = malloc (len + len / 16 + 64 + 3);
+                compression_buffer = malloc(len + len / 16 + 64 + 3);
                 if(lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
                     if(compression_len < len) {
                         pkt.compression = N2N_COMPRESSION_ID_LZO;
@@ -2531,7 +2241,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
 #ifdef N2N_HAVE_ZSTD
             case N2N_COMPRESSION_ID_ZSTD:
                 compression_len = N2N_PKT_BUF_SIZE + 128;
-                compression_buffer = malloc (compression_len); // leaves enough room, for exact size call compression_len = ZSTD_compressBound (len); (slower)
+                compression_buffer = malloc(compression_len);  // leaves enough room, for exact size call compression_len = ZSTD_compressBound (len); (slower)
                 compression_len = (int32_t)ZSTD_compress(compression_buffer, compression_len, tap_pkt, len, ZSTD_COMPRESSION_LEVEL);
                 if(!ZSTD_isError(compression_len)) {
                     if(compression_len < len) {
@@ -2767,7 +2477,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
     from_supernode = cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
     if(from_supernode) {
         skip_add = SN_ADD_SKIP;
-        sn = add_sn_to_list_by_mac_or_sock (&(eee->conf.supernodes), &sender, null_mac, &skip_add);
+        sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &sender, null_mac, &skip_add);
         if(!sn) {
             traceEvent(TRACE_DEBUG, "dropped incoming data from unknown supernode");
             return;
@@ -3300,7 +3010,7 @@ void print_edge_stats (const n2n_edge_t *eee) {
 /* ************************************** */
 
 
-int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
+int run_edge_loop (n2n_edge_t *eee) {
 
     size_t numPurged;
     time_t lastIfaceCheck = 0;
@@ -3315,11 +3025,10 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 #ifdef WIN32
     struct tunread_arg arg;
     arg.eee = eee;
-    arg.keep_running = keep_running;
     HANDLE tun_read_thread = startTunReadThread(&arg);
 #endif
 
-    *keep_running = 1;
+    *eee->keep_running = 1;
     update_supernode_reg(eee, time(NULL));
 
     /* Main loop
@@ -3329,7 +3038,7 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
      * readFromIPSocket() or edge_read_from_tap()
      */
 
-    while(*keep_running) {
+    while(*eee->keep_running) {
 
         int rc, max_sock = 0;
         fd_set socket_mask;
@@ -3375,10 +3084,10 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
             // external
             if(FD_ISSET(eee->sock, &socket_mask)) {
-                if (0 != fetch_and_eventually_process_data(eee, eee->sock,
-                                                           pktbuf, &expected, &position,
-                                                           now)) {
-                    *keep_running = 0;
+                if(0 != fetch_and_eventually_process_data(eee, eee->sock,
+                                                          pktbuf, &expected, &position,
+                                                          now)) {
+                    *eee->keep_running = 0;
                     break;
                 }
                 if(eee->conf.connect_tcp) {
@@ -3396,10 +3105,10 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
             if(FD_ISSET(eee->udp_multicast_sock, &socket_mask)) {
-                if (0 != fetch_and_eventually_process_data (eee, eee->udp_multicast_sock,
-                                                            pktbuf, &expected, &position,
-                                                            now)) {
-                    *keep_running = 0;
+                if(0 != fetch_and_eventually_process_data(eee, eee->udp_multicast_sock,
+                                                          pktbuf, &expected, &position,
+                                                          now)) {
+                    *eee->keep_running = 0;
                     break;
                 }
             }
@@ -3407,9 +3116,9 @@ int run_edge_loop (n2n_edge_t *eee, int *keep_running) {
 
             if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
                 // read from the management port socket
-                readFromMgmtSocket(eee, keep_running);
+                readFromMgmtSocket(eee);
 
-                if(!(*keep_running))
+                if(!(*eee->keep_running))
                     break;
             }
 
@@ -3556,7 +3265,7 @@ static int edge_init_sockets (n2n_edge_t *eee) {
 
 #ifdef __linux__
 
-static uint32_t get_gateway_ip() {
+static uint32_t get_gateway_ip () {
 
     FILE *fd;
     char *token = NULL;
@@ -3780,7 +3489,7 @@ static int routectl (int cmd, int flags, n2n_route_t *route, int if_idx) {
     traceEvent(TRACE_DEBUG, route_cmd_to_str(cmd, route, route_buf, sizeof(route_buf)));
     rv = 0;
 
- out:
+out:
     close(nl_sock);
 
     return(rv);
@@ -4096,11 +3805,12 @@ int quick_edge_init (char *device_name, char *community_name,
     if((eee = edge_init(&conf, &rv)) == NULL)
         goto quick_edge_init_end;
 
-    rv = run_edge_loop(eee, keep_on_running);
+    eee->keep_running = keep_on_running;
+    rv = run_edge_loop(eee);
     edge_term(eee);
     edge_term_conf(&conf);
 
- quick_edge_init_end:
+quick_edge_init_end:
     tuntap_close(&tuntap);
     return(rv);
 }

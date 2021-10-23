@@ -59,6 +59,7 @@ class JsonUDP():
         # assert(data['cmd'] == cmd)
 
         result = list()
+        error = None
 
         while True:
             data, _ = self.sock.recvfrom(1024)
@@ -69,9 +70,13 @@ class JsonUDP():
                 continue
 
             if data['_type'] == 'error':
-                raise ValueError('Error: {}'.format(data['error']))
+                # we still expect an end packet, so save the error
+                error = ValueError('Error: {}'.format(data['error']))
+                continue
 
             if data['_type'] == 'end':
+                if error:
+                    raise error
                 return result
 
             if data['_type'] != 'row':
@@ -104,10 +109,16 @@ def str_table(rows, columns):
     """Given an array of dicts, do a simple table print"""
     result = list()
     widths = collections.defaultdict(lambda: 0)
-    for row in rows:
+
+    if len(rows) == 0:
+        # No data to show, be sure not to truncate the column headings
         for col in columns:
-            if col in row:
-                widths[col] = max(widths[col], len(str(row[col])))
+            widths[col] = len(col)
+    else:
+        for row in rows:
+            for col in columns:
+                if col in row:
+                    widths[col] = max(widths[col], len(str(row[col])))
 
     for col in columns:
         if widths[col] == 0:
@@ -128,7 +139,7 @@ def str_table(rows, columns):
 
 
 def subcmd_show_supernodes(rpc, args):
-    rows = rpc.read('super')
+    rows = rpc.read('supernodes')
     columns = [
         'version',
         'current',
@@ -140,8 +151,8 @@ def subcmd_show_supernodes(rpc, args):
     return str_table(rows, columns)
 
 
-def subcmd_show_peers(rpc, args):
-    rows = rpc.read('peer')
+def subcmd_show_edges(rpc, args):
+    rows = rpc.read('edges')
     columns = [
         'mode',
         'ip4addr',
@@ -160,9 +171,10 @@ def subcmd_show_help(rpc, args):
 
     result += "\n"
     result += "Possble remote commands:\n"
-    result += "(those without pretty-printer, will pass-through)\n\n"
+    result += "(those without a pretty-printer will pass-through)\n\n"
     rows = rpc.read('help')
-    result += json.dumps(rows, sort_keys=True, indent=4)
+    for row in rows:
+        result += "{:12} {}\n".format(row['cmd'], row['help'])
     return result
 
 
@@ -175,9 +187,9 @@ subcmds = {
         'func': subcmd_show_supernodes,
         'help': 'Show the list of supernodes',
     },
-    'peers': {
-        'func': subcmd_show_peers,
-        'help': 'Show the list of peers',
+    'edges': {
+        'func': subcmd_show_edges,
+        'help': 'Show the list of edges/peers',
     },
 }
 
@@ -196,17 +208,20 @@ def main():
     ap = argparse.ArgumentParser(
             description='Query the running local n2n edge')
     ap.add_argument('-t', '--mgmtport', action='store', default=5644,
-                    help='Management Port (default=5644)')
+                    help='Management Port (default=5644)', type=int)
     ap.add_argument('-k', '--key', action='store',
                     help='Password for mgmt commands')
     ap.add_argument('-d', '--debug', action='store_true',
                     help='Also show raw internal data')
+    ap.add_argument('--raw', action='store_true',
+                    help='Force cmd to avoid any pretty printing')
 
     group = ap.add_mutually_exclusive_group()
     group.add_argument('--read', action='store_true',
                        help='Make a read request (default)')
     group.add_argument('--write', action='store_true',
-                       help='Make a write request')
+                       help='Make a write request (only to non pretty'
+                       'printed cmds)')
 
     ap.add_argument('cmd', action='store',
                     help='Command to run (try "help" for list)')
@@ -215,7 +230,7 @@ def main():
 
     args = ap.parse_args()
 
-    if args.cmd not in subcmds:
+    if args.raw or (args.cmd not in subcmds):
         func = subcmd_default
     else:
         func = subcmds[args.cmd]['func']
