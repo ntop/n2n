@@ -109,7 +109,7 @@ applied as of 2021-09-29.
 - All the remaining commands must be run from inside a bash shell ("C:\Program Files\Git\usr\bin\bash.exe")
     - git clone $THIS_REPO
     - cd n2n
-    - ./scripts/hack_fakeautoconf
+    - ./scripts/hack_fakeautoconf.sh
     - make
     - make test
 
