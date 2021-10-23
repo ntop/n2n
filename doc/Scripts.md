@@ -7,7 +7,7 @@ may be installed with n2n as part of your operating system package.
 
 Short descriptions of these scripts are below.
 
-## `scripts/hack_fakeautoconf`
+## `scripts/hack_fakeautoconf.sh`
 
 This shell script is used during development to help build on Windows
 systems.  An example of how to use it is shown in

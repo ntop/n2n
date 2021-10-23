@@ -186,17 +186,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-        # This is a pretty big hammer, but gets the windows compile moving
-      - name: Hack up a fake autoconf
-        run: |
-          echo true >autogen.sh
-          cp scripts/hack_fakeautoconf configure
-        shell: bash
-
       - name: generate a makefile and use it to install more packages
         run: |
-          ./autogen.sh
-          ./configure
+          # This is a pretty big hammer, but gets the windows compile moving
+          ./scripts/hack_fakeautoconf.sh
           make build-dep
         shell: bash
 
@@ -325,7 +318,7 @@ jobs:
       - name: Configure and Build
         shell: bash
         run: |
-          ./scripts/hack_fakeautoconf
+          ./scripts/hack_fakeautoconf.sh
           make
 
       - name: Create binary dir
