@@ -126,7 +126,7 @@ static void mgmt_supernodes (n2n_edge_t *eee, char *udp_buf, const struct sockad
                            "\"macaddr\":\"%s\","
                            "\"sockaddr\":\"%s\","
                            "\"selection\":\"%s\","
-                           "\"lastseen\":%li,"
+                           "\"last_seen\":%li,"
                            "\"uptime\":%li}\n",
                            tag,
                            peer->version,
@@ -156,17 +156,23 @@ static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockadd
                        "\"mode\":\"%s\","
                        "\"ip4addr\":\"%s\","
                        "\"purgeable\":%i,"
+                       "\"local\":%i,"
                        "\"macaddr\":\"%s\","
                        "\"sockaddr\":\"%s\","
                        "\"desc\":\"%s\","
+                       "\"last_p2p\":%li,\n"
+                       "\"last_sent_query\":%li,\n"
                        "\"last_seen\":%li}\n",
                        tag,
                        mode,
                        (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                        peer->purgeable,
+                       peer->local,
                        (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                        sock_to_cstr(sockbuf, &(peer->sock)),
                        peer->dev_desc,
+                       peer->last_p2p,
+                       peer->last_sent_query,
                        peer->last_seen);
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
