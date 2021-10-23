@@ -286,6 +286,11 @@ typedef enum n2n_pc {
 typedef char n2n_version_t[N2N_VERSION_STRING_SIZE];
 
 
+#define SN_SELECTION_STRATEGY_LOAD       1
+#define SN_SELECTION_STRATEGY_RTT        2
+#define SN_SELECTION_STRATEGY_MAC        3 /* REVISIT: not implemented yet */
+
+
 typedef struct n2n_ip_subnet {
     uint32_t	    net_addr;       /* Host order IP address. */
     uint8_t         net_bitlen;     /* Subnet prefix. */
@@ -668,6 +673,7 @@ typedef struct n2n_edge_conf {
     n2n_auth_t               auth;
     filter_rule_t            *network_traffic_filter_rules;
     int                      metric;                /**< Network interface metric (Windows only). */
+    uint8_t                  sn_selection_strategy; /**< encodes currently chosen supernode selection strategy. */
     uint8_t                  number_max_sn_pings;   /**< Number of maximum concurrently allowed supernode pings. */
 } n2n_edge_conf_t;
 

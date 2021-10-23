@@ -1982,7 +1982,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee) {
                             (peer == eee->curr_sn) ? (eee->sn_wait ? "." : "*" ) : "",
                             is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
-                            sn_selection_criterion_str(sel_buf, peer),
+                            sn_selection_criterion_str(eee, sel_buf, peer),
                             (peer->last_seen) ? time_buf : "",
                             (peer->uptime) ? uptime_buf : "");
 
@@ -3700,6 +3700,7 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
             generate_private_key(*(conf->shared_secret), getenv("N2N_PASSWORD"));
     }
 
+    conf->sn_selection_strategy = SN_SELECTION_STRATEGY_LOAD;
     conf->metric = 0;
 }
 

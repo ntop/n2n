@@ -45,7 +45,7 @@ In order to run n2n, you will need the following:
 
 - If OpenSSL has been linked dynamically, the corresponding `.dll` file should be available
   onto the target computer.
-  
+
 NOTE: Sticking to this tool chain has historically meant that resulting
 executables are more likely to be able to communicate with Linux or other
 OS builds, however efforts are being made to address this concern.
@@ -172,16 +172,6 @@ which then will include ZSTD if found on the system. It will be available via `-
 `./configure --with-zstd --with-openssl CFLAGS="-O3 -march=native"`
 
 Again, and this needs to be reiterated sufficiently often, please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
-
-## Federation – Supernode Selection by Round Trip Time
-
-If used with multiple supernodes, by default, an edge choses the least loaded supernode to connect to. This selection strategy is part of the [federation](Federation.md) feature and aims at a fair workload distribution among the supernodes. To serve special scenarios, an edge can be compiled to always connect to the supernode with the lowest round trip time, i.e. the "closest" with the lowest ping. However, this could result in not so fair workload distribution among supernodes. This option can be configured by defining the macro `SN_SELECTION_RTT` and affects edge's behaviour only:
-
-`./configure CFLAGS="-DSN_SELECTION_RTT"`
-
-which of course can be combined with the compiler optimizations mentioned above…
-
-Note that the activation of this strategy requires a sufficiently accurate local day-of-time clock. It probably will fail on smaller systems using `uclibc` (instead of `glibc`) whose day-of-time clock is said to not provide sub-second accuracy.
 
 ## SPECK – ARM NEON Hardware Acceleration
 

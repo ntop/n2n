@@ -101,6 +101,10 @@ use header encryption, supernode needs fixed community
 .TP
 \fB\-z1\fR ... \fB\-z2\fR
 compress outgoing data packets, -z1 = lzo1x, disabled by default
+.TP
+\fB\--select-rtt\fR
+select supernode by round trip time if several to choose from (federation),
+defaults to load-based selection strategy if not provided.
 .SH TAP DEVICE AND OVERLAY NETWORK CONFIGURATION
 .TP
 \fB\-a \fR[\fImode\fR]<\fIip\fR>[\fI/n\fR]

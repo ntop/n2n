@@ -179,6 +179,8 @@ static void help (int level) {
                "[-z<compression>] "
             "\n                      "
                "[-e <preferred local IP address>] [-S<level of solitude>]"
+            "\n                      "
+               "[--select-rtt]"
           "\n\n tap device and       "
                "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
             "\n overlay network      "
@@ -227,6 +229,7 @@ static void help (int level) {
           "\n flag options         [-H]  enable header encryption"
           "\n                      [-r]  enable packet forwarding through n2n community"
           "\n                      [-E]  accept multicast MAC addresses"
+          "\n            [--select-rtt]  select supernode by round trip time"
 #ifndef WIN32
           "\n                      [-f]  do not fork but run in foreground"
 #endif
@@ -285,6 +288,9 @@ static void help (int level) {
                                      "-z2 = zstd, "
 #endif
                                      "disabled by default\n");
+        printf("--select-rtt       | supernode selection based on round trip time (default:\n"
+               "                   | by load)\n");
+
         printf ("\n");
         printf (" TAP DEVICE AND OVERLAY NETWORK CONFIGURATION\n");
         printf (" --------------------------------------------\n\n");
@@ -720,11 +726,18 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
+        case '\xfd': /* round-trip-time-based supernode selection strategy */ {
+            // overwrites the default load-based strategy
+            conf->sn_selection_strategy = SN_SELECTION_STRATEGY_RTT;
+
+            break;
+        }
+
         case 'h': /* quick reference */ {
             return 2;
         }
 
-        case '@': /* long help */ {
+        case '\xfe': /* long help */ {
             return 3;
         }
 
@@ -771,8 +784,9 @@ static const struct option long_options[] =
         { "tap-device",        required_argument, NULL, 'd' },
         { "euid",              required_argument, NULL, 'u' },
         { "egid",              required_argument, NULL, 'g' },
-        { "help"     ,         no_argument,       NULL, '@' }, /* special character '@' to identify long help case */
         { "verbose",           no_argument,       NULL, 'v' },
+        { "help",              no_argument,       NULL, '\xfe' }, /* internal special character '\xfe' to identify long help case */
+        { "select-rtt",        no_argument,       NULL, '\xfd' }, /*                            '\xfd'             rtt selection strategy */
         { NULL,                0,                 NULL,  0  }
     };
 
