@@ -40,7 +40,7 @@ if ! ip route get $N2N_GATEWAY | grep -q $N2N_INTERFACE ; then
 fi
 
 # Determine the current internet gateway
-internet_gateway=`ip route get 8.8.8.8 | head -n1 | awk '{ print $3 }'`
+internet_gateway=$(ip route get 8.8.8.8 | head -n1 | awk '{ print $3 }')
 
 # Backup the DNS resolver configuration and use the specified server
 cp /etc/resolv.conf /etc/resolv.conf.my_bak
@@ -49,7 +49,7 @@ echo "nameserver $DNS_SERVER" > /etc/resolv.conf
 
 # The public IP of the supernode must be reachable via the internet gateway
 # Whereas all the other traffic will go through the new VPN gateway.
-ip route add $N2N_SUPERNODE via $internet_gateway
+ip route add $N2N_SUPERNODE via "$internet_gateway"
 ip route del default
 echo "Forwarding traffic via $N2N_GATEWAY"
 ip route add default via $N2N_GATEWAY
@@ -57,10 +57,10 @@ ip route add default via $N2N_GATEWAY
 function stopService {
   echo "Deleting custom routes"
   ip route del default
-  ip route del $N2N_SUPERNODE via $internet_gateway
+  ip route del $N2N_SUPERNODE via "$internet_gateway"
 
   echo "Restoring original gateway $internet_gateway"
-  ip route add default via $internet_gateway
+  ip route add default via "$internet_gateway"
 
   echo "Restoring original DNS"
   mv /etc/resolv.conf.my_bak /etc/resolv.conf
