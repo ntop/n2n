@@ -13,7 +13,13 @@ This shell script is used during development to help build on Windows
 systems.  An example of how to use it is shown in
 the [Building document](Building.md)
 
-## `tools/test_harness`
+## `scripts/indent.sh`
+
+This shell script is a wrapper for the `uncrustify` C code style checker
+which checks or applies a set of rules to the code.  It is used during
+the automated lint checks.
+
+## `scripts/test_harness.sh`
 
 This shell script is used to run automated tests during development.
 

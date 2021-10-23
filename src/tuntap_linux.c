@@ -48,7 +48,7 @@ static int setup_ifname (int fd, const char *ifname, const char *ipaddr,
     if(ioctl(fd, SIOCSIFADDR, &ifr) == -1) {
         traceEvent(TRACE_ERROR, "ioctl(SIOCSIFADDR) failed [%d]: %s", errno, strerror(errno));
         return -2;
-  }
+    }
 
     // netmask
     if(netmask && (((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr != 0)) {

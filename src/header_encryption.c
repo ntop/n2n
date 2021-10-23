@@ -41,7 +41,7 @@ int packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
     //extract header length (lower 2 bytes)
     uint32_t header_len = test_magic - magic;
 
-    if (header_len <= packet_len) {
+    if(header_len <= packet_len) {
         // decrypt the complete header
         speck_ctr(&packet[16], &packet[16], header_len - 16, packet, (speck_context_t*)ctx);
 
@@ -130,7 +130,7 @@ void packet_header_setup_key (const char *community_name,
     // for all other packets, same as static by default (changed by user/pw auth scheme
     // calling packet_header_change_dynamic_key later)
 
-   pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
+    pearson_hash_128(key, (uint8_t*)community_name, N2N_COMMUNITY_SIZE);
 
     if(!*ctx_static)
         *ctx_static = (he_context_t*)calloc(1, sizeof(speck_context_t));

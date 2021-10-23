@@ -41,14 +41,15 @@ uint8_t PKT_CONTENT[]={
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
+    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+};
 
 /* Prototypes */
-static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
-static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf);
+static ssize_t do_encode_packet ( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
+static void run_transop_benchmark (const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf);
 
 
-int main(int argc, char * argv[]) {
+int main (int argc, char * argv[]) {
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     n2n_trans_op_t transop_null, transop_tf;
     n2n_trans_op_t transop_aes;
@@ -65,7 +66,7 @@ int main(int argc, char * argv[]) {
     char *test_name = "environment";
     printf("%s: community_name = \"%s\"\n", test_name, conf.community_name);
     printf("%s: encrypt_key = \"%s\"\n", test_name, conf.encrypt_key);
-    printf("%s: input size = 0x%"PRIx64"\n", test_name, sizeof(PKT_CONTENT));
+    printf("%s: input size = 0x%" PRIx64 "\n", test_name, sizeof(PKT_CONTENT));
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 
@@ -96,7 +97,7 @@ int main(int argc, char * argv[]) {
 
 // --- cipher benchmark -------------------------------------------------------------------
 
-static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf) {
+static void run_transop_benchmark (const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf) {
     n2n_common_t cmn;
     n2n_PACKET_t pkt;
     n2n_mac_t mac_buf;
@@ -107,13 +108,13 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
 
     // encryption
     memset(mac_buf, 0, sizeof(mac_buf));
-    
+
     nw = do_encode_packet( pktbuf, N2N_PKT_BUF_SIZE, conf->community_name);
     nw += op_fn->fwd(op_fn,
-        pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
-        PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
-    
-    printf("%s: output size = 0x%"PRIx64"\n", op_name, nw);
+                     pktbuf+nw, N2N_PKT_BUF_SIZE-nw,
+                     PKT_CONTENT, sizeof(PKT_CONTENT), mac_buf);
+
+    printf("%s: output size = 0x%" PRIx64 "\n", op_name, nw);
     fhexdump(0, pktbuf, nw, stdout);
 
     // decrpytion
@@ -133,9 +134,9 @@ static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2
 }
 
 
-static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
+static ssize_t do_encode_packet ( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c )
 {
-    // FIXME: this is a parameter of the test environment 
+    // FIXME: this is a parameter of the test environment
     n2n_mac_t destMac={0,1,2,3,4,5};
 
     n2n_common_t cmn;

@@ -4,7 +4,7 @@
 configure
 configure.ac
 config.*
-./Makefile
+/Makefile
 tools/Makefile
 autom4te.cache
 edge
@@ -45,3 +45,8 @@ tests/*.out
 *.gcda
 *.gcov
 coverage/
+
+# Files generated while running linting
+*.indent
+*.unc-backup.md5~
+*.unc-backup~

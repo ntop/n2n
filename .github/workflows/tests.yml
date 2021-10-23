@@ -12,15 +12,31 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install essential
-        run: |
-          sudo apt-get install flake8
       - name: Run minimal test set
         run: |
           ./autogen.sh
           ./configure
           make test
-          make lint.python
+
+  lint:
+    name: Code syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Make the makefiles
+        run: |
+          ./autogen.sh
+          ./configure
+
+      - name: Install essential
+        run: |
+          make build-dep
+
+      - name: Run the lint tools
+        run: |
+          make lint
 
   test_linux:
     needs: smoketest
@@ -216,8 +232,9 @@ jobs:
         uses: codecov/codecov-action@v2
 
   package_dpkg:
-    needs: test_linux
     name: Package for Debian/Ubuntu
+    needs:
+      - test_linux
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -260,8 +277,9 @@ jobs:
           path: packages/debian/*.deb
 
   package_rpm:
-    needs: test_linux
     name: Package for Redhat/RPM
+    needs:
+      - test_linux
     runs-on: ubuntu-latest
 
     steps:
@@ -296,8 +314,9 @@ jobs:
           path: rpmbuild/RPMS/x86_64/*.rpm
 
   binaries_windows:
-    needs: test_windows
     name: Binaries for Windows (x86_64-pc-mingw64)
+    needs:
+      - test_windows
     runs-on: windows-latest
 
     steps:
@@ -321,8 +340,9 @@ jobs:
           path: binaries
 
   binaries_macos:
-    needs: test_macos
     name: Binaries for MacOS (x86_64-apple-darwin)
+    needs:
+      - test_macos
     runs-on: macos-latest
 
     steps:
@@ -351,8 +371,9 @@ jobs:
           path: binaries
 
   binaries_linux_crosscompile:
-    needs: test_linux
     name: Binaries for linux
+    needs: 
+      - test_linux
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true

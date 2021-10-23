@@ -38,24 +38,25 @@ uint8_t PKT_CONTENT[]={
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
+    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+};
 
-void test_pearson(void *buf, unsigned int bufsize) {
+void test_pearson (void *buf, unsigned int bufsize) {
     char *test_name = "pearson";
 
     uint64_t hash = pearson_hash_64(buf, bufsize);
 
-    printf("%s: output = 0x%"PRIx64"\n", test_name, hash);
+    printf("%s: output = 0x%" PRIx64 "\n", test_name, hash);
 
     fprintf(stderr, "%s: tested\n", test_name);
     printf("\n");
 }
 
-int main(int argc, char * argv[]) {
+int main (int argc, char * argv[]) {
     pearson_hash_init();
 
     char *test_name = "environment";
-    printf("%s: input size = 0x%"PRIx64"\n", test_name, sizeof(PKT_CONTENT));
+    printf("%s: input size = 0x%" PRIx64 "\n", test_name, sizeof(PKT_CONTENT));
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 

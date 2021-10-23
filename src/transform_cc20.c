@@ -101,7 +101,7 @@ static int transop_decode_cc20 (n2n_trans_op_t *arg,
     transop_cc20_t *priv = (transop_cc20_t *)arg->priv;
 
     if(((in_len - CC20_PREAMBLE_SIZE) <= N2N_PKT_BUF_SIZE) /* cipher text fits in assembly */
-     && (in_len >= CC20_PREAMBLE_SIZE)) {                  /* has at least iv */
+       && (in_len >= CC20_PREAMBLE_SIZE)) {                /* has at least iv */
 
         traceEvent(TRACE_DEBUG, "decode_cc20 %lu bytes", in_len);
 

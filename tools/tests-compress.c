@@ -44,9 +44,10 @@ uint8_t PKT_CONTENT[]={
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
+    0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+};
 
-static void init_compression_for_benchmark(void) {
+static void init_compression_for_benchmark (void) {
 
     if(lzo_init() != LZO_E_OK) {
         traceEvent(TRACE_ERROR, "LZO compression init error");
@@ -59,7 +60,7 @@ static void init_compression_for_benchmark(void) {
 }
 
 
-static void deinit_compression_for_benchmark(void) {
+static void deinit_compression_for_benchmark (void) {
 
     // lzo1x does not require de-initialization. if it were required, this would be a good place
 
@@ -68,27 +69,27 @@ static void deinit_compression_for_benchmark(void) {
 #endif
 }
 
-void test_lzo1x() {
+void test_lzo1x () {
     char *test_name = "lzo1x";
     uint8_t compression_buffer[N2N_PKT_BUF_SIZE]; // size allows enough of a reserve required for compression
     lzo_uint compression_len = sizeof(compression_buffer);
 
-    if (lzo1x_1_compress(PKT_CONTENT, sizeof(PKT_CONTENT), compression_buffer, &compression_len, wrkmem) != LZO_E_OK) {
+    if(lzo1x_1_compress(PKT_CONTENT, sizeof(PKT_CONTENT), compression_buffer, &compression_len, wrkmem) != LZO_E_OK) {
         fprintf(stderr, "%s: compression error\n", test_name);
         exit(1);
     }
 
     assert(compression_len == 47);
 
-    printf("%s: output size = 0x%"PRIx64"\n", test_name, compression_len);
+    printf("%s: output size = 0x%" PRIx64 "\n", test_name, compression_len);
     fhexdump(0, compression_buffer, compression_len, stdout);
 
     uint8_t deflation_buffer[N2N_PKT_BUF_SIZE];
     lzo_uint deflated_len;
-    lzo1x_decompress (compression_buffer, compression_len, deflation_buffer, &deflated_len, NULL);
+    lzo1x_decompress(compression_buffer, compression_len, deflation_buffer, &deflated_len, NULL);
 
     assert(deflated_len == sizeof(PKT_CONTENT));
-    if (memcmp(PKT_CONTENT, deflation_buffer, deflated_len)!=0) {
+    if(memcmp(PKT_CONTENT, deflation_buffer, deflated_len)!=0) {
         fprintf(stderr, "%s: round-trip buffer mismatch\n", test_name);
         exit(1);
     }
@@ -97,7 +98,7 @@ void test_lzo1x() {
     printf("\n");
 }
 
-void test_zstd() {
+void test_zstd () {
     char *test_name = "zstd";
 
 #ifdef N2N_HAVE_ZSTD
@@ -105,28 +106,28 @@ void test_zstd() {
     lzo_uint compression_len = sizeof(compression_buffer);
 
     compression_len = N2N_PKT_BUF_SIZE;
-    compression_len = ZSTD_compress(compression_buffer, compression_len, PKT_CONTENT, sizeof(PKT_CONTENT), ZSTD_COMPRESSION_LEVEL) ;
+    compression_len = ZSTD_compress(compression_buffer, compression_len, PKT_CONTENT, sizeof(PKT_CONTENT), ZSTD_COMPRESSION_LEVEL);
     if(ZSTD_isError(compression_len)) {
         fprintf(stderr, "%s: compression error\n", test_name);
         exit(1);
     }
 
     assert(compression_len == 33);
-    
-    printf("%s: output size = 0x%"PRIx64"\n", test_name, compression_len);
+
+    printf("%s: output size = 0x%" PRIx64 "\n", test_name, compression_len);
     fhexdump(0, compression_buffer, compression_len, stdout);
 
     uint8_t deflation_buffer[N2N_PKT_BUF_SIZE];
     int64_t deflated_len = sizeof(deflation_buffer);
-    deflated_len = (int32_t)ZSTD_decompress (deflation_buffer, deflated_len, compression_buffer, compression_len);
+    deflated_len = (int32_t)ZSTD_decompress(deflation_buffer, deflated_len, compression_buffer, compression_len);
     if(ZSTD_isError(deflated_len)) {
         fprintf(stderr, "%s: decompression error '%s'\n",
-               test_name, ZSTD_getErrorName(deflated_len));
+                test_name, ZSTD_getErrorName(deflated_len));
         exit(1);
     }
 
     assert(deflated_len == sizeof(PKT_CONTENT));
-    if (memcmp(PKT_CONTENT, deflation_buffer, deflated_len)!=0) {
+    if(memcmp(PKT_CONTENT, deflation_buffer, deflated_len)!=0) {
         fprintf(stderr, "%s: round-trip buffer mismatch\n", test_name);
         exit(1);
     }
@@ -145,12 +146,12 @@ void test_zstd() {
 }
 
 
-int main(int argc, char * argv[]) {
+int main (int argc, char * argv[]) {
 
     /* Also for compression (init moved here for ciphers get run before in case of lzo init error) */
     init_compression_for_benchmark();
 
-    printf("%s: input size = 0x%"PRIx64"\n", "original", sizeof(PKT_CONTENT));
+    printf("%s: input size = 0x%" PRIx64 "\n", "original", sizeof(PKT_CONTENT));
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 

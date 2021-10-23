@@ -19,7 +19,7 @@
 #include "n2n.h"
 #include "hexdump.h"
 
-void test_curve25519(unsigned char *pkt_input, unsigned char *key) {
+void test_curve25519 (unsigned char *pkt_input, unsigned char *key) {
     char *test_name = "curve25519";
     unsigned char pkt_output[32];
 
@@ -32,7 +32,7 @@ void test_curve25519(unsigned char *pkt_input, unsigned char *key) {
     printf("\n");
 }
 
-int main(int argc, char * argv[]) {
+int main (int argc, char * argv[]) {
     char *test_name = "environment";
 
     unsigned char key[32];
@@ -40,7 +40,7 @@ int main(int argc, char * argv[]) {
 
     memset(pkt_input, 0, 31);
     pkt_input[31] = 9;
-    
+
     memset(key, 0x55, 32);
 
     printf("%s: input\n", test_name);

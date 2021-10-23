@@ -83,7 +83,28 @@ N2N_LIB=libn2n.a
 N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
 N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 
+# As source files pass the linter, they can be added here (If all the source
+# is passing the linter tests, this can be refactored)
+LINT_CCODE=\
+	include/edge_utils_win32.h \
+	include/n2n_define.h \
+	include/pearson.h \
+	include/speck.h \
+	src/edge_utils_win32.c \
+	src/example_edge_embed_quick_edge_init.c \
+	src/header_encryption.c \
+	src/sn_selection.c \
+	src/transform_cc20.c \
+	src/tuntap_linux.c \
+	src/wire.c \
+	tools/tests-compress.c \
+	tools/tests-elliptic.c \
+	tools/tests-hashing.c \
+	tools/tests-transform.c \
+	tools/tests-wire.c \
+
 export LDLIBS
+
 LDLIBS+=-ln2n
 LDLIBS+=@N2N_LIBS@
 
@@ -108,12 +129,26 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
+# This is the superset of all packages that might be needed during the build.
+# Mostly of use in automated build systems.
+BUILD_DEP:=\
+	autoconf \
+	build-essential \
+	flake8 \
+	gcovr \
+	libcap-dev \
+	libzstd-dev \
+	shellcheck \
+	uncrustify \
+
 SUBDIRS+=tools
 
 COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
-.PHONY: steps build push all clean install test cover gcov build-dep
+.PHONY: steps build push all clean distclean install test cover gcov build-dep
+.PHONY: lint lint.python lint.ccode lint.shell
+
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
 tools: $(N2N_LIB)
@@ -147,10 +182,18 @@ $(N2N_LIB): $(N2N_OBJS)
 win32/n2n_win32.a: win32
 
 test: tools
-	tools/test_harness
+	scripts/test_harness.sh
+
+lint: lint.python lint.ccode lint.shell
 
 lint.python:
 	flake8 scripts/n2nctl scripts/n2nhttpd
+
+lint.ccode:
+	scripts/indent.sh $(LINT_CCODE)
+
+lint.shell:
+	shellcheck scripts/*.sh
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
@@ -168,11 +211,10 @@ gcov:
 	gcov $(N2N_OBJS)
 	$(MAKE) -C tools gcov
 
-# This is the superset of all packages that might be needed.
-# It is a convinent target to use during development or from a CI/CD system
+# This is a convinent target to use during development or from a CI/CD system
 build-dep:
 ifeq ($(CONFIG_TARGET),generic)
-	sudo apt install build-essential autoconf libcap-dev libzstd-dev gcovr flake8
+	sudo apt install $(BUILD_DEP)
 else ifeq ($(CONFIG_TARGET),darwin)
 	brew install automake gcovr
 else
@@ -183,6 +225,13 @@ clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
+
+distclean:
+	rm -f tests/*.out src/*.gcno src/*.gcda src/*.indent src/*.unc-backup*
+	rm -rf autom4te.cache/
+	rm -f config.log config.status configure configure.ac Makefile tools/Makefile include/config.h include/config.h.in
+	rm -f doc/edge.8.gz doc/n2n.7.gz doc/supernode.1.gz
+	rm -f $(addprefix src/,$(APPS))
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"

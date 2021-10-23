@@ -92,14 +92,14 @@
 
 /* Federation name and indicators */
 #define FEDERATION_NAME "*Federation"
-enum federation{IS_NO_FEDERATION = 0,IS_FEDERATION = 1};
+enum federation {IS_NO_FEDERATION = 0,IS_FEDERATION = 1};
 
 /* (un)purgeable community indicator (supernode) */
 #define COMMUNITY_UNPURGEABLE                 0
 #define COMMUNITY_PURGEABLE                   1
 
 /* (un)purgeable supernode indicator */
-enum sn_purge{SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
+enum sn_purge {SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 
 /* Header encryption indicators */
 #define HEADER_ENCRYPTION_UNKNOWN             0
@@ -133,7 +133,7 @@ enum n2n_mgmt_type {
                                                /* which the socket explicitly is closed before reopening    */
 
 /* flag used in add_sn_to_list_by_mac_or_sock */
-enum skip_add{SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
+enum skip_add {SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
 #define N2N_NETMASK_STR_SIZE      16 /* dotted decimal 12 numbers + 3 dots */
 #define N2N_MACNAMSIZ             18 /* AA:BB:CC:DD:EE:FF + NULL*/
