@@ -419,7 +419,7 @@ typedef struct n2n_PEER_INFO {
     n2n_mac_t                        mac;
     n2n_sock_t                       sock;
     n2n_sock_t                       preferred_sock;
-    SN_SELECTION_CRITERION_DATA_TYPE data;
+    uint32_t                         load;
     n2n_version_t                    version;
     time_t                           uptime;
 } n2n_PEER_INFO_t;
