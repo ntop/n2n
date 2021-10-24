@@ -3670,6 +3670,8 @@ static void edge_cleanup_routes (n2n_edge_t *eee) {
 
 void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
 
+    char *tmp_string;
+
     memset(conf, 0, sizeof(*conf));
 
     conf->bind_address = INADDR_ANY; /* any address */
@@ -3699,6 +3701,13 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         conf->shared_secret = calloc(1, sizeof(n2n_private_public_key_t));
         if(conf->shared_secret)
             generate_private_key(*(conf->shared_secret), getenv("N2N_PASSWORD"));
+    }
+
+    tmp_string = calloc(1, strlen(N2N_MGMT_PASSWORD) + 1);
+    if(tmp_string) {
+        strncpy((char*)tmp_string, N2N_MGMT_PASSWORD, strlen(N2N_MGMT_PASSWORD) + 1);
+        conf->mgmt_password_hash = pearson_hash_64((uint8_t*)tmp_string, strlen(N2N_MGMT_PASSWORD));
+        free(tmp_string);
     }
 
     conf->sn_selection_strategy = SN_SELECTION_STRATEGY_LOAD;

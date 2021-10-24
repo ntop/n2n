@@ -730,6 +730,9 @@ int comm_init (struct sn_community *comm, char *cmn) {
 
 /** Initialise the supernode structure */
 int sn_init_defaults (n2n_sn_t *sss) {
+
+    char *tmp_string;
+
 #ifdef WIN32
     initWin32();
 #endif
@@ -785,6 +788,13 @@ int sn_init_defaults (n2n_sn_t *sss) {
     memrnd(sss->mac_addr, N2N_MAC_SIZE);
     sss->mac_addr[0] &= ~0x01; /* Clear multicast bit */
     sss->mac_addr[0] |= 0x02;    /* Set locally-assigned bit */
+
+    tmp_string = calloc(1, strlen(N2N_MGMT_PASSWORD) + 1);
+    if(tmp_string) {
+        strncpy((char*)tmp_string, N2N_MGMT_PASSWORD, strlen(N2N_MGMT_PASSWORD) + 1);
+        sss->mgmt_password_hash = pearson_hash_64((uint8_t*)tmp_string, strlen(N2N_MGMT_PASSWORD));
+        free(tmp_string);
+    }
 
     return 0; /* OK */
 }

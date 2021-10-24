@@ -183,4 +183,6 @@ affect the availability of the n2n networking.  Therefore the machine
 readable API include an authentication component.
 
 Currently, the only authentication is a simple password that the client
-must provide.
+must provide. It defaults to 'n2n' and can manually be set through the
+command line parameter `--management-password <pw>` – for edge as well
+as for supernode.

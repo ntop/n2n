@@ -126,6 +126,9 @@ enum n2n_mgmt_type {
     N2N_MGMT_WRITE = 1,
 };
 
+#define N2N_MGMT_PASSWORD  "n2n"               /* default password for management port access (so far, json only) */
+
+
 #define N2N_TCP_BACKLOG_QUEUE_SIZE   3         /* number of concurrently pending connections to be accepted */
                                                /* NOT the number of max. TCP connections                    */
 
