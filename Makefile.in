@@ -140,6 +140,7 @@ BUILD_DEP:=\
 	libzstd-dev \
 	shellcheck \
 	uncrustify \
+	yamllint \
 
 SUBDIRS+=tools
 
@@ -147,7 +148,7 @@ COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
 .PHONY: steps build push all clean distclean install test cover gcov build-dep
-.PHONY: lint lint.python lint.ccode lint.shell
+.PHONY: lint lint.python lint.ccode lint.shell lint.yaml
 
 all: $(APPS) $(DOCS) $(SUBDIRS)
 
@@ -184,7 +185,7 @@ win32/n2n_win32.a: win32
 test: tools
 	scripts/test_harness.sh
 
-lint: lint.python lint.ccode lint.shell
+lint: lint.python lint.ccode lint.shell lint.yaml
 
 lint.python:
 	flake8 scripts/n2n-ctl scripts/n2n-httpd
@@ -194,6 +195,9 @@ lint.ccode:
 
 lint.shell:
 	shellcheck scripts/*.sh
+
+lint.yaml:
+	yamllint .circleci/config.yml .travis.yml .yamllint.yml
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
