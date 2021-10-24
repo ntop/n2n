@@ -309,11 +309,11 @@ static void mgmt_help (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in se
  *   Reads are not dangerous, so they are simply allowed
  *   Writes are possibly dangerous, so they need a fake password
  */
-static int mgmt_auth (const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
+static int mgmt_auth (n2n_sn_t *sss, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
 
     if(auth) {
         /* If we have an auth key, it must match */
-        if(0 == strcmp(auth, N2N_MGMT_PASSWORD)) {
+        if(sss->mgmt_password_hash == pearson_hash_64((uint8_t*)auth, strlen(auth))) {
             return 1;
         }
         return 0;
@@ -400,7 +400,7 @@ void handleMgmtJson_sn (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in s
         auth = NULL;
     }
 
-    if(!mgmt_auth(sender_sock, type, auth, argv0, argv)) {
+    if(!mgmt_auth(sss, sender_sock, type, auth, argv0, argv)) {
         mgmt_error(sss, udp_buf, sender_sock, tag, "badauth");
         return;
     }
