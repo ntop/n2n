@@ -38,7 +38,7 @@ int sn_selection_criterion_init (peer_info_t *peer) {
 /* Set selection_criterion field to default value according to selected strategy. */
 int sn_selection_criterion_default (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
 
-    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(UINT32_MAX >> 1) - 1;
+    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(UINT64_MAX >> 1) - 1;
 
     return 0; /* OK */
 }
@@ -47,7 +47,7 @@ int sn_selection_criterion_default (SN_SELECTION_CRITERION_DATA_TYPE *selection_
 /* Set selection_criterion field to 'bad' value (worse than default) according to selected strategy. */
 int sn_selection_criterion_bad (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
 
-    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(UINT32_MAX >> 1);
+    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(UINT64_MAX >> 1);
 
     return 0; /* OK */
 }
@@ -55,7 +55,7 @@ int sn_selection_criterion_bad (SN_SELECTION_CRITERION_DATA_TYPE *selection_crit
 /* Set selection_criterion field to 'good' value (better than default) according to selected strategy. */
 int sn_selection_criterion_good (SN_SELECTION_CRITERION_DATA_TYPE *selection_criterion) {
 
-    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(UINT32_MAX >> 1) - 2;
+    *selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(UINT64_MAX >> 1) - 2;
 
     return 0; /* OK */
 }
@@ -200,12 +200,12 @@ extern char * sn_selection_criterion_str (n2n_edge_t *eee, selection_criterion_s
         switch(eee->conf.sn_selection_strategy) {
 
             case SN_SELECTION_STRATEGY_LOAD: {
-                chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8d", peer->selection_criterion);
+                chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "load = %8ld", peer->selection_criterion);
                 break;
             }
 
             case SN_SELECTION_STRATEGY_RTT: {
-                chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6d ms", peer->selection_criterion);
+                chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6ld ms", peer->selection_criterion);
                 break;
             }
 

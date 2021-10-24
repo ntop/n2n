@@ -726,7 +726,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
-        case '\xfd': /* round-trip-time-based supernode selection strategy */ {
+        case '[': /* round-trip-time-based supernode selection strategy */ {
             // overwrites the default load-based strategy
             conf->sn_selection_strategy = SN_SELECTION_STRATEGY_RTT;
 
@@ -737,7 +737,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             return 2;
         }
 
-        case '\xfe': /* long help */ {
+        case '@': /* long help */ {
             return 3;
         }
 
@@ -785,8 +785,8 @@ static const struct option long_options[] =
         { "euid",              required_argument, NULL, 'u' },
         { "egid",              required_argument, NULL, 'g' },
         { "verbose",           no_argument,       NULL, 'v' },
-        { "help",              no_argument,       NULL, '\xfe' }, /* internal special character '\xfe' to identify long help case */
-        { "select-rtt",        no_argument,       NULL, '\xfd' }, /*                            '\xfd'             rtt selection strategy */
+        { "help",              no_argument,       NULL, '@' }, /* internal special character '@' to identify long help case */
+        { "select-rtt",        no_argument,       NULL, '[' }, /*                            '['             rtt selection strategy */
         { NULL,                0,                 NULL,  0  }
     };
 
