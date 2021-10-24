@@ -35,7 +35,8 @@ rpmbuild -bb ./n2n.spec
 - Optionally bind edge to one local IP address only (extension to `-p`)
 - A preferred local socket can be advertised to other edges for better local peer-to-peer connections (`-e`)
 - Optional edge user and password authentication (`-J`, `-P`, `doc/Authentication.md`)
-- Optional json format at management allows for machine-driven handling such as `.html` page generation (`scripts/n2nhttpd`) or script-based evaluation (`scripts/n2nctl`)
+- Optional json format at management port allows for machine-driven handling such as `.html` page generation (`scripts/n2n-httpd`) or script-based evaluation (`scripts/n2n-ctl`)
+- Completely overhauled build system including GitHub's action runners performing code syntax and formal checks, creating and running test builds, providing binairies and packages as artifacts and running verification tests
 
 
 ### Improvements
