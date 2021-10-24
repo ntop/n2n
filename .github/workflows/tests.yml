@@ -408,3 +408,29 @@ jobs:
         with:
           name: binaries
           path: binaries
+
+  upload_release:
+    name: Upload artifacts as Release Assets
+    needs:
+      - package_dpkg
+      - package_rpm
+      - binaries_windows
+      - binaries_macos
+      - binaries_linux_crosscompile
+    runs-on: ubuntu-latest
+
+    steps:
+      - if: startsWith(github.ref, 'refs/tags/')
+        name: Fetch all Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: artifacts
+
+      - if: startsWith(github.ref, 'refs/tags/')
+        name: Upload Assets to release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: |
+            artifacts/packages-dpkg/*.deb
+            artifacts/packages-rpm/*.rpm
