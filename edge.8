@@ -102,7 +102,7 @@ use header encryption, supernode needs fixed community
 \fB\-z1\fR ... \fB\-z2\fR
 compress outgoing data packets, -z1 = lzo1x, disabled by default
 .TP
-\fB\--select-rtt\fR
+\fB\-\-select-rtt\fR
 select supernode by round trip time if several to choose from (federation),
 defaults to load-based selection strategy if not provided.
 .SH TAP DEVICE AND OVERLAY NETWORK CONFIGURATION
@@ -185,6 +185,11 @@ do not fork and run as a daemon, rather run in foreground
 binds the edge management system to the given UDP port. Default 5644. Use this
 if you need to run multiple instance of edge; or something is bound to that
 port.
+.TP
+\fB\-\-management-password \fR<\fIpassword\fR>
+sets the password for access to JSON API at the management port, defaults to 'n2n'. The password
+has to be provided when using 'scripts/n2n-ctl', 'scripts/n2n-httpd' or for any other relevant
+access to JSON API at the management port.
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
 make more verbose, repeat as required

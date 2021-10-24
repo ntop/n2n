@@ -80,6 +80,8 @@ static void help (int level) {
                "[-f] "
 #endif
                "[-t <management port>] "
+            "\n                           "
+               "[--management-password <pw>] "
                "[-v] "
 #ifndef WIN32
             "\n                           "
@@ -138,6 +140,8 @@ static void help (int level) {
 #endif
         printf(" -t <port>         | management UDP port, for multiple supernodes on a machine,\n"
                "                   | defaults to %u\n", N2N_SN_MGMT_PORT);
+        printf(" --management_...  | management port password, defaults to '%s'\n"
+               " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
 #ifndef WIN32
         printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
@@ -303,6 +307,12 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             if(sss->community_file)
                 strcpy(sss->community_file, _optarg);
             break;
+
+        case ']': /* password for management port */ {
+            sss->mgmt_password_hash = pearson_hash_64((uint8_t*)_optarg, strlen(_optarg));
+
+            break;
+        }
 #if defined(N2N_HAVE_DAEMON)
         case 'f': /* foreground */
             sss->daemon = 0;
@@ -330,16 +340,17 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 /* *********************************************** */
 
 static const struct option long_options[] = {
-    {"communities", required_argument, NULL, 'c'},
+    {"communities",         required_argument, NULL, 'c'},
 #if defined(N2N_HAVE_DAEMON)
-    {"foreground",  no_argument,       NULL, 'f'},
+    {"foreground",          no_argument,       NULL, 'f'},
 #endif
-    {"local-port",  required_argument, NULL, 'p'},
-    {"mgmt-port",   required_argument, NULL, 't'},
-    {"autoip",      required_argument, NULL, 'a'},
-    {"help",        no_argument,       NULL, '@'}, /* special character '@' to identify long help case */
-    {"verbose",     no_argument,       NULL, 'v'},
-    {NULL,          0,                 NULL, 0}
+    {"local-port",          required_argument, NULL, 'p'},
+    {"mgmt-port",           required_argument, NULL, 't'},
+    {"autoip",              required_argument, NULL, 'a'},
+    {"verbose",             no_argument,       NULL, 'v'},
+    {"help",                no_argument,       NULL, '@'}, /* special character '@' to identify long help case */
+    {"management-password", required_argument, NULL, ']' }, /*                  ']'             management port password */
+    {NULL,                  0,                 NULL, 0}
 };
 
 /* *************************************************** */

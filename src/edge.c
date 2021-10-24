@@ -206,6 +206,8 @@ static void help (int level) {
                "[-f] "
 #endif
                "[-t <management port>] "
+               "[--management-password <pw>] "
+            "\n                      "
                "[-v] "
                "[-n <cidr:gateway>] "
 #ifndef WIN32
@@ -325,6 +327,8 @@ static void help (int level) {
 #endif
         printf(" -t <port>         | management UDP port, for multiple edges on a machine,\n"
                "                   | defaults to %u\n", N2N_EDGE_MGMT_PORT);
+        printf(" --management_...  | management port password, defaults to '%s'\n"
+               " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
         printf(" -n <cidr:gateway> | route an IPv4 network via the gateway, use 0.0.0.0/0 for\n"
                "                   | the default gateway, can be set multiple times\n");
@@ -733,6 +737,12 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
+        case ']': /* password for management port */ {
+            conf->mgmt_password_hash = pearson_hash_64((uint8_t*)optargument, strlen(optargument));
+
+            break;
+        }
+
         case 'h': /* quick reference */ {
             return 2;
         }
@@ -779,15 +789,16 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
 static const struct option long_options[] =
     {
-        { "community",         required_argument, NULL, 'c' },
-        { "supernode-list",    required_argument, NULL, 'l' },
-        { "tap-device",        required_argument, NULL, 'd' },
-        { "euid",              required_argument, NULL, 'u' },
-        { "egid",              required_argument, NULL, 'g' },
-        { "verbose",           no_argument,       NULL, 'v' },
-        { "help",              no_argument,       NULL, '@' }, /* internal special character '@' to identify long help case */
-        { "select-rtt",        no_argument,       NULL, '[' }, /*                            '['             rtt selection strategy */
-        { NULL,                0,                 NULL,  0  }
+        { "community",           required_argument, NULL, 'c' },
+        { "supernode-list",      required_argument, NULL, 'l' },
+        { "tap-device",          required_argument, NULL, 'd' },
+        { "euid",                required_argument, NULL, 'u' },
+        { "egid",                required_argument, NULL, 'g' },
+        { "verbose",             no_argument,       NULL, 'v' },
+        { "help",                no_argument,       NULL, '@' }, /* internal special character '@' to identify long help case */
+        { "select-rtt",          no_argument,       NULL, '[' }, /*                            '['             rtt selection strategy */
+        { "management-password", required_argument, NULL, ']' }, /*                            ']'             management port password */
+        { NULL,                  0,                 NULL,  0  }
     };
 
 /* *************************************************** */
