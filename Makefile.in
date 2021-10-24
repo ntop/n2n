@@ -197,7 +197,8 @@ lint.shell:
 	shellcheck scripts/*.sh
 
 lint.yaml:
-	yamllint .circleci/config.yml .travis.yml .yamllint.yml
+	yamllint .circleci/config.yml .travis.yml .yamllint.yml \
+		.github/workflows/cmake-linux.yml
 
 # To generate coverage information, run configure with
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
