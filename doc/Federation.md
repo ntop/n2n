@@ -36,4 +36,4 @@ An edge connects to the supernode with the lowest work-load and it is re-conside
 
 Thanks to this feature, n2n is now able to handle security attacks such as DoS against supernodes and it can redistribute the entire load of the network in a fair manner between all the supernodes.
 
-To serve scenarios in which an edge is supposed to select the supernode by round trip time, i.e. choosing the "closest" one, a [compile-time option](https://github.com/ntop/n2n/blob/dev/doc/Building.md#federation--supernode-selection-by-round-trip-time) is available. Note, that workload distribution among supernodes is not so fair then.
+To serve scenarios in which an edge is supposed to select the supernode by round trip time, i.e. choosing the "closest" one, the `--select-rtt` command line option is available at the edge. Note, that workload distribution among supernodes might not be so fair then.

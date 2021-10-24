@@ -1982,7 +1982,7 @@ static void readFromMgmtSocket (n2n_edge_t *eee) {
                             (peer == eee->curr_sn) ? (eee->sn_wait ? "." : "*" ) : "",
                             is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),
-                            sn_selection_criterion_str(sel_buf, peer),
+                            sn_selection_criterion_str(eee, sel_buf, peer),
                             (peer->last_seen) ? time_buf : "",
                             (peer->uptime) ? uptime_buf : "");
 
@@ -2827,7 +2827,8 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                         scan->uptime = pi.uptime;
                         memcpy(scan->version, pi.version, sizeof(n2n_version_t));
                         /* The data type depends on the actual selection strategy that has been chosen. */
-                        sn_selection_criterion_calculate(eee, scan, &pi.data);
+                        SN_SELECTION_CRITERION_DATA_TYPE sn_sel_tmp = pi.load;
+                        sn_selection_criterion_calculate(eee, scan, &sn_sel_tmp);
 
                         traceEvent(TRACE_INFO, "Rx PONG from supernode %s",
                                    macaddr_str(mac_buf1, pi.srcMac));
@@ -3700,6 +3701,7 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
             generate_private_key(*(conf->shared_secret), getenv("N2N_PASSWORD"));
     }
 
+    conf->sn_selection_strategy = SN_SELECTION_STRATEGY_LOAD;
     conf->metric = 0;
 }
 

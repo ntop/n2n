@@ -663,7 +663,7 @@ int encode_PEER_INFO (uint8_t *base,
     if(cmn->flags & N2N_FLAGS_SOCKET) {
         retval += encode_sock(base, idx, &pkt->preferred_sock);
     }
-    retval += encode_buf(base, idx, &pkt->data, sizeof(SN_SELECTION_CRITERION_DATA_TYPE));
+    retval += encode_uint32(base, idx, (uint32_t)pkt->load);
     retval += encode_uint32(base, idx, (uint32_t)pkt->uptime);
     retval += encode_buf(base, idx, pkt->version, sizeof(n2n_version_t));
 
@@ -687,7 +687,7 @@ int decode_PEER_INFO (n2n_PEER_INFO_t *pkt,
     if(cmn->flags & N2N_FLAGS_SOCKET) {
         retval += decode_sock(&pkt->preferred_sock, base, rem, idx);
     }
-    retval += decode_buf((uint8_t*)&pkt->data, sizeof(SN_SELECTION_CRITERION_DATA_TYPE), base, rem, idx);
+    retval += decode_uint32(&pkt->load, base, rem, idx);
     retval += decode_uint32((uint32_t*)&pkt->uptime, base, rem, idx);
     retval += decode_buf((uint8_t*)pkt->version, sizeof(n2n_version_t), base, rem, idx);
 

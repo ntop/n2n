@@ -134,7 +134,7 @@ static void mgmt_supernodes (n2n_edge_t *eee, char *udp_buf, const struct sockad
                            (peer == eee->curr_sn) ? (eee->sn_wait ? 2 : 1 ) : 0,
                            is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                            sock_to_cstr(sockbuf, &(peer->sock)),
-                           sn_selection_criterion_str(sel_buf, peer),
+                           sn_selection_criterion_str(eee, sel_buf, peer),
                            peer->last_seen,
                            peer->uptime);
 

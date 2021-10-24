@@ -2549,7 +2549,7 @@ static int process_udp (n2n_sn_t * sss,
                 pi.sock.family = AF_INET;
                 pi.sock.port = ntohs(sender_sock->sin_port);
                 memcpy(pi.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
-                pi.data = sn_selection_criterion_gather_data(sss);
+                pi.load = sn_selection_criterion_gather_data(sss);
 
                 snprintf(pi.version, sizeof(pi.version), "%s", sss->version);
                 pi.uptime = now - sss->start_time;

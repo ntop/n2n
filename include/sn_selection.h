@@ -40,7 +40,7 @@ int sn_selection_sort (peer_info_t **peer_list);
 SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_gather_data (n2n_sn_t *sss);
 
 /* management port output function */
-extern char * sn_selection_criterion_str (selection_criterion_str_t out, peer_info_t *peer);
+extern char * sn_selection_criterion_str (n2n_edge_t *eee, selection_criterion_str_t out, peer_info_t *peer);
 
 
 #endif /* _SN_SELECTION_ */
