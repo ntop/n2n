@@ -410,7 +410,7 @@ jobs:
           path: binaries
 
   upload_release:
-    name: Upload artifacts as Release Assets
+    name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
     needs:
       - package_dpkg
@@ -426,7 +426,7 @@ jobs:
         with:
           path: artifacts
 
-      - name: Upload Assets to release
+      - name: Upload Assets to Release
         uses: softprops/action-gh-release@v1
         with:
           prerelease: true
