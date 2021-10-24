@@ -521,11 +521,12 @@ def main():
 
     socketserver.TCPServer.allow_reuse_address = True
     handler = functools.partial(SimpleHandler, rpc, snrpc)
-    with socketserver.TCPServer(("", args.port), handler) as httpd:
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            return
+
+    httpd = socketserver.TCPServer(("", args.port), handler)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        return
 
 
 if __name__ == '__main__':
