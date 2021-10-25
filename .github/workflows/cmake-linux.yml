@@ -1,6 +1,7 @@
 ---
 name: CMake
 
+# yamllint disable-line rule:truthy
 on: [push]
 
 env:
@@ -12,6 +13,7 @@ jobs:
     # The CMake configure and build commands are platform agnostic and should
     # work equally well on Windows or Mac.  You can convert this to a matrix
     # build if you need cross-platform coverage.
+    # yamllint disable-line rule:line-length
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ${{ matrix.os }}
     strategy:

@@ -1,6 +1,7 @@
 ---
 name: Testing
 
+# yamllint disable-line rule:truthy
 on:
   push:
   pull_request:
@@ -256,6 +257,8 @@ jobs:
             crossbuild-essential-${{ matrix.arch }}
 
       - name: Configure
+        # The HOST_TRIPLET line is not easily foldable
+        # yamllint disable rule:line-length
         run: |
           # This will warn about CC, but we cannot set CC until we run it :-S
           HOST_TRIPLET=$(dpkg-architecture -a${{ matrix.arch }} -q DEB_HOST_GNU_TYPE)
@@ -265,6 +268,7 @@ jobs:
           ./configure --host $HOST_TRIPLET
           cd packages/debian/
           ./configure EXTN=${{ matrix.arch }}
+        # yamllint enable rule:line-length
 
       - name: Build
         run: |
