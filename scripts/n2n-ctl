@@ -19,6 +19,7 @@ class JsonUDP():
         self.key = None
         self.debug = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(1)
 
     def _next_tag(self):
         tagstr = str(self.tag)
@@ -239,7 +240,12 @@ def main():
     rpc.debug = args.debug
     rpc.key = args.key
 
-    result = func(rpc, args)
+    try:
+        result = func(rpc, args)
+    except socket.timeout as e:
+        print(e)
+        exit(1)
+
     print(result)
 
 
