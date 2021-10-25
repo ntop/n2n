@@ -1,4 +1,4 @@
-
+---
 name: Testing
 
 on:
@@ -66,7 +66,9 @@ jobs:
 
       - name: Run the real configure step
         run: |
-          CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
+          export CFLAGS="-fprofile-arcs -ftest-coverage"
+          export LDFLAGS="--coverage"
+          ./configure --with-zstd
         shell: bash
 
       - name: Run embedded tests
@@ -129,7 +131,9 @@ jobs:
 
       - name: Run the real configure step
         run: |
-          CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./configure --with-zstd
+          export CFLAGS="-fprofile-arcs -ftest-coverage"
+          export LDFLAGS="--coverage"
+          ./configure --with-zstd
         shell: bash
 
       - name: Run embedded tests
@@ -153,20 +157,21 @@ jobs:
       - name: Generate coverage reports
         run: |
           make gcov
-          # This was working fine for tens of jobs, up until 2021-10-19T18:53+0100
-          # and it still works fine when run from my personal github actions.
-          # The next run at 2021-10-19T19:08+0100 didnt work.
-          # Assume that they changed something on the runner - I cannot debug it
-          # as I do not have a Mac.
+          # This was working fine for tens of jobs, up until
+          # 2021-10-19T18:53+0100 and it still works fine when run from my
+          # personal github actions. The next run at 2021-10-19T19:08+0100
+          # didnt work.
+          # Assume that they changed something on the runner - I cannot debug
+          # it as I do not have a Mac.
           #
           # make cover COVERAGEDIR=coverage/${{ matrix.os }}
         shell: bash
 
-#      - name: Upload gcovr report artifact
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: coverage
-#          path: coverage
+      # - name: Upload gcovr report artifact
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: coverage
+      #    path: coverage
 
       - name: Upload data to codecov
         uses: codecov/codecov-action@v2
@@ -195,7 +200,9 @@ jobs:
 
       - name: Run a configure step
         run: |
-          CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage" ./scripts/hack_fakeautoconf.sh
+          export CFLAGS="-fprofile-arcs -ftest-coverage"
+          export LDFLAGS="--coverage"
+          ./scripts/hack_fakeautoconf.sh
         shell: bash
 
       - name: Run embedded tests
@@ -245,7 +252,8 @@ jobs:
 
       - name: Install packages needed for build
         run: |
-          sudo apt-get install debhelper build-essential crossbuild-essential-${{ matrix.arch }}
+          sudo apt-get install debhelper build-essential \
+            crossbuild-essential-${{ matrix.arch }}
 
       - name: Configure
         run: |
@@ -365,7 +373,7 @@ jobs:
 
   binaries_linux_crosscompile:
     name: Binaries for linux
-    needs: 
+    needs:
       - test_linux
     runs-on: ubuntu-latest
     strategy:
@@ -387,7 +395,9 @@ jobs:
 
       - name: Install cross compiler
         run: |
-          sudo apt-get install binutils-${{ matrix.arch }} gcc-${{ matrix.arch }}
+          sudo apt-get install \
+            binutils-${{ matrix.arch }} \
+            gcc-${{ matrix.arch }}
 
       - name: Configure and Build
         shell: bash
