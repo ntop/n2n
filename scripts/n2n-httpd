@@ -34,6 +34,7 @@ class JsonUDP():
         self.key = None
         self.debug = False
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.settimeout(1)
 
     def _next_tag(self):
         tagstr = str(self.tag)
@@ -187,6 +188,9 @@ function rows2table(id, columns, data) {
 function do_get(url, id, handler, handler_param) {
     fetch(url)
       .then(function (response) {
+        if (!response.ok) {
+            throw new Error('Fetch got ' + response.status)
+        }
         return response.json();
       })
       .then(function (data) {
@@ -205,6 +209,9 @@ function do_get(url, id, handler, handler_param) {
 function do_post(url, body, id, handler, handler_param) {
     fetch(url, {method:'POST', body: body})
       .then(function (response) {
+        if (!response.ok) {
+            throw new Error('Fetch got ' + response.status)
+        }
         return response.json();
       })
       .then(function (data) {
@@ -437,6 +444,9 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             self._simplereply(HTTPStatus.BAD_REQUEST, 'Bad Command')
+            return
+        except socket.timeout as e:
+            self._simplereply(HTTPStatus.REQUEST_TIMEOUT, str(e))
             return
 
         self._replyjson(data)
