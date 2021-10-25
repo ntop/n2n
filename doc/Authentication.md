@@ -74,7 +74,7 @@ The edge takes the username with the already present, identifying command line p
 
 Note that header encryption already is enabled automatically as this authentication scheme heavily relies on it. Also, currently only the stream ciphers work with this authentication scheme reliably in terms of security. So, `-A4` for ChaCha20 or `-A5` for SPECK along with a key `-k <key>` are required as additional parameters.
 
-The edges need to know the public key of the supernode. By default, the edges assume the default federation name, or more specific, the corresponding public key. In case the supernode is given a custom federation name which is highly recommended, the supernode's public key is provided to the edges via command line parameter `-P <public key>. It can be generated from the federation name by using the `tools/n2n-keygen` utility as well:
+The edges need to know the public key of the supernode. By default, the edges assume the default federation name, or more specific, the corresponding public key. In case the supernode is given a custom federation name which is highly recommended, the supernode's public key is provided to the edges via command line parameter `-P <public key>`. It can be generated from the federation name by using the `tools/n2n-keygen` utility as well:
 
 ```bash
 [user@host n2n]$ tools/n2n-keygen -F secretFed
