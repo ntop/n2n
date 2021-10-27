@@ -386,7 +386,7 @@ jobs:
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries/x86_64-apple-darwin
+          make install DESTDIR=binaries/${{ matrix.arch }}
 
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
