@@ -35,6 +35,8 @@ add_definitions(-DCMAKE_BUILD)
 add_definitions(-DGIT_RELEASE="${N2N_VERSION}" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${N2N_OSNAME}")
 add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 
+# third-party directory
+set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thridparty)
 
 # Build information
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
@@ -44,6 +46,7 @@ OPTION(N2N_OPTION_USE_PTHREAD "USE PTHREAD Library" ON)
 OPTION(N2N_OPTION_USE_OPENSSL "USE OPENSSL Library" OFF)
 OPTION(N2N_OPTION_USE_PCAPLIB "USE PCAP Library" OFF)
 OPTION(N2N_OPTION_USE_ZSTD "USE ZSTD Library" OFF)
+OPTION(N2N_OPTION_USE_MINIUPNP "USE MINIUPNP Library" ON)
 
 
 if(N2N_OPTION_USE_PTHREAD)
@@ -79,6 +82,12 @@ endif(N2N_OPTION_USE_OPENSSL)
 if(N2N_OPTION_USE_ZSTD)
   add_definitions(-DN2N_HAVE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
+
+if(N2N_OPTION_USE_MINIUPNP)
+  ADD_DEFINITIONS("-DHAVE_MINIUPNP")
+  include_directories(${THIRD_PARTY_DIR}/miniupnp/miniupnpc/include)
+  include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
+endif(N2N_OPTION_USE_MINIUPNP)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
@@ -144,7 +153,8 @@ add_library(n2n STATIC
         src/network_traffic_filter.c
         src/sn_selection.c
         src/auth.c
-        src/curve25519.c)
+        src/curve25519.c
+        src/n2n_upnpc.c)
 
 
 if(N2N_OPTION_USE_PTHREAD)
@@ -159,6 +169,12 @@ endif(N2N_OPTION_USE_OPENSSL)
 if(N2N_OPTION_USE_ZSTD)
   target_link_libraries(n2n zstd)
 endif(N2N_OPTION_USE_ZSTD)
+
+if(N2N_OPTION_USE_MINIUPNP)
+  add_subdirectory(${THIRD_PARTY_DIR}/miniupnp/miniupnpc lib_miniupnpc)
+  link_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
+  target_link_libraries(n2n libminiupnpc-static)
+endif(N2N_OPTION_USE_MINIUPNP)
 
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)

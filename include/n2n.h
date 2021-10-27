@@ -156,6 +156,10 @@
 #include "network_traffic_filter.h"
 #include "auth.h"
 
+#ifdef HAVE_MINIUPNP
+#include "n2n_upnpc.h"
+#endif // HAVE_MINIUPNP
+
 /* ************************************** */
 
 #include "header_encryption.h"

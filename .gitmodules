@@ -1,0 +1,4 @@
+[submodule "thridparty/miniupnp"]
+    path = thridparty/miniupnp
+    url = https://github.com/miniupnp/miniupnp.git
+    ignore = dirty

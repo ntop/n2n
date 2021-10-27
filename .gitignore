@@ -17,6 +17,7 @@ tools/n2n-decode
 tools/n2n-keygen
 build
 .idea
+.vscode
 cmake-build-default
 packages/debian/debian/changelog
 packages/debian/debian/control
