@@ -253,6 +253,7 @@ jobs:
 
       - name: Install packages needed for build
         run: |
+          sudo apt-get update
           sudo apt-get install debhelper build-essential \
             crossbuild-essential-${{ matrix.arch }}
 
@@ -345,7 +346,7 @@ jobs:
           path: binaries
 
   binaries_macos:
-    name: Binaries for MacOS (x86_64-apple-darwin)
+    name: Binaries for MacOS
     needs:
       - test_macos
     runs-on: macos-latest
