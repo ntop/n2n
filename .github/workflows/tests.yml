@@ -487,6 +487,7 @@ jobs:
       - package_rpm
       - binaries_windows
       - binaries_macos
+      - binaries_macos_universal
       - binaries_linux_crosscompile
     runs-on: ubuntu-latest
 
