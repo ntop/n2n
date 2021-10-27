@@ -371,7 +371,9 @@ jobs:
           export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
           export CC=clang
-          ./configure CFLAGS="-target ${{ matrix.arch }}" --host=${{ matrix.arch }}
+          export CFLAGS="-target ${{ matrix.arch }}"
+          export LDFLAGS="-target ${{ matrix.arch }}"
+          ./configure --host=${{ matrix.arch }}
           make
 
       - if: ${{ failure() }}
