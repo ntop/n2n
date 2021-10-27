@@ -391,7 +391,7 @@ jobs:
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-${{ matrix.arch }}
+          name: binaries
           path: binaries
 
   binaries_macos_universal:
@@ -427,7 +427,7 @@ jobs:
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: binaries-${{ matrix.arch }}
+          name: binaries
           path: binaries
 
   binaries_linux_crosscompile:
