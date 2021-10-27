@@ -6,7 +6,7 @@ SET(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # N2n release information
-set(N2N_VERSION "2.9.0")
+set(N2N_VERSION "3.1.0")
 set(N2N_OSNAME ${CMAKE_SYSTEM_NAME})
 execute_process(
         COMMAND git status
