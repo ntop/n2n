@@ -354,13 +354,7 @@ jobs:
       matrix:
         arch:
           - x86_64-apple-macos
-
-          # the config.log shows "missing required architecture arm64"
-          # when using the github runner.  I have not found any CLI method
-          # to request the architecture be installed, so need to turn this
-          # architecture off :-(
-          #
-          # - arm64-apple-macos
+          - arm64-apple-macos
 
     steps:
       - uses: actions/checkout@v2
@@ -372,6 +366,8 @@ jobs:
       - name: Configure and Build
         shell: bash
         run: |
+          # this is a hack! it assumes the default SDK is the 'right' one
+          export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
           export CC=clang
           ./configure CFLAGS="-target ${{ matrix.arch }}" --host=${{ matrix.arch }}
