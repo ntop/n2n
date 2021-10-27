@@ -253,6 +253,7 @@ jobs:
 
       - name: Install packages needed for build
         run: |
+          sudo apt-get update
           sudo apt-get install debhelper build-essential \
             crossbuild-essential-${{ matrix.arch }}
 
@@ -345,7 +346,56 @@ jobs:
           path: binaries
 
   binaries_macos:
-    name: Binaries for MacOS (x86_64-apple-darwin)
+    name: Binaries for MacOS
+    needs:
+      - test_macos
+    runs-on: macos-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - x86_64-apple-macos
+          - arm64-apple-macos
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install packages needed for build
+        run: |
+          brew install automake
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          # this is a hack! it assumes the default SDK is the 'right' one
+          export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+          ./autogen.sh
+          export CC=clang
+          export CFLAGS="-target ${{ matrix.arch }}"
+          export LDFLAGS="-target ${{ matrix.arch }}"
+          ./configure --host=${{ matrix.arch }}
+          make
+
+      - if: ${{ failure() }}
+        name: Upload config.log output
+        uses: actions/upload-artifact@v2
+        with:
+          name: config-log-${{ matrix.arch }}
+          path: config.log
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=binaries/${{ matrix.arch }}
+
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: binaries
+
+  binaries_macos_universal:
+    name: Binaries for MacOS (universal arch)
     needs:
       - test_macos
     runs-on: macos-latest
@@ -360,14 +410,19 @@ jobs:
       - name: Configure and Build
         shell: bash
         run: |
+          # this is a hack! it assumes the default SDK is the 'right' one
+          export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
+          export CC=clang
+          export CFLAGS="-arch x86_64 -arch arm64"
+          export LDFLAGS="-arch x86_64 -arch arm64"
           ./configure
           make
 
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries/x86_64-apple-darwin
+          make install DESTDIR=binaries/universal-apple-darwin
 
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
@@ -399,6 +454,7 @@ jobs:
 
       - name: Install cross compiler
         run: |
+          sudo apt-get update
           sudo apt-get install \
             binutils-${{ matrix.arch }} \
             gcc-${{ matrix.arch }}
@@ -431,6 +487,7 @@ jobs:
       - package_rpm
       - binaries_windows
       - binaries_macos
+      - binaries_macos_universal
       - binaries_linux_crosscompile
     runs-on: ubuntu-latest
 
