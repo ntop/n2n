@@ -394,6 +394,42 @@ jobs:
           name: binaries-${{ matrix.arch }}
           path: binaries
 
+  binaries_macos_universal:
+    name: Binaries for MacOS (universal arch)
+    needs:
+      - test_macos
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install packages needed for build
+        run: |
+          brew install automake
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          # this is a hack! it assumes the default SDK is the 'right' one
+          export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+          ./autogen.sh
+          export CC=clang
+          export CFLAGS="-arch x86_64 -arch arm64"
+          export LDFLAGS="-arch x86_64 -arch arm64"
+          ./configure
+          make
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=binaries/universal-apple-darwin
+
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: binaries
+
   binaries_linux_crosscompile:
     name: Binaries for linux
     needs:
