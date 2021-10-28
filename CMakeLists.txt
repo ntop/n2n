@@ -36,7 +36,7 @@ add_definitions(-DGIT_RELEASE="${N2N_VERSION}" -DPACKAGE_VERSION="${N2N_VERSION}
 add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
 
 # third-party directory
-set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thridparty)
+set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thirdparty)
 
 # Build information
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
