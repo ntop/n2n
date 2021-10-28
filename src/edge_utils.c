@@ -323,11 +323,7 @@ int supernode_connect (n2n_edge_t *eee) {
                 traceEvent(TRACE_INFO, "determined local socket [%s]",
                                        sock_to_cstr(sockbuf, &local_sock));
             }
-
-#ifdef HAVE_MINIUPNP
             n2n_upnp_set_port_mapping(eee->conf.preferred_sock.port);
-#endif // HAVE_MINIUPNP
-
         }
 
         if(eee->cb.sock_opened)
@@ -344,11 +340,7 @@ void supernode_disconnect (n2n_edge_t *eee) {
     if(eee->sock >= 0) {
         closesocket(eee->sock);
         eee->sock = -1;
-
-#ifdef HAVE_MINIUPNP
         n2n_upnp_del_port_mapping(eee->conf.preferred_sock.port);
-#endif // HAVE_MINIUPNP
-
     }
 }
 

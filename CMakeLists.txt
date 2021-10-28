@@ -79,7 +79,7 @@ if(N2N_OPTION_USE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
 
 if(N2N_OPTION_USE_MINIUPNP)
-  ADD_DEFINITIONS("-DHAVE_MINIUPNP")
+  ADD_DEFINITIONS("-DN2N_HAVE_MINIUPNP")
   include_directories(${THIRD_PARTY_DIR}/miniupnp/miniupnpc/include)
   include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
 endif(N2N_OPTION_USE_MINIUPNP)

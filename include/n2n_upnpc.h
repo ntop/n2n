@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 
-#ifdef HAVE_MINIUPNP
+#ifdef N2N_HAVE_MINIUPNP
 // include only if actually wanted (and present)
 #include "miniwget.h"
 #include "miniupnpc.h"
@@ -14,7 +14,7 @@
 #include "upnperrors.h"
 #include "miniupnpcstrings.h"
 
-#endif // HAVE_MINIUPNP
+#endif // N2N_HAVE_MINIUPNP
 
 
 typedef struct IGDdatas IGdatas;
