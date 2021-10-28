@@ -3,7 +3,7 @@
 #include "n2n.h"
 
 
-#ifdef HAVE_MINIUPNP
+#ifdef N2N_HAVE_MINIUPNP
 
 /* protofix() checks if protocol is "UDP" or "TCP"
  * returns NULL if not */
@@ -109,7 +109,7 @@ static int n2n_upnp_get_port_mapping (const struct UPNPUrls *urls, const struct 
     return 0;
 }
 
-#endif // HAVE_MINIUPNP
+#endif // N2N_HAVE_MINIUPNP
 
 
 // static
@@ -120,7 +120,7 @@ static int n2n_upnp_get_port_mapping (const struct UPNPUrls *urls, const struct 
 int n2n_upnp_set_port_mapping (const uint16_t port) {
 
     int errorcode = 0;
-#ifdef HAVE_MINIUPNP
+#ifdef N2N_HAVE_MINIUPNP
     struct UPNPUrls urls;
     struct IGDdatas data;
     char lanaddr[N2N_NETMASK_STR_SIZE] = {'\0'};
@@ -164,7 +164,7 @@ int n2n_upnp_set_port_mapping (const uint16_t port) {
         traceEvent(TRACE_NORMAL, "added UDP port mapping: %s:%s -> %s:%s", externaladdr, externalport, lanaddr, lanport);
 
     FreeUPNPUrls(&urls);
-#endif // HAVE_MINIUPNP
+#endif // N2N_HAVE_MINIUPNP
 
     return errorcode;
 }
@@ -172,7 +172,7 @@ int n2n_upnp_set_port_mapping (const uint16_t port) {
 
 void n2n_upnp_del_port_mapping (const uint16_t port) {
 
-#ifdef HAVE_MINIUPNP
+#ifdef N2N_HAVE_MINIUPNP
     struct UPNPUrls urls;
     struct IGDdatas data;
     char lanaddr[N2N_NETMASK_STR_SIZE] = {'\0'};
@@ -207,7 +207,7 @@ void n2n_upnp_del_port_mapping (const uint16_t port) {
         traceEvent(TRACE_NORMAL, "deleted UDP port mapping for %s:%s", externaladdr, externalport);
 
     FreeUPNPUrls(&urls);
-#endif // HAVE_MINIUPNP
+#endif // N2N_HAVE_MINIUPNP
 
     return;
 }
