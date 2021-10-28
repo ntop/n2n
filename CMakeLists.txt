@@ -31,7 +31,7 @@ add_definitions(-DPACKAGE_OSNAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DPACKAGE_VERSION="${PACKAGE_VERSION}")
 
 # third-party directory
-set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thridparty)
+set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thirdparty)
 
 # Build information
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
