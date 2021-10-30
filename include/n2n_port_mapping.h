@@ -4,12 +4,10 @@
 #include <stdint.h>
 
 #ifdef HAVE_MINIUPNP
-// !!!
-// do we really need all of these?
-#include <miniupnpc/miniwget.h>
+// #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
-#include <miniupnpc/portlistingparse.h>
+// #include <miniupnpc/portlistingparse.h>
 #include <miniupnpc/upnperrors.h>
 
 // !!!
