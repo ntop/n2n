@@ -480,7 +480,7 @@ N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
                 sock_len = sizeof(sock);
                 msg_len = recv(socket_fd, udp_buf, N2N_PKT_BUF_SIZE, 0 /*flags*/);
 
-                // check message format, first message could be the answer to the subscription request
+                // check message format, first message could be the still buffered answer to the subscription request
                 // !!!
                 if(1 /* !!! correct message format */) {
                     // delete an eventually previous port mapping
@@ -495,7 +495,7 @@ N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
         }
     }
 
-    return 0; /* will never happen */
+    return 0; /* should never happen */
 #endif
 }
 
@@ -508,8 +508,7 @@ int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port
     // create parameter structure
     *param = (n2n_port_map_parameter_t*)calloc(1, sizeof(n2n_port_map_parameter_t));
     if(*param) {
-        // !!!
-        // - initialize values
+        // initialize
         (*param)->mgmt_port = mgmt_port;
     } else {
         traceEvent(TRACE_WARNING, "port_map_create_thread was unable to create parameter structure");
