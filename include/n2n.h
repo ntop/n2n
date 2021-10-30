@@ -155,7 +155,10 @@
 #include "sn_selection.h"
 #include "network_traffic_filter.h"
 #include "auth.h"
-#include "n2n_upnpc.h"
+
+#ifdef N2N_HAVE_MINIUPNP
+#include "n2n_port_mapping.h"
+#endif // N2N_HAVE_MINIUPNP
 
 /* ************************************** */
 
