@@ -30,8 +30,8 @@ int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn
 int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
 int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
-int upnp_create_thread (n2n_upnp_parameter_t **param, uint16_t mgmt_port);
-int upnp_cancel_thread (n2n_upnp_parameter_t *param);
+int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port);
+int port_map_cancel_thread (n2n_port_map_parameter_t *param);
 
 static const char * supernode_ip (const n2n_edge_t * eee);
 static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac, n2n_cookie_t cookie);
@@ -332,10 +332,10 @@ int supernode_connect (n2n_edge_t *eee) {
             eee->cb.sock_opened(eee);
     }
 
+    // !!! replace with mgmt port notification to listener
 #ifdef N2N_HAVE_MINIUPNP
     n2n_set_port_mapping(eee->conf.preferred_sock.port);
 #endif // N2N_HAVE_MINIUPNP
-
     return 0;
 }
 
@@ -347,6 +347,7 @@ void supernode_disconnect (n2n_edge_t *eee) {
         closesocket(eee->sock);
         eee->sock = -1;
 
+        // !!! remove -- deletion will take place along with setting a new port
 #ifdef N2N_HAVE_MINIUPNP
         n2n_del_port_mapping(eee->conf.preferred_sock.port);
 #endif // N2N_HAVE_MINIUPNP
@@ -494,8 +495,8 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
 
-    if(upnp_create_thread(&eee->upnp_parameter, eee->conf.mgmt_port) == 0) {
-        traceEvent(TRACE_NORMAL, "successfully created upnp thread");
+    if(port_map_create_thread(&eee->port_map_parameter, eee->conf.mgmt_port) == 0) {
+        traceEvent(TRACE_NORMAL, "successfully created port mapping thread");
     }
 
     eee->network_traffic_filter = create_network_traffic_filter();
@@ -1558,6 +1559,7 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         // trigger out-of-schedule DNS resolution
         eee->resolution_request = 1;
 
+        // !!! remove -- deletion will happen on mgmt port notification
 #ifdef N2N_HAVE_MINIUPNP
         n2n_del_port_mapping(eee->conf.preferred_sock.port);
 #endif // N2N_HAVE_MINIUPNP
@@ -3209,7 +3211,7 @@ int run_edge_loop (n2n_edge_t *eee) {
 void edge_term (n2n_edge_t * eee) {
 
     resolve_cancel_thread(eee->resolve_parameter);
-    upnp_cancel_thread(eee->upnp_parameter);
+    port_map_cancel_thread(eee->port_map_parameter);
 
     if(eee->sock >= 0)
         closesocket(eee->sock);
