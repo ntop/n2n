@@ -1,9 +1,9 @@
 
 #include "n2n.h"
 
-#ifdef N2N_HAVE_MINIUPNP
+#ifdef HAVE_MINIUPNP
 
-
+#if 0 /* unused code */
 /* protofix() checks if protocol is "UDP" or "TCP"
  * returns NULL if not */
 static const char *protofix (const char *proto) {
@@ -23,7 +23,7 @@ static const char *protofix (const char *proto) {
 
     return NULL;
 }
-
+#endif
 
 
 static int n2n_UPNP_GetValidIGD (struct UPNPUrls *urls, struct IGDdatas *data, char *lanaddr, char *externaladdr) {
@@ -74,7 +74,8 @@ static int n2n_UPNP_GetValidIGD (struct UPNPUrls *urls, struct IGDdatas *data, c
 }
 
 
-static int n2n_upnp_get_port_mapping (const struct UPNPUrls *urls, const struct IGDdatas *data, const uint16_t port, const char *proto,
+#if 0 /* unused function */
+static int n2n_upnp_get_port_mapping (struct UPNPUrls *urls, const struct IGDdatas *data, const uint16_t port, const char *proto,
                                       char *lanaddr, char *lanport, char *description, char *enabled, char *duration) {
 
     int errorcode = 0;
@@ -82,7 +83,7 @@ static int n2n_upnp_get_port_mapping (const struct UPNPUrls *urls, const struct 
     // struct IGDdatas data;
     // char lanaddr[N2N_NETMASK_STR_SIZE] = {'\0'};
     // char lanport[6] = {'\0'};
-    char externaladdr[N2N_NETMASK_STR_SIZE] = {'\0'};
+    // char externaladdr[N2N_NETMASK_STR_SIZE] = {'\0'};
     char externalport[6] = {'\0'};
     // char description[64] = {'\0'};
     // char enabled[16] = {'\0'};
@@ -110,10 +111,11 @@ static int n2n_upnp_get_port_mapping (const struct UPNPUrls *urls, const struct 
     }
 
 end:
-    FreeUPNPUrls(&urls);
+    FreeUPNPUrls(urls);
 
     return errorcode;
 }
+#endif
 
 
 static int n2n_upnp_set_port_mapping (const uint16_t port) {
@@ -174,7 +176,7 @@ static int n2n_upnp_del_port_mapping (const uint16_t port) {
     struct UPNPUrls urls;
     struct IGDdatas data;
     char lanaddr[N2N_NETMASK_STR_SIZE] = {'\0'};
-    char lanport[6] = {'\0'};
+    // char lanport[6] = {'\0'};
     char externaladdr[N2N_NETMASK_STR_SIZE] = {'\0'};
     char externalport[6] = {'\0'};
     int ret = 0;
@@ -214,6 +216,10 @@ end:
     return errorcode;
 }
 
+#endif // HAVE_MINIUPNP
+
+
+#ifdef HAVE_NATPMP
 
 static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *externaladdr) {
 
@@ -348,11 +354,11 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
     natpmp_t natpmp;
     int ret = 0;
     char lanaddr[N2N_NETMASK_STR_SIZE] = {'\0'};
-    uint16_t lanport = 0;
+    // uint16_t lanport = 0;
     char externaladdr[N2N_NETMASK_STR_SIZE] = {'\0'};
     uint16_t externalport = 0;
 
-    lanport = port;
+    // lanport = port;
     externalport = port;
 
     ret = n2n_natpmp_initialization(&natpmp, lanaddr, externaladdr);
@@ -383,7 +389,7 @@ end:
     return errorcode;
 }
 
-#endif // N2N_HAVE_MINIUPNP
+#endif // HAVE_NATPMP
 
 
 // static
@@ -391,27 +397,32 @@ end:
 // public
 
 
+// !!! make static
 void n2n_set_port_mapping (const uint16_t port) {
 
-#ifdef N2N_HAVE_MINIUPNP
-    int errorcode = 0;
-
+#ifdef HAVE_NATPMP
     // since the NAT-PMP protocol is more concise than UPnP, NAT-PMP is preferred.
-    errorcode = n2n_natpmp_set_port_mapping(port);
-    if(errorcode != 0)
+    if(n2n_natpmp_set_port_mapping(port))
+#endif // HAVE_NATPMP
+    {
+#ifdef HAVE_MINIUPNP
         n2n_upnp_set_port_mapping(port);
-#endif // N2N_HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP
+    }
 }
 
 
+// !!! make static
 void n2n_del_port_mapping (const uint16_t port) {
 
-#ifdef N2N_HAVE_MINIUPNP
-    int errorcode = 0;
-    errorcode = n2n_natpmp_del_port_mapping(port);
-    if(errorcode != 0)
+#ifdef HAVE_NATPMP
+    if(n2n_natpmp_del_port_mapping(port))
+#endif // HAVE_NATPMP
+    {
+#ifdef HAVE_MINIUPNP
         n2n_upnp_del_port_mapping(port);
-#endif // N2N_HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP
+    }
 }
 
 
@@ -445,7 +456,7 @@ N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
     sock_tmp.port = param->mgmt_port;
     sock_len = sizeof(sock);
     fill_sockaddr((struct sockaddr*)&sock, sock_len, &sock_tmp);
-    connect(socket_fd, &sock, sock_len);
+    connect(socket_fd, (struct sockaddr*)&sock, sock_len);
 
     // prepare a subscription request in 'udp_buf' of length 'msg_len'
     // !!! dummy
