@@ -1,7 +1,7 @@
-#ifdef N2N_HAVE_MINIUPNP
 
 #include "n2n.h"
 
+#ifdef N2N_HAVE_MINIUPNP
 
 
 /* protofix() checks if protocol is "UDP" or "TCP"
@@ -410,6 +410,7 @@ void n2n_del_port_mapping(const uint16_t port)
 }
 
 
+#endif // N2N_HAVE_MINIUPNP
 
 
 
@@ -481,4 +482,3 @@ void upnp_cancel_thread (n2n_upnp_parameter_t *param) {
 
 
 
-#endif // N2N_HAVE_MINIUPNP
