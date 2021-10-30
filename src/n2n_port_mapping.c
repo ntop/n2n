@@ -408,7 +408,6 @@ void n2n_del_port_mapping (const uint16_t port) {
 
 #ifdef N2N_HAVE_MINIUPNP
     int errorcode = 0;
-
     errorcode = n2n_natpmp_del_port_mapping(port);
     if(errorcode != 0)
         n2n_upnp_del_port_mapping(port);
@@ -428,21 +427,32 @@ N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
     struct timeval wait_time;
     int ret = 0;
     char udp_buf[N2N_PKT_BUF_SIZE];
-    ssize_t recv_len;
-    struct sockaddr_in sender_sock;
+    ssize_t msg_len;
+    uint32_t addr_tmp = htonl(INADDR_LOOPBACK);
+    n2n_sock_t sock_tmp;
+    struct sockaddr_in sock;
     socklen_t sock_len;
 
-    // open a new socket and connect to local mgmt port
-    socket_fd = open_socket(0 /* any port*/, INADDR_LOOPBACK, 0 /* UDP */);
+    // open a new socket ...
+    socket_fd = open_socket(0 /* no specific port */, INADDR_LOOPBACK, 0 /* UDP */);
     if(socket_fd < 0) {
         traceEvent(TRACE_ERROR, "port_map_thread failed to open a socket to management port");
         return 0;
     }
-    // prepare a subscription request
-    // !!!
+    // ... and connect to local mgmt port
+    sock_tmp.family = AF_INET;
+    memcpy(&sock_tmp.addr.v4, &addr_tmp, IPV4_SIZE);
+    sock_tmp.port = param->mgmt_port;
+    sock_len = sizeof(sock);
+    fill_sockaddr((struct sockaddr*)&sock, sock_len, &sock_tmp);
+    connect(socket_fd, &sock, sock_len);
 
-    // send subscribtion request to management port
-    // !!!
+    // prepare a subscription request in 'udp_buf' of length 'msg_len'
+    // !!! dummy
+    udp_buf[0] = '\n';
+    msg_len = 1;
+    send(socket_fd, udp_buf, msg_len, 0 /*flags*/);
+    // note: 'msg_len' and 'sock' get re-used hereafter
 
     while(1) {
         FD_ZERO(&socket_mask);
@@ -456,12 +466,10 @@ N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
         if(ret > 0) {
             if(FD_ISSET(socket_fd, &socket_mask)) {
                 // get the data
-                recv_len = recvfrom(socket_fd, udp_buf, N2N_PKT_BUF_SIZE, 0 /*flags*/,
-                                    (struct sockaddr *) &sender_sock, (socklen_t *) &sock_len);
+                sock_len = sizeof(sock);
+                msg_len = recv(socket_fd, udp_buf, N2N_PKT_BUF_SIZE, 0 /*flags*/);
 
-                // REVISIT: do we need to make sure that sender actually is localhost mgmt port?
-
-                // check message format
+                // check message format, first message could be the answer to the subscription request
                 // !!!
                 if(1 /* !!! correct message format */) {
                     // delete an eventually previous port mapping
