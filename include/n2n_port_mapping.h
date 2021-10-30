@@ -3,16 +3,28 @@
 
 #include <stdint.h>
 
-#include "miniwget.h"
-#include "miniupnpc.h"
-#include "upnpcommands.h"
-#include "portlistingparse.h"
-#include "upnperrors.h"
-#include "miniupnpcstrings.h"
+#ifdef HAVE_MINIUPNP
+// !!!
+// do we really need all of these?
+#include <miniupnpc/miniwget.h>
+#include <miniupnpc/miniupnpc.h>
+#include <miniupnpc/upnpcommands.h>
+#include <miniupnpc/portlistingparse.h>
+#include <miniupnpc/upnperrors.h>
 
+// !!!
+// #include "miniupnpcstrings.h"
+// is said to equal
+//     #define OS_STRING "Windows"
+//     #define MINIUPNPC_VERSION_STRING "2.0"
+//     #define UPNP_VERSION_STRING "UPnP/1.1"
+// but does not seem to be required at all
+#endif // HAVE_MINIUPNP
+
+
+#ifdef HAVE_NATPMP
 #include "natpmp.h"
-
-
+#endif // HAVE_NATPMP
 
 
 void n2n_set_port_mapping (const uint16_t port);

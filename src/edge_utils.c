@@ -333,9 +333,9 @@ int supernode_connect (n2n_edge_t *eee) {
     }
 
     // !!! replace with mgmt port notification to listener
-#ifdef N2N_HAVE_MINIUPNP
+#ifdef HAVE_MINIUPNP
     n2n_set_port_mapping(eee->conf.preferred_sock.port);
-#endif // N2N_HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP
     return 0;
 }
 
@@ -348,9 +348,9 @@ void supernode_disconnect (n2n_edge_t *eee) {
         eee->sock = -1;
 
         // !!! remove -- deletion will take place along with setting a new port
-#ifdef N2N_HAVE_MINIUPNP
+#ifdef HAVE_MINIUPNP
         n2n_del_port_mapping(eee->conf.preferred_sock.port);
-#endif // N2N_HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP
     }
 }
 
@@ -1560,9 +1560,9 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         eee->resolution_request = 1;
 
         // !!! remove -- deletion will happen on mgmt port notification
-#ifdef N2N_HAVE_MINIUPNP
+#ifdef HAVE_MINIUPNP
         n2n_del_port_mapping(eee->conf.preferred_sock.port);
-#endif // N2N_HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
         // closing and re-opening the socket allows for re-establishing communication
