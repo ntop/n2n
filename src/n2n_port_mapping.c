@@ -386,6 +386,9 @@ static int n2n_natpmp_del_port_mapping(const uint16_t port) {
     return errorcode;
 }
 
+#endif // N2N_HAVE_MINIUPNP
+
+
 // static
 // ----------------------------------------------------------------------------------------------------
 // public
@@ -393,24 +396,25 @@ static int n2n_natpmp_del_port_mapping(const uint16_t port) {
 
 void n2n_set_port_mapping(const uint16_t port)
 {
+#ifdef N2N_HAVE_MINIUPNP
     int errorcode = 0;
     // since the NAT-PMP protocol is more concise than UPnP, NAT-PMP is preferred.
     errorcode = n2n_natpmp_set_port_mapping(port);
     if (errorcode != 0)
         n2n_upnp_set_port_mapping(port);
+#endif // N2N_HAVE_MINIUPNP
 }
 
 
 void n2n_del_port_mapping(const uint16_t port)
 {
+#ifdef N2N_HAVE_MINIUPNP
     int errorcode = 0;
     errorcode = n2n_natpmp_del_port_mapping(port);
     if (errorcode != 0)
         n2n_upnp_del_port_mapping(port);
-}
-
-
 #endif // N2N_HAVE_MINIUPNP
+}
 
 
 
@@ -422,14 +426,60 @@ N2N_THREAD_RETURN_DATATYPE upnp_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
 #ifdef HAVE_PTHREAD
     n2n_upnp_parameter_t *param = (n2n_upnp_parameter_t*)p;
+    SOCKET socket_fd;
+    fd_set socket_mask;
+    struct timeval wait_time;
+    int ret = 0;
+    char udp_buf[N2N_PKT_BUF_SIZE];
+    ssize_t recv_len;
+    struct sockaddr_in sender_sock;
+    socklen_t sock_len;
 
+    // open a new socket and connect to local mgmt port
+    socket_fd = open_socket(0 /* any port*/, INADDR_LOOPBACK, 0 /* UDP */);
+    if(socket_fd < 0) {
+        traceEvent(TRACE_ERROR, "upnp_thread failed to open a socket to management port");
+        return 0;
+    }
+    // prepare a subscription request
     // !!!
-    // - open a new socket and connect to local mgmt port
-    // - subscribe to mgmt port for port change events
-    // - initialize upnp
-    // - loop select/waiting for events
-    // - handle events accordingly (delete old port if applicable, set new port)
-    return 0; // !!! dummy
+
+    // send subscribtion request to management port
+    // !!!
+
+    while(1) {
+        FD_ZERO(&socket_mask);
+        FD_SET(socket_fd, &socket_mask);
+
+        wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS;
+        wait_time.tv_usec = 0;
+
+        ret = select(socket_fd + 1, &socket_mask, NULL, NULL, &wait_time);
+
+        if(ret > 0) {
+            if(FD_ISSET(socket_fd, &socket_mask)) {
+                // get the data
+                recv_len = recvfrom(socket_fd, udp_buf, N2N_PKT_BUF_SIZE, 0 /*flags*/,
+                                    (struct sockaddr *) &sender_sock, (socklen_t *) &sock_len);
+
+                // REVISIT: do we need to make sure that sender actually is localhost mgmt port?
+
+                // check message format
+                // !!!
+                if(1 /* !!! correct message format */) {
+                    // delete an eventually previous port mapping
+                    if(param->upnp_port)
+                        n2n_del_port_mapping(param->upnp_port);
+                    // extract port from message and set accordingly if valid
+                    param->upnp_port = 0; // !!!
+                    if(param->upnp_port)
+                        n2n_set_port_mapping(param->upnp_port);
+                }
+            }
+        }
+    }
+
+    return 0; /* will never happen */
 #endif
 }
 
@@ -466,19 +516,8 @@ void upnp_cancel_thread (n2n_upnp_parameter_t *param) {
 
 #ifdef HAVE_PTHREAD
     pthread_cancel(param->id);
-    // !!!
-    // - delete old port if applicable
+    if(param->upnp_port)
+        n2n_del_port_mapping(param->upnp_port);
     free(param);
 #endif
 }
-
-
-
-
-
-
-
-
-
-
-
