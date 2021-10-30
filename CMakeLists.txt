@@ -46,7 +46,7 @@ OPTION(N2N_OPTION_USE_PTHREAD "USE PTHREAD Library" ON)
 OPTION(N2N_OPTION_USE_OPENSSL "USE OPENSSL Library" OFF)
 OPTION(N2N_OPTION_USE_PCAPLIB "USE PCAP Library" OFF)
 OPTION(N2N_OPTION_USE_ZSTD "USE ZSTD Library" OFF)
-OPTION(N2N_OPTION_USE_MINIUPNP "USE MINIUPNP Library" ON)
+OPTION(N2N_OPTION_USE_PORTMAPPING "USE MINIUPNP and NATPMP Libraries" ON)
 
 
 if(N2N_OPTION_USE_PTHREAD)
@@ -55,7 +55,7 @@ if(N2N_OPTION_USE_PTHREAD)
     ADD_DEFINITIONS("-DHAVE_PTHREAD")
   else()
     MESSAGE(WARNING "libpthread not found.")
-    set(N2N_OPTION_USE_PTHREAD OFF)   
+    set(N2N_OPTION_USE_PTHREAD OFF)
   endif(PTHREAD_LIB)
 endif(N2N_OPTION_USE_PTHREAD)
 
@@ -83,12 +83,13 @@ if(N2N_OPTION_USE_ZSTD)
   add_definitions(-DN2N_HAVE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
 
-if(N2N_OPTION_USE_MINIUPNP)
+if(N2N_OPTION_USE_PORTMAPPING)
   ADD_DEFINITIONS("-DHAVE_MINIUPNP")
+  ADD_DEFINITIONS("-DHAVE_NATPMP")
   include_directories(${THIRD_PARTY_DIR}/miniupnp/miniupnpc/include)
   include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
   include_directories(${THIRD_PARTY_DIR}/libnatpmp)
-endif(N2N_OPTION_USE_MINIUPNP)
+endif(N2N_OPTION_USE_PORTMAPPING)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
@@ -100,7 +101,7 @@ if (DEFINED UNIX)
 # None
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
-# Debug 
+# Debug
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Release
@@ -171,13 +172,13 @@ if(N2N_OPTION_USE_ZSTD)
   target_link_libraries(n2n zstd)
 endif(N2N_OPTION_USE_ZSTD)
 
-if(N2N_OPTION_USE_MINIUPNP)
+if(N2N_OPTION_USE_PORTMAPPING)
   add_subdirectory(${THIRD_PARTY_DIR}/miniupnp/miniupnpc lib_miniupnpc)
   link_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
   add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
   link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
   target_link_libraries(n2n libminiupnpc-static natpmp)
-endif(N2N_OPTION_USE_MINIUPNP)
+endif(N2N_OPTION_USE_PORTMAPPING)
 
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
