@@ -82,6 +82,7 @@ if(N2N_OPTION_USE_MINIUPNP)
   ADD_DEFINITIONS("-DN2N_HAVE_MINIUPNP")
   include_directories(${THIRD_PARTY_DIR}/miniupnp/miniupnpc/include)
   include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
+  include_directories(${THIRD_PARTY_DIR}/libnatpmp)
 endif(N2N_OPTION_USE_MINIUPNP)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
@@ -149,7 +150,7 @@ add_library(n2n STATIC
         src/sn_selection.c
         src/auth.c
         src/curve25519.c
-        src/n2n_upnpc.c)
+        src/n2n_port_mapping.c)
 
 
 if(N2N_OPTION_USE_PTHREAD)
@@ -168,7 +169,9 @@ endif(N2N_OPTION_USE_ZSTD)
 if(N2N_OPTION_USE_MINIUPNP)
   add_subdirectory(${THIRD_PARTY_DIR}/miniupnp/miniupnpc lib_miniupnpc)
   link_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
-  target_link_libraries(n2n libminiupnpc-static)
+  add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
+  link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
+  target_link_libraries(n2n libminiupnpc-static natpmp)
 endif(N2N_OPTION_USE_MINIUPNP)
 
 if(DEFINED WIN32)

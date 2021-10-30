@@ -332,7 +332,9 @@ int supernode_connect (n2n_edge_t *eee) {
             eee->cb.sock_opened(eee);
     }
 
-    n2n_upnp_set_port_mapping(eee->conf.preferred_sock.port);
+#ifdef N2N_HAVE_MINIUPNP
+    n2n_set_port_mapping(eee->conf.preferred_sock.port);
+#endif // N2N_HAVE_MINIUPNP
 
     return 0;
 }
@@ -344,7 +346,10 @@ void supernode_disconnect (n2n_edge_t *eee) {
     if(eee->sock >= 0) {
         closesocket(eee->sock);
         eee->sock = -1;
-        n2n_upnp_del_port_mapping(eee->conf.preferred_sock.port);
+
+#ifdef N2N_HAVE_MINIUPNP
+        n2n_del_port_mapping(eee->conf.preferred_sock.port);
+#endif // N2N_HAVE_MINIUPNP
     }
 }
 
@@ -1553,7 +1558,9 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         // trigger out-of-schedule DNS resolution
         eee->resolution_request = 1;
 
-        n2n_upnp_del_port_mapping(eee->conf.preferred_sock.port);
+#ifdef N2N_HAVE_MINIUPNP
+        n2n_del_port_mapping(eee->conf.preferred_sock.port);
+#endif // N2N_HAVE_MINIUPNP
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
         // closing and re-opening the socket allows for re-establishing communication
