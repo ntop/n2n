@@ -323,12 +323,13 @@ int supernode_connect (n2n_edge_t *eee) {
                 traceEvent(TRACE_INFO, "determined local socket [%s]",
                                        sock_to_cstr(sockbuf, &local_sock));
             }
-            n2n_upnp_set_port_mapping(eee->conf.preferred_sock.port);
         }
 
         if(eee->cb.sock_opened)
             eee->cb.sock_opened(eee);
     }
+
+    n2n_upnp_set_port_mapping(eee->conf.preferred_sock.port);
 
     return 0;
 }
@@ -1541,10 +1542,11 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         sn_selection_sort(&(eee->conf.supernodes));
         eee->curr_sn = eee->conf.supernodes;
         traceEvent(TRACE_WARNING, "supernode not responding, now trying [%s]", supernode_ip(eee));
-        supernode_connect(eee);
         reset_sup_attempts(eee);
         // trigger out-of-schedule DNS resolution
         eee->resolution_request = 1;
+
+        n2n_upnp_del_port_mapping(eee->conf.preferred_sock.port);
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
         // closing and re-opening the socket allows for re-establishing communication
@@ -1569,9 +1571,9 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
                 }
             }
 
-            supernode_connect(eee);
             traceEvent(TRACE_DEBUG, "reconnected to supernode");
         }
+        supernode_connect(eee);
 
     } else {
         --(eee->sup_attempts);
