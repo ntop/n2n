@@ -419,10 +419,10 @@ void n2n_del_port_mapping (const uint16_t port) {
 // ----------------------------------------------------------------------------------------------------
 
 
-N2N_THREAD_RETURN_DATATYPE upnp_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
+N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
 #ifdef HAVE_PTHREAD
-    n2n_upnp_parameter_t *param = (n2n_upnp_parameter_t*)p;
+    n2n_port_map_parameter_t *param = (n2n_port_map_parameter_t*)p;
     SOCKET socket_fd;
     fd_set socket_mask;
     struct timeval wait_time;
@@ -435,7 +435,7 @@ N2N_THREAD_RETURN_DATATYPE upnp_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
     // open a new socket and connect to local mgmt port
     socket_fd = open_socket(0 /* any port*/, INADDR_LOOPBACK, 0 /* UDP */);
     if(socket_fd < 0) {
-        traceEvent(TRACE_ERROR, "upnp_thread failed to open a socket to management port");
+        traceEvent(TRACE_ERROR, "port_map_thread failed to open a socket to management port");
         return 0;
     }
     // prepare a subscription request
@@ -465,12 +465,12 @@ N2N_THREAD_RETURN_DATATYPE upnp_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
                 // !!!
                 if(1 /* !!! correct message format */) {
                     // delete an eventually previous port mapping
-                    if(param->upnp_port)
-                        n2n_del_port_mapping(param->upnp_port);
+                    if(param->mapped_port)
+                        n2n_del_port_mapping(param->mapped_port);
                     // extract port from message and set accordingly if valid
-                    param->upnp_port = 0; // !!!
-                    if(param->upnp_port)
-                        n2n_set_port_mapping(param->upnp_port);
+                    param->mapped_port = 0; // !!!
+                    if(param->mapped_port)
+                        n2n_set_port_mapping(param->mapped_port);
                 }
             }
         }
@@ -481,26 +481,26 @@ N2N_THREAD_RETURN_DATATYPE upnp_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 }
 
 
-int upnp_create_thread (n2n_upnp_parameter_t **param, uint16_t mgmt_port) {
+int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port) {
 
 #ifdef HAVE_PTHREAD
     int ret;
 
     // create parameter structure
-    *param = (n2n_upnp_parameter_t*)calloc(1, sizeof(n2n_upnp_parameter_t));
+    *param = (n2n_port_map_parameter_t*)calloc(1, sizeof(n2n_port_map_parameter_t));
     if(*param) {
         // !!!
         // - initialize values
         (*param)->mgmt_port = mgmt_port;
     } else {
-        traceEvent(TRACE_WARNING, "upnp_create_thread was unable to create parameter structure");
+        traceEvent(TRACE_WARNING, "port_map_create_thread was unable to create parameter structure");
         return -1;
     }
 
     // create thread
-    ret = pthread_create(&((*param)->id), NULL, upnp_thread, (void *)*param);
+    ret = pthread_create(&((*param)->id), NULL, port_map_thread, (void *)*param);
     if(ret) {
-        traceEvent(TRACE_WARNING, "upnp_create_thread failed to create upnp thread with error number %d", ret);
+        traceEvent(TRACE_WARNING, "port_map_create_thread failed to create port mapping thread with error number %d", ret);
         return -1;
     }
 
@@ -509,12 +509,12 @@ int upnp_create_thread (n2n_upnp_parameter_t **param, uint16_t mgmt_port) {
 }
 
 
-void upnp_cancel_thread (n2n_upnp_parameter_t *param) {
+void port_map_cancel_thread (n2n_port_map_parameter_t *param) {
 
 #ifdef HAVE_PTHREAD
     pthread_cancel(param->id);
-    if(param->upnp_port)
-        n2n_del_port_mapping(param->upnp_port);
+    if(param->mapped_port)
+        n2n_del_port_mapping(param->mapped_port);
     free(param);
 #endif
 }

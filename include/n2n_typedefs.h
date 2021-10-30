@@ -637,15 +637,15 @@ typedef struct n2n_resolve_parameter {
 /* *************************************************** */
 
 
-// structure to hold upnp thread's parameters
-typedef struct n2n_upnp_parameter {
+// structure to hold port mapping thread's parameters
+typedef struct n2n_port_map_parameter {
 #ifdef HAVE_PTHREAD
     pthread_t               id;            /* thread id */
  /* pthread_mutex_t         access;           mutex for shared access, not used yet, REVISIT when mgmt port can change at runtime */
 #endif
     uint16_t                mgmt_port;
-    uint16_t                upnp_port;
-} n2n_upnp_parameter_t;
+    uint16_t                mapped_port;
+} n2n_port_map_parameter_t;
 
 
 /* *************************************************** */
@@ -747,7 +747,7 @@ struct n2n_edge {
     n2n_resolve_parameter_t          *resolve_parameter;                 /**< Pointer to name resolver's parameter block */
     uint8_t                          resolution_request;                 /**< Flag an immediate DNS resolution request */
 
-    n2n_upnp_parameter_t             *upnp_parameter;                    /**< Pointer to upnp thread's parameter block */
+    n2n_port_map_parameter_t         *port_map_parameter;                /**< Pointer to port mapping thread's parameter block */
 
     n2n_tuntap_priv_config_t         tuntap_priv_conf;                   /**< Tuntap config */
 
