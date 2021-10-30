@@ -213,4 +213,59 @@ void n2n_upnp_del_port_mapping (const uint16_t port) {
 }
 
 
+// ----------------------------------------------------------------------------------------------------
 
+
+N2N_THREAD_RETURN_DATATYPE upnp_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
+
+#ifdef HAVE_PTHREAD
+    n2n_upnp_parameter_t *param = (n2n_upnp_parameter_t*)p;
+
+    // !!!
+    // - open a new socket and connect to local mgmt port
+    // - subscribe to mgmt port for port change events
+    // - initialize upnp
+    // - loop select/waiting for events
+    // - handle events accordingly (delete old port if applicable, set new port)
+    return 0; // !!! dummy
+#endif
+}
+
+
+int upnp_create_thread (n2n_upnp_parameter_t **param, uint16_t mgmt_port) {
+
+#ifdef HAVE_PTHREAD
+    int ret;
+
+    // create parameter structure
+    *param = (n2n_upnp_parameter_t*)calloc(1, sizeof(n2n_upnp_parameter_t));
+    if(*param) {
+        // !!!
+        // - initialize values
+        (*param)->mgmt_port = mgmt_port;
+    } else {
+        traceEvent(TRACE_WARNING, "upnp_create_thread was unable to create parameter structure");
+        return -1;
+    }
+
+    // create thread
+    ret = pthread_create(&((*param)->id), NULL, upnp_thread, (void *)*param);
+    if(ret) {
+        traceEvent(TRACE_WARNING, "upnp_create_thread failed to create upnp thread with error number %d", ret);
+        return -1;
+    }
+
+    return 0;
+#endif
+}
+
+
+void upnp_cancel_thread (n2n_upnp_parameter_t *param) {
+
+#ifdef HAVE_PTHREAD
+    pthread_cancel(param->id);
+    // !!!
+    // - delete old port if applicable
+    free(param);
+#endif
+}
