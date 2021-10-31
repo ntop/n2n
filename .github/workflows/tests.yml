@@ -514,8 +514,9 @@ jobs:
       #
       - name: Checkout
         run: |
-          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY $GITHUB_WORKSPACE
-          echo git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY $GITHUB_WORKSPACE
+          git init .
+          git remote add origin GITHUB_SERVER_URL/$GITHUB_REPOSITORY
+          git fetch --tags origin +$GITHUB_SHA:$GITHUB_REF
 
       - name: Get Tag Type
         run: |
