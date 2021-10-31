@@ -513,6 +513,9 @@ jobs:
       # - the annodated tag is visible in the "commit" action
       # - but it looks like a lightweight tag in the "tag" action
       #
+      # See https://github.com/actions/checkout/issues/290 for a whole lot of
+      # 'no comment' from github
+      #
       - name: Checkout
         run: |
           git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY .
