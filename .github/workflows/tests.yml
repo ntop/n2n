@@ -502,6 +502,8 @@ jobs:
         run: |
           TAGTYPE=$(git cat-file -t $GITHUB_REF)
           echo TAGTYPE=$TAGTYPE
+          echo REF=$GITHUB_REF
+          git for-each-ref refs/tags
           echo "::set-output name=TAGTYPE::$TAGTYPE"
 
       - name: Fetch all Artifacts
