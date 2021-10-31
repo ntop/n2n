@@ -485,6 +485,7 @@ jobs:
   #
   upload_release:
     name: Upload Release Assets
+    if: startsWith(github.ref, 'refs/tags/')
     needs:
       - package_dpkg
       - package_rpm
@@ -504,7 +505,7 @@ jobs:
       #
       # Normally, `git for-each-ref refs/tags` will show annotated tags
       # with a type of "tag" and lightweight with type "commit".
-      # But not with this checkout
+      # But not with the actions/checkout@v2 checkout
       #
       # Additionally, it seems that if you push both a commit and an annotated
       # tag at the same time, two workflow actions start (as expected), and
@@ -515,36 +516,12 @@ jobs:
       - name: Checkout
         run: |
           git init .
-          git remote add origin $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
-          git fetch --tags origin +$GITHUB_SHA:$GITHUB_REF
+          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
 
       - name: Get Tag Type
         run: |
-          echo ================Debug
-          echo ls .git/refs/heads
-          ls .git/refs/heads
-          echo ls .git/refs/tags
-          ls .git/refs/tags
-          echo ================
           TYPE=$(git cat-file -t $GITHUB_REF)
           echo "::set-output name=TAGTYPE::$TYPE"
-
-          echo ================Debug
-          echo REF=$GITHUB_REF
-          echo TAGTYPE=$TYPE
-          echo ================
-          echo git for-each-ref refs/tags
-          git for-each-ref refs/tags
-          echo ================
-          echo git for-each-ref refs/heads
-          git for-each-ref refs/heads
-          echo ================
-          echo git cat-file $TYPE $GITHUB_REF
-          git cat-file $TYPE $GITHUB_REF
-          echo ================
-          echo cat .git/$GITHUB_REF || true
-          cat .git/$GITHUB_REF || true
-          echo ================
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
