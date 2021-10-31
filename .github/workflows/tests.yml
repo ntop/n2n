@@ -503,11 +503,18 @@ jobs:
       # normally, `git for-each-ref refs/tags` will show annotated tags
       # with a type of "tag" and lightweight with type "commit".
       # But not in the github runner environment...
+      #
+      # Additionally, it seems that if you push both a commit and an annotated
+      # tag at the same time, two workflow actions start (as expected), and
+      # the annotated tag is visible in the "commit" action, but looks like a
+      # lightweight tag in the "tag" action
+      #
       # So, instead of:
       #    TAGTYPE=$(git cat-file -t $GITHUB_REF)
-      # We build a workaround
+      # We try to build a workaround
       - name: Get Tag Type
         run: |
+          git pull --tags
           if git cat-file tag $GITHUB_REF; then TYPE=tag; else TYPE=commit; fi
           echo "::set-output name=TAGTYPE::$TYPE"
 
