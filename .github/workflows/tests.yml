@@ -251,6 +251,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install packages needed for build
         run: |
           sudo apt-get update
@@ -293,6 +297,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install packages needed for build
         run: |
           sudo apt-get install rpm
@@ -328,6 +336,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Configure and Build
         shell: bash
         run: |
@@ -359,6 +371,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
 
       - name: Install packages needed for build
         run: |
@@ -402,6 +418,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
 
       - name: Install packages needed for build
         run: |
@@ -452,6 +472,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install cross compiler
         run: |
           sudo apt-get update
@@ -481,8 +505,15 @@ jobs:
 
   # Given the clearly documented use of annotated tags to signal releases,
   # it seems strange that there is no simple way to trigger actions if the
-  # tag is annotated.  So we need to jump through some hoops.
+  # tag is annotated.  So we need to jump through some extra hoops.
   #
+  # Looking at https://github.com/actions/checkout/issues/290 seems to show
+  # that github just doesnt care about how git expects annotated tags to be
+  # used.
+  #
+  # This workflow has added a `git fetch --force --tags` to every job that
+  # needs to have working tags
+
   upload_release:
     name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
@@ -496,9 +527,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get Tag Type
+      - uses: actions/checkout@v2
+
+      - name: Fix Checkout
         run: |
-          echo '::set-output name=TAGTYPE::$(git cat-file -t $GITHUB_REF)'
+          git fetch --force --tags
+
+      - name: Get Tag Type
+        id: get_tagtype
+        run: |
+          TYPE=$(git cat-file -t $GITHUB_REF)
+          echo "::set-output name=TAGTYPE::$TYPE"
+          echo ==========
+          echo REF=$GITHUB_REF
+          echo TAGTYPE=$TYPE
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
