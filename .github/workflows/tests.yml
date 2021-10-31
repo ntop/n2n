@@ -512,7 +512,7 @@ jobs:
       # we do a force pull of the repo to get the correct tag details.
       - name: Get Tag Type
         run: |
-          git pull --tags --force origin HEAD
+          git pull --no-rebase --tags --force origin HEAD
           TYPE=$(git cat-file -t $GITHUB_REF)
           echo "::set-output name=TAGTYPE::$TYPE"
 
