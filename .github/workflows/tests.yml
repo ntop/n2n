@@ -515,9 +515,16 @@ jobs:
       - name: Checkout
         run: |
           git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY $GITHUB_WORKSPACE
+          echo git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY $GITHUB_WORKSPACE
 
       - name: Get Tag Type
         run: |
+          echo ================Debug
+          echo ls .git/refs/heads
+          ls .git/refs/heads
+          echo ls .git/refs/tags
+          ls .git/refs/tags
+          echo ================
           TYPE=$(git cat-file -t $GITHUB_REF)
           echo "::set-output name=TAGTYPE::$TYPE"
 
@@ -534,8 +541,8 @@ jobs:
           echo git cat-file $TYPE $GITHUB_REF
           git cat-file $TYPE $GITHUB_REF
           echo ================
-          echo cat .git/$GITHUB_REF
-          cat .git/$GITHUB_REF
+          echo cat .git/$GITHUB_REF || true
+          cat .git/$GITHUB_REF || true
           echo ================
 
       - name: Fetch all Artifacts
