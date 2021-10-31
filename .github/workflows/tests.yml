@@ -515,8 +515,7 @@ jobs:
       #
       - name: Checkout
         run: |
-          git init .
-          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
+          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY .
 
       - name: Get Tag Type
         run: |
