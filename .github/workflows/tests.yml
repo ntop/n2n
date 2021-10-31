@@ -514,6 +514,41 @@ jobs:
   # This workflow has added a `git fetch --force --tags` to every job that
   # needs to have working tags
   #
+  get_tagtype:
+    name: Get type of Tag
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Debug data for Get Tag Type
+        run: |
+          TYPE=$(git cat-file -t $GITHUB_REF)
+          echo ==========
+          echo REF=$GITHUB_REF
+          echo TAGTYPE=$GITHUB_REF
+          echo ==========
+          echo git cat-file $TYPE $GITHUB_REF
+          git cat-file $TYPE $GITHUB_REF
+          echo ==========
+          echo ls .git/refs/heads
+          ls .git/refs/heads
+          echo ==========
+          echo ls .git/refs/tags
+          ls .git/refs/tags
+          echo ==========
+          echo git for-each-ref refs/heads
+          git for-each-ref refs/heads
+          echo ==========
+          echo git for-each-ref refs/tags
+          git for-each-ref refs/tags
+
+
   upload_release:
     name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
@@ -534,27 +569,13 @@ jobs:
           git fetch --force --tags
 
       - name: Get Tag Type
+        id: get_tagtype
         run: |
           TYPE=$(git cat-file -t $GITHUB_REF)
           echo "::set-output name=TAGTYPE::$TYPE"
           echo ==========
           echo REF=$GITHUB_REF
           echo TAGTYPE=$GITHUB_REF
-          echo ==========
-          echo git cat-file $GITHUB_REF
-          git cat-file $GITHUB_REF
-          echo ==========
-          echo ls .git/refs/heads
-          ls .git/refs/heads
-          echo ==========
-          echo ls .git/refs/tags
-          ls .git/refs/tags
-          echo ==========
-          echo git for-each-ref refs/heads
-          git for-each-ref refs/heads
-          echo ==========
-          echo git for-each-ref refs/tags
-          git for-each-ref refs/tags
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
