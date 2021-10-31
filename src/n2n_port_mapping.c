@@ -297,6 +297,7 @@ static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *ext
     ret = sendpublicaddressrequest(natpmp);
     if(ret != 2) {
         traceEvent(TRACE_WARNING, "NAT-PMP get external ip address failed, code %d", ret);
+        closenatpmp(&natpmp);
         errorcode = -1;
         return errorcode;
     }
@@ -304,11 +305,13 @@ static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *ext
     ret = readnatpmpresponseorretry(natpmp, &response);
     if(ret != 0) {
         traceEvent(TRACE_WARNING, "NAT-PMP read response failed, code %d", ret);
+        closenatpmp(&natpmp);
         errorcode = -1;
         return errorcode;
     }
     if(response.type != NATPMP_RESPTYPE_PUBLICADDRESS) {
         traceEvent(TRACE_WARNING, "NAT-PMP invalid response type %u", response.type);
+        closenatpmp(&natpmp);
         errorcode = -1;
         return errorcode;
     }
@@ -377,7 +380,7 @@ static int n2n_natpmp_set_port_mapping (const uint16_t port) {
     ret = n2n_natpmp_initialization(&natpmp, lanaddr, externaladdr);
     if(ret != 0) {
         errorcode = -1;
-        goto end;
+        return errorcode;
     }
 
     // TCP port
@@ -396,7 +399,6 @@ static int n2n_natpmp_set_port_mapping (const uint16_t port) {
     } else
         traceEvent(TRACE_NORMAL, "NAT-PMP added UDP port mapping: %s:%hu -> %s:%hu", externaladdr, externalport, lanaddr, lanport);
 
-end:
     closenatpmp(&natpmp);
 
     return errorcode;
@@ -419,7 +421,7 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
     ret = n2n_natpmp_initialization(&natpmp, lanaddr, externaladdr);
     if(ret != 0) {
         errorcode = -1;
-        goto end;
+        return errorcode;
     }
 
     // TCP port
@@ -438,7 +440,6 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
     } else
         traceEvent(TRACE_NORMAL, "NAT-PMP deleted UDP port mapping for %s:%hu", externaladdr, externalport);
 
-end:
     closenatpmp(&natpmp);
 
     return errorcode;
