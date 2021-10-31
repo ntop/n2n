@@ -531,7 +531,7 @@ jobs:
           TYPE=$(git cat-file -t $GITHUB_REF)
           echo ==========
           echo REF=$GITHUB_REF
-          echo TAGTYPE=$GITHUB_REF
+          echo TAGTYPE=$TYPE
           echo ==========
           echo git cat-file $TYPE $GITHUB_REF
           git cat-file $TYPE $GITHUB_REF
@@ -575,7 +575,7 @@ jobs:
           echo "::set-output name=TAGTYPE::$TYPE"
           echo ==========
           echo REF=$GITHUB_REF
-          echo TAGTYPE=$GITHUB_REF
+          echo TAGTYPE=$TYPE
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
