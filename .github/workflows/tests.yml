@@ -251,6 +251,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install packages needed for build
         run: |
           sudo apt-get update
@@ -293,6 +297,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install packages needed for build
         run: |
           sudo apt-get install rpm
@@ -328,6 +336,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Configure and Build
         shell: bash
         run: |
@@ -359,6 +371,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
 
       - name: Install packages needed for build
         run: |
@@ -402,6 +418,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
 
       - name: Install packages needed for build
         run: |
@@ -452,6 +472,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install cross compiler
         run: |
           sudo apt-get update
@@ -481,7 +505,14 @@ jobs:
 
   # Given the clearly documented use of annotated tags to signal releases,
   # it seems strange that there is no simple way to trigger actions if the
-  # tag is annotated.  So we need to jump through some hoops.
+  # tag is annotated.  So we need to jump through some extra hoops.
+  #
+  # Looking at https://github.com/actions/checkout/issues/290 seems to show
+  # that github just doesnt care about how git expects annotated tags to be
+  # used.
+  #
+  # This workflow has added a `git fetch --force --tags` to every job that
+  # needs to have working tags
   #
   upload_release:
     name: Upload Release Assets
@@ -496,29 +527,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # There is something strange with the repo that you end up with
-      # using actions/checkout@v2.
-      #
-      # It appears that the repository that is checked out as part of a tag
-      # action does not have the correct tag object in it.  As a work around,
-      # we dont use the actions/checkout@v2
-      #
-      # Normally, `git for-each-ref refs/tags` will show annotated tags
-      # with a type of "tag" and lightweight with type "commit".
-      # But not with the actions/checkout@v2 checkout
-      #
-      # Additionally, it seems that if you push both a commit and an annotated
-      # tag at the same time, two workflow actions start (as expected), and
-      # the two checkouts show different things:
-      # - the annodated tag is visible in the "commit" action
-      # - but it looks like a lightweight tag in the "tag" action
-      #
-      # See https://github.com/actions/checkout/issues/290 for a whole lot of
-      # 'no comment' from github
-      #
-      - name: Checkout
+      - uses: actions/checkout@v2
+
+      - name: Fix Checkout
         run: |
-          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY .
+          git fetch --force --tags
 
       - name: Get Tag Type
         run: |
