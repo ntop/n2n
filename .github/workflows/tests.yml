@@ -496,6 +496,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v2
+
       - name: Get Tag Type
         run: |
           TAGTYPE=$(git cat-file -t $GITHUB_REF)
