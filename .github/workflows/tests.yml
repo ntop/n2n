@@ -524,6 +524,9 @@ jobs:
           echo git cat-file $TYPE $GITHUB_REF
           git cat-file $TYPE $GITHUB_REF
           echo ================
+          echo cat .git/$GITHUB_REF
+          cat .git/$GITHUB_REF
+          echo ================
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
