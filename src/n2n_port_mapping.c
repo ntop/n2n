@@ -97,7 +97,7 @@ static int n2n_UPNP_GetValidIGD (struct UPNPUrls *urls, struct IGDdatas *data, c
     int ret = 0;
 
     devlist = upnpDiscover(delay, multicastif, minissdpdpath, localport, ipv6, ttl, &error);
-    if(error != UPNPDISCOVER_SUCCESS) {
+    if((error != UPNPDISCOVER_SUCCESS) || (devlist == NULL) ) {
         traceEvent(TRACE_WARNING, "no IGD UPnP device found on the network");
         return -1;
     }
