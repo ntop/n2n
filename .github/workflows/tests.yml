@@ -495,24 +495,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-
-      # There is something strange with the github runners
-      # normally, `git for-each-ref refs/tags` will show annotated tags
-      # with a type of "tag" and lightweight with type "commit".
-      # But not in the github runner environment...
-      #
-      # Additionally, it seems that if you push both a commit and an annotated
-      # tag at the same time, two workflow actions start (as expected), and
-      # the annotated tag is visible in the "commit" action, but looks like a
-      # lightweight tag in the "tag" action
+      # There is something strange with the repo that you end up with
+      # using actions/checkout@v2.
       #
       # It appears that the repository that is checked out as part of a tag
       # action does not have the correct tag object in it.  As a work around,
-      # we do a force pull of the repo to get the correct tag details.
+      # we dont use the actions/checkout@v2
+      #
+      # Normally, `git for-each-ref refs/tags` will show annotated tags
+      # with a type of "tag" and lightweight with type "commit".
+      # But not with this checkout
+      #
+      # Additionally, it seems that if you push both a commit and an annotated
+      # tag at the same time, two workflow actions start (as expected), and
+      # the two checkouts show different things:
+      # - the annodated tag is visible in the "commit" action
+      # - but it looks like a lightweight tag in the "tag" action
+      #
+      - name: Checkout
+        run: |
+          git clone $GITHUB_SERVER_URL/$GITHUB_REPOSITORY $GITHUB_WORKSPACE
+
       - name: Get Tag Type
         run: |
-          git pull --no-rebase --tags --force origin HEAD
           TYPE=$(git cat-file -t $GITHUB_REF)
           echo "::set-output name=TAGTYPE::$TYPE"
 
