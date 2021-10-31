@@ -483,8 +483,8 @@ jobs:
   # it seems strange that there is no simple way to trigger actions if the
   # tag is annotated.  So we need to jump through some hoops.
   #
-  get_tagtype:
-    name: Get the type of Tag
+  upload_release:
+    name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
     needs:
       - package_dpkg
@@ -496,24 +496,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set variable
+      - name: Get Tag Type
         run: |
           echo '::set-output name=TAGTYPE::$(git cat-file -t $GITHUB_REF)'
 
-  upload_release:
-    name: Upload Release Assets
-    if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
-    needs:
-      - get_tagtype
-    runs-on: ubuntu-latest
-
     steps:
       - name: Fetch all Artifacts
+        if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
         uses: actions/download-artifact@v2
         with:
           path: artifacts
 
       - name: Upload Assets to Release
+        if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: true
