@@ -496,8 +496,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
       # There is something strange with the github runners
       # normally, `git for-each-ref refs/tags` will show annotated tags
@@ -514,7 +512,7 @@ jobs:
       # We try to build a workaround
       - name: Get Tag Type
         run: |
-          git pull --tags
+          git pull --tags --force
           if git cat-file tag $GITHUB_REF; then TYPE=tag; else TYPE=commit; fi
           echo "::set-output name=TAGTYPE::$TYPE"
 
