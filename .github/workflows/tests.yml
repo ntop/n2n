@@ -485,7 +485,6 @@ jobs:
   #
   upload_release:
     name: Upload Release Assets
-    if: startsWith(github.ref, 'refs/tags/')
     needs:
       - package_dpkg
       - package_rpm
