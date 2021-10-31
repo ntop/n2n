@@ -515,7 +515,7 @@ jobs:
       - name: Checkout
         run: |
           git init .
-          git remote add origin GITHUB_SERVER_URL/$GITHUB_REPOSITORY
+          git remote add origin $GITHUB_SERVER_URL/$GITHUB_REPOSITORY
           git fetch --tags origin +$GITHUB_SHA:$GITHUB_REF
 
       - name: Get Tag Type
