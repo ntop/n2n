@@ -508,12 +508,12 @@ jobs:
       # We build a workaround
       - name: Get Tag Type
         run: |
-          if git cat-file tag $GITHUB_REF; then TAGTYPE=tag; else TAGTYPE=commit; fi
-          echo "::set-output name=TAGTYPE::$TAGTYPE"
+          if git cat-file tag $GITHUB_REF; then TYPE=tag; else TYPE=commit; fi
+          echo "::set-output name=TAGTYPE::$TYPE"
 
           echo ================Debug
           echo REF=$GITHUB_REF
-          echo TAGTYPE=$TAGTYPE
+          echo TAGTYPE=$TYPE
           echo ================
           echo git for-each-ref refs/tags
           git for-each-ref refs/tags
@@ -521,8 +521,8 @@ jobs:
           echo git for-each-ref refs/heads
           git for-each-ref refs/heads
           echo ================
-          echo git cat-file $TAGTYPE $GITHUB_REF
-          git cat-file $TAGTYPE $GITHUB_REF
+          echo git cat-file $TYPE $GITHUB_REF
+          git cat-file $TYPE $GITHUB_REF
           echo ================
 
       - name: Fetch all Artifacts
