@@ -508,8 +508,7 @@ jobs:
       # We build a workaround
       - name: Get Tag Type
         run: |
-          git cat-file tag $GITHUB_REF
-          if $? -eq 0; then TAGTYPE=tag; else TAGTYPE=commit; fi
+          if git cat-file tag $GITHUB_REF; then TAGTYPE=tag; else TAGTYPE=commit; fi
           echo "::set-output name=TAGTYPE::$TAGTYPE"
 
           echo ================Debug
