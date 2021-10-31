@@ -537,6 +537,24 @@ jobs:
         run: |
           TYPE=$(git cat-file -t $GITHUB_REF)
           echo "::set-output name=TAGTYPE::$TYPE"
+          echo ==========
+          echo REF=$GITHUB_REF
+          echo TAGTYPE=$GITHUB_REF
+          echo ==========
+          echo git cat-file $GITHUB_REF
+          git cat-file $GITHUB_REF
+          echo ==========
+          echo ls .git/refs/heads
+          ls .git/refs/heads
+          echo ==========
+          echo ls .git/refs/tags
+          ls .git/refs/tags
+          echo ==========
+          echo git for-each-ref refs/heads
+          git for-each-ref refs/heads
+          echo ==========
+          echo git for-each-ref refs/tags
+          git for-each-ref refs/tags
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
