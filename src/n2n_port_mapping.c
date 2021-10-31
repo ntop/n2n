@@ -189,7 +189,7 @@ static int n2n_upnp_set_port_mapping (const uint16_t port) {
     if(port == 0) {
         traceEvent(TRACE_ERROR, "invalid port");
         errorcode = -1;
-        goto end;
+        return errorcode;
     }
     snprintf(lanport, sizeof(lanport), "%d", port);
     memcpy(externalport, lanport, sizeof(externalport));
@@ -197,7 +197,7 @@ static int n2n_upnp_set_port_mapping (const uint16_t port) {
     ret = n2n_UPNP_GetValidIGD(&urls, &data, lanaddr, externaladdr);
     if(ret != 0) {
         errorcode = -1;
-        goto end;
+        return errorcode;
     }
 
     // TCP port
@@ -220,7 +220,6 @@ static int n2n_upnp_set_port_mapping (const uint16_t port) {
     } else
         traceEvent(TRACE_NORMAL, "UPnP added UDP port mapping: %s:%s -> %s:%s", externaladdr, externalport, lanaddr, lanport);
 
-end:
     FreeUPNPUrls(&urls);
 
     return errorcode;
@@ -241,14 +240,14 @@ static int n2n_upnp_del_port_mapping (const uint16_t port) {
     if(port == 0) {
         traceEvent(TRACE_ERROR, "invalid port");
         errorcode = -1;
-        goto end;
+        return errorcode;
     }
     snprintf(externalport, sizeof(externalport), "%d", port);
 
     ret = n2n_UPNP_GetValidIGD(&urls, &data, lanaddr, externaladdr);
     if(ret != 0) {
         errorcode = -1;
-        goto end;
+        return errorcode;
     }
 
     // TCP port
@@ -267,7 +266,6 @@ static int n2n_upnp_del_port_mapping (const uint16_t port) {
     } else
         traceEvent(TRACE_NORMAL, "UPnP deleted UDP port mapping for %s:%s", externaladdr, externalport);
 
-end:
     FreeUPNPUrls(&urls);
 
     return errorcode;
