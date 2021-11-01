@@ -1,5 +1,5 @@
 odnl> Do not add anything above
-AC_INIT([edge],@N2N_VERSION_SHORT@)
+AC_INIT([edge], m4_esyscmd([cat VERSION | tr -d '\n']))
 dnl> Do not add anything above
 
 N2N_VERSION_SHORT=${PACKAGE_VERSION}

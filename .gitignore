@@ -2,7 +2,6 @@
 *.a
 *.gz
 configure
-configure.ac
 config.*
 /Makefile
 tools/Makefile
