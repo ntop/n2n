@@ -232,6 +232,7 @@ static void help (int level) {
           "\n                      [-r]  enable packet forwarding through n2n community"
           "\n                      [-E]  accept multicast MAC addresses"
           "\n            [--select-rtt]  select supernode by round trip time"
+          "\n            [--select-mac]  select supernode by MAC address"
 #ifndef WIN32
           "\n                      [-f]  do not fork but run in foreground"
 #endif
@@ -290,7 +291,8 @@ static void help (int level) {
                                      "-z2 = zstd, "
 #endif
                                      "disabled by default\n");
-        printf("--select-rtt       | supernode selection based on round trip time (default:\n"
+        printf("--select-rtt       | supernode selection based on round trip time\n"
+               "--select-mac       | supernode selection based on MAC address (default:\n"
                "                   | by load)\n");
 
         printf ("\n");
@@ -737,7 +739,14 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
-        case ']': /* password for management port */ {
+        case ']': /* mac-address-based supernode selection strategy */ {
+            // overwrites the default load-based strategy
+            conf->sn_selection_strategy = SN_SELECTION_STRATEGY_MAC;
+
+            break;
+        }
+
+        case '{': /* password for management port */ {
             conf->mgmt_password_hash = pearson_hash_64((uint8_t*)optargument, strlen(optargument));
 
             break;
@@ -797,7 +806,8 @@ static const struct option long_options[] =
         { "verbose",             no_argument,       NULL, 'v' },
         { "help",                no_argument,       NULL, '@' }, /* internal special character '@' to identify long help case */
         { "select-rtt",          no_argument,       NULL, '[' }, /*                            '['             rtt selection strategy */
-        { "management-password", required_argument, NULL, ']' }, /*                            ']'             management port password */
+        { "select-mac",          no_argument,       NULL, ']' }, /*                            ']'             mac selection strategy */
+        { "management-password", required_argument, NULL, '{' }, /*                            '{'             management port password */
         { NULL,                  0,                 NULL,  0  }
     };
 
