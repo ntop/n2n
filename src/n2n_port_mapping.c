@@ -284,6 +284,8 @@ static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *ext
     int forcegw = 0;
     in_addr_t gateway = 0;
     struct in_addr gateway_in_use;
+    struct timeval timeout;
+    fd_set fds;
 
     ret = initnatpmp(natpmp, forcegw, gateway);
     if(ret != 0) {
@@ -302,13 +304,16 @@ static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *ext
         return errorcode;
     }
 
-    ret = readnatpmpresponseorretry(natpmp, &response);
-    if(ret != 0) {
-        traceEvent(TRACE_WARNING, "NAT-PMP read response failed, code %d", ret);
-        closenatpmp(&natpmp);
-        errorcode = -1;
-        return errorcode;
-    }
+    do
+    {
+        FD_ZERO(&fds);
+        FD_SET(natpmp->s, &fds);
+        getnatpmprequesttimeout(natpmp, &timeout);
+        select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
+        ret = readnatpmpresponseorretry(natpmp, &response);
+        traceEvent(TRACE_INFO, "NAT-PMP read response returned %d (%s)", ret, ret == 0 ? "OK" : (ret == NATPMP_TRYAGAIN ? "TRY AGAIN" : "FAILED"));
+    } while (ret == NATPMP_TRYAGAIN);
+
     if(response.type != NATPMP_RESPTYPE_PUBLICADDRESS) {
         traceEvent(TRACE_WARNING, "NAT-PMP invalid response type %u", response.type);
         closenatpmp(&natpmp);
@@ -332,6 +337,8 @@ static int n2n_natpmp_port_mapping_request (natpmp_t *natpmp,
     int ret = 0;
     uint16_t lanport = 0;
     uint16_t externalport = 0;
+    struct timeval timeout;
+    fd_set fds;
 
     if(port == 0) {
         traceEvent(TRACE_ERROR, "invalid port");
@@ -341,20 +348,24 @@ static int n2n_natpmp_port_mapping_request (natpmp_t *natpmp,
     lanport = port;
     externalport = port;
 
-    ret = sendnewportmappingrequest(natpmp, protocol, lanport, externalport, (method ? -1 : 0));
+    ret = sendnewportmappingrequest(natpmp, protocol, lanport, externalport, (method ? 31104000 /* lifetime 360 days*/ : 0));
     if(ret != 12) {
         traceEvent(TRACE_WARNING, "NAT-PMP new port mapping request failed, code %d", ret);
         errorcode = -1;
         return errorcode;
     }
 
-    ret = readnatpmpresponseorretry(natpmp, &response);
-    if (ret != 0) {
-        traceEvent(TRACE_WARNING, "NAT-PMP read response failed, code %d", ret);
-        errorcode = -1;
-        return errorcode;
-    }
-    if((response.type != NATPMP_RESPTYPE_TCPPORTMAPPING) || (response.type != NATPMP_RESPTYPE_UDPPORTMAPPING)) {
+    do
+    {
+        FD_ZERO(&fds);
+        FD_SET(natpmp->s, &fds);
+        getnatpmprequesttimeout(natpmp, &timeout);
+        select(FD_SETSIZE, &fds, NULL, NULL, &timeout);
+        ret = readnatpmpresponseorretry(natpmp, &response);
+        traceEvent(TRACE_INFO, "NAT-PMP read response returned %d (%s)", ret, ret == 0 ? "OK" : (ret == NATPMP_TRYAGAIN ? "TRY AGAIN" : "FAILED"));
+    } while (ret == NATPMP_TRYAGAIN);
+
+    if(!((response.type == NATPMP_RESPTYPE_TCPPORTMAPPING) || (response.type == NATPMP_RESPTYPE_UDPPORTMAPPING))) {
         traceEvent(TRACE_WARNING, "NAT-PMP invalid response type %u", response.type);
         errorcode = -1;
         return errorcode;
