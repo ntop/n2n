@@ -2,7 +2,6 @@
 # NOTE: these are needed by the configure.in inside the packages folder
 N2N_VERSION_SHORT=@N2N_VERSION_SHORT@
 GIT_COMMITS=@GIT_COMMITS@
-GIT_DESCRIBE=$(shell git describe --always --dirty)
 
 ########
 
