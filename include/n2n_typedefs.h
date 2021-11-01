@@ -288,7 +288,7 @@ typedef char n2n_version_t[N2N_VERSION_STRING_SIZE];
 
 #define SN_SELECTION_STRATEGY_LOAD       1
 #define SN_SELECTION_STRATEGY_RTT        2
-#define SN_SELECTION_STRATEGY_MAC        3 /* REVISIT: not implemented yet */
+#define SN_SELECTION_STRATEGY_MAC        3
 
 
 typedef struct n2n_ip_subnet {
