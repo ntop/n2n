@@ -2,13 +2,7 @@ odnl> Do not add anything above
 AC_INIT([edge], m4_esyscmd([scripts/version.sh | tr -d '\n']))
 dnl> Do not add anything above
 
-N2N_VERSION_SHORT=$(scripts/version.sh short)
-
-if test -d ".git"; then
-# NOTE: keep in sync with the definitions for configure.in files under the packages folder
-GIT_COMMITS=`git rev-list --count HEAD`
-GIT_REVISION=`git rev-parse --short HEAD`
-fi
+N2N_VERSION=${PACKAGE_VERSION}
 
 if test "${CC+set}" != set; then
     CC=gcc
@@ -120,9 +114,7 @@ AC_SUBST(CC)
 AC_SUBST(AR)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
-AC_SUBST(N2N_VERSION_SHORT)
-AC_SUBST(GIT_COMMITS)
-AC_SUBST(GIT_REVISION)
+AC_SUBST(N2N_VERSION)
 AC_SUBST(N2N_DEFINES)
 AC_SUBST(N2N_LIBS)
 AC_SUBST(ADDITIONAL_TOOLS)

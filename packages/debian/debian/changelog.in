@@ -1,4 +1,4 @@
-@APP@ (@N2N_VERSION_SHORT@-@GIT_COMMITS@) table; urgency=high
+@APP@ (@N2N_VERSION@) table; urgency=high
    * Last packaged version
 
  -- Luca Deri <deri@ntop.org>  @DATE@

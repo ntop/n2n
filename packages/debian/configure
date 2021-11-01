@@ -586,8 +586,7 @@ LIBOBJS
 EXTRA_DEP
 DATE
 EXTN
-GIT_COMMITS
-N2N_VERSION_SHORT
+N2N_VERSION
 APP
 target_alias
 host_alias
@@ -1694,8 +1693,7 @@ fi
 
 
 # NOTE: this file is not actually used. You need to edit configure as well!
-N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
-GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
+N2N_VERSION=$(../../scripts/version.sh)
 
 DEBIAN_VERSION=`cat /etc/debian_version | grep "^8" | wc -l`
 
@@ -1733,7 +1731,6 @@ fi
 
 APP=n2n
 DATE=`date -R`
-
 
 
 

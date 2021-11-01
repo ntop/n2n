@@ -3,8 +3,7 @@ AC_INIT([Makefile.in], 1.0)
 AC_ARG_WITH(edgex,    [  --with-edgex            Build for Ubiquity-X])
 
 # NOTE: this file is not actually used. You need to edit configure as well!
-N2N_VERSION_SHORT=`grep N2N_VERSION_SHORT ../../Makefile | head -1| cut -d "=" -f 2`
-GIT_COMMITS=`grep GIT_COMMITS ../../Makefile | head -1| cut -d "=" -f 2`
+N2N_VERSION=$(../../scripts/version.sh)
 
 DEBIAN_VERSION=`cat /etc/debian_version | grep "^8" | wc -l`
 
@@ -44,8 +43,7 @@ APP=n2n
 DATE=`date -R`
 
 AC_SUBST(APP)
-AC_SUBST(N2N_VERSION_SHORT)
-AC_SUBST(GIT_COMMITS)
+AC_SUBST(N2N_VERSION)
 AC_SUBST(EXTN)
 AC_SUBST(DATE)
 AC_SUBST(EXTRA_DEP)
