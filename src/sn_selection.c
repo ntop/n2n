@@ -88,7 +88,17 @@ int sn_selection_criterion_calculate (n2n_edge_t *eee, peer_info_t *peer, SN_SEL
         }
 
         case SN_SELECTION_STRATEGY_RTT: {
-            peer->selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)(time_stamp() >> 22) - common_data;
+            peer->selection_criterion = (SN_SELECTION_CRITERION_DATA_TYPE)((uint32_t)time_stamp() >> 22) - common_data;
+            break;
+        }
+
+        case SN_SELECTION_STRATEGY_MAC: {
+            peer->selection_criterion = 0;
+            memcpy(&peer->selection_criterion, /* leftbound, don't mess with pointer arithmetics */
+                   peer->mac_addr,
+                   N2N_MAC_SIZE);
+            peer->selection_criterion = be64toh(peer->selection_criterion);
+            peer->selection_criterion >>= (sizeof(peer->selection_criterion) - N2N_MAC_SIZE) * 8; /* rightbound */
             break;
         }
 
@@ -120,7 +130,12 @@ int sn_selection_criterion_common_data_default (n2n_edge_t *eee) {
         }
 
         case SN_SELECTION_STRATEGY_RTT: {
-            eee->sn_selection_criterion_common_data = (SN_SELECTION_CRITERION_DATA_TYPE)(time_stamp() >> 22);
+            eee->sn_selection_criterion_common_data = (SN_SELECTION_CRITERION_DATA_TYPE)((uint32_t)time_stamp() >> 22);
+            break;
+        }
+
+        case SN_SELECTION_STRATEGY_MAC: {
+            eee->sn_selection_criterion_common_data = 0;
             break;
         }
 
@@ -145,8 +160,15 @@ static SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_read (n2n_
 /* Function that compare two selection_criterion fields and sorts them in ascending order. */
 static int sn_selection_criterion_sort (peer_info_t *a, peer_info_t *b) {
 
+    int ret = 0;
+
     // comparison function for sorting supernodes in ascending order of their selection_criterion.
-    return (a->selection_criterion - b->selection_criterion);
+    if(a->selection_criterion > b->selection_criterion)
+        ret = 1;
+    else if(a->selection_criterion < b->selection_criterion)
+        ret = -2;
+
+    return ret;
 }
 
 
@@ -177,7 +199,7 @@ SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_gather_data (n2n_sn_t *s
         data += tmp;
     }
 
-    return htobe32(data);
+    return htobe64(data);
 }
 
 
@@ -195,7 +217,7 @@ extern char * sn_selection_criterion_str (n2n_edge_t *eee, selection_criterion_s
     // keep off the super-big values (used for "bad" or "good" or "undetermined" supernodes,
     // easier to sort to the end of the list).
     // Alternatively, typecast to (int16_t) and check for greater or equal zero
-    if(peer->selection_criterion < (UINT32_MAX >> 2)) {
+    if(peer->selection_criterion < (UINT64_MAX >> 2)) {
 
         switch(eee->conf.sn_selection_strategy) {
 
@@ -206,6 +228,11 @@ extern char * sn_selection_criterion_str (n2n_edge_t *eee, selection_criterion_s
 
             case SN_SELECTION_STRATEGY_RTT: {
                 chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "rtt = %6ld ms", peer->selection_criterion);
+                break;
+            }
+
+            case SN_SELECTION_STRATEGY_MAC: {
+                chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "%s", (int64_t)peer->selection_criterion > 0 ? "active" : "");
                 break;
             }
 
