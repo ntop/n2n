@@ -1,12 +1,12 @@
 
-name: Continuous build (Openwrt)
+name: Openwrt Build
 
 on:
   push:
   pull_request:
 
 jobs:
-  tests:
+  build:
     name: Run test environment
     runs-on: ubuntu-latest
 
