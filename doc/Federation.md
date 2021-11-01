@@ -37,3 +37,5 @@ An edge connects to the supernode with the lowest work-load and it is re-conside
 Thanks to this feature, n2n is now able to handle security attacks such as DoS against supernodes and it can redistribute the entire load of the network in a fair manner between all the supernodes.
 
 To serve scenarios in which an edge is supposed to select the supernode by round trip time, i.e. choosing the "closest" one, the `--select-rtt` command line option is available at the edge. Note, that workload distribution among supernodes might not be so fair then.
+
+Furthermore, `--select-mac` would switch to a MAC address based selection strategy choosing the supernode active with the lowest MAC address. 
