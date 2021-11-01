@@ -39,7 +39,7 @@ def import_filename(modulename, filename):
 
     try:
         loader.exec_module(module)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         print("Script {} not found".format(pathname), file=sys.stderr)
         sys.exit(1)
     return module
