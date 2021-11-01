@@ -232,7 +232,8 @@ extern char * sn_selection_criterion_str (n2n_edge_t *eee, selection_criterion_s
             }
 
             case SN_SELECTION_STRATEGY_MAC: {
-                chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "%s", (int64_t)peer->selection_criterion > 0 ? "active" : "");
+                chars = snprintf(out, SN_SELECTION_CRITERION_BUF_SIZE, "%s", ((int64_t)peer->selection_criterion > 0 ?
+                                                                              ((peer == eee->curr_sn) ? "active" : "standby") : ""));
                 break;
             }
 
