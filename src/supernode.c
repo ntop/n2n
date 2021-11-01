@@ -291,6 +291,12 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 #ifdef SN_MANUAL_MAC
         case 'm': {/* MAC address */
             str2mac(sss->mac_addr,_optarg);
+
+            // clear multicast bit
+            sss->mac_addr[0] &= ~0x01;
+            // set locally-assigned bit
+            sss->mac_addr[0] |= 0x02;
+
             break;
         }
 #endif
