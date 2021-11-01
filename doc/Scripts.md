@@ -59,3 +59,11 @@ This shell script is used to run automated tests during development.
 
 A sample script to route all the host traffic towards a remote gateway,
 which is reachable via the n2n virtual interface.
+
+### `version.sh`
+
+This script is used to determine the current version number during the
+build process.
+
+It looks at both the VERSION file and the GIT tags and outputs the
+version number to use.

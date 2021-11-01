@@ -1,8 +1,8 @@
 odnl> Do not add anything above
-AC_INIT([edge], m4_esyscmd([cat VERSION | tr -d '\n']))
+AC_INIT([edge], m4_esyscmd([scripts/version.sh | tr -d '\n']))
 dnl> Do not add anything above
 
-N2N_VERSION_SHORT=${PACKAGE_VERSION}
+N2N_VERSION_SHORT=$(scripts/version.sh short)
 
 if test -d ".git"; then
 # NOTE: keep in sync with the definitions for configure.in files under the packages folder
