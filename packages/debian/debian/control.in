@@ -2,7 +2,7 @@ Source: n2n
 Section: net
 Priority: extra
 Maintainer: Luca Deri <deri@ntop.org>
-Standards-Version: @N2N_VERSION_SHORT@
+Standards-Version: 4.6.0
 Build-Depends:
 
 Package: n2n
