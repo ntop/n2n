@@ -1,6 +1,7 @@
-
+---
 name: Openwrt Build
 
+# yamllint disable-line rule:truthy
 on:
   push:
   pull_request:
