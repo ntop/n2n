@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Fix Checkout
         run: |
           git fetch --force --tags
@@ -29,6 +31,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Fix Checkout
         run: |
           git fetch --force --tags
@@ -60,6 +64,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Fix Checkout
         run: |
           git fetch --force --tags
@@ -130,6 +136,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Fix Checkout
         run: |
           git fetch --force --tags
@@ -207,6 +215,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Fix Checkout
         run: |
           git fetch --force --tags
@@ -355,6 +365,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -391,6 +403,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -438,6 +452,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -491,6 +507,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -548,6 +566,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
