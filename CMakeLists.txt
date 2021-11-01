@@ -11,6 +11,7 @@ execute_process(
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         OUTPUT_VARIABLE N2N_VERSION
 )
+string(STRIP "${N2N_VERSION}" N2N_VERSION)
 set(N2N_OSNAME ${CMAKE_SYSTEM_NAME})
 execute_process(
         COMMAND git status
