@@ -590,7 +590,7 @@ void print_n2n_version () {
     printf("Welcome to n2n v.%s for %s\n"
            "Built on %s\n"
            "Copyright 2007-2021 - ntop.org and contributors\n\n",
-           GIT_RELEASE, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
+           N2N_VERSION, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
 }
 
 /* *********************************************** */

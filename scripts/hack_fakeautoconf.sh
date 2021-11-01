@@ -20,5 +20,4 @@ sed \
 cat <<EOF >include/config.h
 #define PACKAGE_VERSION "FIXME"
 #define PACKAGE_OSNAME "FIXME"
-#define GIT_RELEASE "FIXME"
 EOF
