@@ -235,6 +235,9 @@ distclean:
 	rm -rf autom4te.cache/
 	rm -f config.log config.status configure configure.ac Makefile tools/Makefile include/config.h include/config.h.in
 	rm -f doc/edge.8.gz doc/n2n.7.gz doc/supernode.1.gz
+	rm -f packages/debian/config.log packages/debian/config.status
+	rm -rf packages/debian/autom4te.cache/
+	rm -f packages/rpm/config.log packages/rpm/config.status
 	rm -f $(addprefix src/,$(APPS))
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
