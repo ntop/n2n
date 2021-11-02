@@ -1,6 +1,7 @@
 ---
 name: Debug
 
+# yamllint disable-line rule:truthy
 on:
   workflow_dispatch:
 
