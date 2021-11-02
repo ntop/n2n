@@ -21,22 +21,46 @@ In order to build on Windows the following tools should be installed:
 - Visual Studio. For a minimal install, the command line only build tools can be
   downloaded and installed from https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2017.
 
-- CMake
+- CMake (From https://cmake.org/download/)
 
-- (optional) The OpenSSL library. Prebuild binaries can be downloaded from https://slproweb.com/products/Win32OpenSSL.html.
-  The full version is required, i.e. not the "Light" version. The Win32 version of it is usually required for a standard build.
+  NOTE: You should always use the official cmake stable release as otherwise
+  you may have issues finding libraries (e.g: the installed OpenSSL library).
+  If you still have problems, you can try invoking it with `C:\Program Files\CMake\bin\cmake`.
 
-> NOTE: In order to skip OpenSSL compilation, edit `CMakeLists.txt` and replace **– is this still valid?**
->
->  ```plaintext
->  OPTION(N2N_OPTION_AES "USE AES" ON)
->  with
->  OPTION(N2N_OPTION_AES "USE AES" OFF)
->  ```
+- (optional) The OpenSSL library. Pre-built binaries can be downloaded from
+  https://slproweb.com/products/Win32OpenSSL.html.
+  The full version is required, i.e. not the "Light" version. The Win32
+  version of it is usually required for a standard build.
 
-  NOTE: To statically link OpenSSL, add the `-DOPENSSL_USE_STATIC_LIBS=true` option to the `cmake` command below.
+  NOTE: In order to enable OpenSSL compilation, add the option
+  `-DN2N_OPTION_USE_OPENSSL=ON` to the `cmake ..` command below.
 
-- If compilation throws a "config.h: No such file or directory" error, an `include/config.h` file needs to be obtained from an already configured Linux compilation and put into the `include/` directory as discussed [here](https://github.com/ntop/n2n/issues/366).
+  NOTE: To statically link OpenSSL, add the option
+  `-DOPENSSL_USE_STATIC_LIBS=true` to the `cmake ..` command below.
+
+NOTE: Sticking to this tool chain has historically meant that resulting
+executables are more likely to be able to communicate with Linux or other
+OS builds, however efforts are being made to address this concern.
+
+## Build (CLI)
+
+In order to build from the command line, open a terminal window change to
+the directory where the git checkout of this repository is and run the
+following commands:
+
+```batch
+cmake -E make_directory build
+cd build
+
+rem Append any options to the next line
+cmake ..
+
+cmake --build . --config Release
+```
+
+The compiled `.exe` files should now be available in the `build\Release` directory.
+
+## Run
 
 In order to run n2n, you will need the following:
 
@@ -46,55 +70,12 @@ In order to run n2n, you will need the following:
 - If OpenSSL has been linked dynamically, the corresponding `.dll` file should be available
   onto the target computer.
 
-NOTE: Sticking to this tool chain has historically meant that resulting
-executables are more likely to be able to communicate with Linux or other
-OS builds, however efforts are being made to address this concern.
-
-## Build (CLI)
-
-In order to build from the command line, open a terminal window and run the following commands:
-
-```batch
-md build
-cd build
-cmake ..
-
-MSBuild.exe edge.vcxproj /t:Build /p:Configuration=Release
-MSBuild.exe supernode.vcxproj /t:Build /p:Configuration=Release
-MSBuild.exe n2n-benchmark.vcxproj /t:Build /p:Configuration=Release
-```
-
-NOTE: If CMake has problems finding the installed OpenSSL library, try to download the official cmake and invoke it with
-`C:\Program Files\CMake\bin\cmake`.
-
-NOTE: Visual Studio might not add `MSBuild.exe`'s path to the environment variable %PATH% so you might have difficulties finding and executing it without giving the full path. Regular installations seem to have it reside at `"C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe"`
-
-The compiled `.exe` files should now be available in the `build\Release` directory.
-
-## Run
-
 The `edge.exe` program reads the `edge.conf` file located into the current directory if no option is provided.
-
-Here is an example `edge.conf` file:
-
-```plaintext
--c=mycommunity
--k=mysecretpass
-
-# supernode IP address
--l=1.2.3.4:5678
-
-# edge IP address
--a=192.168.100.1
-```
 
 The `supernode.exe` program reads the `supernode.conf` file located into the current directory if no option is provided.
 
-Here is an example `supernode.conf` file:
-
-```plaintext
--p=5678
-```
+Example [edge.conf](../packages/etc/n2n/edge.conf.sample)
+and [supernode.conf](../packages/etc/n2n/supernode.conf.sample) are available.
 
 See `edge.exe --help` and `supernode.exe --help` for a full list of supported options.
 
