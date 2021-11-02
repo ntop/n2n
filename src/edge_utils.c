@@ -2525,9 +2525,6 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     return;
                 }
 
-                if(is_valid_peer_sock(&pkt.sock))
-                    orig_sender = &(pkt.sock);
-
                 if(!from_supernode) {
                     /* This is a P2P packet from the peer. We purge a pending
                      * registration towards the possibly nat-ted peer address as we now have
@@ -2539,6 +2536,10 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                     find_and_remove_peer(&eee->pending_peers, pkt.srcMac);
                 } else {
                     /* [PsP] : edge Peer->Supernode->edge Peer */
+
+                    if(is_valid_peer_sock(&pkt.sock))
+                        orig_sender = &(pkt.sock);
+
                     traceEvent(TRACE_DEBUG, "[pSp] from %s via [%s]",
                                macaddr_str(mac_buf1, pkt.srcMac),
                                sock_to_cstr(sockbuf1, &sender));

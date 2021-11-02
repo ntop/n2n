@@ -251,8 +251,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install packages needed for build
         run: |
+          sudo apt-get update
           sudo apt-get install debhelper build-essential \
             crossbuild-essential-${{ matrix.arch }}
 
@@ -292,6 +297,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install packages needed for build
         run: |
           sudo apt-get install rpm
@@ -327,6 +336,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Configure and Build
         shell: bash
         run: |
@@ -345,13 +358,23 @@ jobs:
           path: binaries
 
   binaries_macos:
-    name: Binaries for MacOS (x86_64-apple-darwin)
+    name: Binaries for MacOS
     needs:
       - test_macos
     runs-on: macos-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+          - x86_64-apple-macos
+          - arm64-apple-macos
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
 
       - name: Install packages needed for build
         run: |
@@ -360,14 +383,66 @@ jobs:
       - name: Configure and Build
         shell: bash
         run: |
+          # this is a hack! it assumes the default SDK is the 'right' one
+          export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
+          export CC=clang
+          export CFLAGS="-target ${{ matrix.arch }}"
+          export LDFLAGS="-target ${{ matrix.arch }}"
+          ./configure --host=${{ matrix.arch }}
+          make
+
+      - if: ${{ failure() }}
+        name: Upload config.log output
+        uses: actions/upload-artifact@v2
+        with:
+          name: config-log-${{ matrix.arch }}
+          path: config.log
+
+      - name: Create binary dir
+        shell: bash
+        run: |
+          make install DESTDIR=binaries/${{ matrix.arch }}
+
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: binaries
+          path: binaries
+
+  binaries_macos_universal:
+    name: Binaries for MacOS (universal arch)
+    needs:
+      - test_macos
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Install packages needed for build
+        run: |
+          brew install automake
+
+      - name: Configure and Build
+        shell: bash
+        run: |
+          # this is a hack! it assumes the default SDK is the 'right' one
+          export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+          ./autogen.sh
+          export CC=clang
+          export CFLAGS="-arch x86_64 -arch arm64"
+          export LDFLAGS="-arch x86_64 -arch arm64"
           ./configure
           make
 
       - name: Create binary dir
         shell: bash
         run: |
-          make install DESTDIR=binaries/x86_64-apple-darwin
+          make install DESTDIR=binaries/universal-apple-darwin
 
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v2
@@ -397,8 +472,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Install cross compiler
         run: |
+          sudo apt-get update
           sudo apt-get install \
             binutils-${{ matrix.arch }} \
             gcc-${{ matrix.arch }}
@@ -423,6 +503,17 @@ jobs:
           name: binaries
           path: binaries
 
+  # Given the clearly documented use of annotated tags to signal releases,
+  # it seems strange that there is no simple way to trigger actions if the
+  # tag is annotated.  So we need to jump through some extra hoops.
+  #
+  # Looking at https://github.com/actions/checkout/issues/290 seems to show
+  # that github just doesnt care about how git expects annotated tags to be
+  # used.
+  #
+  # This workflow has added a `git fetch --force --tags` to every job that
+  # needs to have working tags
+
   upload_release:
     name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
@@ -431,16 +522,34 @@ jobs:
       - package_rpm
       - binaries_windows
       - binaries_macos
+      - binaries_macos_universal
       - binaries_linux_crosscompile
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v2
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Get Tag Type
+        id: get_tagtype
+        run: |
+          TYPE=$(git cat-file -t $GITHUB_REF)
+          echo "::set-output name=TAGTYPE::$TYPE"
+          echo ==========
+          echo REF=$GITHUB_REF
+          echo TAGTYPE=$TYPE
+
       - name: Fetch all Artifacts
+        if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
         uses: actions/download-artifact@v2
         with:
           path: artifacts
 
       - name: Upload Assets to Release
+        if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
         uses: softprops/action-gh-release@v1
         with:
           prerelease: true

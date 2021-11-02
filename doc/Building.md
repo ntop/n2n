@@ -141,13 +141,14 @@ So far, the following portions of n2n's code benefit from hardware features:
 AES:               AES-NI
 ChaCha20:          SSE2, SSSE3
 SPECK:             SSE2, SSSE3, AVX2, AVX512, (NEON)
-Pearson Hashing:   AES-NI
 Random Numbers:    RDSEED, RDRND (not faster but more random seed)
 ```
 
 The compilations flags could easily be combined:
 
 `./configure CFLAGS="-O3 -march=native"`.
+
+There are reports of compile errors showing `n2n_seed': random_numbers.c:(.text+0x214): undefined reference to _rdseed64_step'` even though the CPU should support it, see #696. In this case, best solution found so far is to disable `RDSEED` support by adding `-U__RDSEED__` to the `CFLAGS`.
 
 ## OpenSSL Support
 
