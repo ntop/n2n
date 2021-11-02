@@ -2,7 +2,7 @@
 
 /* OS name */
 #ifndef PACKAGE_OSNAME
-#define PACKAGE_OSNAME N2N_OSNAME
+#define PACKAGE_OSNAME "windows"
 #endif
 
 /* Define to the version of this package. */

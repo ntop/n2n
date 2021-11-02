@@ -6,7 +6,6 @@ SET(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # N2n release information
-set(N2N_OSNAME ${CMAKE_SYSTEM_NAME})
 execute_process(
     COMMAND scripts/version.sh
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -28,7 +27,7 @@ string(STRIP "${PACKAGE_VERSION}" PACKAGE_VERSION)
 MESSAGE(STATUS "Build for version: ${PACKAGE_VERSION}")
 
 add_definitions(-DCMAKE_BUILD)
-add_definitions(-DPACKAGE_OSNAME="${N2N_OSNAME}" -DN2N_OSNAME="${N2N_OSNAME}")
+add_definitions(-DPACKAGE_OSNAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DPACKAGE_VERSION="${PACKAGE_VERSION}")
 
 
