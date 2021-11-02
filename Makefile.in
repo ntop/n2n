@@ -148,7 +148,14 @@ COVERAGEDIR?=coverage
 .PHONY: steps build push all clean distclean install test cover gcov build-dep
 .PHONY: lint lint.python lint.ccode lint.shell lint.yaml
 
-all: $(APPS) $(DOCS) $(SUBDIRS)
+all: version $(APPS) $(DOCS) $(SUBDIRS)
+
+# This allows breaking the build if the version.sh script discovers
+# any inconsistancies
+.PHONY: version
+version:
+	@echo -n "Build for version: "
+	@scripts/version.sh
 
 tools: $(N2N_LIB)
 	$(MAKE) -C $@

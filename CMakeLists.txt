@@ -8,10 +8,22 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # N2n release information
 set(N2N_OSNAME ${CMAKE_SYSTEM_NAME})
 execute_process(
-        COMMAND scripts/version.sh
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-        OUTPUT_VARIABLE PACKAGE_VERSION
+    COMMAND scripts/version.sh
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE PACKAGE_VERSION
+    RESULT_VARIABLE GIT_ERROR_CODE
 )
+if (NOT GIT_ERROR_CODE EQUAL 0)
+    # - if we can run version.sh and it exits with an error that is signaling
+    #   a build failure.
+    # - if we are on windows with no MSYS or Cygwin, we cannot run version.sh
+    #   which is the fallback case handled below
+    # TODO: Distinguish between these two cases
+
+    # Fallback to just using the non dynamic short version string
+    file(STRINGS VERSION PACKAGE_VERSION)
+endif (NOT GIT_ERROR_CODE EQUAL 0)
+
 string(STRIP "${PACKAGE_VERSION}" PACKAGE_VERSION)
 MESSAGE(STATUS "Build for version: ${PACKAGE_VERSION}")
 
