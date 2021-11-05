@@ -310,6 +310,15 @@ install(FILES ${PROJECT_BINARY_DIR}/doc/n2n.7.gz
 # TODO:
 # - Add the right dependancy so that the tests binaries get built first
 enable_testing()
-add_test(tests ${PROJECT_SOURCE_DIR}/scripts/test_units_harness.sh ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/tests)
+add_test(NAME unit
+    COMMAND ${CMAKE_COMMAND} -E env
+        TOPDIR=${PROJECT_SOURCE_DIR} BINDIR=${PROJECT_BINARY_DIR}
+        ${PROJECT_SOURCE_DIR}/scripts/test_units.sh
+)
+add_test(NAME integration
+    COMMAND ${CMAKE_COMMAND} -E env
+        TOPDIR=${PROJECT_SOURCE_DIR} BINDIR=${PROJECT_BINARY_DIR}
+        ${PROJECT_SOURCE_DIR}/scripts/test_integration.sh
+)
 
 endif(DEFINED UNIX)

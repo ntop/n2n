@@ -187,11 +187,14 @@ $(N2N_LIB): $(N2N_OBJS)
 
 win32/n2n_win32.a: win32
 
-.PHONY: test test.units
-test: test.units
+.PHONY: test test.units test.integration
+test: test.units test.integration
 
 test.units: tools
-	scripts/test_units_harness.sh
+	scripts/test_units.sh
+
+test.integration: $(APPS)
+	scripts/test_integration.sh
 
 .PHONY: lint lint.python lint.ccode lint.shell lint.yaml
 lint: lint.python lint.ccode lint.shell lint.yaml
