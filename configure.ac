@@ -1,17 +1,8 @@
 odnl> Do not add anything above
-AC_INIT([edge],@N2N_VERSION_SHORT@)
+AC_INIT([edge], m4_esyscmd([scripts/version.sh | tr -d '\n']))
 dnl> Do not add anything above
 
-N2N_VERSION_SHORT=${PACKAGE_VERSION}
-
-if test -d ".git"; then
-# NOTE: keep in sync with the definitions for configure.in files under the packages folder
-GIT_COMMITS=`git rev-list --count HEAD`
-GIT_REVISION=`git rev-parse --short HEAD`
-GIT_RELEASE="${N2N_VERSION_SHORT}.r${GIT_COMMITS}.${GIT_REVISION}"
-else
-GIT_RELEASE=${N2N_VERSION_SHORT}
-fi
+N2N_VERSION=${PACKAGE_VERSION}
 
 if test "${CC+set}" != set; then
     CC=gcc
@@ -108,7 +99,6 @@ dnl> wget -O config.guess 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=bl
    OSNAME=`./config.guess`
 fi
 AC_DEFINE_UNQUOTED(PACKAGE_OSNAME, "${OSNAME}", [OS name])
-AC_DEFINE_UNQUOTED(GIT_RELEASE, "${GIT_RELEASE}", [GIT release])
 
 if test $MACHINE = "x86_64"; then
    EXTN="amd64"
@@ -124,10 +114,7 @@ AC_SUBST(CC)
 AC_SUBST(AR)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
-AC_SUBST(N2N_VERSION_SHORT)
-AC_SUBST(GIT_COMMITS)
-AC_SUBST(GIT_REVISION)
-AC_SUBST(GIT_RELEASE)
+AC_SUBST(N2N_VERSION)
 AC_SUBST(N2N_DEFINES)
 AC_SUBST(N2N_LIBS)
 AC_SUBST(ADDITIONAL_TOOLS)

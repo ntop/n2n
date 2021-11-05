@@ -1,7 +1,7 @@
 Summary: n2n peer-to-peer VPN
 Name: n2n
-Version: @N2N_VERSION_SHORT@
-Release: @GIT_COMMITS@
+Version: @N2N_VERSION_RPM@
+Release: 1
 License: GPL
 Group: Networking/Utilities
 URL: http://www.ntop.org/

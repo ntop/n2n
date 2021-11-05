@@ -1,0 +1,55 @@
+---
+name: Debug
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+
+jobs:
+
+  # Oh, github, for a company that is built around the git VCS, how is it
+  # that you have managed to break the repositories so much?
+  #
+  debug_github_repo:
+    name: Debug Github Repo
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Debug data output
+        run: |
+          echo ==========
+          echo git status
+          git status
+          echo ==========
+          echo git tag
+          git tag
+          echo ==========
+          echo git describe
+          git describe || true
+          echo ==========
+          echo git for-each-ref refs/heads
+          git for-each-ref refs/heads
+          echo ==========
+          echo git for-each-ref refs/tags
+          git for-each-ref refs/tags
+          echo ==========
+          echo ls .git/refs/heads
+          ls .git/refs/heads
+          echo ==========
+          echo ls .git/refs/tags
+          ls .git/refs/tags
+          echo ==========
+          TYPE=$(git cat-file -t $GITHUB_REF)
+          echo REF=$GITHUB_REF
+          echo TAGTYPE=$TYPE
+          echo ==========
+          echo git cat-file $TYPE $GITHUB_REF
+          git cat-file $TYPE $GITHUB_REF

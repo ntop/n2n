@@ -6,34 +6,29 @@ SET(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # N2n release information
-set(N2N_VERSION "3.1.0")
-set(N2N_OSNAME ${CMAKE_SYSTEM_NAME})
 execute_process(
-        COMMAND git status
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_OUTPUT
-        RESULT_VARIABLE GIT_ERROR_CODE
+    COMMAND scripts/version.sh
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE PACKAGE_VERSION
+    RESULT_VARIABLE GIT_ERROR_CODE
 )
-if (GIT_ERROR_CODE EQUAL 0)
-execute_process(
-        COMMAND git rev-list --count HEAD
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_REV
-)
-execute_process(
-        COMMAND git rev-parse --short HEAD
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_ID
-)
-string(REGEX REPLACE "\n$" "" GIT_REV "${GIT_REV}")
-string(REGEX REPLACE "\n$" "" GIT_ID "${GIT_ID}")
-set(N2N_VERSION "${N2N_VERSION}.r${GIT_REV}.${GIT_ID}")
-MESSAGE(STATUS "Build from git rev: ${N2N_VERSION}")
-endif (GIT_ERROR_CODE EQUAL 0)
+if (NOT GIT_ERROR_CODE EQUAL 0)
+    # - if we can run version.sh and it exits with an error that is signaling
+    #   a build failure.
+    # - if we are on windows with no MSYS or Cygwin, we cannot run version.sh
+    #   which is the fallback case handled below
+    # TODO: Distinguish between these two cases
+
+    # Fallback to just using the non dynamic short version string
+    file(STRINGS VERSION PACKAGE_VERSION)
+endif (NOT GIT_ERROR_CODE EQUAL 0)
+
+string(STRIP "${PACKAGE_VERSION}" PACKAGE_VERSION)
+MESSAGE(STATUS "Build for version: ${PACKAGE_VERSION}")
 
 add_definitions(-DCMAKE_BUILD)
-add_definitions(-DGIT_RELEASE="${N2N_VERSION}" -DPACKAGE_VERSION="${N2N_VERSION}" -DPACKAGE_OSNAME="${N2N_OSNAME}")
-add_definitions(-DN2N_VERSION="${N2N_VERSION}" -DN2N_OSNAME="${N2N_OSNAME}")
+add_definitions(-DPACKAGE_OSNAME="${CMAKE_SYSTEM_NAME}")
+add_definitions(-DPACKAGE_VERSION="${PACKAGE_VERSION}")
 
 
 # Build information

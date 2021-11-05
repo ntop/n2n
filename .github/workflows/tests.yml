@@ -13,6 +13,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
       - name: Run minimal test set
         run: |
           ./autogen.sh
@@ -25,6 +31,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
 
       - name: Make the makefiles
         run: |
@@ -52,6 +64,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
 
       - name: Install essential
         run: |
@@ -118,6 +136,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
 
       - name: Install packages
         run: |
@@ -191,6 +215,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
 
       - name: generate a makefile and use it to install more packages
         run: |
@@ -335,6 +365,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -371,6 +403,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -418,6 +452,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -471,6 +507,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |
@@ -528,6 +566,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Fix Checkout
         run: |

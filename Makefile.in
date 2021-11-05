@@ -1,8 +1,6 @@
 
 # NOTE: these are needed by the configure.in inside the packages folder
-N2N_VERSION_SHORT=@N2N_VERSION_SHORT@
-GIT_COMMITS=@GIT_COMMITS@
-GIT_DESCRIBE=$(shell git describe --always --dirty)
+N2N_VERSION=@N2N_VERSION@
 
 ########
 
@@ -150,7 +148,14 @@ COVERAGEDIR?=coverage
 .PHONY: steps build push all clean distclean install test cover gcov build-dep
 .PHONY: lint lint.python lint.ccode lint.shell lint.yaml
 
-all: $(APPS) $(DOCS) $(SUBDIRS)
+all: version $(APPS) $(DOCS) $(SUBDIRS)
+
+# This allows breaking the build if the version.sh script discovers
+# any inconsistancies
+.PHONY: version
+version:
+	@echo -n "Build for version: "
+	@scripts/version.sh
 
 tools: $(N2N_LIB)
 	$(MAKE) -C $@
@@ -233,8 +238,11 @@ clean:
 distclean:
 	rm -f tests/*.out src/*.gcno src/*.gcda src/*.indent src/*.unc-backup*
 	rm -rf autom4te.cache/
-	rm -f config.log config.status configure configure.ac Makefile tools/Makefile include/config.h include/config.h.in
+	rm -f config.log config.status configure Makefile tools/Makefile include/config.h include/config.h.in
 	rm -f doc/edge.8.gz doc/n2n.7.gz doc/supernode.1.gz
+	rm -f packages/debian/config.log packages/debian/config.status
+	rm -rf packages/debian/autom4te.cache/
+	rm -f packages/rpm/config.log packages/rpm/config.status
 	rm -f $(addprefix src/,$(APPS))
 
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
@@ -250,11 +258,12 @@ install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 # Docker builder section
 DOCKER_IMAGE_NAME=ntop/supernode
 DOCKER_IMAGE_VERSION=$N2N_VERSION_SHORT
-N2N_COMMIT_HASH=@GIT_REVISION@
+N2N_COMMIT_HASH=$(shell scripts/version.sh hash)
 
 default: steps
 
 steps:
+	$(info This code appears to have been bitrotted since 2019 - please let us know if you are using it)
 	if [ "$(TARGET_ARCHITECTURE)" = "arm32v7" ] || [ "$(TARGET_ARCHITECTURE)" = "" ]; then DOCKER_IMAGE_FILENAME="Dockerfile.arm32v7" DOCKER_IMAGE_TAGNAME=$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)-arm32v7 make build; fi
 	if [ "$(TARGET_ARCHITECTURE)" = "x86_64" ] || [ "$(TARGET_ARCHITECTURE)" = "" ]; then DOCKER_IMAGE_FILENAME="Dockerfile.x86_64" DOCKER_IMAGE_TAGNAME=$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)-x86_64 make build; fi
 

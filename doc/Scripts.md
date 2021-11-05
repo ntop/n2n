@@ -5,25 +5,13 @@ Some of these scripts are only useful during build and development, but
 other scripts are intended for end users to be able to use.  These scripts
 may be installed with n2n as part of your operating system package.
 
+All scripts can be found in the `scripts` directory.
+
 Short descriptions of these scripts are below.
 
-## `scripts/hack_fakeautoconf.sh`
+## End user scripts
 
-This shell script is used during development to help build on Windows
-systems.  An example of how to use it is shown in
-the [Building document](Building.md)
-
-## `scripts/indent.sh`
-
-This shell script is a wrapper for the `uncrustify` C code style checker
-which checks or applies a set of rules to the code.  It is used during
-the automated lint checks.
-
-## `scripts/test_harness.sh`
-
-This shell script is used to run automated tests during development.
-
-## `scripts/n2n-ctl`
+### `n2n-ctl`
 
 This python script provides an easy command line interface to the running
 n2n processes.  It uses UDP communications to talk to the Management API.
@@ -34,7 +22,7 @@ Example:
 - `scripts/n2n-ctl --help`
 - `scripts/n2n-ctl help`
 
-## `scripts/n2n-httpd`
+### `n2n-httpd`
 
 This python script is a simple http gateway to the running edge.  It provides
 a proxy for REST-like HTTP requests to talk to the Management API.
@@ -49,7 +37,33 @@ Example:
 - `scripts/n2n-httpd --help`
 - `scripts/n2n-httpd 8087`
 
-## `scripts/n2n-gateway.sh`
+## Build and Development scripts
+
+### `hack_fakeautoconf.sh`
+
+This shell script is used during development to help build on Windows
+systems.  An example of how to use it is shown in
+the [Building document](Building.md)
+
+### `indent.sh`
+
+This shell script is a wrapper for the `uncrustify` C code style checker
+which checks or applies a set of rules to the code.  It is used during
+the automated lint checks.
+
+### `test_harness.sh`
+
+This shell script is used to run automated tests during development.
+
+### `n2n-gateway.sh`
 
 A sample script to route all the host traffic towards a remote gateway,
 which is reachable via the n2n virtual interface.
+
+### `version.sh`
+
+This script is used to determine the current version number during the
+build process.
+
+It looks at both the VERSION file and the GIT tags and outputs the
+version number to use.

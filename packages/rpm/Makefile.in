@@ -4,7 +4,7 @@
 N2N_HOME=$(PWD)/../..
 N2N_BUILD=${N2N_HOME}/packages/debian/n2n
 PLATFORM=@MACHINE@
-RPM_PKG=n2n-@N2N_VERSION_SHORT@-@GIT_COMMITS@.$(PLATFORM).rpm
+RPM_PKG=n2n-@N2N_VERSION_RPM@-1.$(PLATFORM).rpm
 
 all: clean pkg
 
