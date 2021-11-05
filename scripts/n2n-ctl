@@ -106,7 +106,7 @@ class JsonUDP():
         return self._call('w', cmdline)
 
 
-def str_table(rows, columns):
+def str_table(rows, columns, orderby):
     """Given an array of dicts, do a simple table print"""
     result = list()
     widths = collections.defaultdict(lambda: 0)
@@ -126,6 +126,9 @@ def str_table(rows, columns):
             widths[col] = 1
         result += "{:{}.{}} ".format(col, widths[col], widths[col])
     result += "\n"
+
+    if orderby is not None:
+        rows = sorted(rows, key=lambda row: row.get(orderby, 0))
 
     for row in rows:
         for col in columns:
@@ -149,7 +152,7 @@ def subcmd_show_supernodes(rpc, args):
         'uptime',
     ]
 
-    return str_table(rows, columns)
+    return str_table(rows, columns, args.orderby)
 
 
 def subcmd_show_edges(rpc, args):
@@ -162,7 +165,7 @@ def subcmd_show_edges(rpc, args):
         'desc',
     ]
 
-    return str_table(rows, columns)
+    return str_table(rows, columns, args.orderby)
 
 
 def subcmd_show_help(rpc, args):
@@ -216,6 +219,8 @@ def main():
                     help='Also show raw internal data')
     ap.add_argument('--raw', action='store_true',
                     help='Force cmd to avoid any pretty printing')
+    ap.add_argument('--orderby', action='store',
+                    help='Hint to a pretty printer on how to sort')
 
     group = ap.add_mutually_exclusive_group()
     group.add_argument('--read', action='store_true',
