@@ -227,12 +227,16 @@ sub do_config {
 
     print("graph_title n2n $name status\n");
     print("graph_category network\n");
-    #print("graph_order edges errors reg_sup reg_nak fwd broadcast\n"); # TODO
+    my @names;
     while (my ($fieldname, $field) = each(%{$config->{$name}})) {
+        push @names, $fieldname;
         while (my ($key, $val) = each(%{$field})) {
             print($fieldname.'.'.$key," ",$val,"\n");
         }
     }
+
+    # Ensure stable order
+    print("graph_order ", join(' ', sort(@names)), "\n");
 }
 
 sub do_fetch {
