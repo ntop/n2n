@@ -651,7 +651,6 @@ int main (int argc, char * const argv[]) {
         if((setgid(sss_node.groupid) != 0)
            || (setuid(sss_node.userid) != 0)) {
             traceEvent(TRACE_ERROR, "unable to drop privileges [%u/%s]", errno, strerror(errno));
-            exit(1);
         }
     }
 
