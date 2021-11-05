@@ -146,9 +146,8 @@ SUBDIRS+=tools
 COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
-.PHONY: steps build push all clean distclean install test cover gcov build-dep
-.PHONY: lint lint.python lint.ccode lint.shell lint.yaml
 
+.PHONY: all
 all: version $(APPS) $(DOCS) $(SUBDIRS)
 
 # This allows breaking the build if the version.sh script discovers
@@ -188,9 +187,11 @@ $(N2N_LIB): $(N2N_OBJS)
 
 win32/n2n_win32.a: win32
 
+.PHONY: test
 test: tools
 	scripts/test_harness.sh
 
+.PHONY: lint lint.python lint.ccode lint.shell lint.yaml
 lint: lint.python lint.ccode lint.shell lint.yaml
 
 lint.python:
@@ -209,6 +210,7 @@ lint.yaml:
 # CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="--coverage"
 # and run the desired tests.  Ensure that package gcovr is installed
 # and then run "make cover"
+.PHONY: cover
 cover:
 	mkdir -p $(COVERAGEDIR)
 	gcovr -s --html --html-details --output=$(COVERAGEDIR)/index.html
@@ -217,11 +219,13 @@ cover:
 # Unfortunately, these end up in the wrong directory due to the
 # makefile layout
 # The steps to use this are similar to the "make cover" above
+.PHONY: gcov
 gcov:
 	gcov $(N2N_OBJS)
 	$(MAKE) -C tools gcov
 
 # This is a convinent target to use during development or from a CI/CD system
+.PHONY: build-dep
 build-dep:
 ifeq ($(CONFIG_TARGET),generic)
 	sudo apt install $(BUILD_DEP)
@@ -231,11 +235,13 @@ else
 	echo Not attempting to install dependancies for system $(CONFIG_TARGET)
 endif
 
+.PHONY: clean
 clean:
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
 
+.PHONY: distclean
 distclean:
 	rm -f tests/*.out src/*.gcno src/*.gcda src/*.indent src/*.unc-backup*
 	rm -rf autom4te.cache/
@@ -246,6 +252,7 @@ distclean:
 	rm -f packages/rpm/config.log packages/rpm/config.status
 	rm -f $(addprefix src/,$(APPS))
 
+.PHONY: install
 install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"
 	$(MKDIR) $(SBINDIR) $(MAN1DIR) $(MAN7DIR) $(MAN8DIR)
@@ -261,6 +268,7 @@ DOCKER_IMAGE_NAME=ntop/supernode
 DOCKER_IMAGE_VERSION=$N2N_VERSION_SHORT
 N2N_COMMIT_HASH=$(shell scripts/version.sh hash)
 
+.PHONY: default steps build push
 default: steps
 
 steps:
