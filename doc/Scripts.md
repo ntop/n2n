@@ -67,3 +67,32 @@ build process.
 
 It looks at both the VERSION file and the GIT tags and outputs the
 version number to use.
+
+## Monitoring and statistics
+
+### `munin/n2n_`
+
+This is a simple monitoring script that can be used with the munin-node
+system to monitor the n2n daemons.
+
+This is a fully autoconfigurable wildcard munin plugin, but to get a quick
+sample:
+
+get a list of suggested plugin names:
+```
+munin/n2n_ suggest
+```
+
+Enable some of those names:
+
+```
+ln -s /usr/share/munin/plugins/n2n_ /etc/munin/plugins/n2n_supernode_pkts
+ln -s /usr/share/munin/plugins/n2n_ /etc/munin/plugins/n2n_supernode_counts
+```
+
+Manually test fetching and config:
+
+```
+/etc/munin/plugins/n2n_supernode_pkts
+/etc/munin/plugins/n2n_supernode_pkts config
+```
