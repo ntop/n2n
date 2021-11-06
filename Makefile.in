@@ -205,10 +205,10 @@ win32/n2n_win32.a: win32
 test: test.units test.integration
 
 test.units: tools
-	scripts/test_units.sh
+	scripts/test_harness.sh tests/tests_units.list
 
 test.integration: $(APPS)
-	scripts/test_integration.sh
+	scripts/test_harness.sh tests/tests_integration.list
 
 .PHONY: lint lint.python lint.ccode lint.shell lint.yaml
 lint: lint.python lint.ccode lint.shell lint.yaml

@@ -98,21 +98,18 @@ Manually test fetching and config:
 ### `test_harness.sh`
 
 This shell script is used to run automated tests during development.  It is
-run with the name of one or more other scripts, which are then run with their
-output being sent to `*.out` files in the `tests` directory and compared with
-the matching `*.expected` file in that same dir.
+run with a testlist filename - pointing at a file containing the list of
+tests to run.
 
-### `scripts/test_units.sh`
+Each test needs a file containing the expected output `${TESTNAME}.expected`
+which is expected to exist in the same directory as the testlist (this dir is
+referred to as `${listdir}` below).
 
-This runs all the unit tests via the `test_harness.sh`.  Unit tests are those
-that are testing a small and isolated bit of code.  In this project, the unit
-tests are the only ones that contribute towards the code coverage report.
+Each test is a program, searched for in several locations, including the
+`${listdir}/../scripts` dir.
 
-### `scripts/test_integration.sh`
-
-This runs all the integration tests via the `test_harness.sh`.  These are
-tests that interact with multiple features and the test is mainly concerned
-about the interactions between them (eg, testing an API interface)
+Each test is run with its output being sent to `*.out` files in the `listdir`
+and compared with the expected output.
 
 ### `scripts/test_integration_supernode.sh`
 

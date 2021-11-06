@@ -313,12 +313,12 @@ enable_testing()
 add_test(NAME unit
     COMMAND ${CMAKE_COMMAND} -E env
         TOPDIR=${PROJECT_SOURCE_DIR} BINDIR=${PROJECT_BINARY_DIR}
-        ${PROJECT_SOURCE_DIR}/scripts/test_units.sh
+        ${PROJECT_SOURCE_DIR}/scripts/test_harness.sh ${PROJECT_SOURCE_DIR}/tests/tests_units.list
 )
 add_test(NAME integration
     COMMAND ${CMAKE_COMMAND} -E env
         TOPDIR=${PROJECT_SOURCE_DIR} BINDIR=${PROJECT_BINARY_DIR}
-        ${PROJECT_SOURCE_DIR}/scripts/test_integration.sh
+        ${PROJECT_SOURCE_DIR}/scripts/test_harness.sh ${PROJECT_SOURCE_DIR}/tests/tests_integration.list
 )
 
 endif(DEFINED UNIX)
