@@ -84,10 +84,18 @@ N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
 # As source files pass the linter, they can be added here (If all the source
 # is passing the linter tests, this can be refactored)
 LINT_CCODE=\
+	include/curve25519.h \
 	include/edge_utils_win32.h \
+	include/header_encryption.h \
+	include/hexdump.h \
 	include/n2n_define.h \
+	include/n2n_wire.h \
+	include/network_traffic_filter.h \
 	include/pearson.h \
+	include/random_numbers.h \
+	include/sn_selection.h \
 	include/speck.h \
+	include/tf.h \
 	src/edge_management.c \
 	src/edge_utils_win32.c \
 	src/example_edge_embed_quick_edge_init.c \
@@ -95,7 +103,11 @@ LINT_CCODE=\
 	src/sn_management.c \
 	src/sn_selection.c \
 	src/transform_cc20.c \
+	src/transform_null.c \
+	src/tuntap_freebsd.c \
 	src/tuntap_linux.c \
+	src/tuntap_netbsd.c \
+	src/tuntap_osx.c \
 	src/wire.c \
 	tools/tests-auth.c \
 	tools/tests-compress.c \
