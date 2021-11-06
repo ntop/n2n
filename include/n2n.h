@@ -286,5 +286,4 @@ const char* compression_str (uint8_t cmpr);
 const char* transop_str (enum n2n_transform tr);
 
 void readFromMgmtSocket (n2n_edge_t *eee);
-void handleMgmtJson_sn (n2n_sn_t *sss, char *udp_buf, const struct sockaddr_in sender_sock);
 #endif /* _N2N_H_ */
