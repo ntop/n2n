@@ -36,6 +36,7 @@ docmd ${TOPDIR}/scripts/n2n-ctl edges --raw
 #   - uptime
 
 docmd ${TOPDIR}/scripts/n2n-ctl verbose
+docmd ${TOPDIR}/scripts/n2n-ctl --write verbose 1 2>&1
 docmd ${TOPDIR}/scripts/n2n-ctl -k $AUTH --write verbose 1
 
 # looks strange, but we are querying the state of the "stop" verb
