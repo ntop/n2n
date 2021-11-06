@@ -20,12 +20,12 @@
 #include "edge_utils_win32.h"
 
 #define FLAG_WROK 1
-typedef struct n2n_mgmt_handler {
+typedef struct mgmt_handler {
     int flags;
     char  *cmd;
     char  *help;
     void (*func)(n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
-} n2n_mgmt_handler_t;
+} mgmt_handler_t;
 
 static void mgmt_error (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, char *tag, char *msg) {
     size_t msg_len;
@@ -279,7 +279,7 @@ static void mgmt_unimplemented (n2n_edge_t *eee, char *udp_buf, const struct soc
 
 static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
 
-n2n_mgmt_handler_t mgmt_handlers[] = {
+mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
 
     { .cmd = "stop", .flags = FLAG_WROK, .help = "Gracefully exit edge", .func = mgmt_stop},
@@ -295,7 +295,7 @@ n2n_mgmt_handler_t mgmt_handlers[] = {
 
 static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
     size_t msg_len;
-    n2n_mgmt_handler_t *handler;
+    mgmt_handler_t *handler;
 
     /*
      * Even though this command is readonly, we deliberately do not check
@@ -354,7 +354,7 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockadd
     char *flagstr;
     int flags;
     char *auth;
-    n2n_mgmt_handler_t *handler;
+    mgmt_handler_t *handler;
     size_t msg_len;
 
     /* save a copy of the commandline before we reuse the udp_buf */
