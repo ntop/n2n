@@ -95,14 +95,14 @@ jobs:
         run: make test.units
         shell: bash
 
-      - if: ${{ always() }}
+      - if: ${{ failure() }}
         name: Move test outputs to an arch specific location
         shell: bash
         run: |
           mkdir -p tests/${{ matrix.os }}
           mv tests/*.out tests/${{ matrix.os }}
 
-      - if: ${{ always() }}
+      - if: ${{ failure() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
@@ -166,14 +166,14 @@ jobs:
         run: make test.units
         shell: bash
 
-      - if: ${{ always() }}
+      - if: ${{ failure() }}
         name: Move test outputs to an arch specific location
         shell: bash
         run: |
           mkdir -p tests/${{ matrix.os }}
           mv tests/*.out tests/${{ matrix.os }}
 
-      - if: ${{ always() }}
+      - if: ${{ failure() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
@@ -241,14 +241,14 @@ jobs:
         run: make test.units
         shell: bash
 
-      - if: ${{ always() }}
+      - if: ${{ failure() }}
         name: Move test outputs to an arch specific location
         shell: bash
         run: |
           mkdir -p tests/${{ matrix.os }}
           mv tests/*.out tests/${{ matrix.os }}
 
-      - if: ${{ always() }}
+      - if: ${{ failure() }}
         name: Upload tests output
         uses: actions/upload-artifact@v2
         with:
