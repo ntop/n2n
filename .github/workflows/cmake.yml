@@ -72,6 +72,11 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: tests-out
-          path:
-            - tests
-            - build/Testing
+          path: tests
+
+      - if: ${{ failure() }}
+        name: Upload cmake test output
+        uses: actions/upload-artifact@v2
+        with:
+          name: tests-out
+          path: build/Testing
