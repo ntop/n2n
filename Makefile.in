@@ -88,9 +88,11 @@ LINT_CCODE=\
 	include/n2n_define.h \
 	include/pearson.h \
 	include/speck.h \
+	src/edge_management.c \
 	src/edge_utils_win32.c \
 	src/example_edge_embed_quick_edge_init.c \
 	src/header_encryption.c \
+	src/sn_management.c \
 	src/sn_selection.c \
 	src/transform_cc20.c \
 	src/tuntap_linux.c \
