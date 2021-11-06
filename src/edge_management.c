@@ -19,32 +19,47 @@
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
+/*
+ * Everything needed to reply to a request
+ */
+typedef struct mgmt_req {
+    n2n_edge_t *eee;
+    enum n2n_mgmt_type type;
+    char *tag;
+    struct sockaddr_in sender_sock;
+} mgmt_req_t;
+
 #define FLAG_WROK 1
 typedef struct mgmt_handler {
     int flags;
     char  *cmd;
     char  *help;
-    void (*func)(n2n_edge_t *eee, char *udp_buf, struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
+    void (*func)(mgmt_req_t *reg, char *udp_buf, char *argv0, char *argv);
 } mgmt_handler_t;
 
-static void mgmt_error (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, char *tag, char *msg) {
+static void send_reply (mgmt_req_t *req, char *udp_buf, size_t msg_len) {
+    // TODO: error handling
+    sendto(req->eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
+}
+
+static void mgmt_error (mgmt_req_t *req, char *udp_buf, char *msg) {
     size_t msg_len;
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"error\","
                        "\"error\":\"%s\"}\n",
-                       tag,
+                       req->tag,
                        msg);
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 }
 
-static void mgmt_stop (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_stop (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
 
-    if(type==N2N_MGMT_WRITE) {
-        *eee->keep_running = 0;
+    if(req->type==N2N_MGMT_WRITE) {
+        *req->eee->keep_running = 0;
     }
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
@@ -52,17 +67,16 @@ static void mgmt_stop (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
                        "\"keep_running\":%u}\n",
-                       tag,
-                       *eee->keep_running);
+                       req->tag,
+                       *req->eee->keep_running);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 }
 
-static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_verbose (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
 
-    if(type==N2N_MGMT_WRITE) {
+    if(req->type==N2N_MGMT_WRITE) {
         if(argv) {
             setTraceLevel(strtoul(argv, NULL, 0));
         }
@@ -73,18 +87,17 @@ static void mgmt_verbose (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
                        "\"traceLevel\":%u}\n",
-                       tag,
+                       req->tag,
                        getTraceLevel());
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 }
 
-static void mgmt_communities (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_communities (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
 
-    if(eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "noaccess");
+    if(req->eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
+        mgmt_error(req, udp_buf, "noaccess");
         return;
     }
 
@@ -93,21 +106,20 @@ static void mgmt_communities (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
                        "\"community\":\"%s\"}",
-                       tag,
-                       eee->conf.community_name);
+                       req->tag,
+                       req->eee->conf.community_name);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 }
 
-static void mgmt_supernodes (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_supernodes (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     selection_criterion_str_t sel_buf;
 
-    HASH_ITER(hh, eee->conf.supernodes, peer, tmpPeer) {
+    HASH_ITER(hh, req->eee->conf.supernodes, peer, tmpPeer) {
 
         /*
          * TODO:
@@ -128,22 +140,21 @@ static void mgmt_supernodes (n2n_edge_t *eee, char *udp_buf, const struct sockad
                            "\"selection\":\"%s\","
                            "\"last_seen\":%li,"
                            "\"uptime\":%li}\n",
-                           tag,
+                           req->tag,
                            peer->version,
                            peer->purgeable,
-                           (peer == eee->curr_sn) ? (eee->sn_wait ? 2 : 1 ) : 0,
+                           (peer == req->eee->curr_sn) ? (req->eee->sn_wait ? 2 : 1 ) : 0,
                            is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                            sock_to_cstr(sockbuf, &(peer->sock)),
-                           sn_selection_criterion_str(eee, sel_buf, peer),
+                           sn_selection_criterion_str(req->eee, sel_buf, peer),
                            peer->last_seen,
                            peer->uptime);
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(req, udp_buf, msg_len);
     }
 }
 
-static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, char *tag, struct peer_info *peer, char *mode) {
+static void mgmt_edges_row (mgmt_req_t *req, char *udp_buf, struct peer_info *peer, char *mode) {
     size_t msg_len;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
@@ -163,7 +174,7 @@ static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockadd
                        "\"last_p2p\":%li,\n"
                        "\"last_sent_query\":%li,\n"
                        "\"last_seen\":%li}\n",
-                       tag,
+                       req->tag,
                        mode,
                        (peer->dev_addr.net_addr == 0) ? "" : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                        peer->purgeable,
@@ -175,25 +186,24 @@ static void mgmt_edges_row (n2n_edge_t *eee, char *udp_buf, const struct sockadd
                        peer->last_sent_query,
                        peer->last_seen);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 }
 
-static void mgmt_edges (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_edges (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     struct peer_info *peer, *tmpPeer;
 
     // dump nodes with forwarding through supernodes
-    HASH_ITER(hh, eee->pending_peers, peer, tmpPeer) {
-        mgmt_edges_row(eee, udp_buf, sender_sock, tag, peer, "pSp");
+    HASH_ITER(hh, req->eee->pending_peers, peer, tmpPeer) {
+        mgmt_edges_row(req, udp_buf, peer, "pSp");
     }
 
     // dump peer-to-peer nodes
-    HASH_ITER(hh, eee->known_peers, peer, tmpPeer) {
-        mgmt_edges_row(eee, udp_buf, sender_sock, tag, peer, "p2p");
+    HASH_ITER(hh, req->eee->known_peers, peer, tmpPeer) {
+        mgmt_edges_row(req, udp_buf, peer, "p2p");
     }
 }
 
-static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_timestamps (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
@@ -203,16 +213,15 @@ static void mgmt_timestamps (n2n_edge_t *eee, char *udp_buf, const struct sockad
                        "\"start_time\":%lu,"
                        "\"last_super\":%ld,"
                        "\"last_p2p\":%ld}\n",
-                       tag,
-                       eee->start_time,
-                       eee->last_sup,
-                       eee->last_p2p);
+                       req->tag,
+                       req->eee->start_time,
+                       req->eee->last_sup,
+                       req->eee->last_p2p);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 }
 
-static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_packetstats (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
@@ -222,12 +231,11 @@ static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "\"type\":\"transop\","
                        "\"tx_pkt\":%lu,"
                        "\"rx_pkt\":%lu}\n",
-                       tag,
-                       eee->transop.tx_cnt,
-                       eee->transop.rx_cnt);
+                       req->tag,
+                       req->eee->transop.tx_cnt,
+                       req->eee->transop.rx_cnt);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
@@ -236,12 +244,11 @@ static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "\"type\":\"p2p\","
                        "\"tx_pkt\":%u,"
                        "\"rx_pkt\":%u}\n",
-                       tag,
-                       eee->stats.tx_p2p,
-                       eee->stats.rx_p2p);
+                       req->tag,
+                       req->eee->stats.tx_p2p,
+                       req->eee->stats.rx_p2p);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
@@ -250,12 +257,11 @@ static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "\"type\":\"super\","
                        "\"tx_pkt\":%u,"
                        "\"rx_pkt\":%u}\n",
-                       tag,
-                       eee->stats.tx_sup,
-                       eee->stats.rx_sup);
+                       req->tag,
+                       req->eee->stats.tx_sup,
+                       req->eee->stats.rx_sup);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{"
@@ -264,20 +270,19 @@ static void mgmt_packetstats (n2n_edge_t *eee, char *udp_buf, const struct socka
                        "\"type\":\"super_broadcast\","
                        "\"tx_pkt\":%u,"
                        "\"rx_pkt\":%u}\n",
-                       tag,
-                       eee->stats.tx_sup_broadcast,
-                       eee->stats.rx_sup_broadcast);
+                       req->tag,
+                       req->eee->stats.tx_sup_broadcast,
+                       req->eee->stats.rx_sup_broadcast);
 
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(req, udp_buf, msg_len);
 }
 
-static void mgmt_unimplemented (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_unimplemented (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
 
-    mgmt_error(eee, udp_buf, sender_sock, tag, "unimplemented");
+    mgmt_error(req, udp_buf, "unimplemented");
 }
 
-static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv);
+static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
 
 mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
@@ -293,7 +298,7 @@ mgmt_handler_t mgmt_handlers[] = {
     { .cmd = NULL },
 };
 
-static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *tag, char *argv0, char *argv) {
+static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
     mgmt_handler_t *handler;
 
@@ -309,12 +314,11 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
                            "\"_type\":\"row\","
                            "\"cmd\":\"%s\","
                            "\"help\":\"%s\"}\n",
-                           tag,
+                           req->tag,
                            handler->cmd,
                            handler->help);
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(req, udp_buf, msg_len);
     }
 }
 
@@ -325,32 +329,30 @@ static void mgmt_help (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in 
  *   Reads are not dangerous, so they are simply allowed
  *   Writes are possibly dangerous, so they need a fake password
  */
-static int mgmt_auth (n2n_edge_t *eee, const struct sockaddr_in sender_sock, enum n2n_mgmt_type type, char *auth, char *argv0, char *argv) {
+static int mgmt_auth (mgmt_req_t *req, char *auth, char *argv0, char *argv) {
 
     if(auth) {
         /* If we have an auth key, it must match */
-        if(eee->conf.mgmt_password_hash == pearson_hash_64((uint8_t*)auth, strlen(auth))) {
+        if(req->eee->conf.mgmt_password_hash == pearson_hash_64((uint8_t*)auth, strlen(auth))) {
             return 1;
         }
         return 0;
     }
     /* if we dont have an auth key, we can still read */
-    if(type == N2N_MGMT_READ) {
+    if(req->type == N2N_MGMT_READ) {
         return 1;
     }
 
     return 0;
 }
 
-static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockaddr_in sender_sock) {
+static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 
     char cmdlinebuf[80];
-    enum n2n_mgmt_type type;
     char *typechar;
     char *options;
     char *argv0;
     char *argv;
-    char *tag;
     char *flagstr;
     int flags;
     char *auth;
@@ -364,31 +366,32 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockadd
     traceEvent(TRACE_DEBUG, "mgmt json %s", cmdlinebuf);
 
     typechar = strtok(cmdlinebuf, " \r\n");
+    req->tag = "-1";
     if(!typechar) {
         /* should not happen */
-        mgmt_error(eee, udp_buf, sender_sock, "-1", "notype");
+        mgmt_error(req, udp_buf, "notype");
         return;
     }
     if(*typechar == 'r') {
-        type=N2N_MGMT_READ;
+        req->type=N2N_MGMT_READ;
     } else if(*typechar == 'w') {
-        type=N2N_MGMT_WRITE;
+        req->type=N2N_MGMT_WRITE;
     } else {
         /* dunno how we got here */
-        mgmt_error(eee, udp_buf, sender_sock, "-1", "badtype");
+        mgmt_error(req, udp_buf, "badtype");
         return;
     }
 
     /* Extract the tag to use in all reply packets */
     options = strtok(NULL, " \r\n");
     if(!options) {
-        mgmt_error(eee, udp_buf, sender_sock, "-1", "nooptions");
+        mgmt_error(req, udp_buf, "nooptions");
         return;
     }
 
     argv0 = strtok(NULL, " \r\n");
     if(!argv0) {
-        mgmt_error(eee, udp_buf, sender_sock, "-1", "nocmd");
+        mgmt_error(req, udp_buf, "nocmd");
         return;
     }
 
@@ -401,7 +404,7 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockadd
     /*
      * There might be an auth token mixed in with the tag
      */
-    tag = strtok(options, ":");
+    req->tag = strtok(options, ":");
     flagstr = strtok(NULL, ":");
     if(flagstr) {
         flags = strtoul(flagstr, NULL, 16);
@@ -416,8 +419,8 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockadd
         auth = NULL;
     }
 
-    if(!mgmt_auth(eee, sender_sock, type, auth, argv0, argv)) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "badauth");
+    if(!mgmt_auth(req, auth, argv0, argv)) {
+        mgmt_error(req, udp_buf, "badauth");
         return;
     }
 
@@ -427,12 +430,12 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockadd
         }
     }
     if(!handler->cmd) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "unknowncmd");
+        mgmt_error(req, udp_buf, "unknowncmd");
         return;
     }
 
-    if((type==N2N_MGMT_WRITE) && !(handler->flags & FLAG_WROK)) {
-        mgmt_error(eee, udp_buf, sender_sock, tag, "readonly");
+    if((req->type==N2N_MGMT_WRITE) && !(handler->flags & FLAG_WROK)) {
+        mgmt_error(req, udp_buf, "readonly");
         return;
     }
 
@@ -443,16 +446,14 @@ static void handleMgmtJson (n2n_edge_t *eee, char *udp_buf, const struct sockadd
      * - do we care?
      */
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", tag, argv0);
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+                       "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", req->tag, argv0);
+    send_reply(req, udp_buf, msg_len);
 
-    handler->func(eee, udp_buf, sender_sock, type, tag, argv0, argv);
+    handler->func(req, udp_buf, argv0, argv);
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", tag);
-    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+                       "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", req->tag);
+    send_reply(req, udp_buf, msg_len);
     return;
 }
 
@@ -463,7 +464,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     char udp_buf[N2N_PKT_BUF_SIZE]; /* Compete UDP packet */
     ssize_t recvlen;
     /* ssize_t sendlen; */
-    struct sockaddr_in sender_sock;
+    mgmt_req_t req;
     socklen_t i;
     size_t msg_len;
     time_t now;
@@ -480,11 +481,12 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     uint32_t num = 0;
     selection_criterion_str_t sel_buf;
 
+    req.eee = eee;
 
     now = time(NULL);
-    i = sizeof(sender_sock);
+    i = sizeof(req.sender_sock);
     recvlen = recvfrom(eee->udp_mgmt_sock, udp_buf, N2N_PKT_BUF_SIZE, 0 /*flags*/,
-                       (struct sockaddr *) &sender_sock, (socklen_t *) &i);
+                       (struct sockaddr *) &req.sender_sock, (socklen_t *) &i);
 
     if(recvlen < 0) {
         traceEvent(TRACE_WARNING, "mgmt recvfrom failed: %d - %s", errno, strerror(errno));
@@ -507,8 +509,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             "\tw ...   | start update with JSON reply\n"
                             "\t<enter> | Display statistics\n\n");
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(&req, udp_buf, msg_len);
 
         return;
     }
@@ -527,8 +528,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "> +OK traceLevel=%u\n", (unsigned int) getTraceLevel());
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(&req, udp_buf, msg_len);
 
         return;
     }
@@ -547,14 +547,13 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
 
         traceEvent(TRACE_NORMAL, "-verb traceLevel=%u", (unsigned int) getTraceLevel());
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(&req, udp_buf, msg_len);
         return;
     }
 
     if((udp_buf[0] == 'r' || udp_buf[0] == 'w') && (udp_buf[1] == ' ')) {
         /* this is a JSON request */
-        handleMgmtJson(eee, udp_buf, sender_sock);
+        handleMgmtJson(&req, udp_buf, recvlen);
         return;
     }
 
@@ -586,8 +585,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             peer->dev_desc,
                             (peer->last_seen) ? time_buf : "");
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(&req, udp_buf, msg_len);
         msg_len = 0;
     }
 
@@ -610,8 +608,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             peer->dev_desc,
                             (peer->last_seen) ? time_buf : "");
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(&req, udp_buf, msg_len);
         msg_len = 0;
     }
 
@@ -636,8 +633,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             (peer->last_seen) ? time_buf : "",
                             (peer->uptime) ? uptime_buf : "");
 
-        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+        send_reply(&req, udp_buf, msg_len);
         msg_len = 0;
     }
 
@@ -683,6 +679,5 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "\nType \"help\" to see more commands.\n\n");
 
-    /* sendlen = */ sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0 /*flags*/,
-                           (struct sockaddr *) &sender_sock, sizeof(struct sockaddr_in));
+    send_reply(&req, udp_buf, msg_len);
 }
