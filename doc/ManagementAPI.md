@@ -83,7 +83,8 @@ SubFields:
 
 Each request provides a tag value.  Any non error reply associated with this
 request will include this tag value, allowing all related messages to be
-collected within the client.
+collected within the client.  The tag will be truncated if needed by the
+daemon, but there will be at least 8 octets of space available.
 
 Where possible, the error replies will also include this tag, however some
 errors occur before the tag is parsed.
@@ -131,7 +132,7 @@ containing a fragment of information related to the entire reply.
 
 There are two keys in each dictionary containing metadata.  First
 is the `_tag`, containing the Message Tag from the original request.
-Second is the `_type` whic identifies the expected contents of this
+Second is the `_type` which identifies the expected contents of this
 packet.
 
 ### `_type: error`

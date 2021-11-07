@@ -25,7 +25,7 @@
 typedef struct mgmt_req {
     n2n_edge_t *eee;
     enum n2n_mgmt_type type;
-    char *tag;
+    char tag[10];
     struct sockaddr_in sender_sock;
 } mgmt_req_t;
 
@@ -359,6 +359,11 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     mgmt_handler_t *handler;
     size_t msg_len;
 
+    /* Initialise the tag field until we extract it from the cmdline */
+    req->tag[0] = '-';
+    req->tag[1] = '1';
+    req->tag[2] = '\0';
+
     /* save a copy of the commandline before we reuse the udp_buf */
     strncpy(cmdlinebuf, udp_buf, sizeof(cmdlinebuf)-1);
     cmdlinebuf[sizeof(cmdlinebuf)-1] = 0;
@@ -366,7 +371,6 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     traceEvent(TRACE_DEBUG, "mgmt json %s", cmdlinebuf);
 
     typechar = strtok(cmdlinebuf, " \r\n");
-    req->tag = "-1";
     if(!typechar) {
         /* should not happen */
         mgmt_error(req, udp_buf, "notype");
@@ -404,7 +408,10 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     /*
      * There might be an auth token mixed in with the tag
      */
-    req->tag = strtok(options, ":");
+    char *tagp = strtok(options, ":");
+    strncpy(req->tag, tagp, sizeof(req->tag)-1);
+    req->tag[sizeof(req->tag)-1] = '\0';
+
     flagstr = strtok(NULL, ":");
     if(flagstr) {
         flags = strtoul(flagstr, NULL, 16);
