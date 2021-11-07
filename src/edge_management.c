@@ -29,18 +29,34 @@ typedef struct mgmt_req {
     struct sockaddr_in sender_sock;
 } mgmt_req_t;
 
+/*
+ * Read/Write handlers are defined in this structure
+ */
 #define FLAG_WROK 1
 typedef struct mgmt_handler {
     int flags;
     char  *cmd;
     char  *help;
-    void (*func)(mgmt_req_t *reg, char *udp_buf, char *argv0, char *argv);
+    void (*func)(mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
 } mgmt_handler_t;
+
+/*
+ * Event topic names are defined in this structure
+ */
+typedef struct mgmt_events {
+    int topic; // topic number define
+    char  *cmd;
+    char  *help;
+} mgmt_events_t;
 
 static void send_reply (mgmt_req_t *req, char *udp_buf, size_t msg_len) {
     // TODO: error handling
     sendto(req->eee->udp_mgmt_sock, udp_buf, msg_len, 0,
            (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
+}
+
+static void event_debug (mgmt_req_t *req, char *udp_buf) {
+    send_reply(req, "test", 4);
 }
 
 static void mgmt_error (mgmt_req_t *req, char *udp_buf, char *msg) {
@@ -282,9 +298,10 @@ static void mgmt_unimplemented (mgmt_req_t *req, char *udp_buf, char *argv0, cha
     mgmt_error(req, udp_buf, "unimplemented");
 }
 
+// Forward define so we can include this in the mgmt_handlers[] table
 static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
 
-mgmt_handler_t mgmt_handlers[] = {
+static mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
 
     { .cmd = "stop", .flags = FLAG_WROK, .help = "Gracefully exit edge", .func = mgmt_stop},
@@ -295,6 +312,21 @@ mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
     { .cmd = "help", .flags = FLAG_WROK, .help = "Show JSON commands", .func = mgmt_help},
+    // TODO: help_events
+    { .cmd = NULL },
+};
+
+/* Current subscriber for each event topic */
+static mgmt_req_t *mgmt_event_subscribers[10];
+
+/* Map topic number to function */
+static const void (*mgmt_events[])(mgmt_req_t *req, char *udp_buf) = {
+    [0] = event_debug,
+};
+
+/* Allow help and subscriptions to use topic name */
+static mgmt_events_t mgmt_event_names[] = {
+    { .cmd = "debug", .topic = 0, .help = "All events - for event debugging"},
     { .cmd = NULL },
 };
 
@@ -514,6 +546,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             "\t-verb   | Decrease verbosity of logging\n"
                             "\tr ...   | start query with JSON reply\n"
                             "\tw ...   | start update with JSON reply\n"
+                            "\ts ...   | subscribe to event channel JSON reply\n"
                             "\t<enter> | Display statistics\n\n");
 
         send_reply(&req, udp_buf, msg_len);
@@ -558,7 +591,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
         return;
     }
 
-    if((udp_buf[0] == 'r' || udp_buf[0] == 'w') && (udp_buf[1] == ' ')) {
+    if((udp_buf[0] >= 'a' && udp_buf[0] <= 'z') && (udp_buf[1] == ' ')) {
         /* this is a JSON request */
         handleMgmtJson(&req, udp_buf, recvlen);
         return;
