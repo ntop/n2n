@@ -301,7 +301,7 @@ static void mgmt_unimplemented (mgmt_req_t *req, char *udp_buf, char *argv0, cha
 // Forward define so we can include this in the mgmt_handlers[] table
 static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
 
-static mgmt_handler_t mgmt_handlers[] = {
+static const mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
 
     { .cmd = "stop", .flags = FLAG_WROK, .help = "Gracefully exit edge", .func = mgmt_stop},
@@ -313,7 +313,6 @@ static mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
     { .cmd = "help", .flags = FLAG_WROK, .help = "Show JSON commands", .func = mgmt_help},
     // TODO: help_events
-    { .cmd = NULL },
 };
 
 /* Current subscriber for each event topic */
@@ -332,14 +331,15 @@ static mgmt_events_t mgmt_event_names[] = {
 
 static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
-    mgmt_handler_t *handler;
 
     /*
      * Even though this command is readonly, we deliberately do not check
      * the type - allowing help replies to both read and write requests
      */
 
-    for( handler=mgmt_handlers; handler->cmd; handler++ ) {
+    int i;
+    int nr_handlers = sizeof(mgmt_handlers) / sizeof(mgmt_handler_t);
+    for( i=0; i < nr_handlers; i++ ) {
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                            "{"
                            "\"_tag\":\"%s\","
@@ -347,8 +347,8 @@ static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) 
                            "\"cmd\":\"%s\","
                            "\"help\":\"%s\"}\n",
                            req->tag,
-                           handler->cmd,
-                           handler->help);
+                           mgmt_handlers[i].cmd,
+                           mgmt_handlers[i].help);
 
         send_reply(req, udp_buf, msg_len);
     }
@@ -388,7 +388,6 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     char *flagstr;
     int flags;
     char *auth;
-    mgmt_handler_t *handler;
     size_t msg_len;
 
     /* Initialise the tag field until we extract it from the cmdline */
@@ -463,17 +462,19 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
         return;
     }
 
-    for( handler=mgmt_handlers; handler->cmd; handler++ ) {
-        if(0 == strcmp(handler->cmd, argv0)) {
+    int handler;
+    int nr_handlers = sizeof(mgmt_handlers) / sizeof(mgmt_handler_t);
+    for( handler=0; handler < nr_handlers; handler++ ) {
+        if(0 == strcmp(mgmt_handlers[handler].cmd, argv0)) {
             break;
         }
     }
-    if(!handler->cmd) {
+    if(handler >= nr_handlers) {
         mgmt_error(req, udp_buf, "unknowncmd");
         return;
     }
 
-    if((req->type==N2N_MGMT_WRITE) && !(handler->flags & FLAG_WROK)) {
+    if((req->type==N2N_MGMT_WRITE) && !(mgmt_handlers[handler].flags & FLAG_WROK)) {
         mgmt_error(req, udp_buf, "readonly");
         return;
     }
@@ -488,7 +489,7 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
                        "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", req->tag, argv0);
     send_reply(req, udp_buf, msg_len);
 
-    handler->func(req, udp_buf, argv0, argv);
+    mgmt_handlers[handler].func(req, udp_buf, argv0, argv);
 
     msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                        "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", req->tag);
