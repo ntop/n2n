@@ -2831,8 +2831,9 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
                         SN_SELECTION_CRITERION_DATA_TYPE sn_sel_tmp = pi.load;
                         sn_selection_criterion_calculate(eee, scan, &sn_sel_tmp);
 
-                        traceEvent(TRACE_INFO, "Rx PONG from supernode %s",
-                                   macaddr_str(mac_buf1, pi.srcMac));
+                        traceEvent(TRACE_INFO, "Rx PONG from supernode %s version '%s'",
+                                   macaddr_str(mac_buf1, pi.srcMac),
+                                   pi.version);
 
                         break;
                     }
