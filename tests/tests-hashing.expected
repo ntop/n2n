@@ -32,5 +32,5 @@ environment: input size = 0x200
 1e0: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
 1f0: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
 
-pearson: output = 0xb2d98fa82ea108be
+pearson_hash_64: output = 0xb2d98fa82ea108be
 
