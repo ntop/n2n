@@ -41,12 +41,60 @@ uint8_t PKT_CONTENT[]={
     0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
 };
 
+void test_pearson_16 (void *buf, unsigned int bufsize) {
+    char *test_name = "pearson_hash_16";
+
+    uint16_t hash = pearson_hash_16(buf, bufsize);
+
+    printf("%s: output = 0x%" PRIx16 "\n", test_name, hash);
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
+void test_pearson_32 (void *buf, unsigned int bufsize) {
+    char *test_name = "pearson_hash_32";
+
+    uint32_t hash = pearson_hash_32(buf, bufsize);
+
+    printf("%s: output = 0x%" PRIx32 "\n", test_name, hash);
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
 void test_pearson_64 (void *buf, unsigned int bufsize) {
     char *test_name = "pearson_hash_64";
 
     uint64_t hash = pearson_hash_64(buf, bufsize);
 
     printf("%s: output = 0x%" PRIx64 "\n", test_name, hash);
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
+void test_pearson_128 (void *buf, unsigned int bufsize) {
+    char *test_name = "pearson_hash_128";
+
+    uint8_t hash[16];
+    pearson_hash_128(hash, buf, bufsize);
+
+    printf("%s: output:\n", test_name);
+    fhexdump(0, hash, sizeof(hash), stdout);
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
+void test_pearson_256 (void *buf, unsigned int bufsize) {
+    char *test_name = "pearson_hash_256";
+
+    uint8_t hash[32];
+    pearson_hash_256(hash, buf, bufsize);
+
+    printf("%s: output:\n", test_name);
+    fhexdump(0, hash, sizeof(hash), stdout);
 
     fprintf(stderr, "%s: tested\n", test_name);
     printf("\n");
@@ -60,7 +108,11 @@ int main (int argc, char * argv[]) {
     fhexdump(0, PKT_CONTENT, sizeof(PKT_CONTENT), stdout);
     printf("\n");
 
+    test_pearson_256(PKT_CONTENT, sizeof(PKT_CONTENT));
+    test_pearson_128(PKT_CONTENT, sizeof(PKT_CONTENT));
     test_pearson_64(PKT_CONTENT, sizeof(PKT_CONTENT));
+    test_pearson_32(PKT_CONTENT, sizeof(PKT_CONTENT));
+    test_pearson_16(PKT_CONTENT, sizeof(PKT_CONTENT));
 
     return 0;
 }
