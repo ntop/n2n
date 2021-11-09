@@ -62,14 +62,45 @@ void test_ascii_to_bin (char *buf) {
     printf("\n");
 }
 
-void test_generate_private_key (char *in) {
+void test_generate_private_key (char *in, n2n_private_public_key_t prv) {
     char *test_name = "generate_private_key";
-    n2n_private_public_key_t out;
-    memset(out, 0 , sizeof(out));
 
     printf("%s: input = %s\n", test_name, in);
 
-    generate_private_key(out, in);
+    generate_private_key(prv, in);
+
+    printf("%s: output:\n", test_name);
+    fhexdump(0, prv, sizeof(n2n_private_public_key_t), stdout);
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
+void test_generate_public_key (n2n_private_public_key_t prv, n2n_private_public_key_t pub) {
+    char *test_name = "generate_public_key";
+
+    printf("%s: input:\n", test_name);
+    fhexdump(0, prv, sizeof(n2n_private_public_key_t), stdout);
+
+    generate_public_key(pub, prv);
+
+    printf("%s: output:\n", test_name);
+    fhexdump(0, pub, sizeof(n2n_private_public_key_t), stdout);
+
+    fprintf(stderr, "%s: tested\n", test_name);
+    printf("\n");
+}
+
+void test_generate_shared_secret (n2n_private_public_key_t prv, n2n_private_public_key_t pub) {
+    char *test_name = "generate_shared_secret";
+    n2n_private_public_key_t out;
+
+    printf("%s: input: prv\n", test_name);
+    fhexdump(0, prv, sizeof(n2n_private_public_key_t), stdout);
+    printf("%s: input: pub\n", test_name);
+    fhexdump(0, pub, sizeof(n2n_private_public_key_t), stdout);
+
+    generate_shared_secret(out, prv, pub);
 
     printf("%s: output:\n", test_name);
     fhexdump(0, out, sizeof(out), stdout);
@@ -82,7 +113,15 @@ int main (int argc, char * argv[]) {
 
     test_bin_to_ascii(PKT_CONTENT1, sizeof(PKT_CONTENT1));
     test_ascii_to_bin(PKT_CONTENT2);
-    test_generate_private_key(PKT_CONTENT2);
+
+    n2n_private_public_key_t prv;
+    memset(prv, 0 , sizeof(prv));
+    n2n_private_public_key_t pub;
+    memset(pub, 0 , sizeof(pub));
+
+    test_generate_private_key(PKT_CONTENT2, prv);
+    test_generate_public_key(prv, pub);
+    test_generate_shared_secret(prv, pub);
 
     return 0;
 }
