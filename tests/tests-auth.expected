@@ -1,0 +1,14 @@
+bin_to_ascii: input size = 0x10
+000: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
+bin_to_ascii: output: 00420mG51WS82GeB30qE3m
+
+ascii_to_bin: input = 00420mG51WS82GeB30qE3m
+ascii_to_bin: output:
+000: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
+010: 00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00   |                |
+
+generate_private_key: input = 00420mG51WS82GeB30qE3m
+generate_private_key: output:
+000: a4 f4 b5 1c 8a 0a 09 f9  7e 98 22 ca 8a cc b3 f9   |        ~ "     |
+010: 4d 5a 0d 02 0b 9d 08 ea  03 9b 46 41 8e 3c 0d 49   |MZ        FA < I|
+
