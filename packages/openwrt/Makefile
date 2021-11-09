@@ -5,18 +5,21 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=n2n
-PKG_SOURCE_URL:=$(GITHUB_SERVER_URL)/$(GITHUB_REPOSITORY)
-PKG_SOURCE_VERSION:=$(GITHUB_SHA)
-PKG_VERSION:=2.9.0_dev_git$(PKG_SOURCE_VERSION)
+PKG_VERSION:=3.1.0 # FIXME - should use the scripts/version.sh output
 PKG_RELEASE:=1
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+
+# FIXME
+# - if we are not compiling in the github environment, we cannot calculate
+#   values for these two, so they should both have defaults
+#
+PKG_SOURCE_URL:=$(GITHUB_SERVER_URL)/$(GITHUB_REPOSITORY)
+PKG_SOURCE_VERSION:=$(GITHUB_SHA)
 
 PKG_MAINTAINER:=Emanuele Faranda <faranda@ntop.org>
 PKG_LICENSE:=GPL3
-PKG_BUILD_PARALLEL:=1
 
 # autogen fix
 PKG_FIXUP:=autoreconf
