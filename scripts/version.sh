@@ -10,10 +10,16 @@ usage() {
     exit 0
 }
 
-VER_FILE_DIR=$(dirname "$0")/..
-VER_FILE_SHORT=$(cat "${VER_FILE_DIR}/VERSION")
+# We assume this script is in the TOPDIR/scripts directory and use that
+# to find any other files we need
+TOPDIR=$(dirname "$0")/..
 
-if git status >/dev/null; then
+VER_FILE_SHORT=$(cat "${TOPDIR}/VERSION")
+
+if [ -d "$TOPDIR/.git" ]; then
+    # If there is a .git directory in our TOPDIR, then this is assumed to be
+    # real git checkout
+
     VER_GIT_SHORT=$(git describe --abbrev=0)
 
     if [ "$VER_FILE_SHORT" != "$VER_GIT_SHORT" ]; then
@@ -25,6 +31,9 @@ if git status >/dev/null; then
     VER_HASH=$(git rev-parse --short HEAD)
     VER=$(git describe --abbrev=7 --dirty)
 else
+    # If there is no .git directory in our TOPDIR, we fall back on relying on
+    # the VERSION file
+
     VER_SHORT="$VER_FILE_SHORT"
     VER_HASH="HEAD"
     VER="$VER_FILE_SHORT"
