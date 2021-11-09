@@ -199,6 +199,8 @@ target_link_libraries(n2n-benchmark n2n)
 add_executable(n2n-keygen tools/n2n-keygen.c)
 target_link_libraries(n2n-keygen n2n)
 
+add_executable(tests-auth tools/tests-auth.c)
+target_link_libraries(tests-auth n2n)
 add_executable(tests-compress tools/tests-compress.c)
 target_link_libraries(tests-compress n2n)
 add_executable(tests-elliptic tools/tests-elliptic.c)
