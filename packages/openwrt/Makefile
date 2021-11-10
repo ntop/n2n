@@ -5,7 +5,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=n2n
-PKG_VERSION:=3.1.0 # FIXME - should use the scripts/version.sh output
+# FIXME - should use the scripts/version.sh output
+PKG_VERSION:=3.1.0
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
