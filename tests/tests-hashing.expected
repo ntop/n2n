@@ -32,5 +32,16 @@ environment: input size = 0x200
 1e0: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
 1f0: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
 
-pearson: output = 0xb2d98fa82ea108be
+pearson_hash_256: output:
+000: 40 09 5c ca 28 6b fb 93  4c 4a f7 c0 79 a8 04 5a   |@ \ (k  LJ  y  Z|
+010: b5 3d cf b3 a7 ed 18 56  b2 d9 8f a8 2e a1 08 be   | =     V    .   |
+
+pearson_hash_128: output:
+000: b5 3d cf b3 a7 ed 18 56  b2 d9 8f a8 2e a1 08 be   | =     V    .   |
+
+pearson_hash_64: output = 0xb2d98fa82ea108be
+
+pearson_hash_32: output = 0x2ea108be
+
+pearson_hash_16: output = 0x8be
 

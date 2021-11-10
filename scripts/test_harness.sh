@@ -4,6 +4,7 @@
 # in the tests dir.
 
 TESTS="
+    tests-auth
     tests-compress
     tests-elliptic
     tests-hashing

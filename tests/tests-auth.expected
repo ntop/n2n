@@ -1,0 +1,31 @@
+bin_to_ascii: input size = 0x10
+000: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
+bin_to_ascii: output: 00420mG51WS82GeB30qE3m
+
+ascii_to_bin: input = 00420mG51WS82GeB30qE3m
+ascii_to_bin: output:
+000: 00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f   |                |
+010: 00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00   |                |
+
+generate_private_key: input = 00420mG51WS82GeB30qE3m
+generate_private_key: output:
+000: a4 f4 b5 1c 8a 0a 09 f9  7e 98 22 ca 8a cc b3 f9   |        ~ "     |
+010: 4d 5a 0d 02 0b 9d 08 ea  03 9b 46 41 8e 3c 0d 49   |MZ        FA < I|
+
+generate_public_key: input:
+000: a4 f4 b5 1c 8a 0a 09 f9  7e 98 22 ca 8a cc b3 f9   |        ~ "     |
+010: 4d 5a 0d 02 0b 9d 08 ea  03 9b 46 41 8e 3c 0d 49   |MZ        FA < I|
+generate_public_key: output:
+000: ca 58 61 6f f9 25 d0 cd  1d a5 62 48 a0 15 5e ad   | Xao %    bH  ^ |
+010: a9 f3 5c 10 5f 20 b6 42  b0 a9 7c 1e 0e d7 e9 4b   |  \ _  B  |    K|
+
+generate_shared_secret: input: prv
+000: a4 f4 b5 1c 8a 0a 09 f9  7e 98 22 ca 8a cc b3 f9   |        ~ "     |
+010: 4d 5a 0d 02 0b 9d 08 ea  03 9b 46 41 8e 3c 0d 49   |MZ        FA < I|
+generate_shared_secret: input: pub
+000: ca 58 61 6f f9 25 d0 cd  1d a5 62 48 a0 15 5e ad   | Xao %    bH  ^ |
+010: a9 f3 5c 10 5f 20 b6 42  b0 a9 7c 1e 0e d7 e9 4b   |  \ _  B  |    K|
+generate_shared_secret: output:
+000: 5d 94 7b 0b db 54 e8 70  8a 09 b0 db 6f 0b 0d 31   |] {  T p    o  1|
+010: 1b b8 5f ba 57 74 34 bd  3b c5 c4 6c d5 ae a4 84   |  _ Wt4 ;  l    |
+

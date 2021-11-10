@@ -19,6 +19,7 @@ TOOLS+=@ADDITIONAL_TOOLS@
 
 TESTS=tests-compress tests-elliptic tests-hashing tests-transform
 TESTS+=tests-wire
+TESTS+=tests-auth
 
 .PHONY: all clean install
 all: $(TOOLS) $(TESTS)
