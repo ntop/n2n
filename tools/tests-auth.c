@@ -46,7 +46,7 @@ void test_bin_to_ascii (void *buf, unsigned int bufsize) {
 void test_ascii_to_bin (char *buf) {
     char *test_name = "ascii_to_bin";
     uint8_t out[32];
-    memset(out, 0 , sizeof(out));
+    memset(out, 0, sizeof(out));
 
     printf("%s: input = %s\n", test_name, buf);
 
@@ -115,9 +115,9 @@ int main (int argc, char * argv[]) {
     test_ascii_to_bin(PKT_CONTENT2);
 
     n2n_private_public_key_t prv;
-    memset(prv, 0 , sizeof(prv));
+    memset(prv, 0, sizeof(prv));
     n2n_private_public_key_t pub;
-    memset(pub, 0 , sizeof(pub));
+    memset(pub, 0, sizeof(pub));
 
     test_generate_private_key(PKT_CONTENT2, prv);
     test_generate_public_key(prv, pub);

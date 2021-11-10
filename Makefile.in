@@ -95,6 +95,7 @@ LINT_CCODE=\
 	src/transform_cc20.c \
 	src/tuntap_linux.c \
 	src/wire.c \
+	tools/tests-auth.c \
 	tools/tests-compress.c \
 	tools/tests-elliptic.c \
 	tools/tests-hashing.c \
