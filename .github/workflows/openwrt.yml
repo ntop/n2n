@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Run test environment
+    name: Build ipkg
     runs-on: ubuntu-latest
 
     steps:
