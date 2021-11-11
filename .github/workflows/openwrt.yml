@@ -11,10 +11,15 @@ jobs:
     name: Build ipkg
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: openwrt
+
     steps:
       - name: Checkout openwrt
         uses: actions/checkout@v2
         with:
+          path: openwrt
           repository: openwrt/openwrt
 
       - name: Set openwrt ref
@@ -24,7 +29,7 @@ jobs:
       - name: Cache openwrt source downloads
         uses: actions/cache@v2
         with:
-          path: dl
+          path: openwrt/dl
           key: openwrt-dl-${{ steps.ref.outputs.OPENWRT }}
 
       - name: Setup openwrt config and environment
@@ -50,9 +55,13 @@ jobs:
         with:
           path: n2n
 
-      - name: Add n2n package
+      - name: Copy n2n package definition into openwrt
         run: |
-          cp -r n2n/packages/openwrt package/n2n
+          cp -r n2n/packages/openwrt openwrt/package/n2n
+        working-directory: ./
+
+      - name: Add n2n package to openwrt config
+        run: |
           echo "CONFIG_PACKAGE_n2n-edge=m" >>.config
           echo "CONFIG_PACKAGE_n2n-supernode=m" >>.config
           make defconfig
