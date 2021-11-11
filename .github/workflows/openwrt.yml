@@ -23,8 +23,10 @@ jobs:
           repository: openwrt/openwrt
 
       - name: Set openwrt ref
-        id: ref
-        run: echo ::set-output name=OPENWRT::$(git rev-parse --short HEAD)
+        id: openwrt_ref
+        run: |
+          echo ::set-output name=REF::$(git rev-parse --short HEAD)
+          git rev-parse --short HEAD
 
       - name: Checkout n2n
         uses: actions/checkout@v2
@@ -37,6 +39,13 @@ jobs:
           git fetch --force --tags
         working-directory: n2n
 
+      - name: Set n2n ref
+        id: n2n_ref
+        run: |
+          echo ::set-output name=REF::$(./scripts/version.sh)
+          ./scripts/version.sh
+        working-directory: n2n
+
       - name: Copy n2n package definition into openwrt
         run: |
           cp -r n2n/packages/openwrt openwrt/package/n2n
@@ -46,7 +55,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: openwrt/dl
-          key: openwrt-dl-${{ steps.ref.outputs.OPENWRT }}
+          key: openwrt-dl-${{ steps.openwrt_ref.outputs.REF }}
 
       - name: Setup openwrt config and environment
         run: |
