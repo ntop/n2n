@@ -30,6 +30,12 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: n2n
+          fetch-depth: 0
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+        working-directory: n2n
 
       - name: Copy n2n package definition into openwrt
         run: |
