@@ -86,14 +86,14 @@ jobs:
       - name: Build n2n openwrt packages
         env:
           N2N_PKG_VERSION: ${{ steps.n2n_ref.outputs.REF }}
-          N2N_PKG_URL: ${{ github.server_url }}/${{ github.repository }}
+          N2N_PKG_SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
           N2N_PKG_SOURCE_VERSION: ${{ github.sha }}
         run: |
           echo "Build details:"
-          echo URL=$N2N_PKG_URL
+          echo URL=$N2N_PKG_SOURCE_URL
           echo SHA=$N2N_PKG_SOURCE_VERSION
           echo VER=$N2N_PKG_VERSION
-          export N2N_PKG_URL N2N_PKG_SOURCE_VERSION N2N_PKG_VERSION
+          export N2N_PKG_SOURCE_URL N2N_PKG_SOURCE_VERSION N2N_PKG_VERSION
           make package/n2n/compile V=s
 
 # FIXME: add a way to run the test suite!

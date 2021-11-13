@@ -17,11 +17,11 @@ PKG_SOURCE_URL:=https://github.com/ntop/n2n
 PKG_SOURCE_VERSION:=dev
 
 # Apply overrides from the build environment
-ifdef $(N2N_PKG_URL)
-    PKG_SOURCE_URL:=$(N2N_PKG_URL)
+ifdef $(N2N_PKG_SOURCE_URL)
+    PKG_SOURCE_URL:=$(N2N_PKG_SOURCE_URL)
 endif
-ifdef $(N2N_SOURCE_VERSION)
-    PKG_SOURCE_VERSION:=$(N2N_SOURCE_VERSION)
+ifdef $(N2N_PKG_SOURCE_VERSION)
+    PKG_SOURCE_VERSION:=$(N2N_PKG_SOURCE_VERSION)
 endif
 ifdef $(N2N_PKG_VERSION)
     PKG_VERSION:=$(N2N_PKG_VERSION)
