@@ -103,4 +103,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: built-ipkgs
-          path: bin/packages/*/base/*.ipk
+          path: openwrt/bin/packages/*/base/*.ipk
