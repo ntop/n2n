@@ -5,19 +5,27 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=n2n
-# FIXME - should use the scripts/version.sh output
-PKG_VERSION:=3.1.0
+PKG_VERSION:=HEAD
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 
-# FIXME
-# - if we are not compiling in the github environment, we cannot calculate
-#   values for these two, so they should both have defaults
-#
-PKG_SOURCE_URL:=$(GITHUB_SERVER_URL)/$(GITHUB_REPOSITORY)
-PKG_SOURCE_VERSION:=$(GITHUB_SHA)
+# These are defaults for compiling without any environmental overrides
+# (eg, the github action calculates the correct overrides for each build)
+PKG_SOURCE_URL:=https://github.com/ntop/n2n
+PKG_SOURCE_VERSION:=dev
+
+# Apply overrides from the build environment
+ifdef $(N2N_PKG_URL)
+    PKG_SOURCE_URL:=$(N2N_PKG_URL)
+endif
+ifdef $(N2N_SOURCE_VERSION)
+    PKG_SOURCE_VERSION:=$(N2N_SOURCE_VERSION)
+endif
+ifdef $(N2N_PKG_VERSION)
+    PKG_VERSION:=$(N2N_PKG_VERSION)
+endif
 
 PKG_MAINTAINER:=Emanuele Faranda <faranda@ntop.org>
 PKG_LICENSE:=GPL3
