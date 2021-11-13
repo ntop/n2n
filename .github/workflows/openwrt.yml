@@ -93,6 +93,7 @@ jobs:
           echo URL=$N2N_PKG_URL
           echo SHA=$N2N_PKG_SOURCE_VERSION
           echo VER=$N2N_PKG_VERSION
+          export N2N_PKG_URL N2N_PKG_SOURCE_VERSION N2N_PKG_VERSION
           make package/n2n/compile V=s
 
 # FIXME: add a way to run the test suite!
