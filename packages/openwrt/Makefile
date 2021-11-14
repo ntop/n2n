@@ -18,13 +18,13 @@ PKG_SOURCE_VERSION:=dev
 PKG_MIRROR_HASH:=skip
 
 # Apply overrides from the build environment
-ifdef $(N2N_PKG_SOURCE_URL)
+ifdef N2N_PKG_SOURCE_URL
     PKG_SOURCE_URL:=$(N2N_PKG_SOURCE_URL)
 endif
-ifdef $(N2N_PKG_SOURCE_VERSION)
+ifdef N2N_PKG_SOURCE_VERSION
     PKG_SOURCE_VERSION:=$(N2N_PKG_SOURCE_VERSION)
 endif
-ifdef $(N2N_PKG_VERSION)
+ifdef N2N_PKG_VERSION
     PKG_VERSION:=$(N2N_PKG_VERSION)
 endif
 
@@ -33,20 +33,6 @@ PKG_LICENSE:=GPL3
 
 # autogen fix
 PKG_FIXUP:=autoreconf
-
-# The variables are not being set as expected, output some debug info to
-# try and show this in the build
-#
-$(info DEBUG DEBUG DEBUG DEBUG DEBUG)
-$(info N2N_PKG_SOURCE_URL=$(N2N_PKG_SOURCE_URL))
-$(info N2N_PKG_SOURCE_VERSION=$(N2N_PKG_SOURCE_VERSION))
-$(info N2N_PKG_VERSION=$(N2N_PKG_VERSION))
-$(info PKG_VERSION=$(PKG_VERSION) $(origin PKG_VERSION))
-
-# Our scripts/version.sh will want to know some of these overrides
-export N2N_PKG_SOURCE_URL
-export N2N_PKG_SOURCE_VERSION
-export N2N_PKG_VERSION
 
 include $(INCLUDE_DIR)/package.mk
 
