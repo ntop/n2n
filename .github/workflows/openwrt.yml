@@ -77,11 +77,11 @@ jobs:
 
       - name: Build openwrt build environment
         run: |
-          make -j3 tools/install toolchain/install
+          make -j `nproc` tools/install toolchain/install
 
       - name: Build n2n dependancies
         run: |
-          make package/libs/libpcap/compile
+          make -j `nproc` package/libs/libpcap/compile
 
       - name: Build n2n openwrt packages
         env:
