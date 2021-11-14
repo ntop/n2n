@@ -37,14 +37,6 @@ else
     VER_SHORT="$VER_FILE_SHORT"
     VER_HASH="HEAD"
     VER="$VER_FILE_SHORT"
-
-    # If we have env vars to override the VERSION file, use them
-    if [ -n "$N2N_PKG_VERSION" ]; then
-        VER="$N2N_PKG_VERSION"
-    fi
-    if [ -n "$N2N_PKG_SOURCE_VERSION" ]; then
-        VER_HASH="$N2N_PKG_SOURCE_VERSION"
-    fi
 fi
 
 case "$1" in
