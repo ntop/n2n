@@ -15,6 +15,7 @@ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 # (eg, the github action calculates the correct overrides for each build)
 PKG_SOURCE_URL:=https://github.com/ntop/n2n
 PKG_SOURCE_VERSION:=dev
+PKG_MIRROR_HASH:=skip
 
 # Apply overrides from the build environment
 ifdef $(N2N_PKG_SOURCE_URL)
