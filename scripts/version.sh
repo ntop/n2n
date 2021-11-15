@@ -20,6 +20,8 @@ if [ -d "$TOPDIR/.git" ]; then
     # If there is a .git directory in our TOPDIR, then this is assumed to be
     # real git checkout
 
+    cd "$TOPDIR"
+
     VER_GIT_SHORT=$(git describe --abbrev=0)
 
     if [ "$VER_FILE_SHORT" != "$VER_GIT_SHORT" ]; then
