@@ -3,8 +3,9 @@ name: Openwrt Build
 
 # yamllint disable-line rule:truthy
 on:
-  push:
-  pull_request:
+  release:
+    types: [published, created, edited]
+  workflow_dispatch:
 
 jobs:
   build:
