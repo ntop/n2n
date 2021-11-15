@@ -5,6 +5,10 @@ name: Openwrt Build
 on:
   release:
     types: [published, created, edited]
+  push:
+    branches:
+      - openwrt
+
   workflow_dispatch:
 
 jobs:
