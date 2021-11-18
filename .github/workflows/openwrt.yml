@@ -1,0 +1,112 @@
+---
+name: Openwrt Build
+
+# yamllint disable-line rule:truthy
+on:
+  release:
+    types:
+      - published
+      - created
+      - edited
+  push:
+    branches:
+      - openwrt
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ipkg
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: openwrt
+
+    steps:
+      - name: Checkout openwrt
+        uses: actions/checkout@v2
+        with:
+          path: openwrt
+          repository: openwrt/openwrt
+
+      - name: Set openwrt ref
+        id: openwrt_ref
+        run: |
+          echo ::set-output name=REF::$(git rev-parse --short HEAD)
+          git rev-parse --short HEAD
+
+      - name: Checkout n2n
+        uses: actions/checkout@v2
+        with:
+          path: n2n
+          fetch-depth: 0
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+        working-directory: n2n
+
+      - name: Set n2n ref
+        id: n2n_ref
+        run: |
+          echo ::set-output name=REF::$(./scripts/version.sh)
+          ./scripts/version.sh
+        working-directory: n2n
+
+      - name: Copy n2n package definition into openwrt
+        run: |
+          cp -r n2n/packages/openwrt openwrt/package/n2n
+        working-directory: ./
+
+      - name: Cache openwrt source downloads
+        uses: actions/cache@v2
+        with:
+          path: openwrt/dl
+          key: openwrt-dl-${{ steps.openwrt_ref.outputs.REF }}
+
+      - name: Setup openwrt config and environment
+        run: |
+          echo "CONFIG_TARGET_x86=y" >.config
+          echo "CONFIG_TARGET_x86_64=y" >>.config
+
+      - name: Add n2n package to openwrt config
+        run: |
+          echo "CONFIG_PACKAGE_n2n-edge=m" >>.config
+          echo "CONFIG_PACKAGE_n2n-supernode=m" >>.config
+
+      - name: Build a full config from our stub file
+        run: |
+          make defconfig
+
+      - name: Download openwrt sources
+        run: |
+          make download
+
+      - name: Build openwrt build environment
+        run: |
+          make -j `nproc` tools/install toolchain/install
+
+      - name: Build n2n dependancies
+        run: |
+          make -j `nproc` package/libs/libpcap/compile
+
+      - name: Build n2n openwrt packages
+        env:
+          N2N_PKG_VERSION: ${{ steps.n2n_ref.outputs.REF }}
+        run: |
+          echo "Build for $N2N_PKG_VERSION"
+          export N2N_PKG_VERSION
+          make package/n2n/clean V=s
+          make package/n2n/prepare USE_SOURCE_DIR=$GITHUB_WORKSPACE/n2n V=s
+          make package/n2n/compile V=s
+
+# FIXME: add a way to run the test suite!
+#      - name: Run embedded tests
+#        run: make test
+
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: built-ipkgs
+          path: openwrt/bin/packages/*/base/*.ipk

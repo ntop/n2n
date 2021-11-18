@@ -5,18 +5,31 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=n2n
-PKG_SOURCE_URL:=https://github.com/ntop/n2n.git
-PKG_SOURCE_VERSION:=6937640a2bc24832af7fc4ed1658d6aef192f03b
-PKG_VERSION:=2.9.0_dev_git$(PKG_SOURCE_VERSION)
+PKG_VERSION:=HEAD
 PKG_RELEASE:=1
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+
+# These are defaults for compiling without any environmental overrides
+# (eg, the github action calculates the correct overrides for each build)
+PKG_SOURCE_URL:=https://github.com/ntop/n2n
+PKG_SOURCE_VERSION:=dev
+PKG_MIRROR_HASH:=skip
+
+# Apply overrides from the build environment
+ifdef N2N_PKG_SOURCE_URL
+    PKG_SOURCE_URL:=$(N2N_PKG_SOURCE_URL)
+endif
+ifdef N2N_PKG_SOURCE_VERSION
+    PKG_SOURCE_VERSION:=$(N2N_PKG_SOURCE_VERSION)
+endif
+ifdef N2N_PKG_VERSION
+    PKG_VERSION:=$(N2N_PKG_VERSION)
+endif
 
 PKG_MAINTAINER:=Emanuele Faranda <faranda@ntop.org>
 PKG_LICENSE:=GPL3
-PKG_BUILD_PARALLEL:=1
 
 # autogen fix
 PKG_FIXUP:=autoreconf
@@ -52,8 +65,9 @@ The supernode for the N2N infrastructure
 endef
 
 define Build/Configure
-	( cd $(PKG_BUILD_DIR); ./autogen.sh )
-	$(call Build/Configure/Default)
+	( cd $(PKG_BUILD_DIR); \
+	./autogen.sh; \
+	./configure )
 endef
 
 define Package/n2n-edge/conffiles

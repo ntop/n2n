@@ -17,18 +17,36 @@ comes down to the following steps:
 
 ## Compilation
 
-From the OpenWRT build directory:
+These instructions are for building the current checked out version of the
+n2n source  (The generally used OpenWRT alternative is to download a tar.gz
+file of a specific n2n version, but that is not as suitable for development
+or local builds)
+
+You need both the openwrt repository and the n2n repository checked out
+for this.  In these instructions, we assume that `openwrt` is the directory
+where your openwrt checkout is located and `n2n` is the directory for
+the n2n repository.
 
 ```
 git clone https://github.com/ntop/n2n n2n
-cp -r n2n/packages/openwrt package/n2n
+N2N_PKG_VERSION=$(n2n/scripts/version.sh)
+export N2N_PKG_VERSION
+
+cp -r n2n/packages/openwrt openwrt/package/n2n
+
+cd openwrt
 make menuconfig # select Network -> VPN -> n2n-edge and n2n-supernode
+make package/n2n/clean V=s
+make package/n2n/prepare USE_SOURCE_DIR=../n2n V=s
 make package/n2n/compile V=s
 ```
 
 If everything went fine, two ipk will be generated, one for the n2n-edge
 and the other for n2n-supernode. They can be found with `find . -name "n2n*.ipk"`,
 copied to the target device, and installed with `opkg install`.
+
+The github action described in `.github/workflows/openwrt.yml` implements
+an automated version of the above steps.
 
 ## Configuration
 
