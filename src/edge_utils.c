@@ -334,7 +334,8 @@ int supernode_connect (n2n_edge_t *eee) {
 
     // !!! replace with mgmt port notification to listener
 #ifdef HAVE_MINIUPNP
-    n2n_set_port_mapping(eee->conf.preferred_sock.port);
+    if(eee->conf.port_forwarding)
+        n2n_set_port_mapping(eee->conf.preferred_sock.port);
 #endif // HAVE_MINIUPNP
     return 0;
 }
@@ -349,7 +350,8 @@ void supernode_disconnect (n2n_edge_t *eee) {
 
         // !!! remove -- deletion will take place along with setting a new port
 #ifdef HAVE_MINIUPNP
-        n2n_del_port_mapping(eee->conf.preferred_sock.port);
+        if(eee->conf.port_forwarding)
+            n2n_del_port_mapping(eee->conf.preferred_sock.port);
 #endif // HAVE_MINIUPNP
     }
 }
@@ -494,11 +496,12 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
-
-    if(port_map_create_thread(&eee->port_map_parameter, eee->conf.mgmt_port) == 0) {
-        traceEvent(TRACE_NORMAL, "successfully created port mapping thread");
-    }
-
+#ifdef HAVE_MINIUPNP
+    if(eee->conf.port_forwarding)
+        if(port_map_create_thread(&eee->port_map_parameter, eee->conf.mgmt_port) == 0) {
+            traceEvent(TRACE_NORMAL, "successfully created port mapping thread");
+        }
+#endif // HAVE_MINIUPNP
     eee->network_traffic_filter = create_network_traffic_filter();
     network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
 
@@ -1561,7 +1564,8 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
 
         // !!! remove -- deletion will happen on mgmt port notification
 #ifdef HAVE_MINIUPNP
-        n2n_del_port_mapping(eee->conf.preferred_sock.port);
+        if(eee->conf.port_forwarding)
+            n2n_del_port_mapping(eee->conf.preferred_sock.port);
 #endif // HAVE_MINIUPNP
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
@@ -3213,8 +3217,10 @@ int run_edge_loop (n2n_edge_t *eee) {
 void edge_term (n2n_edge_t * eee) {
 
     resolve_cancel_thread(eee->resolve_parameter);
-    port_map_cancel_thread(eee->port_map_parameter);
-
+#ifdef HAVE_MINIUPNP
+    if(eee->conf.port_forwarding)
+        port_map_cancel_thread(eee->port_map_parameter);
+#endif // HAVE_MINIUPNP
     if(eee->sock >= 0)
         closesocket(eee->sock);
 
@@ -3733,6 +3739,7 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         free(tmp_string);
     }
 
+    conf->port_forwarding = 1;
     conf->sn_selection_strategy = SN_SELECTION_STRATEGY_LOAD;
     conf->metric = 0;
 }

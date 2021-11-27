@@ -690,6 +690,7 @@ typedef struct n2n_edge_conf {
     uint8_t                  sn_selection_strategy; /**< encodes currently chosen supernode selection strategy. */
     uint8_t                  number_max_sn_pings;   /**< Number of maximum concurrently allowed supernode pings. */
     uint64_t                 mgmt_password_hash;    /**< contains hash of managament port password. */
+    uint8_t                  port_forwarding;       /**< indicates if port forwarding UPNP/PMP is enabled */
 } n2n_edge_conf_t;
 
 

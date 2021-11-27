@@ -180,7 +180,10 @@ static void help (int level) {
             "\n                      "
                "[-e <preferred local IP address>] [-S<level of solitude>]"
             "\n                      "
-               "[--select-rtt]"
+               "[--select-rtt] "
+#ifdef HAVE_MINIUPNP
+               "[--no-port-forwarding] "
+#endif // HAVE_MINIUPNP
           "\n\n tap device and       "
                "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
             "\n overlay network      "
@@ -233,6 +236,9 @@ static void help (int level) {
           "\n                      [-E]  accept multicast MAC addresses"
           "\n            [--select-rtt]  select supernode by round trip time"
           "\n            [--select-mac]  select supernode by MAC address"
+#ifdef HAVE_MINIUPNP
+          "\n    [--no-port-forwarding]  disable UPnP/PMP port forwarding"
+#endif // HAVE_MINIUPNP
 #ifndef WIN32
           "\n                      [-f]  do not fork but run in foreground"
 #endif
@@ -294,6 +300,10 @@ static void help (int level) {
         printf("--select-rtt       | supernode selection based on round trip time\n"
                "--select-mac       | supernode selection based on MAC address (default:\n"
                "                   | by load)\n");
+#ifdef HAVE_MINIUPNP
+        printf("--no-port-...      | disable UPnP/PMP port forwarding\n"
+               "...forwarding      | \n");
+#endif // HAVE_MINIUPNP
 
         printf ("\n");
         printf (" TAP DEVICE AND OVERLAY NETWORK CONFIGURATION\n");
@@ -752,6 +762,12 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
+        case '}': /* disable port forwarding */ {
+            conf->port_forwarding = 0;
+
+            break;
+        }
+
         case 'h': /* quick reference */ {
             return 2;
         }
@@ -808,6 +824,7 @@ static const struct option long_options[] =
         { "select-rtt",          no_argument,       NULL, '[' }, /*                            '['             rtt selection strategy */
         { "select-mac",          no_argument,       NULL, ']' }, /*                            ']'             mac selection strategy */
         { "management-password", required_argument, NULL, '{' }, /*                            '{'             management port password */
+        { "no-port-forwarding",  no_argument,       NULL, '}' }, /*                            '}'             disable port forwarding */
         { NULL,                  0,                 NULL,  0  }
     };
 
