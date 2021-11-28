@@ -56,6 +56,20 @@ typedef struct mgmt_events {
     char  *help;
 } mgmt_events_t;
 
+// Lookup the index of matching argv0 in a cmd list
+// store index in "Result", or -1 for not found
+#define lookup_handler(Result, list, argv0) do { \
+        int nr_max = sizeof(list) / sizeof(list[0]); \
+        for( Result=0; Result < nr_max; Result++ ) { \
+            if(0 == strcmp(list[Result].cmd, argv0)) { \
+                break; \
+            } \
+        } \
+        if( Result >= nr_max ) { \
+            Result = -1; \
+        } \
+} while(0)
+
 static void send_reply (mgmt_req_t *req, char *udp_buf, size_t msg_len) {
     // TODO: error handling
     sendto(req->eee->udp_mgmt_sock, udp_buf, msg_len, 0,
@@ -505,13 +519,8 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     }
 
     int handler;
-    int nr_handlers = sizeof(mgmt_handlers) / sizeof(mgmt_handler_t);
-    for( handler=0; handler < nr_handlers; handler++ ) {
-        if(0 == strcmp(mgmt_handlers[handler].cmd, argv0)) {
-            break;
-        }
-    }
-    if(handler >= nr_handlers) {
+    lookup_handler(handler, mgmt_handlers, argv0);
+    if(handler == -1) {
         mgmt_error(req, udp_buf, "unknowncmd");
         return;
     }
