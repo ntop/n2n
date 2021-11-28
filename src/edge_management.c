@@ -20,8 +20,10 @@
 #include "edge_utils_win32.h"
 
 enum n2n_mgmt_type {
-    N2N_MGMT_READ = 0,
-    N2N_MGMT_WRITE = 1,
+    N2N_MGMT_UNKNOWN = 0,
+    N2N_MGMT_READ = 1,
+    N2N_MGMT_WRITE = 2,
+    N2N_MGMT_SUB = 3,
 };
 
 /*
@@ -305,6 +307,7 @@ static void mgmt_unimplemented (mgmt_req_t *req, char *udp_buf, char *argv0, cha
 
 // Forward define so we can include this in the mgmt_handlers[] table
 static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
+static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
 
 static const mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
@@ -317,13 +320,13 @@ static const mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
     { .cmd = "help", .flags = FLAG_WROK, .help = "Show JSON commands", .func = mgmt_help},
-    // TODO: help_events
+    { .cmd = "help.events", .help = "Show available Subscribe topics", .func = mgmt_help_events},
 };
 
-#define MAX_TOPICS  10
-
 /* Current subscriber for each event topic */
-static mgmt_req_t *mgmt_event_subscribers[MAX_TOPICS];
+static mgmt_req_t mgmt_event_subscribers[] = {
+    [0] = { .eee = NULL, .type = N2N_MGMT_UNKNOWN, .tag = "\0" },
+};
 
 /* Map topic number to function */
 static const void (*mgmt_events[])(mgmt_req_t *req, char *udp_buf) = {
@@ -331,10 +334,36 @@ static const void (*mgmt_events[])(mgmt_req_t *req, char *udp_buf) = {
 };
 
 /* Allow help and subscriptions to use topic name */
-static mgmt_events_t mgmt_event_names[] = {
+static const mgmt_events_t mgmt_event_names[] = {
     { .cmd = "debug", .topic = 0, .help = "All events - for event debugging"},
-    { .cmd = NULL },
 };
+
+static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+    size_t msg_len;
+
+    int i;
+    int nr_handlers = sizeof(mgmt_event_names) / sizeof(mgmt_events_t);
+    for( i=0; i < nr_handlers; i++ ) {
+        int topic = mgmt_event_names[i].topic;
+        mgmt_req_t *sub = &mgmt_event_subscribers[topic];
+
+        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                           "{"
+                           "\"_tag\":\"%s\","
+                           "\"_type\":\"row\","
+                           "\"topic\":\"%s\","
+                           "\"tag\":\"%s\","
+                           // "\"sockaddr\":\"%s\","
+                           "\"help\":\"%s\"}\n",
+                           req->tag,
+                           mgmt_event_names[i].cmd,
+                           sub->tag,
+                           // "FIXME",
+                           mgmt_event_names[i].help);
+
+        send_reply(req, udp_buf, msg_len);
+    }
+}
 
 static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
     size_t msg_len;
@@ -418,8 +447,9 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
         req->type=N2N_MGMT_READ;
     } else if(*typechar == 'w') {
         req->type=N2N_MGMT_WRITE;
+    } else if(*typechar == 's') {
+        req->type=N2N_MGMT_SUB;
     } else {
-        /* dunno how we got here */
         mgmt_error(req, udp_buf, "badtype");
         return;
     }
@@ -466,6 +496,11 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 
     if(!mgmt_auth(req, auth, argv0, argv)) {
         mgmt_error(req, udp_buf, "badauth");
+        return;
+    }
+
+    if(req->type == N2N_MGMT_SUB) {
+        mgmt_error(req, udp_buf, "unimplemented");
         return;
     }
 
