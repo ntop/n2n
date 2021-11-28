@@ -315,8 +315,10 @@ static const mgmt_handler_t mgmt_handlers[] = {
     // TODO: help_events
 };
 
+#define MAX_TOPICS  10
+
 /* Current subscriber for each event topic */
-static mgmt_req_t *mgmt_event_subscribers[10];
+static mgmt_req_t *mgmt_event_subscribers[MAX_TOPICS];
 
 /* Map topic number to function */
 static const void (*mgmt_events[])(mgmt_req_t *req, char *udp_buf) = {
