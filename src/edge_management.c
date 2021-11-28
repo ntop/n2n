@@ -76,42 +76,50 @@ static void send_reply (mgmt_req_t *req, char *udp_buf, size_t msg_len) {
            (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
 }
 
+static void send_json_1str (mgmt_req_t *req, char *udp_buf, char *_type, char *key, char *val) {
+    size_t msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                              "{"
+                              "\"_tag\":\"%s\","
+                              "\"_type\":\"%s\","
+                              "\"%s\":\"%s\"}\n",
+                              req->tag,
+                              _type,
+                              key,
+                              val);
+    send_reply(req, udp_buf, msg_len);
+}
+
+static void send_json_1uint (mgmt_req_t *req, char *udp_buf, char *_type, char *key, unsigned int val) {
+    size_t msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+                              "{"
+                              "\"_tag\":\"%s\","
+                              "\"_type\":\"%s\","
+                              "\"%s\":%u}\n",
+                              req->tag,
+                              _type,
+                              key,
+                              val);
+    send_reply(req, udp_buf, msg_len);
+}
+
 static void event_debug (mgmt_req_t *req, char *udp_buf) {
     send_reply(req, "test", 4);
 }
 
 static void mgmt_error (mgmt_req_t *req, char *udp_buf, char *msg) {
-    size_t msg_len;
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{"
-                       "\"_tag\":\"%s\","
-                       "\"_type\":\"error\","
-                       "\"error\":\"%s\"}\n",
-                       req->tag,
-                       msg);
-    send_reply(req, udp_buf, msg_len);
+    send_json_1str(req, udp_buf, "error", "error", msg);
 }
 
 static void mgmt_stop (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
-    size_t msg_len;
 
     if(req->type==N2N_MGMT_WRITE) {
         *req->eee->keep_running = 0;
     }
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{"
-                       "\"_tag\":\"%s\","
-                       "\"_type\":\"row\","
-                       "\"keep_running\":%u}\n",
-                       req->tag,
-                       *req->eee->keep_running);
-
-    send_reply(req, udp_buf, msg_len);
+    send_json_1uint(req, udp_buf, "row", "keep_running", *req->eee->keep_running);
 }
 
 static void mgmt_verbose (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
-    size_t msg_len;
 
     if(req->type==N2N_MGMT_WRITE) {
         if(argv) {
@@ -119,34 +127,17 @@ static void mgmt_verbose (mgmt_req_t *req, char *udp_buf, char *argv0, char *arg
         }
     }
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{"
-                       "\"_tag\":\"%s\","
-                       "\"_type\":\"row\","
-                       "\"traceLevel\":%u}\n",
-                       req->tag,
-                       getTraceLevel());
-
-    send_reply(req, udp_buf, msg_len);
+    send_json_1uint(req, udp_buf, "row", "traceLevel", getTraceLevel());
 }
 
 static void mgmt_communities (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
-    size_t msg_len;
 
     if(req->eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
         mgmt_error(req, udp_buf, "noaccess");
         return;
     }
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{"
-                       "\"_tag\":\"%s\","
-                       "\"_type\":\"row\","
-                       "\"community\":\"%s\"}",
-                       req->tag,
-                       req->eee->conf.community_name);
-
-    send_reply(req, udp_buf, msg_len);
+    send_json_1str(req, udp_buf, "row", "community", req->eee->conf.community_name);
 }
 
 static void mgmt_supernodes (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
@@ -438,7 +429,6 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     char *flagstr;
     int flags;
     char *auth;
-    size_t msg_len;
 
     /* Initialise the tag field until we extract it from the cmdline */
     req->tag[0] = '-';
@@ -536,15 +526,11 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
      * that make our JSON invalid.
      * - do we care?
      */
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{\"_tag\":\"%s\",\"_type\":\"begin\",\"cmd\":\"%s\"}\n", req->tag, argv0);
-    send_reply(req, udp_buf, msg_len);
+    send_json_1str(req, udp_buf, "begin", "cmd", argv0);
 
     mgmt_handlers[handler].func(req, udp_buf, argv0, argv);
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
-                       "{\"_tag\":\"%s\",\"_type\":\"end\"}\n", req->tag);
-    send_reply(req, udp_buf, msg_len);
+    send_json_1str(req, udp_buf, "end", "cmd", argv0);
     return;
 }
 
