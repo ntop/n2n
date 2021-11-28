@@ -137,7 +137,7 @@ static void mgmt_communities (mgmt_req_t *req, char *udp_buf, char *argv0, char 
         return;
     }
 
-    send_json_1str(req, udp_buf, "row", "community", req->eee->conf.community_name);
+    send_json_1str(req, udp_buf, "row", "community", (char *)req->eee->conf.community_name);
 }
 
 static void mgmt_supernodes (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
