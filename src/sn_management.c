@@ -26,6 +26,11 @@
 
 int load_allowed_sn_community (n2n_sn_t *sss); /* defined in sn_utils.c */
 
+enum n2n_mgmt_type {
+    N2N_MGMT_READ = 0,
+    N2N_MGMT_WRITE = 1,
+};
+
 #define FLAG_WROK 1
 typedef struct mgmt_handler {
     int flags;

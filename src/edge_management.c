@@ -19,6 +19,11 @@
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
+enum n2n_mgmt_type {
+    N2N_MGMT_READ = 0,
+    N2N_MGMT_WRITE = 1,
+};
+
 /*
  * Everything needed to reply to a request
  */

@@ -121,11 +121,6 @@ enum sn_purge {SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 #define N2N_EDGE_MGMT_PORT        5644
 #define N2N_SN_MGMT_PORT          5645
 
-enum n2n_mgmt_type {
-    N2N_MGMT_READ = 0,
-    N2N_MGMT_WRITE = 1,
-};
-
 #define N2N_MGMT_PASSWORD  "n2n"               /* default password for management port access (so far, json only) */
 
 
