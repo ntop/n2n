@@ -351,6 +351,21 @@ static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char 
     for( i=0; i < nr_handlers; i++ ) {
         int topic = mgmt_event_names[i].topic;
         mgmt_req_t *sub = &mgmt_event_subscribers[topic];
+        char host[40];
+        char serv[6];
+
+        if(getnameinfo(
+               (struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
+               host, sizeof(host),
+               serv, sizeof(serv),
+               NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
+            host[0] = '?';
+            host[1] = 0;
+            serv[0] = '?';
+            serv[1] = 0;
+        }
+
+        // TODO: handle a topic with no subscribers more cleanly
 
         msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
                            "{"
@@ -358,12 +373,12 @@ static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char 
                            "\"_type\":\"row\","
                            "\"topic\":\"%s\","
                            "\"tag\":\"%s\","
-                           // "\"sockaddr\":\"%s\","
+                           "\"sockaddr\":\"%s:%s\","
                            "\"help\":\"%s\"}\n",
                            req->tag,
                            mgmt_event_names[i].cmd,
                            sub->tag,
-                           // "FIXME",
+                           host, serv,
                            mgmt_event_names[i].help);
 
         send_reply(req, udp_buf, msg_len);
