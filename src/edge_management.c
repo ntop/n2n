@@ -19,6 +19,16 @@
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
+typedef struct strbuf {
+    size_t size;
+    char str[];
+} strbuf_t;
+
+#define STRBUF_INIT(buf,p) do { \
+        buf = (void *)p; \
+        buf->size = sizeof(*p) - sizeof(size_t); \
+} while(0)
+
 enum n2n_mgmt_type {
     N2N_MGMT_UNKNOWN = 0,
     N2N_MGMT_READ = 1,
@@ -44,7 +54,7 @@ typedef struct mgmt_handler {
     int flags;
     char  *cmd;
     char  *help;
-    void (*func)(mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
+    void (*func)(mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv);
 } mgmt_handler_t;
 
 /*
@@ -70,14 +80,14 @@ typedef struct mgmt_events {
         } \
 } while(0)
 
-static void send_reply (mgmt_req_t *req, char *udp_buf, size_t msg_len) {
+static void send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
     // TODO: error handling
-    sendto(req->eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+    sendto(req->eee->udp_mgmt_sock, buf->str, msg_len, 0,
            (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
 }
 
-static void send_json_1str (mgmt_req_t *req, char *udp_buf, char *_type, char *key, char *val) {
-    size_t msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+static void send_json_1str (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, char *val) {
+    size_t msg_len = snprintf(buf->str, buf->size,
                               "{"
                               "\"_tag\":\"%s\","
                               "\"_type\":\"%s\","
@@ -86,11 +96,11 @@ static void send_json_1str (mgmt_req_t *req, char *udp_buf, char *_type, char *k
                               _type,
                               key,
                               val);
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 }
 
-static void send_json_1uint (mgmt_req_t *req, char *udp_buf, char *_type, char *key, unsigned int val) {
-    size_t msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+static void send_json_1uint (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, unsigned int val) {
+    size_t msg_len = snprintf(buf->str, buf->size,
                               "{"
                               "\"_tag\":\"%s\","
                               "\"_type\":\"%s\","
@@ -99,27 +109,27 @@ static void send_json_1uint (mgmt_req_t *req, char *udp_buf, char *_type, char *
                               _type,
                               key,
                               val);
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 }
 
-static void event_debug (mgmt_req_t *req, char *udp_buf) {
-    send_reply(req, "test", 4);
+static void event_debug (mgmt_req_t *req, strbuf_t *buf) {
+    send_json_1str(req, buf, "event", "test", "test");
 }
 
-static void mgmt_error (mgmt_req_t *req, char *udp_buf, char *msg) {
-    send_json_1str(req, udp_buf, "error", "error", msg);
+static void mgmt_error (mgmt_req_t *req, strbuf_t *buf, char *msg) {
+    send_json_1str(req, buf, "error", "error", msg);
 }
 
-static void mgmt_stop (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_stop (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
     if(req->type==N2N_MGMT_WRITE) {
         *req->eee->keep_running = 0;
     }
 
-    send_json_1uint(req, udp_buf, "row", "keep_running", *req->eee->keep_running);
+    send_json_1uint(req, buf, "row", "keep_running", *req->eee->keep_running);
 }
 
-static void mgmt_verbose (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_verbose (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
     if(req->type==N2N_MGMT_WRITE) {
         if(argv) {
@@ -127,20 +137,20 @@ static void mgmt_verbose (mgmt_req_t *req, char *udp_buf, char *argv0, char *arg
         }
     }
 
-    send_json_1uint(req, udp_buf, "row", "traceLevel", getTraceLevel());
+    send_json_1uint(req, buf, "row", "traceLevel", getTraceLevel());
 }
 
-static void mgmt_communities (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_communities (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
     if(req->eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
-        mgmt_error(req, udp_buf, "noaccess");
+        mgmt_error(req, buf, "noaccess");
         return;
     }
 
-    send_json_1str(req, udp_buf, "row", "community", (char *)req->eee->conf.community_name);
+    send_json_1str(req, buf, "row", "community", (char *)req->eee->conf.community_name);
 }
 
-static void mgmt_supernodes (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_supernodes (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
@@ -156,7 +166,7 @@ static void mgmt_supernodes (mgmt_req_t *req, char *udp_buf, char *argv0, char *
          * - do we care?
          */
 
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+        msg_len = snprintf(buf->str, buf->size,
                            "{"
                            "\"_tag\":\"%s\","
                            "\"_type\":\"row\","
@@ -178,17 +188,17 @@ static void mgmt_supernodes (mgmt_req_t *req, char *udp_buf, char *argv0, char *
                            peer->last_seen,
                            peer->uptime);
 
-        send_reply(req, udp_buf, msg_len);
+        send_reply(req, buf, msg_len);
     }
 }
 
-static void mgmt_edges_row (mgmt_req_t *req, char *udp_buf, struct peer_info *peer, char *mode) {
+static void mgmt_edges_row (mgmt_req_t *req, strbuf_t *buf, struct peer_info *peer, char *mode) {
     size_t msg_len;
     macstr_t mac_buf;
     n2n_sock_str_t sockbuf;
     dec_ip_bit_str_t ip_bit_str = {'\0'};
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+    msg_len = snprintf(buf->str, buf->size,
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
@@ -214,27 +224,27 @@ static void mgmt_edges_row (mgmt_req_t *req, char *udp_buf, struct peer_info *pe
                        peer->last_sent_query,
                        peer->last_seen);
 
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 }
 
-static void mgmt_edges (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_edges (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
     struct peer_info *peer, *tmpPeer;
 
     // dump nodes with forwarding through supernodes
     HASH_ITER(hh, req->eee->pending_peers, peer, tmpPeer) {
-        mgmt_edges_row(req, udp_buf, peer, "pSp");
+        mgmt_edges_row(req, buf, peer, "pSp");
     }
 
     // dump peer-to-peer nodes
     HASH_ITER(hh, req->eee->known_peers, peer, tmpPeer) {
-        mgmt_edges_row(req, udp_buf, peer, "p2p");
+        mgmt_edges_row(req, buf, peer, "p2p");
     }
 }
 
-static void mgmt_timestamps (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_timestamps (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
     size_t msg_len;
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+    msg_len = snprintf(buf->str, buf->size,
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
@@ -246,13 +256,13 @@ static void mgmt_timestamps (mgmt_req_t *req, char *udp_buf, char *argv0, char *
                        req->eee->last_sup,
                        req->eee->last_p2p);
 
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 }
 
-static void mgmt_packetstats (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_packetstats (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
     size_t msg_len;
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+    msg_len = snprintf(buf->str, buf->size,
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
@@ -263,9 +273,9 @@ static void mgmt_packetstats (mgmt_req_t *req, char *udp_buf, char *argv0, char 
                        req->eee->transop.tx_cnt,
                        req->eee->transop.rx_cnt);
 
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+    msg_len = snprintf(buf->str, buf->size,
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
@@ -276,9 +286,9 @@ static void mgmt_packetstats (mgmt_req_t *req, char *udp_buf, char *argv0, char 
                        req->eee->stats.tx_p2p,
                        req->eee->stats.rx_p2p);
 
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+    msg_len = snprintf(buf->str, buf->size,
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
@@ -289,9 +299,9 @@ static void mgmt_packetstats (mgmt_req_t *req, char *udp_buf, char *argv0, char 
                        req->eee->stats.tx_sup,
                        req->eee->stats.rx_sup);
 
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 
-    msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+    msg_len = snprintf(buf->str, buf->size,
                        "{"
                        "\"_tag\":\"%s\","
                        "\"_type\":\"row\","
@@ -302,17 +312,17 @@ static void mgmt_packetstats (mgmt_req_t *req, char *udp_buf, char *argv0, char 
                        req->eee->stats.tx_sup_broadcast,
                        req->eee->stats.rx_sup_broadcast);
 
-    send_reply(req, udp_buf, msg_len);
+    send_reply(req, buf, msg_len);
 }
 
-static void mgmt_unimplemented (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_unimplemented (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
-    mgmt_error(req, udp_buf, "unimplemented");
+    mgmt_error(req, buf, "unimplemented");
 }
 
 // Forward define so we can include this in the mgmt_handlers[] table
-static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
-static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv);
+static void mgmt_help (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv);
+static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv);
 
 static const mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
@@ -334,7 +344,7 @@ static mgmt_req_t mgmt_event_subscribers[] = {
 };
 
 /* Map topic number to function */
-static const void (*mgmt_events[])(mgmt_req_t *req, char *udp_buf) = {
+static const void (*mgmt_events[])(mgmt_req_t *req, strbuf_t *buf) = {
     [0] = event_debug,
 };
 
@@ -343,7 +353,7 @@ static const mgmt_events_t mgmt_event_names[] = {
     { .cmd = "debug", .topic = 0, .help = "All events - for event debugging"},
 };
 
-static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
     size_t msg_len;
 
     int i;
@@ -367,7 +377,7 @@ static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char 
 
         // TODO: handle a topic with no subscribers more cleanly
 
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+        msg_len = snprintf(buf->str, buf->size,
                            "{"
                            "\"_tag\":\"%s\","
                            "\"_type\":\"row\","
@@ -381,11 +391,11 @@ static void mgmt_help_events (mgmt_req_t *req, char *udp_buf, char *argv0, char 
                            host, serv,
                            mgmt_event_names[i].help);
 
-        send_reply(req, udp_buf, msg_len);
+        send_reply(req, buf, msg_len);
     }
 }
 
-static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) {
+static void mgmt_help (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
     size_t msg_len;
 
     /*
@@ -396,7 +406,7 @@ static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) 
     int i;
     int nr_handlers = sizeof(mgmt_handlers) / sizeof(mgmt_handler_t);
     for( i=0; i < nr_handlers; i++ ) {
-        msg_len = snprintf(udp_buf, N2N_PKT_BUF_SIZE,
+        msg_len = snprintf(buf->str, buf->size,
                            "{"
                            "\"_tag\":\"%s\","
                            "\"_type\":\"row\","
@@ -406,7 +416,7 @@ static void mgmt_help (mgmt_req_t *req, char *udp_buf, char *argv0, char *argv) 
                            mgmt_handlers[i].cmd,
                            mgmt_handlers[i].help);
 
-        send_reply(req, udp_buf, msg_len);
+        send_reply(req, buf, msg_len);
     }
 }
 
@@ -436,6 +446,7 @@ static int mgmt_auth (mgmt_req_t *req, char *auth, char *argv0, char *argv) {
 
 static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 
+    strbuf_t *buf;
     char cmdlinebuf[80];
     char *typechar;
     char *options;
@@ -456,10 +467,13 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 
     traceEvent(TRACE_DEBUG, "mgmt json %s", cmdlinebuf);
 
+    /* we reuse the buffer already on the stack for all our strings */
+    STRBUF_INIT(buf, udp_buf);
+
     typechar = strtok(cmdlinebuf, " \r\n");
     if(!typechar) {
         /* should not happen */
-        mgmt_error(req, udp_buf, "notype");
+        mgmt_error(req, buf, "notype");
         return;
     }
     if(*typechar == 'r') {
@@ -469,20 +483,20 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     } else if(*typechar == 's') {
         req->type=N2N_MGMT_SUB;
     } else {
-        mgmt_error(req, udp_buf, "badtype");
+        mgmt_error(req, buf, "badtype");
         return;
     }
 
     /* Extract the tag to use in all reply packets */
     options = strtok(NULL, " \r\n");
     if(!options) {
-        mgmt_error(req, udp_buf, "nooptions");
+        mgmt_error(req, buf, "nooptions");
         return;
     }
 
     argv0 = strtok(NULL, " \r\n");
     if(!argv0) {
-        mgmt_error(req, udp_buf, "nocmd");
+        mgmt_error(req, buf, "nocmd");
         return;
     }
 
@@ -514,24 +528,24 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     }
 
     if(!mgmt_auth(req, auth, argv0, argv)) {
-        mgmt_error(req, udp_buf, "badauth");
+        mgmt_error(req, buf, "badauth");
         return;
     }
 
     if(req->type == N2N_MGMT_SUB) {
-        mgmt_error(req, udp_buf, "unimplemented");
+        mgmt_error(req, buf, "unimplemented");
         return;
     }
 
     int handler;
     lookup_handler(handler, mgmt_handlers, argv0);
     if(handler == -1) {
-        mgmt_error(req, udp_buf, "unknowncmd");
+        mgmt_error(req, buf, "unknowncmd");
         return;
     }
 
     if((req->type==N2N_MGMT_WRITE) && !(mgmt_handlers[handler].flags & FLAG_WROK)) {
-        mgmt_error(req, udp_buf, "readonly");
+        mgmt_error(req, buf, "readonly");
         return;
     }
 
@@ -541,11 +555,11 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
      * that make our JSON invalid.
      * - do we care?
      */
-    send_json_1str(req, udp_buf, "begin", "cmd", argv0);
+    send_json_1str(req, buf, "begin", "cmd", argv0);
 
-    mgmt_handlers[handler].func(req, udp_buf, argv0, argv);
+    mgmt_handlers[handler].func(req, buf, argv0, argv);
 
-    send_json_1str(req, udp_buf, "end", "cmd", argv0);
+    send_json_1str(req, buf, "end", "cmd", argv0);
     return;
 }
 
@@ -589,20 +603,20 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     udp_buf[recvlen] = 0;
 
     if((0 == memcmp(udp_buf, "help", 4)) || (0 == memcmp(udp_buf, "?", 1))) {
-        msg_len = 0;
+        strbuf_t *buf;
+        STRBUF_INIT(buf, &udp_buf);
+        msg_len = snprintf(buf->str, buf->size,
+                           "Help for edge management console:\n"
+                           "\tstop    | Gracefully exit edge\n"
+                           "\thelp    | This help message\n"
+                           "\t+verb   | Increase verbosity of logging\n"
+                           "\t-verb   | Decrease verbosity of logging\n"
+                           "\tr ...   | start query with JSON reply\n"
+                           "\tw ...   | start update with JSON reply\n"
+                           "\ts ...   | subscribe to event channel JSON reply\n"
+                           "\t<enter> | Display statistics\n\n");
 
-        msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "Help for edge management console:\n"
-                            "\tstop    | Gracefully exit edge\n"
-                            "\thelp    | This help message\n"
-                            "\t+verb   | Increase verbosity of logging\n"
-                            "\t-verb   | Decrease verbosity of logging\n"
-                            "\tr ...   | start query with JSON reply\n"
-                            "\tw ...   | start update with JSON reply\n"
-                            "\ts ...   | subscribe to event channel JSON reply\n"
-                            "\t<enter> | Display statistics\n\n");
-
-        send_reply(&req, udp_buf, msg_len);
+        send_reply(&req, buf, msg_len);
 
         return;
     }
@@ -614,33 +628,36 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     }
 
     if(0 == memcmp(udp_buf, "+verb", 5)) {
-        msg_len = 0;
         setTraceLevel(getTraceLevel() + 1);
 
         traceEvent(TRACE_NORMAL, "+verb traceLevel=%u", (unsigned int) getTraceLevel());
-        msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                            "> +OK traceLevel=%u\n", (unsigned int) getTraceLevel());
 
-        send_reply(&req, udp_buf, msg_len);
+        strbuf_t *buf;
+        STRBUF_INIT(buf, &udp_buf);
+        msg_len = snprintf(buf->str, buf->size,
+                           "> +OK traceLevel=%u\n", (unsigned int) getTraceLevel());
+
+        send_reply(&req, buf, msg_len);
 
         return;
     }
 
     if(0 == memcmp(udp_buf, "-verb", 5)) {
-        msg_len = 0;
+        strbuf_t *buf;
+        STRBUF_INIT(buf, &udp_buf);
 
         if(getTraceLevel() > 0) {
             setTraceLevel(getTraceLevel() - 1);
-            msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                                "> -OK traceLevel=%u\n", getTraceLevel());
+            msg_len = snprintf(buf->str, buf->size,
+                               "> -OK traceLevel=%u\n", getTraceLevel());
         } else {
-            msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                                "> -NOK traceLevel=%u\n", getTraceLevel());
+            msg_len = snprintf(buf->str, buf->size,
+                               "> -NOK traceLevel=%u\n", getTraceLevel());
         }
 
         traceEvent(TRACE_NORMAL, "-verb traceLevel=%u", (unsigned int) getTraceLevel());
 
-        send_reply(&req, udp_buf, msg_len);
+        send_reply(&req, buf, msg_len);
         return;
     }
 
@@ -678,7 +695,8 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             peer->dev_desc,
                             (peer->last_seen) ? time_buf : "");
 
-        send_reply(&req, udp_buf, msg_len);
+        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+               (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
         msg_len = 0;
     }
 
@@ -701,7 +719,8 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             peer->dev_desc,
                             (peer->last_seen) ? time_buf : "");
 
-        send_reply(&req, udp_buf, msg_len);
+        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+               (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
         msg_len = 0;
     }
 
@@ -726,7 +745,8 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             (peer->last_seen) ? time_buf : "",
                             (peer->uptime) ? uptime_buf : "");
 
-        send_reply(&req, udp_buf, msg_len);
+        sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+               (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
         msg_len = 0;
     }
 
@@ -772,5 +792,6 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                         "\nType \"help\" to see more commands.\n\n");
 
-    send_reply(&req, udp_buf, msg_len);
+    sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
+           (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
 }
