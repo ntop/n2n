@@ -205,7 +205,7 @@ static int n2n_upnp_set_port_mapping (const uint16_t port) {
                               externalport, lanport, lanaddr, "n2n-vpn",
                               "TCP", NULL, "0");
     if(ret != UPNPCOMMAND_SUCCESS) {
-        traceEvent(TRACE_ERROR, "UPnP local TCP port %s mapping failed, code %d (%s)", lanport, ret, strupnperror(ret));
+        traceEvent(TRACE_WARNING, "UPnP local TCP port %s mapping failed, code %d (%s)", lanport, ret, strupnperror(ret));
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "UPnP added TCP port mapping: %s:%s -> %s:%s", externaladdr, externalport, lanaddr, lanport);
@@ -215,7 +215,7 @@ static int n2n_upnp_set_port_mapping (const uint16_t port) {
                               externalport, lanport, lanaddr, "n2n-vpn",
                               "UDP", NULL, "0");
     if(ret != UPNPCOMMAND_SUCCESS) {
-        traceEvent(TRACE_ERROR, "UPnP local UDP port %s mapping failed, code %d (%s)", lanport, ret, strupnperror(ret));
+        traceEvent(TRACE_WARNING, "UPnP local UDP port %s mapping failed, code %d (%s)", lanport, ret, strupnperror(ret));
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "UPnP added UDP port mapping: %s:%s -> %s:%s", externaladdr, externalport, lanaddr, lanport);
@@ -253,7 +253,7 @@ static int n2n_upnp_del_port_mapping (const uint16_t port) {
     // TCP port
     ret = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, externalport, "TCP", NULL);
     if(ret != UPNPCOMMAND_SUCCESS) {
-        traceEvent(TRACE_ERROR, "UPnP failed to delete TCP port mapping for %s:%s, code %d (%s)", externaladdr, externalport, ret, strupnperror(ret));
+        traceEvent(TRACE_WARNING, "UPnP failed to delete TCP port mapping for %s:%s, code %d (%s)", externaladdr, externalport, ret, strupnperror(ret));
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "UPnP deleted TCP port mapping for %s:%s", externaladdr, externalport);
@@ -261,7 +261,7 @@ static int n2n_upnp_del_port_mapping (const uint16_t port) {
     // UDP port
     ret = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, externalport, "UDP", NULL);
     if(ret != UPNPCOMMAND_SUCCESS) {
-        traceEvent(TRACE_ERROR, "UPnP failed to delete UDP port mapping for %s:%s, code %d (%s)", externaladdr, externalport, ret, strupnperror(ret));
+        traceEvent(TRACE_WARNING, "UPnP failed to delete UDP port mapping for %s:%s, code %d (%s)", externaladdr, externalport, ret, strupnperror(ret));
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "UPnP deleted UDP port mapping for %s:%s", externaladdr, externalport);
@@ -397,7 +397,7 @@ static int n2n_natpmp_set_port_mapping (const uint16_t port) {
     // TCP port
     ret = n2n_natpmp_port_mapping_request(&natpmp, port, NATPMP_PROTOCOL_TCP, 1);
     if(ret != 0) {
-        traceEvent(TRACE_ERROR, "NAT-PMP local TCP port %hu mapping failed", lanport);
+        traceEvent(TRACE_WARNING, "NAT-PMP local TCP port %hu mapping failed", lanport);
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "NAT-PMP added TCP port mapping: %s:%hu -> %s:%hu", externaladdr, externalport, lanaddr, lanport);
@@ -405,7 +405,7 @@ static int n2n_natpmp_set_port_mapping (const uint16_t port) {
     // UDP port
     ret = n2n_natpmp_port_mapping_request(&natpmp, port, NATPMP_PROTOCOL_UDP, 1);
     if(ret != 0) {
-        traceEvent(TRACE_ERROR, "NAT-PMP local UDP port %hu mapping failed", lanport);
+        traceEvent(TRACE_WARNING, "NAT-PMP local UDP port %hu mapping failed", lanport);
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "NAT-PMP added UDP port mapping: %s:%hu -> %s:%hu", externaladdr, externalport, lanaddr, lanport);
@@ -438,7 +438,7 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
     // TCP port
     ret = n2n_natpmp_port_mapping_request(&natpmp, port, NATPMP_PROTOCOL_TCP, 0);
     if(ret != 0) {
-        traceEvent(TRACE_ERROR, "NAT-PMP failed to delete TCP port mapping for %s:%hu", externaladdr, externalport);
+        traceEvent(TRACE_WARNING, "NAT-PMP failed to delete TCP port mapping for %s:%hu", externaladdr, externalport);
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "NAT-PMP deleted TCP port mapping for %s:%hu", externaladdr, externalport);
@@ -446,7 +446,7 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
     // UDP port
     ret = n2n_natpmp_port_mapping_request(&natpmp, port, NATPMP_PROTOCOL_UDP, 0);
     if(ret != 0)  {
-        traceEvent(TRACE_ERROR, "NAT-PMP failed to delete UDP port mapping for %s:%hu", externaladdr, externalport);
+        traceEvent(TRACE_WARNING, "NAT-PMP failed to delete UDP port mapping for %s:%hu", externaladdr, externalport);
         errorcode = -1;
     } else
         traceEvent(TRACE_NORMAL, "NAT-PMP deleted UDP port mapping for %s:%hu", externaladdr, externalport);
