@@ -299,7 +299,7 @@ static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *ext
     ret = sendpublicaddressrequest(natpmp);
     if(ret != 2) {
         traceEvent(TRACE_WARNING, "NAT-PMP get external ip address failed, code %d", ret);
-        closenatpmp(&natpmp);
+        closenatpmp(natpmp);
         errorcode = -1;
         return errorcode;
     }
@@ -316,7 +316,7 @@ static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *ext
 
     if(response.type != NATPMP_RESPTYPE_PUBLICADDRESS) {
         traceEvent(TRACE_WARNING, "NAT-PMP invalid response type %u", response.type);
-        closenatpmp(&natpmp);
+        closenatpmp(natpmp);
         errorcode = -1;
         return errorcode;
     }
@@ -459,13 +459,10 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
 #endif // HAVE_NATPMP
 
 
-// static
 // ----------------------------------------------------------------------------------------------------
-// public
 
 
-// !!! make static
-void n2n_set_port_mapping (const uint16_t port) {
+static void n2n_set_port_mapping (const uint16_t port) {
 
 #ifdef HAVE_NATPMP
     // since the NAT-PMP protocol is more concise than UPnP, NAT-PMP is preferred.
@@ -479,8 +476,7 @@ void n2n_set_port_mapping (const uint16_t port) {
 }
 
 
-// !!! make static
-void n2n_del_port_mapping (const uint16_t port) {
+static void n2n_del_port_mapping (const uint16_t port) {
 
 #ifdef HAVE_NATPMP
     if(n2n_natpmp_del_port_mapping(port))
@@ -493,12 +489,41 @@ void n2n_del_port_mapping (const uint16_t port) {
 }
 
 
+// static
 // ----------------------------------------------------------------------------------------------------
+// public
+
+#ifdef HAVE_PTHREAD /* future management port subscriptions will deprecate the following temporary code */
+void n2n_chg_port_mapping (struct n2n_edge *eee, uint16_t port) {
+    // write a port change request to param struct, it will be handled in the thread
+    pthread_mutex_lock(&eee->port_map_parameter->access);
+    eee->port_map_parameter->new_port = port;
+    pthread_mutex_unlock(&eee->port_map_parameter->access);
+
+}
+#endif
 
 
 N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_PTHREAD /* future management port subscriptions will deprecate the following temporary code */
+    n2n_port_map_parameter_t *param = (n2n_port_map_parameter_t*)p;
+
+    while(1) {
+        sleep(2);
+        pthread_mutex_lock(&param->access);
+        if(param->mapped_port != param->new_port) {
+            if(param->mapped_port)
+                n2n_del_port_mapping(param->mapped_port);
+            if(param->new_port)
+                n2n_set_port_mapping(param->new_port);
+            param->mapped_port = param->new_port;
+        }
+        pthread_mutex_unlock(&param->access);
+    }
+#endif
+
+#if 0 /* to be used with future management port subscriptions */
     n2n_port_map_parameter_t *param = (n2n_port_map_parameter_t*)p;
     SOCKET socket_fd;
     fd_set socket_mask;
@@ -561,9 +586,9 @@ N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
             }
         }
     }
+#endif
 
     return 0; /* should never happen */
-#endif
 }
 
 
@@ -589,8 +614,9 @@ int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port
         return -1;
     }
 
-    return 0;
 #endif
+
+    return 0;
 }
 
 

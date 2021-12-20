@@ -332,10 +332,10 @@ int supernode_connect (n2n_edge_t *eee) {
             eee->cb.sock_opened(eee);
     }
 
-    // !!! replace with mgmt port notification to listener
 #ifdef HAVE_MINIUPNP
     if(eee->conf.port_forwarding)
-        n2n_set_port_mapping(eee->conf.preferred_sock.port);
+        // !!! replace with mgmt port notification to listener
+        n2n_chg_port_mapping(eee, eee->conf.preferred_sock.port);
 #endif // HAVE_MINIUPNP
     return 0;
 }
@@ -347,12 +347,6 @@ void supernode_disconnect (n2n_edge_t *eee) {
     if(eee->sock >= 0) {
         closesocket(eee->sock);
         eee->sock = -1;
-
-        // !!! remove -- deletion will take place along with setting a new port
-#ifdef HAVE_MINIUPNP
-        if(eee->conf.port_forwarding)
-            n2n_del_port_mapping(eee->conf.preferred_sock.port);
-#endif // HAVE_MINIUPNP
     }
 }
 
@@ -1561,12 +1555,6 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         reset_sup_attempts(eee);
         // trigger out-of-schedule DNS resolution
         eee->resolution_request = 1;
-
-        // !!! remove -- deletion will happen on mgmt port notification
-#ifdef HAVE_MINIUPNP
-        if(eee->conf.port_forwarding)
-            n2n_del_port_mapping(eee->conf.preferred_sock.port);
-#endif // HAVE_MINIUPNP
 
         // in some multi-NATed scenarios communication gets stuck on losing connection to supernode
         // closing and re-opening the socket allows for re-establishing communication
@@ -3207,7 +3195,7 @@ int run_edge_loop (n2n_edge_t *eee) {
 
     supernode_disconnect(eee);
 
-    return (0);
+    return 0;
 }
 
 /* ************************************** */
