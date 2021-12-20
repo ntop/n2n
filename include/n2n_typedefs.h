@@ -641,10 +641,11 @@ typedef struct n2n_resolve_parameter {
 typedef struct n2n_port_map_parameter {
 #ifdef HAVE_PTHREAD
     pthread_t               id;            /* thread id */
- /* pthread_mutex_t         access;           mutex for shared access, not used yet, REVISIT when mgmt port can change at runtime */
+    pthread_mutex_t         access;        /* mutex for shared access */
 #endif
     uint16_t                mgmt_port;
     uint16_t                mapped_port;
+    uint16_t                new_port;      /* REVISIT: remove with management port subscriptions */
 } n2n_port_map_parameter_t;
 
 
