@@ -332,12 +332,12 @@ int supernode_connect (n2n_edge_t *eee) {
             eee->cb.sock_opened(eee);
     }
 
-#ifdef HAVE_MINIUPNP
+#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
     if(eee->conf.port_forwarding)
         // REVISIT: replace with mgmt port notification to listener for mgmt port
         //          subscription support
         n2n_chg_port_mapping(eee, eee->conf.preferred_sock.port);
-#endif // HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP || HAVE_NATPMP
     return 0;
 }
 
@@ -491,12 +491,12 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
-#ifdef HAVE_MINIUPNP
+#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
     if(eee->conf.port_forwarding)
         if(port_map_create_thread(&eee->port_map_parameter, eee->conf.mgmt_port) == 0) {
             traceEvent(TRACE_NORMAL, "successfully created port mapping thread");
         }
-#endif // HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP || HAVE_NATPMP
     eee->network_traffic_filter = create_network_traffic_filter();
     network_traffic_filter_add_rule(eee->network_traffic_filter, eee->conf.network_traffic_filter_rules);
 
@@ -3206,10 +3206,10 @@ int run_edge_loop (n2n_edge_t *eee) {
 void edge_term (n2n_edge_t * eee) {
 
     resolve_cancel_thread(eee->resolve_parameter);
-#ifdef HAVE_MINIUPNP
+#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
     if(eee->conf.port_forwarding)
         port_map_cancel_thread(eee->port_map_parameter);
-#endif // HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP || HAVE_NATPMP
     if(eee->sock >= 0)
         closesocket(eee->sock);
 
@@ -3728,9 +3728,9 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         free(tmp_string);
     }
 
-#ifdef HAVE_MINIUPNP
+#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
     conf->port_forwarding = 1;
-#endif // HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP || HAVE_NATPMP
 
     conf->sn_selection_strategy = SN_SELECTION_STRATEGY_LOAD;
     conf->metric = 0;

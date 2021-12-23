@@ -274,6 +274,9 @@ static int n2n_upnp_del_port_mapping (const uint16_t port) {
 #endif // HAVE_MINIUPNP
 
 
+// ----------------------------------------------------------------------------------------------------
+
+
 #ifdef HAVE_NATPMP
 
 static int n2n_natpmp_initialization (natpmp_t *natpmp, char *lanaddr, char *externaladdr) {
@@ -492,6 +495,7 @@ static void n2n_del_port_mapping (const uint16_t port) {
 // static
 // ----------------------------------------------------------------------------------------------------
 // public
+
 
 #ifdef HAVE_PTHREAD /* future management port subscriptions will deprecate the following temporary code */
 void n2n_chg_port_mapping (struct n2n_edge *eee, uint16_t port) {

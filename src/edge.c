@@ -181,9 +181,9 @@ static void help (int level) {
                "[-e <preferred local IP address>] [-S<level of solitude>]"
             "\n                      "
                "[--select-rtt] "
-#ifdef HAVE_MINIUPNP
+#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
                "[--no-port-forwarding] "
-#endif // HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP || HAVE_NATPMP
           "\n\n tap device and       "
                "[-a [static:|dhcp:]<tap IP address>[/<cidr suffix>]] "
             "\n overlay network      "
@@ -236,9 +236,9 @@ static void help (int level) {
           "\n                      [-E]  accept multicast MAC addresses"
           "\n            [--select-rtt]  select supernode by round trip time"
           "\n            [--select-mac]  select supernode by MAC address"
-#ifdef HAVE_MINIUPNP
+#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
           "\n    [--no-port-forwarding]  disable UPnP/PMP port forwarding"
-#endif // HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP || HAVE_NATPMP
 #ifndef WIN32
           "\n                      [-f]  do not fork but run in foreground"
 #endif
@@ -300,10 +300,10 @@ static void help (int level) {
         printf("--select-rtt       | supernode selection based on round trip time\n"
                "--select-mac       | supernode selection based on MAC address (default:\n"
                "                   | by load)\n");
-#ifdef HAVE_MINIUPNP
+#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
         printf("--no-port-...      | disable UPnP/PMP port forwarding\n"
                "...forwarding      | \n");
-#endif // HAVE_MINIUPNP
+#endif // HAVE_MINIUPNP || HAVE_NATPMP
 
         printf ("\n");
         printf (" TAP DEVICE AND OVERLAY NETWORK CONFIGURATION\n");
