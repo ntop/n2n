@@ -334,7 +334,8 @@ int supernode_connect (n2n_edge_t *eee) {
 
 #ifdef HAVE_MINIUPNP
     if(eee->conf.port_forwarding)
-        // !!! replace with mgmt port notification to listener
+        // REVISIT: replace with mgmt port notification to listener for mgmt port
+        //          subscription support
         n2n_chg_port_mapping(eee, eee->conf.preferred_sock.port);
 #endif // HAVE_MINIUPNP
     return 0;
@@ -3727,7 +3728,10 @@ void edge_init_conf_defaults (n2n_edge_conf_t *conf) {
         free(tmp_string);
     }
 
+#ifdef HAVE_MINIUPNP
     conf->port_forwarding = 1;
+#endif // HAVE_MINIUPNP
+
     conf->sn_selection_strategy = SN_SELECTION_STRATEGY_LOAD;
     conf->metric = 0;
 }
