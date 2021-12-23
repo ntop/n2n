@@ -30,6 +30,8 @@ add_definitions(-DCMAKE_BUILD)
 add_definitions(-DPACKAGE_OSNAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DPACKAGE_VERSION="${PACKAGE_VERSION}")
 
+# third-party directory
+set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thirdparty)
 
 # Build information
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
@@ -39,6 +41,7 @@ OPTION(N2N_OPTION_USE_PTHREAD "USE PTHREAD Library" ON)
 OPTION(N2N_OPTION_USE_OPENSSL "USE OPENSSL Library" OFF)
 OPTION(N2N_OPTION_USE_PCAPLIB "USE PCAP Library" OFF)
 OPTION(N2N_OPTION_USE_ZSTD "USE ZSTD Library" OFF)
+OPTION(N2N_OPTION_USE_PORTMAPPING "USE MINIUPNP and NATPMP Libraries" ON)
 
 
 if(N2N_OPTION_USE_PTHREAD)
@@ -47,7 +50,7 @@ if(N2N_OPTION_USE_PTHREAD)
     ADD_DEFINITIONS("-DHAVE_PTHREAD")
   else()
     MESSAGE(WARNING "libpthread not found.")
-    set(N2N_OPTION_USE_PTHREAD OFF)   
+    set(N2N_OPTION_USE_PTHREAD OFF)
   endif(PTHREAD_LIB)
 endif(N2N_OPTION_USE_PTHREAD)
 
@@ -75,6 +78,14 @@ if(N2N_OPTION_USE_ZSTD)
   add_definitions(-DN2N_HAVE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
 
+if(N2N_OPTION_USE_PORTMAPPING)
+  ADD_DEFINITIONS("-DHAVE_MINIUPNP")
+  ADD_DEFINITIONS("-DHAVE_NATPMP")
+  include_directories(${THIRD_PARTY_DIR}/miniupnp/miniupnpc/include)
+  include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
+  include_directories(${THIRD_PARTY_DIR}/libnatpmp)
+endif(N2N_OPTION_USE_PORTMAPPING)
+
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
 endif(NOT DEFINED CMAKE_BUILD_TYPE)
@@ -85,7 +96,7 @@ if (DEFINED UNIX)
 # None
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
 set(CMAKE_CXX_FLAGS "-Wall -Wshadow -Wpointer-arith -Wmissing-declarations -Wnested-externs")
-# Debug 
+# Debug
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Release
@@ -139,7 +150,8 @@ add_library(n2n STATIC
         src/network_traffic_filter.c
         src/sn_selection.c
         src/auth.c
-        src/curve25519.c)
+        src/curve25519.c
+        src/n2n_port_mapping.c)
 
 
 if(N2N_OPTION_USE_PTHREAD)
@@ -154,6 +166,14 @@ endif(N2N_OPTION_USE_OPENSSL)
 if(N2N_OPTION_USE_ZSTD)
   target_link_libraries(n2n zstd)
 endif(N2N_OPTION_USE_ZSTD)
+
+if(N2N_OPTION_USE_PORTMAPPING)
+  add_subdirectory(${THIRD_PARTY_DIR}/miniupnp/miniupnpc lib_miniupnpc)
+  link_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
+  add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
+  link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
+  target_link_libraries(n2n libminiupnpc-static natpmp)
+endif(N2N_OPTION_USE_PORTMAPPING)
 
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)

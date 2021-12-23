@@ -637,6 +637,21 @@ typedef struct n2n_resolve_parameter {
 /* *************************************************** */
 
 
+// structure to hold port mapping thread's parameters
+typedef struct n2n_port_map_parameter {
+#ifdef HAVE_PTHREAD
+    pthread_t               id;            /* thread id */
+    pthread_mutex_t         access;        /* mutex for shared access */
+#endif
+    uint16_t                mgmt_port;
+    uint16_t                mapped_port;
+    uint16_t                new_port;      /* REVISIT: remove with management port subscriptions */
+} n2n_port_map_parameter_t;
+
+
+/* *************************************************** */
+
+
 typedef struct n2n_edge_conf {
     struct peer_info         *supernodes;            /**< List of supernodes */
     n2n_route_t              *routes;                /**< Networks to route through n2n */
@@ -676,6 +691,7 @@ typedef struct n2n_edge_conf {
     uint8_t                  sn_selection_strategy; /**< encodes currently chosen supernode selection strategy. */
     uint8_t                  number_max_sn_pings;   /**< Number of maximum concurrently allowed supernode pings. */
     uint64_t                 mgmt_password_hash;    /**< contains hash of managament port password. */
+    uint8_t                  port_forwarding;       /**< indicates if port forwarding UPNP/PMP is enabled */
 } n2n_edge_conf_t;
 
 
@@ -732,6 +748,8 @@ struct n2n_edge {
 
     n2n_resolve_parameter_t          *resolve_parameter;                 /**< Pointer to name resolver's parameter block */
     uint8_t                          resolution_request;                 /**< Flag an immediate DNS resolution request */
+
+    n2n_port_map_parameter_t         *port_map_parameter;                /**< Pointer to port mapping thread's parameter block */
 
     n2n_tuntap_priv_config_t         tuntap_priv_conf;                   /**< Tuntap config */
 

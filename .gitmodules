@@ -1,0 +1,8 @@
+[submodule "thirdparty/miniupnp"]
+    path = thirdparty/miniupnp
+    url = https://github.com/miniupnp/miniupnp.git
+    ignore = dirty
+[submodule "thirdparty/libnatpmp"]
+    path = thirdparty/libnatpmp
+    url = https://github.com/miniupnp/libnatpmp.git
+    ignore = dirty

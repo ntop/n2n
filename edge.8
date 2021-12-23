@@ -109,6 +109,11 @@ defaults to load-based selection strategy if not provided.
 \fB\-\-select-mac\fR
 select supernode by MAC address if several to choose from (federation),
 lowest MAC address first.
+.TP
+\fB\-\-no-port-forwarding\fR
+disables the default behavior of trying to have the edge's port forwarded
+through a router eventually supporting it (only if compiled with miniupnp
+and/or natpmp library support).
 .SH TAP DEVICE AND OVERLAY NETWORK CONFIGURATION
 .TP
 \fB\-a \fR[\fImode\fR]<\fIip\fR>[\fI/n\fR]
@@ -245,7 +250,7 @@ The MAC address (-m <MAC>) and virtual IP address (-a <addr>) must be different
 on all edges in the same community.
 
 .SH CLEARTEXT MODE
-If 
+If
 .B -k
 is not specified then edge uses cleartext mode. In cleartext mode there is no
 transform of the packet data it is simply encrypted. This is useful for

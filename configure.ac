@@ -58,6 +58,20 @@ if test "x$with_openssl" != xno; then
   fi
 fi
 
+AC_CHECK_LIB([miniupnpc], [upnpDiscover], miniupnp=true)
+
+if test x$miniupnp != x; then
+  AC_DEFINE([HAVE_MINIUPNP], [], [Have miniupnp library])
+  N2N_LIBS="-lminiupnpc ${N2N_LIBS}"
+fi
+
+AC_CHECK_LIB([natpmp], [initnatpmp], natpmp=true)
+
+if test x$natpmp != x; then
+  AC_DEFINE([HAVE_NATPMP], [], [Have natpmp library])
+  N2N_LIBS="-lnatpmp ${N2N_LIBS}"
+fi
+
 AC_CHECK_LIB([pcap], [pcap_open_live], pcap=true)
 
 if test x$pcap != x; then
