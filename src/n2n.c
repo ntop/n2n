@@ -148,8 +148,9 @@ void traceEvent (int eventTraceLevel, char* file, int line, char * format, ...) 
             snprintf(out_buf, sizeof(out_buf), "%s%s", extra_msg, buf);
             syslog(LOG_INFO, "%s", out_buf);
         } else {
+#endif
             for(i = strlen(file) - 1; i > 0; i--) {
-                if(file[i] == '/') {
+                if((file[i] == '/') || (file[i] == '\\')) {
                     i++;
                     break;
                 }
@@ -157,18 +158,8 @@ void traceEvent (int eventTraceLevel, char* file, int line, char * format, ...) 
             snprintf(out_buf, sizeof(out_buf), "%s [%s:%d] %s%s", theDate, &file[i], line, extra_msg, buf);
             fprintf(traceFile, "%s\n", out_buf);
             fflush(traceFile);
+#ifndef WIN32
         }
-#else
-        /* this is the WIN32 code */
-        for(i = strlen(file) - 1; i > 0; i--) {
-            if(file[i] == '\\') {
-                i++;
-                break;
-            }
-        }
-        snprintf(out_buf, sizeof(out_buf), "%s [%s:%d] %s%s", theDate, &file[i], line, extra_msg, buf);
-        fprintf(traceFile, "%s\n", out_buf);
-        fflush(traceFile);
 #endif
     }
 
