@@ -52,12 +52,28 @@ Now the supernode service should be up and running on port 1234. On your edge no
 
 
 ## Manual Compilation
+First of all, you may clone the source codes from github:
+```bash
+git clone https://github.com/ntop/n2n.git
+cd n2n
+```
+
+The libnatpmp & miniupnp have been moved to separated repositories,
+so you should run this command in the n2n directory to install them:
+```bash
+git submodule update --init --recursive
+```
 
 On Linux, compilation from source is straight forward:
 
 ```sh
 ./autogen.sh
 ./configure
+make
+
+or
+mkdir build && cd build
+cmake ..
 make
 
 # optionally install
