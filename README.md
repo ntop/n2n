@@ -52,17 +52,6 @@ Now the supernode service should be up and running on port 1234. On your edge no
 
 
 ## Manual Compilation
-First of all, you may clone the source codes from github:
-```bash
-git clone https://github.com/ntop/n2n.git
-cd n2n
-```
-
-The libnatpmp & miniupnp have been moved to separated repositories,
-so you should run this command in the n2n directory to install them:
-```bash
-git submodule update --init --recursive
-```
 
 On Linux, compilation from source is straight forward:
 
@@ -71,18 +60,11 @@ On Linux, compilation from source is straight forward:
 ./configure
 make
 
-or
-mkdir build && cd build
-cmake ..
-make
-
 # optionally install
 make install
 ```
 
-Some parts of the code significantly benefit from compiler optimizations and platform features such as NEON, SSE and AVX. To enable, use `./configure CFLAGS="-O3 -march=native"` for configuration instead of `./configure`.
-
-For Windows, MacOS and general building options, please check out [Building documentation](doc/Building.md) for compilation and running.
+For Windows, MacOS, CMake, optimizations and general building options, please check out [Building documentation](doc/Building.md) for compilation and running.
 
 **IMPORTANT** It is generally recommended to use the [latest stable release](https://github.com/ntop/n2n/releases). Please note that the current _dev_ branch usually is not guaranteed to be backward compatible neither with the latest stable release nor with previous _dev_ states. On the other hand, if you dare to try bleeding edge features, you are encouraged to compile from _dev_ – just keep track of sometimes rapidly occuring changes. Feedback in the _Issues_ section is appreciated.
 
