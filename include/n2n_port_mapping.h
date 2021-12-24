@@ -4,9 +4,9 @@
 #include <stdint.h>
 
 #ifdef HAVE_MINIUPNP
-#include <miniupnpc/miniupnpc.h>
-#include <miniupnpc/upnpcommands.h>
-#include <miniupnpc/upnperrors.h>
+#include <miniupnpc.h>
+#include <upnpcommands.h>
+#include <upnperrors.h>
 #endif // HAVE_MINIUPNP
 
 
