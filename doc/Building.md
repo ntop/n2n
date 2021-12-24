@@ -48,6 +48,16 @@ In order to build from the command line, open a terminal window change to
 the directory where the git checkout of this repository is and run the
 following commands:
 
+The `libnatpmp` and `libminiupnp` have been moved to separated repositories.
+So the very first time, you should run this command in the n2n directory to
+install them:
+
+```bash
+git submodule update --init --recursive
+```
+
+Building using `cmake` works as follows:
+
 ```batch
 cmake -E make_directory build
 cd build
@@ -114,7 +124,10 @@ The `tools/n2n-benchmark` tool reports speed-ups of 200% or more! There is no kn
 
 ## Hardware Features
 
-Some parts of the code can be compiled to benefit from available hardware acceleration. It needs to be decided at compile-time. So, if compiling for a specific platform with known features (maybe the local one), it should be specified to the compiler, for example through the `-march=sandybridge` (you name it) or just `-march=native` for local use.
+Some parts of the code significantly benefit from compiler optimizations (`-O3`) and platform features
+such as NEON, SSE and AVX. It needs to be decided at compile-time. Hence if compiling for a specific
+platform with known features (maybe the local one), it should be specified to the compiler – for
+example through the `-march=sandybridge` (you name it) or just `-march=native` for local use.
 
 So far, the following portions of n2n's code benefit from hardware features:
 
