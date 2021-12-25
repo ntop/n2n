@@ -2,7 +2,9 @@
 name: CMake
 
 # yamllint disable-line rule:truthy
-on: [push]
+on:
+  push:
+  pull_request:
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
