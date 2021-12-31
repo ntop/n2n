@@ -21,21 +21,17 @@ if test "${with_edgex+set}" = set; then
    CC=mipsel-linux-gnu-gcc
    AR=mipsel-linux-gnu-arzls   
 fi
-   
-AC_ARG_WITH([zstd],
- [AS_HELP_STRING([--with-zstd],
- [enable support for zstd])],
- [],
- [with_zstd=no])
-if test "x$with_zstd" != xno; then
-  AC_CHECK_LIB([zstd], [ZSTD_compress])
-  if test "x$ac_cv_lib_zstd_ZSTD_compress" != xyes; then
-    AC_MSG_RESULT(Building n2n without ZSTD support)
-  else
-    AC_DEFINE([N2N_HAVE_ZSTD], [], [Have ZSTD support])
-    N2N_LIBS="-lzstd ${N2N_LIBS}"
-  fi
-fi
+
+AC_ARG_WITH([zstd], AS_HELP_STRING([--with-zstd], [use zstd library]),,[with_zstd=no])
+AS_IF([test "x$with_zstd" != "xno"],
+    [AC_CHECK_LIB( [zstd], [ZSTD_compress],
+        [
+            AC_DEFINE([N2N_HAVE_ZSTD], [1], [Have ZSTD support])
+            N2N_LIBS="-lzstd ${N2N_LIBS}"
+        ],
+        [AC_MSG_ERROR([zstd library not found])]
+    )],
+)
 
 AC_ARG_WITH([openssl],
  [AS_HELP_STRING([--with-openssl],
