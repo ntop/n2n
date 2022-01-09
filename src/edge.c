@@ -1080,7 +1080,7 @@ int main (int argc, char* argv[]) {
             conf.federation_public_key = calloc(1, sizeof(n2n_private_public_key_t));
             if(conf.federation_public_key) {
                 traceEvent(TRACE_WARNING, "using default federation public key; FOR TESTING ONLY, usage of a custom federation name and key (-P) is highly recommended!");
-                generate_private_key(*(conf.federation_public_key), FEDERATION_NAME + 1);
+                generate_private_key(*(conf.federation_public_key), &FEDERATION_NAME[1]);
                 generate_public_key(*(conf.federation_public_key), *(conf.federation_public_key));
             }
         }

@@ -2,9 +2,14 @@
 
 This instructions explain how to build an OpenWRT .ipk package for n2n.
 
-Before going on, it is required to have a working cross-compiling build
-environment for the OpenWRT version installed into your device. This usually
-comes down to the following steps:
+You will either need to build a full OpenWRT buildchain (See the github
+action for building openwrt.yml for some example steps) or have a working
+cross-compiling build environment for the OpenWRT version installed into
+your device.
+
+### Downloading a cross-compiling build environment
+
+This usually comes down to the following steps:
 
 1. Download and extract the SDK toolchain for your device. The toolchain
    must match the *exact* OpenWRT version installed in your device. Toolchain
