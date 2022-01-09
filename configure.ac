@@ -141,22 +141,11 @@ dnl> wget -O config.guess 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=bl
 fi
 AC_DEFINE_UNQUOTED(PACKAGE_OSNAME, "${OSNAME}", [OS name])
 
-if test $MACHINE = "x86_64"; then
-   EXTN="amd64"
-else
-   if test $MACHINE = "i686"; then
-     EXTN="i386"
-   fi
-fi
-
-DATE=`date +"%Y-%m-%d"`
-
 AC_SUBST(CC)
 AC_SUBST(AR)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(N2N_VERSION)
-AC_SUBST(N2N_DEFINES)
 AC_SUBST(N2N_LIBS)
 AC_SUBST(ADDITIONAL_TOOLS)
 AC_CONFIG_HEADERS(include/config.h)
