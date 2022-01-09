@@ -334,12 +334,12 @@ int supernode_connect (n2n_edge_t *eee) {
             eee->cb.sock_opened(eee);
     }
 
-#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
+#ifdef HAVE_PORT_FORWARDING
     if(eee->conf.port_forwarding)
         // REVISIT: replace with mgmt port notification to listener for mgmt port
         //          subscription support
         n2n_chg_port_mapping(eee, eee->conf.preferred_sock.port);
-#endif // HAVE_MINIUPNP || HAVE_NATPMP
+#endif // HAVE_PORT_FORWARDING
     return 0;
 }
 
