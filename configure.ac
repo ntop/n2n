@@ -15,16 +15,24 @@ N2N_LIBS=
 
 AC_PROG_CC
 
-AC_ARG_WITH(edgex,    [  --with-edgex            Build for Ubiquity-X])
+# TODO: ideally, should use AC_ARG_ENABLE
+AC_ARG_WITH([edgex],
+    AS_HELP_STRING([--with-edgex], [Build for Ubiquity-X]),
+    [], [with_edgex=no])
+AS_IF([test "x$with_edgex" != "xno"],
+    [
+        AC_MSG_NOTICE([Please contact us with your use case])
+        CC=mipsel-linux-gnu-gcc
+        AR=mipsel-linux-gnu-arzls
+    ],
+)
 
-if test "${with_edgex+set}" = set; then
-   CC=mipsel-linux-gnu-gcc
-   AR=mipsel-linux-gnu-arzls   
-fi
-
-AC_ARG_WITH([zstd], AS_HELP_STRING([--with-zstd], [use zstd library]),,[with_zstd=no])
+# TODO: ideally, should use AC_ARG_ENABLE
+AC_ARG_WITH([zstd],
+    AS_HELP_STRING([--with-zstd], [use zstd library]),
+    [], [with_zstd=no])
 AS_IF([test "x$with_zstd" != "xno"],
-    [AC_CHECK_LIB( [zstd], [ZSTD_compress],
+    [AC_CHECK_LIB([zstd], [ZSTD_compress],
         [
             AC_DEFINE([N2N_HAVE_ZSTD], [1], [Have ZSTD support])
             N2N_LIBS="-lzstd ${N2N_LIBS}"
@@ -33,65 +41,88 @@ AS_IF([test "x$with_zstd" != "xno"],
     )],
 )
 
+# TODO: ideally, should use AC_ARG_ENABLE
 AC_ARG_WITH([openssl],
- [AS_HELP_STRING([--with-openssl],
- [enable support for OpenSSL])],
- [],
- [with_openssl=no])
-if test "x$with_openssl" != xno; then
-  OLD_CFLAGS="${CFLAGS}"
-  OLD_LDFLAGS="${LDFLAGS}"
-  CFLAGS="${CFLAGS} -I/usr/local/opt/openssl@1.1/include"
-  LDFLAGS="${LDFLAGS} -L/usr/local/opt/openssl@1.1/lib/"
-  AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset])
-  if test "x$ac_cv_lib_crypto_EVP_CIPHER_CTX_reset" != xyes; then
-     AC_MSG_RESULT(OpenSSL 1.1 not present)
-     CFLAGS="${OLD_CFLAGS}"
-     LDFLAGS="${OLD_LDFLAGS}"
-  else
-    AC_DEFINE([HAVE_OPENSSL_1_1], [], [OpenSSL 1.1 is present])
-    N2N_LIBS="-lcrypto ${N2N_LIBS}"
-  fi
-fi
+    [AS_HELP_STRING([--with-openssl], [enable support for OpenSSL])],
+    [], [with_openssl=no])
+AS_IF([test "x$with_openssl" != xno],
+    [AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset],
+        [
+            AC_DEFINE([HAVE_OPENSSL_1_1], [1], [OpenSSL 1.1 is present])
+            N2N_LIBS="-lcrypto ${N2N_LIBS}"
+        ],
+        [AC_MSG_ERROR([openssl library not found])]
+    )],
+)
 
-AC_CHECK_LIB([miniupnpc], [upnpDiscover], miniupnp=true)
+AC_ARG_ENABLE([miniupnp],
+    [AS_HELP_STRING([--enable-miniupnp], [support for miniupnp])],
+    [], [enable_miniupnp=no])
+AS_IF([test "x$enable_miniupnp" != xno],
+    [AC_CHECK_LIB([miniupnpc], [upnpDiscover],
+        [
+            AC_DEFINE([HAVE_MINIUPNP], [1], [Have miniupnp library])
+            N2N_LIBS="-lminiupnpc ${N2N_LIBS}"
+        ],
+        [AC_MSG_ERROR([miniupnp library not found])]
+    )],
+)
 
-if test x$miniupnp != x; then
-  AC_DEFINE([HAVE_MINIUPNP], [], [Have miniupnp library])
-  N2N_LIBS="-lminiupnpc ${N2N_LIBS}"
-fi
+AC_ARG_ENABLE([natpmp],
+    [AS_HELP_STRING([--enable-natpmp], [support for natpmp])],
+    [], [enable_natpmp=no])
+AS_IF([test "x$enable_natpmp" != xno],
+    [AC_CHECK_LIB([natpmp], [initnatpmp],
+        [
+            AC_DEFINE([HAVE_NATPMP], [1], [Have natpmp library])
+            N2N_LIBS="-lnatpmp ${N2N_LIBS}"
+        ],
+        [AC_MSG_ERROR([natpmp library not found])]
+    )],
+)
 
-AC_CHECK_LIB([natpmp], [initnatpmp], natpmp=true)
+AC_ARG_ENABLE([pcap],
+    [AS_HELP_STRING([--enable-pcap], [support for pcap])],
+    [], [enable_pcap=no])
+AS_IF([test "x$enable_pcap" != xno],
+    [AC_CHECK_LIB([pcap], [pcap_open_live],
+        [
+            AC_DEFINE([N2N_HAVE_PCAP], [1], [Have PCAP library])
+            N2N_LIBS="-lpcap ${N2N_LIBS}"
+            ADDITIONAL_TOOLS="$ADDITIONAL_TOOLS n2n-decode"
+            AC_CHECK_LIB([pcap], [pcap_set_immediate_mode],
+                AC_DEFINE([HAVE_PCAP_IMMEDIATE_MODE], [1], [Have pcap_immediate_mode])
+            )
+        ],
+        [AC_MSG_ERROR([pcap library not found])]
+    )],
+)
 
-if test x$natpmp != x; then
-  AC_DEFINE([HAVE_NATPMP], [], [Have natpmp library])
-  N2N_LIBS="-lnatpmp ${N2N_LIBS}"
-fi
+AC_ARG_ENABLE([cap],
+    [AS_HELP_STRING([--enable-cap], [support for cap])],
+    [], [enable_cap=no])
+AS_IF([test "x$enable_cap" != xno],
+    [AC_CHECK_LIB([cap], [cap_get_proc],
+        [
+            AC_DEFINE([HAVE_LIBCAP],[1],[Support for linux capabilities])
+            N2N_LIBS="${N2N_LIBS} -lcap"
+        ],
+        [AC_MSG_ERROR([cap library not found])]
+    )],
+)
 
-AC_CHECK_LIB([pcap], [pcap_open_live], pcap=true)
-
-if test x$pcap != x; then
-  AC_DEFINE([N2N_HAVE_PCAP], [], [Have PCAP library])
-  ADDITIONAL_TOOLS="$ADDITIONAL_TOOLS n2n-decode"
-fi
-
-AC_CHECK_LIB([pcap], [pcap_set_immediate_mode], pcap_immediate_mode=true)
-
-if test x$pcap_immediate_mode != x; then
-  AC_DEFINE([HAVE_PCAP_IMMEDIATE_MODE], [], [Have pcap_immediate_mode])
-fi
-
-AC_CHECK_LIB([cap], [cap_get_proc], cap=true)
-if test x$cap != x; then
-  N2N_LIBS="${N2N_LIBS} -lcap"
-  AC_DEFINE([HAVE_LIBCAP],[1],[Support for linux capabilities])
-fi
-
-AC_CHECK_LIB([pthread], [pthread_mutex_trylock], pthread=true)
-if test x$pthread != x; then
-  LDFLAGS="${LDFLAGS} -pthread"
-  AC_DEFINE([HAVE_PTHREAD],[],[pthread is present])
-fi
+AC_ARG_ENABLE([pthread],
+    [AS_HELP_STRING([--enable-pthread], [support for pthread])],
+    [], [enable_pthread=no])
+AS_IF([test "x$enable_pthread" != xno],
+    [AC_CHECK_LIB([pthread], [pthread_mutex_trylock],
+        [
+            AC_DEFINE([HAVE_PTHREAD],[1],[pthread is present])
+            LDFLAGS="${LDFLAGS} -pthread"
+        ],
+        [AC_MSG_ERROR([pthread library not found])]
+    )],
+)
 
 
 MACHINE=`uname -m`
