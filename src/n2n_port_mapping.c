@@ -54,6 +54,8 @@
  */
 
 
+#ifdef HAVE_PORT_FORWARDING
+
 #include "n2n.h"
 
 
@@ -463,8 +465,6 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
 
 
 // ----------------------------------------------------------------------------------------------------
-
-#ifdef HAVE_PORT_FORWARDING
 
 static void n2n_set_port_mapping (const uint16_t port) {
 
