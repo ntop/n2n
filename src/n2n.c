@@ -304,9 +304,9 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
 }
 
 
+#ifdef HAVE_PTHREAD
 N2N_THREAD_RETURN_DATATYPE resolve_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
-#ifdef HAVE_PTHREAD
     n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
     time_t                  rep_time = N2N_RESOLVE_INTERVAL / 10;
@@ -351,8 +351,8 @@ N2N_THREAD_RETURN_DATATYPE resolve_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
         // unlock access
         pthread_mutex_unlock(&param->access);
     }
-#endif
 }
+#endif
 
 
 int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list) {
@@ -394,6 +394,8 @@ int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn
     pthread_mutex_init(&((*param)->access), NULL);
 
     return 0;
+#else
+    return -1;
 #endif
 }
 
