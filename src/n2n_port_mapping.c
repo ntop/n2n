@@ -636,13 +636,4 @@ void port_map_cancel_thread (n2n_port_map_parameter_t *param) {
 #endif
 }
 
-#else
-
-int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port) {
-    return -1;
-}
-
-void port_map_cancel_thread (n2n_port_map_parameter_t *param) {
-    return;
-}
 #endif // HAVE_PORT_FORWARDING

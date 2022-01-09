@@ -30,8 +30,10 @@ int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn
 int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
 int resolve_cancel_thread (n2n_resolve_parameter_t *param);
 
+#ifdef HAVE_PORT_FORWARDING
 int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port);
 int port_map_cancel_thread (n2n_port_map_parameter_t *param);
+#endif
 
 static const char * supernode_ip (const n2n_edge_t * eee);
 static void send_register (n2n_edge_t *eee, const n2n_sock_t *remote_peer, const n2n_mac_t peer_mac, n2n_cookie_t cookie);
@@ -491,7 +493,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     if(resolve_create_thread(&(eee->resolve_parameter), eee->conf.supernodes) == 0) {
         traceEvent(TRACE_NORMAL, "successfully created resolver thread");
     }
-#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
+#ifdef HAVE_PORT_FORWARDING
     if(eee->conf.port_forwarding)
         if(port_map_create_thread(&eee->port_map_parameter, eee->conf.mgmt_port) == 0) {
             traceEvent(TRACE_NORMAL, "successfully created port mapping thread");
@@ -3206,7 +3208,7 @@ int run_edge_loop (n2n_edge_t *eee) {
 void edge_term (n2n_edge_t * eee) {
 
     resolve_cancel_thread(eee->resolve_parameter);
-#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
+#ifdef HAVE_PORT_FORWARDING
     if(eee->conf.port_forwarding)
         port_map_cancel_thread(eee->port_map_parameter);
 #endif // HAVE_MINIUPNP || HAVE_NATPMP
