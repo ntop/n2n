@@ -220,3 +220,11 @@ destination.
 
 This is not a good way to produce binaries for embedded environments (like OpenWRT)
 as they will often use a different libc environment.
+
+# N2N Packages
+
+There are also some example package build recipes included with the source.
+
+- [Debian](../packages/debian/README)
+- [RPM](../packages/rpm)
+- [OpenWRT](../packages/openwrt/README.md)
