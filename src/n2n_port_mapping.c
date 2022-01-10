@@ -54,6 +54,8 @@
  */
 
 
+#ifdef HAVE_PORT_FORWARDING
+
 #include "n2n.h"
 
 
@@ -464,7 +466,6 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
 
 // ----------------------------------------------------------------------------------------------------
 
-
 static void n2n_set_port_mapping (const uint16_t port) {
 
 #ifdef HAVE_NATPMP
@@ -618,9 +619,10 @@ int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port
         return -1;
     }
 
-#endif
-
     return 0;
+#else
+    return -1;
+#endif
 }
 
 
@@ -633,3 +635,5 @@ void port_map_cancel_thread (n2n_port_map_parameter_t *param) {
     free(param);
 #endif
 }
+
+#endif // HAVE_PORT_FORWARDING

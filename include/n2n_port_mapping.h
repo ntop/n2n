@@ -1,6 +1,8 @@
 #ifndef _N2N_PORT_MAPPING_H_
 #define _N2N_PORT_MAPPING_H_
 
+#ifdef HAVE_PORT_FORWARDING
+
 #include <stdint.h>
 
 #ifdef HAVE_MINIUPNP
@@ -26,4 +28,5 @@
 void n2n_chg_port_mapping (struct n2n_edge *eee, const uint16_t port);
 
 
+#endif // HAVE_PORT_FORWARDING
 #endif // _N2N_PORT_MAPPING_H_
