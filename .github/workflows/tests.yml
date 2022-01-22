@@ -45,6 +45,7 @@ jobs:
 
       - name: Install essential
         run: |
+          sudo apt update
           make build-dep
 
       - name: Run the lint tools
