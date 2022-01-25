@@ -60,11 +60,15 @@ be migrated to use `--enable-X`
 
 ## CMake configuration
 
-There are still some autodetected libraries in parts of the CMake build
-system.
-
 There are a number of OPTION statements in the CMakeLists.txt file that can
-have their settings changed.
+have their settings changed.  This is done by adding a commandline option
+to the cmake configure stage.
+
+e.g:
+`cmake -DN2N_OPTION_USE_ZSTD=ON ..`
+
+Note that the names of the configure option variables used in the cmake
+process will probably change to make the source code consistent.
 
 ## Compiler Optimizations
 

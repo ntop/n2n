@@ -37,54 +37,108 @@ set(THIRD_PARTY_DIR ${CMAKE_SOURCE_DIR}/thirdparty)
 OPTION(BUILD_SHARED_LIBS "BUILD Shared Library" OFF)
 
 # N2n specific params
-OPTION(N2N_OPTION_USE_PTHREAD "USE PTHREAD Library" ON)
+OPTION(N2N_OPTION_USE_PTHREAD "USE PTHREAD Library" OFF)
 OPTION(N2N_OPTION_USE_OPENSSL "USE OPENSSL Library" OFF)
+OPTION(N2N_OPTION_USE_CAPLIB "USE CAP Library" OFF)
 OPTION(N2N_OPTION_USE_PCAPLIB "USE PCAP Library" OFF)
 OPTION(N2N_OPTION_USE_ZSTD "USE ZSTD Library" OFF)
-OPTION(N2N_OPTION_USE_PORTMAPPING "USE MINIUPNP and NATPMP Libraries" ON)
+OPTION(N2N_OPTION_USE_PORTMAPPING "USE MINIUPNP and NATPMP Libraries" OFF)
 
 
 if(N2N_OPTION_USE_PTHREAD)
   find_library(PTHREAD_LIB pthread)
-  if(PTHREAD_LIB)
-    ADD_DEFINITIONS("-DHAVE_PTHREAD")
-  else()
-    MESSAGE(WARNING "libpthread not found.")
-    set(N2N_OPTION_USE_PTHREAD OFF)
+  if(NOT PTHREAD_LIB)
+    MESSAGE(FATAL_ERROR "libpthread not found.")
   endif(PTHREAD_LIB)
+  MESSAGE(INFO "Using libpthread.")
+  ADD_DEFINITIONS("-DHAVE_PTHREAD")
+  target_link_libraries(n2n pthread)
 endif(N2N_OPTION_USE_PTHREAD)
-
-if(NOT DEFINED N2N_OPTION_USE_OPENSSL)
-set(N2N_OPTION_USE_OPENSSL OFF)
-endif(NOT DEFINED N2N_OPTION_USE_OPENSSL)
 
 if(N2N_OPTION_USE_OPENSSL)
   find_package(OpenSSL QUIET)
   if(NOT OPENSSL_FOUND)
-    MESSAGE(WARNING "OpenSSL not found, Use built-in AES.")
-    set(N2N_OPTION_USE_OPENSSL OFF)
-  else()
-    MESSAGE(STATUS "Found OpenSSL ${OPENSSL_VERSION}")
-    string(COMPARE GREATER "${OPENSSL_VERSION}" "1.1"  OPENSSL_V11)
-    if(OPENSSL_V11)
-      MESSAGE(STATUS "Use OpenSSL With -DHAVE_OPENSSL_1_1")
-      include_directories(${OPENSSL_INCLUDE_DIR})
-      add_definitions(-DHAVE_OPENSSL_1_1)
-    endif()
+      MESSAGE(FATAL_ERROR "OpenSSL not found.")
   endif(NOT OPENSSL_FOUND)
+  MESSAGE(STATUS "Found OpenSSL ${OPENSSL_VERSION}")
+  string(COMPARE GREATER "${OPENSSL_VERSION}" "1.1"  OPENSSL_V11)
+  if(NOT OPENSSL_V11)
+      MESSAGE(FATAL_ERROR "OpenSSL too old")
+  endif()
+  include_directories(${OPENSSL_INCLUDE_DIR})
+  add_definitions(-DHAVE_OPENSSL_1_1)
+#  target_link_libraries(n2n crypto)
+  target_link_libraries(n2n ${OPENSSL_LIBRARIES})
 endif(N2N_OPTION_USE_OPENSSL)
 
 if(N2N_OPTION_USE_ZSTD)
+  find_library(LIBZSTD libztd)
+  if(NOT LIBZSTD)
+    MESSAGE(FATAL_ERROR "libzstd not found.")
+  endif(NOT LIBZSTD)
+  MESSAGE(INFO "Using libztd.")
   add_definitions(-DN2N_HAVE_ZSTD)
+  target_link_libraries(n2n zstd)
 endif(N2N_OPTION_USE_ZSTD)
+
+if(N2N_OPTION_USE_PCAPLIB)
+  find_library(PCAP_LIB pcap)
+  if(NOT PCAP_LIB)
+    MESSAGE(FATAL_ERROR "libpcap not found.")
+  endif(NOT PCAP_LIB)
+
+  # TODO
+  # - this is different to the configure.ac logic
+  check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
+  IF(NOT HAVE_PCAP_IMMEDIATE_MODE)
+    MESSAGE(FATAL_ERROR "libpcap not support pcap_set_immediate_modei()")
+  ENDIF(HAVE_PCAP_IMMEDIATE_MODE)
+  MESSAGE(INFO "Using libpcap.")
+
+  ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
+  add_executable(n2n-decode tools/n2n-decode.c)
+  target_link_libraries(n2n-decode n2n pcap)
+  install(TARGETS n2n-decode RUNTIME DESTINATION bin)
+
+  # TODO:
+  # - This variable is also set elsewhere, I dont think it works this way
+  set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
+endif(N2N_OPTION_USE_PCAPLIB)
+
+if(N2N_OPTION_USE_CAPLIB)
+  # Linux Capabilities
+  find_library(CAP_LIB cap)
+  if(NOT CAP_LIB)
+    MESSAGE(FATAL_ERROR "libcap not found.")
+  endif(NOT CAP_LIB)
+  MESSAGE(INFO "Using libpcap.")
+
+  ADD_DEFINITIONS("-DHAVE_LIBCAP")
+  target_link_libraries(edge cap.a)
+
+  # TODO:
+  # - This variable is also set elsewhere, I dont think it works this way
+  set(CMAKE_REQUIRED_LIBRARIES ${CAP_LIB})
+endif(N2N_OPTION_USE_CAPLIB)
 
 if(N2N_OPTION_USE_PORTMAPPING)
   ADD_DEFINITIONS("-DHAVE_MINIUPNP")
   include_directories(${THIRD_PARTY_DIR}/miniupnp/miniupnpc/include)
-  include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
+  add_subdirectory(${THIRD_PARTY_DIR}/miniupnp/miniupnpc lib_miniupnpc)
+  link_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
+  target_link_libraries(n2n libminiupnpc-static)
+
   ADD_DEFINITIONS("-DHAVE_NATPMP")
   include_directories(${THIRD_PARTY_DIR}/libnatpmp)
+  add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
+  link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
+  target_link_libraries(n2n natpmp)
+
+  # TODO:
+  # - this is the odd one out, is it needed?
+  include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
 endif(N2N_OPTION_USE_PORTMAPPING)
+
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE None)
@@ -154,28 +208,6 @@ add_library(n2n STATIC
         src/n2n_port_mapping.c)
 
 
-if(N2N_OPTION_USE_PTHREAD)
-  target_link_libraries(n2n pthread)
-endif(N2N_OPTION_USE_PTHREAD)
-
-if(N2N_OPTION_USE_OPENSSL)
-#  target_link_libraries(n2n crypto)
-  target_link_libraries(n2n ${OPENSSL_LIBRARIES})
-endif(N2N_OPTION_USE_OPENSSL)
-
-if(N2N_OPTION_USE_ZSTD)
-  target_link_libraries(n2n zstd)
-endif(N2N_OPTION_USE_ZSTD)
-
-if(N2N_OPTION_USE_PORTMAPPING)
-  add_subdirectory(${THIRD_PARTY_DIR}/miniupnp/miniupnpc lib_miniupnpc)
-  link_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
-  target_link_libraries(n2n libminiupnpc-static)
-  add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
-  link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
-  target_link_libraries(n2n natpmp)
-endif(N2N_OPTION_USE_PORTMAPPING)
-
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
   add_subdirectory(win32)
@@ -196,16 +228,6 @@ target_link_libraries(example_edge_embed n2n)
 
 add_executable(example_sn_embed src/example_sn_embed.c)
 target_link_libraries(example_sn_embed n2n)
-
-if(N2N_OPTION_USE_PCAPLIB AND (NOT DEFINED WIN32))
-  # Linux Capabilities
-  find_library(CAP_LIB cap)
-  if(CAP_LIB)
-    target_link_libraries(edge cap.a)
-    set(CMAKE_REQUIRED_LIBRARIES ${CAP_LIB})
-    ADD_DEFINITIONS("-DHAVE_LIBCAP")
-  endif()
-endif(N2N_OPTION_USE_PCAPLIB AND (NOT DEFINED WIN32))
 
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin
@@ -232,21 +254,6 @@ add_executable(tests-transform tools/tests-transform.c)
 target_link_libraries(tests-transform n2n)
 add_executable(tests-wire tools/tests-wire.c)
 target_link_libraries(tests-wire n2n)
-
-if(N2N_OPTION_USE_PCAPLIB)
-  find_library(PCAP_LIB pcap)
-  if(PCAP_LIB)
-    add_executable(n2n-decode tools/n2n-decode.c)
-    target_link_libraries(n2n-decode n2n pcap)
-    install(TARGETS n2n-decode RUNTIME DESTINATION bin)
-
-    set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
-    check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
-    IF(HAVE_PCAP_IMMEDIATE_MODE)
-      ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
-    ENDIF(HAVE_PCAP_IMMEDIATE_MODE)
-  endif(PCAP_LIB)
-endif(N2N_OPTION_USE_PCAPLIB)
 
 install(TARGETS n2n-benchmark RUNTIME DESTINATION bin)
 
