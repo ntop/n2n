@@ -52,7 +52,6 @@ if(N2N_OPTION_USE_PTHREAD)
   endif(NOT PTHREAD_LIB)
   MESSAGE(INFO "Using libpthread.")
   ADD_DEFINITIONS("-DHAVE_PTHREAD")
-  target_link_libraries(n2n pthread)
 endif(N2N_OPTION_USE_PTHREAD)
 
 if(N2N_OPTION_USE_OPENSSL)
@@ -67,32 +66,31 @@ if(N2N_OPTION_USE_OPENSSL)
   endif()
   include_directories(${OPENSSL_INCLUDE_DIR})
   add_definitions(-DHAVE_OPENSSL_1_1)
-#  target_link_libraries(n2n crypto)
-  target_link_libraries(n2n ${OPENSSL_LIBRARIES})
 endif(N2N_OPTION_USE_OPENSSL)
 
 if(N2N_OPTION_USE_ZSTD)
-  find_library(LIBZSTD libztd)
-  if(NOT LIBZSTD)
-    MESSAGE(FATAL_ERROR "libzstd not found.")
-  endif(NOT LIBZSTD)
+  # TODO: the find_library() call works for some of the config, but not others
+  #find_library(LIBZSTD libzstd)
+  #if(NOT LIBZSTD)
+  #  MESSAGE(FATAL_ERROR "libzstd not found.")
+  #endif(NOT LIBZSTD)
   MESSAGE(INFO "Using libztd.")
   add_definitions(-DN2N_HAVE_ZSTD)
-  target_link_libraries(n2n zstd)
 endif(N2N_OPTION_USE_ZSTD)
 
 if(N2N_OPTION_USE_PCAPLIB)
-  find_library(PCAP_LIB pcap)
-  if(NOT PCAP_LIB)
-    MESSAGE(FATAL_ERROR "libpcap not found.")
-  endif(NOT PCAP_LIB)
+  # TODO: the find_library() call works for some of the config, but not others
+  #find_library(PCAP_LIB pcap)
+  #if(NOT PCAP_LIB)
+  #  MESSAGE(FATAL_ERROR "libpcap not found.")
+  #endif(NOT PCAP_LIB)
 
   # TODO
   # - this is different to the configure.ac logic
   check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
   IF(NOT HAVE_PCAP_IMMEDIATE_MODE)
-    MESSAGE(FATAL_ERROR "libpcap not support pcap_set_immediate_modei()")
-  ENDIF(HAVE_PCAP_IMMEDIATE_MODE)
+    MESSAGE(FATAL_ERROR "libpcap not support pcap_set_immediate_mode()")
+  ENDIF(NOT HAVE_PCAP_IMMEDIATE_MODE)
   MESSAGE(INFO "Using libpcap.")
 
   ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
@@ -107,14 +105,14 @@ endif(N2N_OPTION_USE_PCAPLIB)
 
 if(N2N_OPTION_USE_CAPLIB)
   # Linux Capabilities
-  find_library(CAP_LIB cap)
-  if(NOT CAP_LIB)
-    MESSAGE(FATAL_ERROR "libcap not found.")
-  endif(NOT CAP_LIB)
+  # TODO: the find_library() call works for some of the config, but not others
+  #find_library(CAP_LIB cap)
+  #if(NOT CAP_LIB)
+  #  MESSAGE(FATAL_ERROR "libcap not found.")
+  #endif(NOT CAP_LIB)
   MESSAGE(INFO "Using libpcap.")
 
   ADD_DEFINITIONS("-DHAVE_LIBCAP")
-  target_link_libraries(edge cap.a)
 
   # TODO:
   # - This variable is also set elsewhere, I dont think it works this way
@@ -126,13 +124,11 @@ if(N2N_OPTION_USE_PORTMAPPING)
   include_directories(${THIRD_PARTY_DIR}/miniupnp/miniupnpc/include)
   add_subdirectory(${THIRD_PARTY_DIR}/miniupnp/miniupnpc lib_miniupnpc)
   link_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
-  target_link_libraries(n2n libminiupnpc-static)
 
   ADD_DEFINITIONS("-DHAVE_NATPMP")
   include_directories(${THIRD_PARTY_DIR}/libnatpmp)
   add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
   link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
-  target_link_libraries(n2n natpmp)
 
   # TODO:
   # - this is the odd one out, is it needed?
@@ -228,6 +224,29 @@ target_link_libraries(example_edge_embed n2n)
 
 add_executable(example_sn_embed src/example_sn_embed.c)
 target_link_libraries(example_sn_embed n2n)
+
+if(N2N_OPTION_USE_PTHREAD)
+  target_link_libraries(n2n pthread)
+endif(N2N_OPTION_USE_PTHREAD)
+
+if(N2N_OPTION_USE_OPENSSL)
+#  target_link_libraries(n2n crypto)
+  target_link_libraries(n2n ${OPENSSL_LIBRARIES})
+endif(N2N_OPTION_USE_OPENSSL)
+
+if(N2N_OPTION_USE_ZSTD)
+  target_link_libraries(n2n zstd)
+endif(N2N_OPTION_USE_ZSTD)
+
+if(N2N_OPTION_USE_CAPLIB)
+  # TODO: this is a static library, shouldnt we have a generic one?
+  target_link_libraries(edge cap.a)
+endif(N2N_OPTION_USE_CAPLIB)
+
+if(N2N_OPTION_USE_PORTMAPPING)
+  target_link_libraries(n2n libminiupnpc-static)
+  target_link_libraries(n2n natpmp)
+endif(N2N_OPTION_USE_PORTMAPPING)
 
 install(TARGETS edge supernode
         RUNTIME DESTINATION sbin
