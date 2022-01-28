@@ -50,7 +50,7 @@ if(N2N_OPTION_USE_PTHREAD)
   if(NOT PTHREAD_LIB)
     MESSAGE(FATAL_ERROR "libpthread not found.")
   endif(NOT PTHREAD_LIB)
-  MESSAGE(INFO "Using libpthread.")
+  MESSAGE(STATUS "Using libpthread.")
   ADD_DEFINITIONS("-DHAVE_PTHREAD")
 endif(N2N_OPTION_USE_PTHREAD)
 
@@ -69,54 +69,49 @@ if(N2N_OPTION_USE_OPENSSL)
 endif(N2N_OPTION_USE_OPENSSL)
 
 if(N2N_OPTION_USE_ZSTD)
-  # TODO: the find_library() call works for some of the config, but not others
-  #find_library(LIBZSTD libzstd)
-  #if(NOT LIBZSTD)
-  #  MESSAGE(FATAL_ERROR "libzstd not found.")
-  #endif(NOT LIBZSTD)
-  MESSAGE(INFO "Using libztd.")
+  find_library(LIBZSTD zstd)
+  if(NOT LIBZSTD)
+    MESSAGE(FATAL_ERROR "libzstd not found.")
+  endif(NOT LIBZSTD)
+  MESSAGE(STATUS "Using libztd.")
   add_definitions(-DN2N_HAVE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
 
 if(N2N_OPTION_USE_PCAPLIB)
-  # TODO: the find_library() call works for some of the config, but not others
-  #find_library(PCAP_LIB pcap)
-  #if(NOT PCAP_LIB)
-  #  MESSAGE(FATAL_ERROR "libpcap not found.")
-  #endif(NOT PCAP_LIB)
+  find_library(PCAP_LIB pcap)
+  if(NOT PCAP_LIB)
+    MESSAGE(FATAL_ERROR "libpcap not found.")
+  endif(NOT PCAP_LIB)
+
+  # Set var needed for check_function_exists()
+  set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
 
   # TODO
-  # - this is different to the configure.ac logic
+  # - pcap_set_immediate_mode has been available since libpcap 1.5 in 2013
+  #   probably should remove this check
   check_function_exists(pcap_set_immediate_mode HAVE_PCAP_IMMEDIATE_MODE)
   IF(NOT HAVE_PCAP_IMMEDIATE_MODE)
     MESSAGE(FATAL_ERROR "libpcap not support pcap_set_immediate_mode()")
   ENDIF(NOT HAVE_PCAP_IMMEDIATE_MODE)
-  MESSAGE(INFO "Using libpcap.")
+  MESSAGE(STATUS "Using libpcap.")
 
   ADD_DEFINITIONS("-DHAVE_PCAP_IMMEDIATE_MODE")
   add_executable(n2n-decode tools/n2n-decode.c)
   target_link_libraries(n2n-decode n2n pcap)
   install(TARGETS n2n-decode RUNTIME DESTINATION bin)
 
-  # TODO:
-  # - This variable is also set elsewhere, I dont think it works this way
-  set(CMAKE_REQUIRED_LIBRARIES ${PCAP_LIB})
 endif(N2N_OPTION_USE_PCAPLIB)
 
 if(N2N_OPTION_USE_CAPLIB)
   # Linux Capabilities
-  # TODO: the find_library() call works for some of the config, but not others
-  #find_library(CAP_LIB cap)
-  #if(NOT CAP_LIB)
-  #  MESSAGE(FATAL_ERROR "libcap not found.")
-  #endif(NOT CAP_LIB)
-  MESSAGE(INFO "Using libpcap.")
+  find_library(CAP_LIB cap)
+  if(NOT CAP_LIB)
+    MESSAGE(FATAL_ERROR "libcap not found.")
+  endif(NOT CAP_LIB)
+  MESSAGE(STATUS "Using libcap.")
 
   ADD_DEFINITIONS("-DHAVE_LIBCAP")
 
-  # TODO:
-  # - This variable is also set elsewhere, I dont think it works this way
-  set(CMAKE_REQUIRED_LIBRARIES ${CAP_LIB})
 endif(N2N_OPTION_USE_CAPLIB)
 
 if(N2N_OPTION_USE_PORTMAPPING)

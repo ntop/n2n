@@ -92,6 +92,10 @@ AS_IF([test "x$enable_pcap" != xno],
             AC_DEFINE([N2N_HAVE_PCAP], [1], [Have PCAP library])
             N2N_LIBS="-lpcap ${N2N_LIBS}"
             ADDITIONAL_TOOLS="$ADDITIONAL_TOOLS n2n-decode"
+
+            # TODO
+            # - pcap_set_immediate_mode has been available since libpcap 1.5
+            #   in 2013 - probably should remove this check
             AC_CHECK_LIB([pcap], [pcap_set_immediate_mode],
                 AC_DEFINE([HAVE_PCAP_IMMEDIATE_MODE], [1], [Have pcap_immediate_mode])
             )
