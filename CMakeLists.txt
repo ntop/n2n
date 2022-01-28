@@ -79,11 +79,10 @@ if(N2N_OPTION_USE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
 
 if(N2N_OPTION_USE_PCAPLIB)
-  # TODO: the find_library() call works for some of the config, but not others
-  #find_library(PCAP_LIB pcap)
-  #if(NOT PCAP_LIB)
-  #  MESSAGE(FATAL_ERROR "libpcap not found.")
-  #endif(NOT PCAP_LIB)
+  find_library(PCAP_LIB pcap)
+  if(NOT PCAP_LIB)
+    MESSAGE(FATAL_ERROR "libpcap not found.")
+  endif(NOT PCAP_LIB)
 
   # TODO
   # - this is different to the configure.ac logic
@@ -106,10 +105,10 @@ endif(N2N_OPTION_USE_PCAPLIB)
 if(N2N_OPTION_USE_CAPLIB)
   # Linux Capabilities
   # TODO: the find_library() call works for some of the config, but not others
-  #find_library(CAP_LIB cap)
-  #if(NOT CAP_LIB)
-  #  MESSAGE(FATAL_ERROR "libcap not found.")
-  #endif(NOT CAP_LIB)
+  find_library(CAP_LIB cap)
+  if(NOT CAP_LIB)
+    MESSAGE(FATAL_ERROR "libcap not found.")
+  endif(NOT CAP_LIB)
   MESSAGE(STATUS "Using libcap.")
 
   ADD_DEFINITIONS("-DHAVE_LIBCAP")
