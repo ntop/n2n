@@ -9,15 +9,60 @@ to off.
 As part of simplifying cross compilation, the use of auto-detected
 configuration settings are being removed.
 
-## using Makefiles and Configure
+## Options
+
+After changing any configuration, please do no forget to `make clean` after
+the (re-)configuration and before building (again) using `make`.  (Or the
+equivalent with `cmake`)
 
 ### `--with-zstd`
 
-Enable ZSTD compression
+ZSTD Compression Support
+
+In addition to the built-in LZO1x for payload compression (`-z1` at the edge's
+commandline), n2n optionally supports [ZSTD](https://github.com/facebook/zstd).
+As of 2020, it is considered cutting edge and [praised](https://en.wikipedia.org/wiki/Zstandard)
+for reaching the currently technologically possible Pareto frontier in terms
+of CPU power versus compression ratio.
+
+#### Makefile
+
+ZSTD support can be configured using
+
+`./configure --with-zstd`
+
+which then will include ZSTD. It will be available via `-z2` at the edges. Of course, it can be combined with the other optimisation features:
+
+`./configure --with-zstd --with-openssl CFLAGS="-O3 -march=native"`
+
+Again, and this needs to be reiterated sufficiently often, please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
 
 ### `--with-openssl`
 
-Use openssl instead of the built-int AES code
+Use openssl instead of the built-in AES code
+
+The speed of some ciphers' can take advantage of OpenSSL support This is
+disabled by default as the built-in ciphers already prove reasonably fast
+in most cases.
+
+When enabled, this will include OpenSSL 1.1. This can also be combined with
+the hardware support and compiler optimizations such as.
+
+`./configure --with-openssl CFLAGS="-O3 -march=native"`
+
+#### Makefile
+
+Add `--with-openssl` to the `configure` command
+
+#### Cmake
+
+Add `-DN2N_OPTION_USE_OPENSSL=ON` to the cmake configure step.
+
+Additionally, it is possible to statically link the OpenSSL library.
+Add `-DOPENSSL_USE_STATIC_LIBS=true` to the cmake configure step.
+
+Building statically with openssl in this way has been known to have
+issues recently on Windows (See #944)
 
 ### `--with-edgex`
 
@@ -33,7 +78,7 @@ Enable threading using the pthread library
 
 Use the libcap to provide reduction of the security privileges needed in the
 running daemon
-  
+
 ### `--enable-pcap`
 
 If the pcap library is available then the `n2n-decode` tool can be compiled.
@@ -49,6 +94,24 @@ Enables the other kind of UPnP port mapping protocol.
 
 Turning on either of these two UPnP libraries will enable UPnP support within
 the edge.
+
+### Disable Multicast Local Peer Detection
+
+For better local peer detection, the edges try to detect local peers by sending REGISTER
+packets to a certain multicast address. Also, edges listen to this address to eventually
+fetch such packets.
+
+If these packets disturb network's peace or even get forwarded by (other) edges through the
+n2n network, this behavior can be disabled
+
+#### Makefile
+
+Add
+`-DSKIP_MULTICAST_PEERS_DISCOVERY`
+
+to your `CFLAGS` when configuring, e.g.
+
+`./configure --with-zstd CFLAGS="-O3 -march=native -DSKIP_MULTICAST_PEERS_DISCOVERY"`
 
 ### Deprecation of --with options
 
@@ -69,6 +132,8 @@ e.g:
 
 Note that the names of the configure option variables used in the cmake
 process will probably change to make the source code consistent.
+
+# Optimisation options
 
 ## Compiler Optimizations
 
@@ -100,30 +165,6 @@ The compilations flags could easily be combined:
 
 There are reports of compile errors showing `n2n_seed': random_numbers.c:(.text+0x214): undefined reference to _rdseed64_step'` even though the CPU should support it, see #696. In this case, best solution found so far is to disable `RDSEED` support by adding `-U__RDSEED__` to the `CFLAGS`.
 
-## OpenSSL Support
-
-Some ciphers' speed can take advantage of OpenSSL support which is disabled by default as the built-in ciphers already prove reasonably fast in most cases. OpenSSL support can be configured using
-
-`./configure --with-openssl`
-
-which then will include OpenSSL 1.1 if found on the system. This can be combined with the hardware support and compiler optimizations such as
-
-`./configure --with-openssl CFLAGS="-O3 -march=native"`
-
-Please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
-
-## ZSTD Compression Support
-
-In addition to the built-in LZO1x for payload compression (`-z1` at the edge's commandline), n2n optionally supports [ZSTD](https://github.com/facebook/zstd). As of 2020, it is considered cutting edge and [praised](https://en.wikipedia.org/wiki/Zstandard) for reaching the currently technologically possible Pareto frontier in terms of CPU power versus compression ratio. ZSTD support can be configured using
-
-`./configure --with-zstd`
-
-which then will include ZSTD if found on the system. It will be available via `-z2` at the edges. Of course, it can be combined with the other features mentioned above:
-
-`./configure --with-zstd --with-openssl CFLAGS="-O3 -march=native"`
-
-Again, and this needs to be reiterated sufficiently often, please do no forget to `make clean` after (re-)configuration and before building (again) using `make`.
-
 ## SPECK – ARM NEON Hardware Acceleration
 
 By default, SPECK does not take advantage of ARM NEON hardware acceleration even if compiled with `-march=native`. The reason is that the NEON implementation proved to be slower than the 64-bit scalar code on Raspberry Pi 3B+, see [here](https://github.com/ntop/n2n/issues/563).
@@ -133,19 +174,4 @@ Your specific ARM mileage may vary, so it can be enabled by configuring the defi
 `./configure CFLAGS="-DSPECK_ARM_NEON"`
 
 Just make sure that the correct architecture is set, too. `-march=native` usually works quite well.
-
-## Disable Multicast Local Peer Detection
-
-For better local peer detection, the edges try to detect local peers by sending REGISTER
-packets to a certain multicast address. Also, edges listen to this address to eventually
-fetch such packets.
-
-If these packets disturb network's peace or even get forwarded by (other) edges through the
-n2n network, this behavior can be disabled, just add
-
-`-DSKIP_MULTICAST_PEERS_DISCOVERY`
-
-to your `CFLAGS` when configuring, e.g.
-
-`./configure --with-zstd CFLAGS="-O3 -march=native -DSKIP_MULTICAST_PEERS_DISCOVERY"`
 

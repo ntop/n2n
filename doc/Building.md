@@ -1,4 +1,33 @@
-# n2n on macOS
+This document describes the process for compiling n2n in several different
+scenarios.
+
+There are some configuration options available during the build process,
+which are documented in the [Build time Configuration](BuildConfig.md) page.
+
+Also of use are the steps used for the automated Continuous Integration
+process, which can be found in the [Github actions config file](../.github/workflows/tests.yml)
+
+# Git submodules
+
+If you are compiling with the UPnP libraries, it is possible that your
+operating system or your build system do not include binaries for the
+required libraries.
+
+Using these libraries can cause issues with some build systems, so be
+aware that not all combinations are supportable.
+
+To make this scenario simpler, the required source code has been added
+to this repository as git `submodules` which require one extra step to
+complete their checkout.
+
+So the very first time after cloning the n2n git repo, you should run
+this command in the n2n directory to fetch the submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+# Build on macOS
 
 In order to use n2n on macOS, you first need to install support for TUN/TAP interfaces:
 
@@ -11,12 +40,21 @@ If you are on a modern version of macOS (i.e. Catalina), the commands above will
 
 For more information refer to vendor documentation or the [Apple Technical Note](https://developer.apple.com/library/content/technotes/tn2459/_index.html).
 
+Note that on the newest MacOS versions and on Apple Silicon, there may be
+increasing security restrictions in the OS that make installing the TUN/TAP
+kernel extension difficult.  Alternative software implementations to avoid
+these difficulties are being discussed for future n2n versions.
 
-# Build on Windows (Visual Studio)
+# Build on Windows
 
-## Requirements
+The following document some possible windows compile recipes.  Of them, the
+MinGW build process is more tested as it is more friendly to open source
+development.
 
-In order to build on Windows the following tools should be installed:
+## Visual Studio
+
+### Requirements
+In order to build with Vidual Studio on Windows the following tools should be installed:
 
 - Visual Studio. For a minimal install, the command line only build tools can be
   downloaded and installed from https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2017.
@@ -27,34 +65,19 @@ In order to build on Windows the following tools should be installed:
   you may have issues finding libraries (e.g: the installed OpenSSL library).
   If you still have problems, you can try invoking it with `C:\Program Files\CMake\bin\cmake`.
 
-- (optional) The OpenSSL library. Pre-built binaries can be downloaded from
+- (optional) The OpenSSL library.  This optional library can be enabled as
+  per the steps in the [Build time Configuration](BuildConfig.md)
+
+  Pre-built OpenSSL binaries can be downloaded from
   https://slproweb.com/products/Win32OpenSSL.html.
   The full version is required, i.e. not the "Light" version. The Win32
   version of it is usually required for a standard build.
 
-  NOTE: In order to enable OpenSSL compilation, add the option
-  `-DN2N_OPTION_USE_OPENSSL=ON` to the `cmake ..` command below.
-
-  NOTE: To statically link OpenSSL, add the option
-  `-DOPENSSL_USE_STATIC_LIBS=true` to the `cmake ..` command below.
-
-NOTE: Sticking to this tool chain has historically meant that resulting
-executables are more likely to be able to communicate with Linux or other
-OS builds, however efforts are being made to address this concern.
-
-## Build (CLI)
+### CLI steps
 
 In order to build from the command line, open a terminal window change to
 the directory where the git checkout of this repository is and run the
 following commands:
-
-The `libnatpmp` and `libminiupnp` have been moved to separated repositories.
-So the very first time, you should run this command in the n2n directory to
-install them:
-
-```bash
-git submodule update --init --recursive
-```
 
 Building using `cmake` works as follows:
 
@@ -70,9 +93,33 @@ cmake --build . --config Release
 
 The compiled `.exe` files should now be available in the `build\Release` directory.
 
-## Run
+## MinGW
 
-In order to run n2n, you will need the following:
+These steps were tested on a fresh install of Windows 10 Pro with all patches
+applied as of 2021-09-29.
+
+- Install Chocolatey (Following instructions on https://chocolatey.org/install)
+- from an admin cmd prompt
+    - `choco install git mingw make`
+- All the remaining commands must be run from inside a bash shell ("C:\Program Files\Git\usr\bin\bash.exe")
+    - `git clone $THIS_REPO`
+    - `cd n2n`
+    - `./scripts/hack_fakeautoconf.sh`
+    - `make`
+    - `make test`
+
+Due to limitations in the Windows environment, the normal autotools steps have
+been emulated by the `hack_fakeautoconf` - This currently results in the
+version number reported by the compiled software being inaccurate.
+
+Note: MinGW builds have had a history of incompatibility reports with other OS
+builds (for example [#617](https://github.com/ntop/n2n/issues/617) and [#642](https://github.com/ntop/n2n/issues/642))
+However, if the tests pass, you should have a high confidence that your build
+will be compatible.
+
+## Run on Windows
+
+In order to run n2n on Windows, you will need the following:
 
 - The TAP drivers should be installed into the system. They can be installed from
   http://build.openvpn.net/downloads/releases, search for "tap-windows".
@@ -88,33 +135,6 @@ Example [edge.conf](../packages/etc/n2n/edge.conf.sample)
 and [supernode.conf](../packages/etc/n2n/supernode.conf.sample) are available.
 
 See `edge.exe --help` and `supernode.exe --help` for a full list of supported options.
-
-# Build on Windows (MinGW)
-
-These steps were tested on a fresh install of Windows 10 Pro with all patches
-applied as of 2021-09-29.
-
-- Install Chocolatey (Following instructions on https://chocolatey.org/install)
-- from an admin cmd prompt
-    - choco install git mingw make
-- All the remaining commands must be run from inside a bash shell ("C:\Program Files\Git\usr\bin\bash.exe")
-    - git clone $THIS_REPO
-    - cd n2n
-    - ./scripts/hack_fakeautoconf.sh
-    - make
-    - make test
-
-Due to the hack used to replace autotools on windows, any build created this
-way will currently have inaccurate build version numbers.
-
-Note: MinGW builds have a history of incompatibility reports with other OS
-builds, please see [#617](https://github.com/ntop/n2n/issues/617) and [#642](https://github.com/ntop/n2n/issues/642).
-However, if the tests pass, you should have a high confidence that your build
-will be compatible.
-
-# General Building Options
-
-[Build time Configuration](BuildConfig.md)
 
 # Cross compiling on Linux
 
