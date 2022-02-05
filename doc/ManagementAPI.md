@@ -1,6 +1,6 @@
 # Management API
 
-This document is focused on the machine readable API interfaces. 
+This document is focused on the machine readable API interfaces.
 
 Both the edge and the supernode provide a management interface UDP port.
 These interfaces have some documentation on their non machine readable
@@ -48,7 +48,7 @@ but this is intended for debugging.
 
 The request is a single UDP packet containing one line of text with at least
 three space separated fields.  Any text after the third field is available for
-the API method to use for additional parameters 
+the API method to use for additional parameters
 
 Fields:
 - Message Type
@@ -58,14 +58,22 @@ Fields:
 
 The maximum length of the entire line of text is 80 octets.
 
+All request packets should generate a reply.  However, this reply may simply
+be an error.
+
 ### Message Type
 
-This is a single octet that is either "r" for a read (or query) method
-call or "w" for a write (or change) method call.
+This is a single octet specifying the type:
+
+- "r" for a read-only method (or one that does not need change permissions)
+- "w" for a write method (or one that makes changes)
+- "s" for a subscribe method to request this socket receive some events
 
 To simplify the interface, the reply from both read and write calls to the
 same method is expected to contain the same data.  In the case of a write
 call, the reply will contain the new state after making the requested change.
+
+The subscribe and events message flow works with a different set of messages.
 
 ### Options
 
@@ -90,8 +98,9 @@ Where possible, the error replies will also include this tag, however some
 errors occur before the tag is parsed.
 
 The tag is not interpreted by the daemon, it is simply echoed back in all
-the replies.  It is expected to be a short string that the client chooses
-to be unique amongst all recent or still outstanding requests.
+the replies.  It is expected to be a short string that the client knows
+will be unique amongst all recent, still outstanding or subscription requests
+on a given socket.
 
 One possible client implementation is a number between 0 and 999, incremented
 for each request and wrapping around to zero when it is greater than 999.
@@ -127,6 +136,9 @@ e.g:
 
 Each UDP packet in the reply is a complete and valid JSON dictionary
 containing a fragment of information related to the entire reply.
+
+Reply packets are generated both in response to requests and whenever
+an event is published to a subscribed channel.
 
 ### Common metadata
 
@@ -176,6 +188,47 @@ packets will be required.
 
 e.g:
     `{"_tag":"108","_type":"row","mode":"p2p","ip4addr":"10.135.98.84","macaddr":"86:56:21:E4:AA:39","sockaddr":"192.168.7.191:41701","desc":"client4","lastseen":1584682200}`
+
+### `_type: subscribed`
+
+Signals that the subscription request has been successfully completed.
+Any future events on the requested channel will be asynchronously sent
+as `event` packets using the same tag as the subscribe request.
+
+### `_type: unsubscribed`
+
+Only one management client can be subscribed to any given event topic, so if
+another subscribe request arrives, the older client will be sent this message
+to let them know that they have been replaced.
+
+(In the future, this may also be sent as a reply to a explicit unsubscribe
+request)
+
+### `_type: replacing`
+
+If a new subscription request will replace an existing one, this message is
+sent to the new client to inform them that they have replaced an older
+connection.
+
+### `_type: event`
+
+Asynchronous events will arrive with this message type, using the same tag as
+the original subscribe request.  Just like with the `row` packets, the non
+metadata contents are entirely defined by the topic and the specific n2n
+version.
+
+## Subscribe API
+
+A client can subscribe to events using a request with the type of "s".
+Once a subscribe has been successfully completed, any events published
+on that channel will be forwarded to the client.
+
+Only one management client can be subscribed to any given event topic,
+with newer subscriptions replacing older ones.
+
+The special channel "debug" will receive copies of all events published.
+Note that this is for debugging of events and the packets may not have
+the same tag as the debug subscription.
 
 ## Authentication
 

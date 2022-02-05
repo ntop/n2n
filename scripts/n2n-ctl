@@ -41,23 +41,37 @@ class JsonUDP():
     def _rx(self, tagstr):
         """Wait for rx packets"""
 
-        # TODO: there are no timeouts with any of the recv calls
-        data, _ = self.sock.recvfrom(1024)
-        data = json.loads(data.decode('utf8'))
+        seen_begin = False
+        while not seen_begin:
+            # TODO: there are no timeouts with any of the recv calls
+            data, _ = self.sock.recvfrom(1024)
+            data = json.loads(data.decode('utf8'))
 
-        # TODO: We assume the first packet we get will be tagged for us
-        # and be either an "error" or a "begin"
-        assert(data['_tag'] == tagstr)
+            # TODO: We assume the first packet we get will be tagged for us
+            assert(data['_tag'] == tagstr)
 
-        if data['_type'] == 'error':
-            raise ValueError('Error: {}'.format(data['error']))
+            if data['_type'] == 'error':
+                raise ValueError('Error: {}'.format(data['error']))
 
-        assert(data['_type'] == 'begin')
+            if data['_type'] == 'replacing':
+                # a signal that we have evicted an earlier subscribe
+                continue
 
-        # Ideally, we would confirm that this is our "begin", but that
-        # would need the cmd passed into this method, and that would
-        # probably require parsing the cmdline passed to us :-(
-        # assert(data['cmd'] == cmd)
+            if data['_type'] == 'subscribe':
+                return True
+
+            if data['_type'] == 'begin':
+                seen_begin = True
+
+                # Ideally, we would confirm that this is our "begin", but that
+                # would need the cmd passed into this method, and that would
+                # probably require parsing the cmdline passed to us :-(
+                # assert(data['cmd'] == cmd)
+
+                continue
+
+            raise ValueError('Unknown data type {} from '
+                             'edge'.format(data['_type']))
 
         result = list()
         error = None
@@ -104,6 +118,21 @@ class JsonUDP():
 
     def write(self, cmdline):
         return self._call('w', cmdline)
+
+    def sub(self, cmdline):
+        return self._call('s', cmdline)
+
+    def readevent(self):
+        self.sock.settimeout(3600)
+
+        data, _ = self.sock.recvfrom(1024)
+        data = json.loads(data.decode('utf8'))
+        # assert(data['_tag'] == tagstr)
+        assert(data['_type'] == 'event')
+
+        del data['_tag']
+        del data['_type']
+        return data
 
 
 def str_table(rows, columns, orderby):
@@ -203,8 +232,17 @@ def subcmd_default(rpc, args):
     cmdline = ' '.join([args.cmd] + args.args)
     if args.write:
         rows = rpc.write(cmdline)
-    else:
+    elif args.read:
         rows = rpc.read(cmdline)
+    elif args.sub:
+        if not rpc.sub(cmdline):
+            raise ValueError('Could not subscribe')
+        while True:
+            event = rpc.readevent()
+            # FIXME: violates layering..
+            print(json.dumps(event, sort_keys=True, indent=4))
+    else:
+        raise ValueError('Unknown request type')
     return json.dumps(rows, sort_keys=True, indent=4)
 
 
@@ -228,6 +266,8 @@ def main():
     group.add_argument('--write', action='store_true',
                        help='Make a write request (only to non pretty'
                        'printed cmds)')
+    group.add_argument('--sub', action='store_true',
+                       help='Make a subscribe request')
 
     ap.add_argument('cmd', action='store',
                     help='Command to run (try "help" for list)')
@@ -235,6 +275,9 @@ def main():
                     help='Optional args for the command')
 
     args = ap.parse_args()
+
+    if not args.read and not args.write and not args.sub:
+        args.read = True
 
     if args.raw or (args.cmd not in subcmds):
         func = subcmd_default

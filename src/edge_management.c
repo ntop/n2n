@@ -61,7 +61,7 @@ typedef struct mgmt_handler {
  * Event topic names are defined in this structure
  */
 typedef struct mgmt_events {
-    int topic; // topic number define
+    enum n2n_event_topic topic;
     char  *cmd;
     char  *help;
 } mgmt_events_t;
@@ -80,22 +80,26 @@ typedef struct mgmt_events {
         } \
 } while(0)
 
-static void send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
-    // TODO: error handling
-    sendto(req->eee->udp_mgmt_sock, buf->str, msg_len, 0,
+ssize_t send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
+    // TODO: better error handling (counters?)
+    return sendto(req->eee->udp_mgmt_sock, buf->str, msg_len, 0,
            (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
 }
 
+size_t gen_json_1str (strbuf_t *buf, char *tag, char *_type, char *key, char *val) {
+    return snprintf(buf->str, buf->size,
+                    "{"
+                    "\"_tag\":\"%s\","
+                    "\"_type\":\"%s\","
+                    "\"%s\":\"%s\"}\n",
+                    tag,
+                    _type,
+                    key,
+                    val);
+}
+
 static void send_json_1str (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, char *val) {
-    size_t msg_len = snprintf(buf->str, buf->size,
-                              "{"
-                              "\"_tag\":\"%s\","
-                              "\"_type\":\"%s\","
-                              "\"%s\":\"%s\"}\n",
-                              req->tag,
-                              _type,
-                              key,
-                              val);
+    size_t msg_len = gen_json_1str(buf, req->tag, _type, key, val);
     send_reply(req, buf, msg_len);
 }
 
@@ -112,8 +116,14 @@ static void send_json_1uint (mgmt_req_t *req, strbuf_t *buf, char *_type, char *
     send_reply(req, buf, msg_len);
 }
 
-static void event_debug (mgmt_req_t *req, strbuf_t *buf) {
-    send_json_1str(req, buf, "event", "test", "test");
+size_t event_debug (strbuf_t *buf, char *tag, void *data) {
+    traceEvent(TRACE_DEBUG, "Unexpected call to event_debug");
+    return 0;
+}
+
+size_t event_test (strbuf_t *buf, char *tag, void *data) {
+    size_t msg_len = gen_json_1str(buf, tag, "event", "test", (char *)data);
+    return msg_len;
 }
 
 static void mgmt_error (mgmt_req_t *req, strbuf_t *buf, char *msg) {
@@ -315,6 +325,12 @@ static void mgmt_packetstats (mgmt_req_t *req, strbuf_t *buf, char *argv0, char 
     send_reply(req, buf, msg_len);
 }
 
+static void mgmt_post_test (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
+
+    send_json_1str(req, buf, "row", "sending", "test");
+    mgmt_event_post (N2N_EVENT_TEST, argv);
+}
+
 static void mgmt_unimplemented (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
     mgmt_error(req, buf, "unimplemented");
@@ -334,24 +350,59 @@ static const mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "supernodes", .help = "List current supernodes", .func = mgmt_supernodes},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
+    { .cmd = "post.test", .help = "send a test event", .func = mgmt_post_test},
     { .cmd = "help", .flags = FLAG_WROK, .help = "Show JSON commands", .func = mgmt_help},
     { .cmd = "help.events", .help = "Show available Subscribe topics", .func = mgmt_help_events},
 };
 
 /* Current subscriber for each event topic */
 static mgmt_req_t mgmt_event_subscribers[] = {
-    [0] = { .eee = NULL, .type = N2N_MGMT_UNKNOWN, .tag = "\0" },
+    [N2N_EVENT_DEBUG] = { .eee = NULL, .type = N2N_MGMT_UNKNOWN, .tag = "\0" },
+    [N2N_EVENT_TEST] = { .eee = NULL, .type = N2N_MGMT_UNKNOWN, .tag = "\0" },
 };
 
 /* Map topic number to function */
-static const void (*mgmt_events[])(mgmt_req_t *req, strbuf_t *buf) = {
-    [0] = event_debug,
+static const size_t (*mgmt_events[])(strbuf_t *buf, char *tag, void *data) = {
+    [N2N_EVENT_DEBUG] = event_debug,
+    [N2N_EVENT_TEST] = event_test,
 };
 
 /* Allow help and subscriptions to use topic name */
 static const mgmt_events_t mgmt_event_names[] = {
-    { .cmd = "debug", .topic = 0, .help = "All events - for event debugging"},
+    { .cmd = "debug", .topic = N2N_EVENT_DEBUG, .help = "All events - for event debugging"},
+    { .cmd = "test", .topic = N2N_EVENT_TEST, .help = "Used only by post.test"},
 };
+
+void mgmt_event_post (enum n2n_event_topic topic, void *data) {
+    mgmt_req_t *debug = &mgmt_event_subscribers[N2N_EVENT_DEBUG];
+    mgmt_req_t *sub = &mgmt_event_subscribers[topic];
+
+    if( sub->type != N2N_MGMT_SUB && debug->type != N2N_MGMT_SUB) {
+        // If neither of this topic or the debug topic have a subscriber
+        // then we dont need to do any work
+        return;
+    }
+
+    char buf_space[100];
+    strbuf_t *buf;
+    STRBUF_INIT(buf, buf_space);
+
+    char *tag;
+    if (sub->type == N2N_MGMT_SUB) {
+        tag = sub->tag;
+    } else {
+        tag = debug->tag;
+    }
+
+    size_t msg_len = mgmt_events[topic](buf, tag, data);
+
+    if (sub->type == N2N_MGMT_SUB) {
+        send_reply(sub, buf, msg_len);
+    }
+    if (debug->type == N2N_MGMT_SUB) {
+        send_reply(debug, buf, msg_len);
+    }
+}
 
 static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
     size_t msg_len;
@@ -364,11 +415,11 @@ static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf, char *argv0, char 
         char host[40];
         char serv[6];
 
-        if(getnameinfo(
-               (struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
-               host, sizeof(host),
-               serv, sizeof(serv),
-               NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
+        if((sub->type != N2N_MGMT_SUB) ||
+               getnameinfo((struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
+                   host, sizeof(host),
+                   serv, sizeof(serv),
+                   NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
             host[0] = '?';
             host[1] = 0;
             serv[0] = '?';
@@ -533,7 +584,23 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     }
 
     if(req->type == N2N_MGMT_SUB) {
-        mgmt_error(req, buf, "unimplemented");
+        int handler;
+        lookup_handler(handler, mgmt_event_names, argv0);
+        if(handler == -1) {
+            mgmt_error(req, buf, "unknowntopic");
+            return;
+        }
+
+        int topic = mgmt_event_names[handler].topic;
+        if(mgmt_event_subscribers[topic].type == N2N_MGMT_SUB) {
+            send_json_1str(&mgmt_event_subscribers[topic], buf,
+                           "unsubscribed", "topic", argv0);
+            send_json_1str(req, buf, "replacing", "topic", argv0);
+        }
+
+        memcpy(&mgmt_event_subscribers[topic], req, sizeof(*req));
+
+        send_json_1str(req, buf, "subscribe", "topic", argv0);
         return;
     }
 
