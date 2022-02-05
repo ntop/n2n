@@ -287,5 +287,5 @@ const char* transop_str (enum n2n_transform tr);
 
 void readFromMgmtSocket (n2n_edge_t *eee);
 
-void mgmt_event_post (enum n2n_event_topic topic, void *data);
+void mgmt_event_post (enum n2n_event_topic topic, int data0, void *data1);
 #endif /* _N2N_H_ */

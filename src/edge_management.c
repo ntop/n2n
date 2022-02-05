@@ -98,32 +98,61 @@ size_t gen_json_1str (strbuf_t *buf, char *tag, char *_type, char *key, char *va
                     val);
 }
 
+size_t gen_json_1uint (strbuf_t *buf, char *tag, char *_type, char *key, unsigned int val) {
+    return snprintf(buf->str, buf->size,
+                              "{"
+                              "\"_tag\":\"%s\","
+                              "\"_type\":\"%s\","
+                              "\"%s\":%u}\n",
+                              tag,
+                              _type,
+                              key,
+                              val);
+}
+
 static void send_json_1str (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, char *val) {
     size_t msg_len = gen_json_1str(buf, req->tag, _type, key, val);
     send_reply(req, buf, msg_len);
 }
 
 static void send_json_1uint (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, unsigned int val) {
-    size_t msg_len = snprintf(buf->str, buf->size,
-                              "{"
-                              "\"_tag\":\"%s\","
-                              "\"_type\":\"%s\","
-                              "\"%s\":%u}\n",
-                              req->tag,
-                              _type,
-                              key,
-                              val);
+    size_t msg_len = gen_json_1uint(buf, req->tag, _type, key, val);
     send_reply(req, buf, msg_len);
 }
 
-size_t event_debug (strbuf_t *buf, char *tag, void *data) {
+size_t event_debug (strbuf_t *buf, char *tag, int data0, void *data1) {
     traceEvent(TRACE_DEBUG, "Unexpected call to event_debug");
     return 0;
 }
 
-size_t event_test (strbuf_t *buf, char *tag, void *data) {
-    size_t msg_len = gen_json_1str(buf, tag, "event", "test", (char *)data);
+size_t event_test (strbuf_t *buf, char *tag, int data0, void *data1) {
+    size_t msg_len = gen_json_1str(buf, tag, "event", "test", (char *)data1);
     return msg_len;
+}
+
+size_t event_peer (strbuf_t *buf, char *tag, int data0, void *data1) {
+    int action = data0;
+    struct peer_info *peer = (struct peer_info *)data1;
+
+    macstr_t mac_buf;
+    n2n_sock_str_t sockbuf;
+
+    /*
+     * Just the peer_info bits that are needed for lookup (maccaddr) or
+     * firewall and routing (sockaddr)
+     * If needed, other details can be fetched via the edges method call.
+     */
+    return snprintf(buf->str, buf->size,
+                    "{"
+                    "\"_tag\":\"%s\","
+                    "\"_type\":\"event\","
+                    "\"action\":%i,"
+                    "\"macaddr\":\"%s\","
+                    "\"sockaddr\":\"%s\"}\n",
+                    tag,
+                    action,
+                    (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
+                    sock_to_cstr(sockbuf, &(peer->sock)));
 }
 
 static void mgmt_error (mgmt_req_t *req, strbuf_t *buf, char *msg) {
@@ -328,7 +357,7 @@ static void mgmt_packetstats (mgmt_req_t *req, strbuf_t *buf, char *argv0, char 
 static void mgmt_post_test (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
     send_json_1str(req, buf, "row", "sending", "test");
-    mgmt_event_post (N2N_EVENT_TEST, argv);
+    mgmt_event_post (N2N_EVENT_TEST, -1, argv);
 }
 
 static void mgmt_unimplemented (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
@@ -359,23 +388,28 @@ static const mgmt_handler_t mgmt_handlers[] = {
 static mgmt_req_t mgmt_event_subscribers[] = {
     [N2N_EVENT_DEBUG] = { .eee = NULL, .type = N2N_MGMT_UNKNOWN, .tag = "\0" },
     [N2N_EVENT_TEST] = { .eee = NULL, .type = N2N_MGMT_UNKNOWN, .tag = "\0" },
+    [N2N_EVENT_PEER] = { .eee = NULL, .type = N2N_MGMT_UNKNOWN, .tag = "\0" },
 };
 
 /* Map topic number to function */
-static const size_t (*mgmt_events[])(strbuf_t *buf, char *tag, void *data) = {
+static const size_t (*mgmt_events[])(strbuf_t *buf, char *tag, int data0, void *data1) = {
     [N2N_EVENT_DEBUG] = event_debug,
     [N2N_EVENT_TEST] = event_test,
+    [N2N_EVENT_PEER] = event_peer,
 };
 
 /* Allow help and subscriptions to use topic name */
 static const mgmt_events_t mgmt_event_names[] = {
     { .cmd = "debug", .topic = N2N_EVENT_DEBUG, .help = "All events - for event debugging"},
     { .cmd = "test", .topic = N2N_EVENT_TEST, .help = "Used only by post.test"},
+    { .cmd = "peer", .topic = N2N_EVENT_PEER, .help = "Changes to peer list"},
 };
 
-void mgmt_event_post (enum n2n_event_topic topic, void *data) {
+void mgmt_event_post (enum n2n_event_topic topic, int data0, void *data1) {
     mgmt_req_t *debug = &mgmt_event_subscribers[N2N_EVENT_DEBUG];
     mgmt_req_t *sub = &mgmt_event_subscribers[topic];
+
+    traceEvent(TRACE_DEBUG, "post topic=%i data0=%i", topic, data0);
 
     if( sub->type != N2N_MGMT_SUB && debug->type != N2N_MGMT_SUB) {
         // If neither of this topic or the debug topic have a subscriber
@@ -394,7 +428,7 @@ void mgmt_event_post (enum n2n_event_topic topic, void *data) {
         tag = debug->tag;
     }
 
-    size_t msg_len = mgmt_events[topic](buf, tag, data);
+    size_t msg_len = mgmt_events[topic](buf, tag, data0, data1);
 
     if (sub->type == N2N_MGMT_SUB) {
         send_reply(sub, buf, msg_len);

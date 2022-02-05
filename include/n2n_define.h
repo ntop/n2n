@@ -124,7 +124,13 @@ enum sn_purge {SN_PURGEABLE = 0, SN_UNPURGEABLE = 1};
 enum n2n_event_topic {
     N2N_EVENT_DEBUG = 0,
     N2N_EVENT_TEST = 1,
+    N2N_EVENT_PEER = 2,
 };
+
+#define N2N_EVENT_PEER_PURGE    1
+#define N2N_EVENT_PEER_CLEAR    2
+#define N2N_EVENT_PEER_DEL_P2P  3
+#define N2N_EVENT_PEER_ADD_P2P  4
 
 #define N2N_MGMT_PASSWORD  "n2n"               /* default password for management port access (so far, json only) */
 
