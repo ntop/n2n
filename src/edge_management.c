@@ -83,7 +83,7 @@ typedef struct mgmt_events {
 ssize_t send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
     // TODO: better error handling (counters?)
     return sendto(req->eee->udp_mgmt_sock, buf->str, msg_len, 0,
-           (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
+                  (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
 }
 
 size_t gen_json_1str (strbuf_t *buf, char *tag, char *_type, char *key, char *val) {
@@ -100,14 +100,14 @@ size_t gen_json_1str (strbuf_t *buf, char *tag, char *_type, char *key, char *va
 
 size_t gen_json_1uint (strbuf_t *buf, char *tag, char *_type, char *key, unsigned int val) {
     return snprintf(buf->str, buf->size,
-                              "{"
-                              "\"_tag\":\"%s\","
-                              "\"_type\":\"%s\","
-                              "\"%s\":%u}\n",
-                              tag,
-                              _type,
-                              key,
-                              val);
+                    "{"
+                    "\"_tag\":\"%s\","
+                    "\"_type\":\"%s\","
+                    "\"%s\":%u}\n",
+                    tag,
+                    _type,
+                    key,
+                    val);
 }
 
 static void send_json_1str (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, char *val) {
@@ -357,7 +357,7 @@ static void mgmt_packetstats (mgmt_req_t *req, strbuf_t *buf, char *argv0, char 
 static void mgmt_post_test (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
     send_json_1str(req, buf, "row", "sending", "test");
-    mgmt_event_post (N2N_EVENT_TEST, -1, argv);
+    mgmt_event_post(N2N_EVENT_TEST, -1, argv);
 }
 
 static void mgmt_unimplemented (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
@@ -422,7 +422,7 @@ void mgmt_event_post (enum n2n_event_topic topic, int data0, void *data1) {
     STRBUF_INIT(buf, buf_space);
 
     char *tag;
-    if (sub->type == N2N_MGMT_SUB) {
+    if(sub->type == N2N_MGMT_SUB) {
         tag = sub->tag;
     } else {
         tag = debug->tag;
@@ -430,10 +430,10 @@ void mgmt_event_post (enum n2n_event_topic topic, int data0, void *data1) {
 
     size_t msg_len = mgmt_events[topic](buf, tag, data0, data1);
 
-    if (sub->type == N2N_MGMT_SUB) {
+    if(sub->type == N2N_MGMT_SUB) {
         send_reply(sub, buf, msg_len);
     }
-    if (debug->type == N2N_MGMT_SUB) {
+    if(debug->type == N2N_MGMT_SUB) {
         send_reply(debug, buf, msg_len);
     }
 }
@@ -450,10 +450,10 @@ static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf, char *argv0, char 
         char serv[6];
 
         if((sub->type != N2N_MGMT_SUB) ||
-               getnameinfo((struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
-                   host, sizeof(host),
-                   serv, sizeof(serv),
-                   NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
+           getnameinfo((struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
+                       host, sizeof(host),
+                       serv, sizeof(serv),
+                       NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
             host[0] = '?';
             host[1] = 0;
             serv[0] = '?';
