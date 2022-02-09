@@ -88,12 +88,20 @@ If the pcap library is available then the `n2n-decode` tool can be compiled.
 One of the two UPnP libraries, this one supports the NATPMP protocol.
 See also the next option.
 
+This option depends on the library being installed - on Debian and Ubuntu,
+this is `apt-get install libnatpmp-dev`
+
 ### `--enable-miniupnp`
 
 Enables the other kind of UPnP port mapping protocol.
 
 Turning on either of these two UPnP libraries will enable UPnP support within
 the edge.
+
+Both the natpmp and miniupnp depend on the pthread library being enabled.
+
+This option depends on the library being installed - on Debian and Ubuntu,
+this is `apt-get install libminiupnpc-dev`
 
 ### Disable Multicast Local Peer Detection
 

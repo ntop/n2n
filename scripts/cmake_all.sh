@@ -31,7 +31,7 @@ cd build
 # written in such a horrible language.  Since it would be silly to rewrite
 # a one-page wrapper script in python, we submit that this check is wrong.
 # shellcheck disable=SC2086
-cmake $OPTS ..
+cmake .. $OPTS
 
 cmake --build . --config Release
 
