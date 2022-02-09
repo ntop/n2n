@@ -125,6 +125,9 @@ if(N2N_OPTION_USE_PORTMAPPING)
   add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
   link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
 
+  # Turns on the generic code for supporting either of the above
+  ADD_DEFINITIONS("-DHAVE_PORT_FORWARDING")
+
   # TODO:
   # - this is the odd one out, is it needed?
   include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
