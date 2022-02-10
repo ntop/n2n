@@ -54,10 +54,9 @@
  */
 
 
-#ifdef HAVE_PORT_FORWARDING
-
 #include "n2n.h"
 
+#ifdef HAVE_PORT_FORWARDING
 
 #ifdef HAVE_MINIUPNP
 
