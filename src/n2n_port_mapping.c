@@ -505,6 +505,8 @@ void n2n_chg_port_mapping (struct n2n_edge *eee, uint16_t port) {
     pthread_mutex_unlock(&eee->port_map_parameter->access);
 
 }
+#else
+#error "enabling port mapping requires enabling pthread"
 #endif
 
 
