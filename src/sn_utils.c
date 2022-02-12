@@ -592,7 +592,8 @@ static int try_broadcast (n2n_sn_t * sss,
                           const n2n_mac_t srcMac,
                           uint8_t from_supernode,
                           const uint8_t * pktbuf,
-                          size_t pktsize) {
+                          size_t pktsize,
+                          time_t now) {
 
     struct peer_info        *scan, *tmp;
     macstr_t                mac_buf;
@@ -609,22 +610,26 @@ static int try_broadcast (n2n_sn_t * sss,
         HASH_ITER(hh, sss->federation->edges, scan, tmp) {
             int data_sent_len;
 
-            data_sent_len = sendto_peer(sss, scan, pktbuf, pktsize);
+            // only forward to active supernodes
+            if(scan->last_seen + LAST_SEEN_SN_INACTIVE > now) {
 
-            if(data_sent_len != pktsize) {
-                ++(sss->stats.errors);
-                traceEvent(TRACE_WARNING, "multicast %lu to supernode [%s] %s failed %s",
-                           pktsize,
-                           sock_to_cstr(sockbuf, &(scan->sock)),
-                           macaddr_str(mac_buf, scan->mac_addr),
-                           strerror(errno));
-             } else {
-                 ++(sss->stats.broadcast);
-                 traceEvent(TRACE_DEBUG, "multicast %lu to supernode [%s] %s",
-                            pktsize,
-                            sock_to_cstr(sockbuf, &(scan->sock)),
-                            macaddr_str(mac_buf, scan->mac_addr));
-             }
+                data_sent_len = sendto_peer(sss, scan, pktbuf, pktsize);
+
+                if(data_sent_len != pktsize) {
+                    ++(sss->stats.errors);
+                    traceEvent(TRACE_WARNING, "multicast %lu to supernode [%s] %s failed %s",
+                               pktsize,
+                               sock_to_cstr(sockbuf, &(scan->sock)),
+                               macaddr_str(mac_buf, scan->mac_addr),
+                               strerror(errno));
+                 } else {
+                     ++(sss->stats.broadcast);
+                     traceEvent(TRACE_DEBUG, "multicast %lu to supernode [%s] %s",
+                                pktsize,
+                                sock_to_cstr(sockbuf, &(scan->sock)),
+                                macaddr_str(mac_buf, scan->mac_addr));
+                 }
+            }
         }
     }
 
@@ -664,7 +669,8 @@ static int try_forward (n2n_sn_t * sss,
                         const n2n_mac_t dstMac,
                         uint8_t from_supernode,
                         const uint8_t * pktbuf,
-                        size_t pktsize) {
+                        size_t pktsize,
+                        time_t now) {
 
     struct peer_info *             scan;
     node_supernode_association_t   *assoc;
@@ -704,7 +710,7 @@ static int try_forward (n2n_sn_t * sss,
             } else {
                 // forwarding packet to all federated supernodes
                 traceEvent(TRACE_DEBUG, "unknown mac address, broadcasting packet to all federated supernodes");
-                try_broadcast(sss, NULL, cmn, sss->mac_addr, from_supernode, pktbuf, pktsize);
+                try_broadcast(sss, NULL, cmn, sss->mac_addr, from_supernode, pktbuf, pktsize, now);
             }
         } else {
             traceEvent(TRACE_DEBUG, "unknown mac address in packet from a supernode, dropping the packet");
@@ -1918,9 +1924,9 @@ static int process_udp (n2n_sn_t * sss,
 
             /* Common section to forward the final product. */
             if(unicast) {
-                try_forward(sss, comm, &cmn, pkt.dstMac, from_supernode, rec_buf, encx);
+                try_forward(sss, comm, &cmn, pkt.dstMac, from_supernode, rec_buf, encx, now);
             } else {
-                try_broadcast(sss, comm, &cmn, pkt.srcMac, from_supernode, rec_buf, encx);
+                try_broadcast(sss, comm, &cmn, pkt.srcMac, from_supernode, rec_buf, encx, now);
             }
             break;
         }
@@ -1986,7 +1992,7 @@ static int process_udp (n2n_sn_t * sss,
                                           comm->header_encryption_ctx_dynamic, comm->header_iv_ctx_dynamic,
                                           time_stamp());
                 }
-                try_forward(sss, comm, &cmn, reg.dstMac, from_supernode, rec_buf, encx); /* unicast only */
+                try_forward(sss, comm, &cmn, reg.dstMac, from_supernode, rec_buf, encx, now); /* unicast only */
             } else {
                 traceEvent(TRACE_ERROR, "Rx REGISTER with multicast destination");
             }
@@ -2225,7 +2231,7 @@ static int process_udp (n2n_sn_t * sss,
                             }
                         }
 
-                        try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx);
+                        try_broadcast(sss, NULL, &cmn, reg.edgeMac, from_supernode, ackbuf, encx, now);
                     }
 
                     // dynamic key time handling if appropriate
@@ -2641,7 +2647,7 @@ static int process_udp (n2n_sn_t * sss,
                                                   time_stamp());
                         }
 
-                        try_broadcast(sss, NULL, &cmn, query.srcMac, from_supernode, encbuf, encx);
+                        try_broadcast(sss, NULL, &cmn, query.srcMac, from_supernode, encbuf, encx, now);
                     }
                 }
             }
