@@ -636,6 +636,8 @@ size_t purge_peer_list (struct peer_info **peer_list,
                 }
             }
             HASH_DEL(*peer_list, scan);
+            mgmt_event_post(N2N_EVENT_PEER,N2N_EVENT_PEER_PURGE,scan);
+            /* FIXME: generates events for more than just p2p */
             retval++;
             free(scan);
         }
@@ -652,6 +654,8 @@ size_t clear_peer_list (struct peer_info ** peer_list) {
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
         HASH_DEL(*peer_list, scan);
+        mgmt_event_post(N2N_EVENT_PEER,N2N_EVENT_PEER_CLEAR,scan);
+        /* FIXME: generates events for more than just p2p */
         retval++;
         free(scan);
     }

@@ -1,0 +1,74 @@
+###
+
+###
+[
+    {
+        "community": "test"
+    }
+]
+
+###
+[
+    {
+        "rx_pkt": 0,
+        "tx_pkt": 2,
+        "type": "transop"
+    },
+    {
+        "rx_pkt": 0,
+        "tx_pkt": 0,
+        "type": "p2p"
+    },
+    {
+        "rx_pkt": 0,
+        "tx_pkt": 2,
+        "type": "super"
+    },
+    {
+        "rx_pkt": 0,
+        "tx_pkt": 2,
+        "type": "super_broadcast"
+    }
+]
+
+###
+[]
+
+###
+[
+    {
+        "traceLevel": 2
+    }
+]
+
+###
+
+0
+###
+[
+    {
+        "traceLevel": 1
+    }
+]
+
+###
+[
+    {
+        "keep_running": 1
+    }
+]
+
+###
+[
+    {
+        "keep_running": 0
+    }
+]
+
+###
+[
+    {
+        "keep_running": 0
+    }
+]
+

@@ -1,40 +1,47 @@
 #!/bin/sh
 #
-# This expects to find the tests in the tools dir and the expected results
-# in the tests dir.
+# Run with the name of a test list file.
+#
+# This expects to find the tests in the tools dir or scripts dir and the
+# expected results in the tests dir.
 
-TESTS="
-    tests-auth
-    tests-compress
-    tests-elliptic
-    tests-hashing
-    tests-transform
-    tests-wire
-"
+# boilerplate so we can support whaky cmake dirs
+[ -z "$TOPDIR" ] && TOPDIR="."
+[ -z "$BINDIR" ] && BINDIR="."
+export TOPDIR
+export BINDIR
 
-TOOLSDIR=tools
-TESTDATA=tests
+if [ -z "$1" ]; then
+    echo need test list filename
+    exit 1
+fi
+TESTLIST="$1"
+LISTDIR=$(dirname "$TESTLIST")
 
-# Allow both dirs be overidden
-[ -n "$1" ] && TOOLSDIR="$1"
-[ -n "$2" ] && TESTDATA="$2"
-
-# Confirm we have all the tools and data
-for i in $TESTS; do
-    if [ ! -e "$TOOLSDIR/$i" ]; then
-        echo "Could not find test $TOOLSDIR/$i"
-        exit 1
-    fi
-    if [ ! -e "$TESTDATA/$i.expected" ]; then
-        echo "Could not find testdata $TESTDATA/$i.expected"
-        exit 1
-    fi
-done
+TESTS=$(sed -e "s/#.*//" "$TESTLIST")
 
 # Actually run the tests
-set -e
 for i in $TESTS; do
-    echo "$TOOLSDIR/$i >$TESTDATA/$i.out"
-    "$TOOLSDIR/$i" >"$TESTDATA/$i.out"
-    cmp "$TESTDATA/$i.expected" "$TESTDATA/$i.out"
+    # Look in several places for the test program
+    if [ -e "$BINDIR/$i" ]; then
+        TEST="$BINDIR/$i"
+    elif [ -e "$BINDIR/tools/$i" ]; then
+        TEST="$BINDIR/tools/$i"
+    elif [ -e "$LISTDIR/../scripts/$i" ]; then
+        TEST="$LISTDIR/../scripts/$i"
+    else
+        echo "Could not find test $i"
+        exit 1
+    fi
+
+    if [ ! -e "$LISTDIR/$i.expected" ]; then
+        echo "Could not find testdata $LISTDIR/$i.expected"
+        exit 1
+    fi
+
+    echo "$TEST >$LISTDIR/$i.out"
+    set -e
+    "$TEST" >"$LISTDIR/$i.out"
+    cmp "$LISTDIR/$i.expected" "$LISTDIR/$i.out"
+    set +e
 done

@@ -1,0 +1,9 @@
+#
+# The unit tests
+
+tests-auth
+tests-compress
+tests-elliptic
+tests-hashing
+tests-transform
+tests-wire

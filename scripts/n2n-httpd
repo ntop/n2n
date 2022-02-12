@@ -23,102 +23,31 @@ import base64
 
 from http import HTTPStatus
 
+import os
+import sys
+import importlib.machinery
+import importlib.util
 
-class JsonUDP():
-    """encapsulate communication with the edge"""
 
-    def __init__(self, port):
-        self.address = "127.0.0.1"
-        self.port = port
-        self.tag = 0
-        self.key = None
-        self.debug = False
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.settimeout(1)
+def import_filename(modulename, filename):
+    # look in the same dir as this script
+    pathname = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            filename)
+    loader = importlib.machinery.SourceFileLoader(modulename, pathname)
+    spec = importlib.util.spec_from_loader(modulename, loader)
+    module = importlib.util.module_from_spec(spec)
 
-    def _next_tag(self):
-        tagstr = str(self.tag)
-        self.tag = (self.tag + 1) % 1000
-        return tagstr
+    try:
+        loader.exec_module(module)
+    except FileNotFoundError:
+        print("Script {} not found".format(pathname), file=sys.stderr)
+        sys.exit(1)
+    return module
 
-    def _cmdstr(self, msgtype, cmdline):
-        """Create the full command string to send"""
-        tagstr = self._next_tag()
 
-        options = [tagstr]
-        if self.key is not None:
-            options += ['1']  # Flags set for auth key field
-            options += [self.key]
-        optionsstr = ':'.join(options)
-
-        return tagstr, ' '.join((msgtype, optionsstr, cmdline))
-
-    def _rx(self, tagstr):
-        """Wait for rx packets"""
-
-        # TODO: there are no timeouts with any of the recv calls
-        data, _ = self.sock.recvfrom(1024)
-        data = json.loads(data.decode('utf8'))
-
-        # TODO: We assume the first packet we get will be tagged for us
-        # and be either an "error" or a "begin"
-        assert(data['_tag'] == tagstr)
-
-        if data['_type'] == 'error':
-            raise ValueError('Error: {}'.format(data['error']))
-
-        assert(data['_type'] == 'begin')
-
-        # Ideally, we would confirm that this is our "begin", but that
-        # would need the cmd passed into this method, and that would
-        # probably require parsing the cmdline passed to us :-(
-        # assert(data['cmd'] == cmd)
-
-        result = list()
-        error = None
-
-        while True:
-            data, _ = self.sock.recvfrom(1024)
-            data = json.loads(data.decode('utf8'))
-
-            if data['_tag'] != tagstr:
-                # this packet is not for us, ignore it
-                continue
-
-            if data['_type'] == 'error':
-                # we still expect an end packet, so save the error
-                error = ValueError('Error: {}'.format(data['error']))
-                continue
-
-            if data['_type'] == 'end':
-                if error:
-                    raise error
-                return result
-
-            if data['_type'] != 'row':
-                raise ValueError('Unknown data type {} from '
-                                 'edge'.format(data['_type']))
-
-            # remove our boring metadata
-            del data['_tag']
-            del data['_type']
-
-            if self.debug:
-                print(data)
-
-            result.append(data)
-
-    def _call(self, msgtype, cmdline):
-        """Perform a rpc call"""
-        tagstr, msgstr = self._cmdstr(msgtype, cmdline)
-        self.sock.sendto(msgstr.encode('utf8'), (self.address, self.port))
-        return self._rx(tagstr)
-
-    def read(self, cmdline):
-        return self._call('r', cmdline)
-
-    def write(self, cmdline):
-        return self._call('w', cmdline)
+# We share the implementation of the RPC class with the n2n-ctl script. We
+# cannot just import the module as 'n2n-ctl' has a dash in its name :-(
+JsonUDP = import_filename('n2nctl', 'n2n-ctl').JsonUDP
 
 
 pages = {

@@ -51,10 +51,6 @@ This shell script is a wrapper for the `uncrustify` C code style checker
 which checks or applies a set of rules to the code.  It is used during
 the automated lint checks.
 
-### `test_harness.sh`
-
-This shell script is used to run automated tests during development.
-
 ### `n2n-gateway.sh`
 
 A sample script to route all the host traffic towards a remote gateway,
@@ -96,3 +92,26 @@ Manually test fetching and config:
 /etc/munin/plugins/n2n_supernode_pkts
 /etc/munin/plugins/n2n_supernode_pkts config
 ```
+
+## Testing scripts
+
+### `test_harness.sh`
+
+This shell script is used to run automated tests during development.  It is
+run with a testlist filename - pointing at a file containing the list of
+tests to run.
+
+Each test needs a file containing the expected output `${TESTNAME}.expected`
+which is expected to exist in the same directory as the testlist (this dir is
+referred to as `${listdir}` below).
+
+Each test is a program, searched for in several locations, including the
+`${listdir}/../scripts` dir.
+
+Each test is run with its output being sent to `*.out` files in the `listdir`
+and compared with the expected output.
+
+### `scripts/test_integration_supernode.sh`
+
+This starts a supernode and runs an integration test on the Json API using
+the `n2n-ctl` command.

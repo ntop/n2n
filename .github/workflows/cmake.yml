@@ -66,3 +66,17 @@ jobs:
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more
         # detail
         run: ctest -C $BUILD_TYPE
+
+      - if: ${{ failure() }}
+        name: Upload test data
+        uses: actions/upload-artifact@v2
+        with:
+          name: tests-out
+          path: tests
+
+      - if: ${{ failure() }}
+        name: Upload cmake test output
+        uses: actions/upload-artifact@v2
+        with:
+          name: tests-out
+          path: build/Testing

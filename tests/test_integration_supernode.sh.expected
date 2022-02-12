@@ -1,0 +1,64 @@
+###
+
+###
+[
+    {
+        "community": "-/-",
+        "ip4addr": "",
+        "is_federation": 1,
+        "purgeable": 0
+    }
+]
+
+###
+[
+    {
+        "tx_pkt": 0,
+        "type": "forward"
+    },
+    {
+        "tx_pkt": 0,
+        "type": "broadcast"
+    },
+    {
+        "nak": 0,
+        "rx_pkt": 0,
+        "type": "reg_super"
+    },
+    {
+        "tx_pkt": 0,
+        "type": "errors"
+    }
+]
+
+###
+[]
+
+###
+[
+    {
+        "traceLevel": 3
+    }
+]
+
+###
+[
+    {
+        "traceLevel": 1
+    }
+]
+
+###
+[
+    {
+        "keep_running": 1
+    }
+]
+
+###
+[
+    {
+        "keep_running": 0
+    }
+]
+

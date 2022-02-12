@@ -1,0 +1,5 @@
+#
+# The integration tests
+
+test_integration_supernode.sh
+test_integration_edge.sh

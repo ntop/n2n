@@ -13,6 +13,7 @@ help() {
 
 [ -z "$1" ] && help
 [ "$1" = "-h" ] && help
+[ "$1" = "--help" ] && help
 
 INPLACE=0
 if [ "$1" = "-i" ]; then

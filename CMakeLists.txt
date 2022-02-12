@@ -309,10 +309,21 @@ install(FILES ${PROJECT_BINARY_DIR}/doc/supernode.1.gz
         DESTINATION /usr/share/man/man1)
 install(FILES ${PROJECT_BINARY_DIR}/doc/n2n.7.gz
         DESTINATION /usr/share/man/man7)
+endif(DEFINED UNIX)
+
+if (CMAKE_SYSTEM_NAME STREQUAL Linux)
 
 # TODO:
 # - Add the right dependancy so that the tests binaries get built first
 enable_testing()
-add_test(tests ${PROJECT_SOURCE_DIR}/scripts/test_harness.sh ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/tests)
-
-endif(DEFINED UNIX)
+add_test(NAME unit
+    COMMAND ${CMAKE_COMMAND} -E env
+        TOPDIR=${PROJECT_SOURCE_DIR} BINDIR=${PROJECT_BINARY_DIR}
+        ${PROJECT_SOURCE_DIR}/scripts/test_harness.sh ${PROJECT_SOURCE_DIR}/tests/tests_units.list
+)
+add_test(NAME integration
+    COMMAND ${CMAKE_COMMAND} -E env
+        TOPDIR=${PROJECT_SOURCE_DIR} BINDIR=${PROJECT_BINARY_DIR}
+        ${PROJECT_SOURCE_DIR}/scripts/test_harness.sh ${PROJECT_SOURCE_DIR}/tests/tests_integration.list
+)
+endif()
