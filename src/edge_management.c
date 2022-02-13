@@ -19,15 +19,7 @@
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
-typedef struct strbuf {
-    size_t size;
-    char str[];
-} strbuf_t;
-
-#define STRBUF_INIT(buf,p) do { \
-        buf = (void *)p; \
-        buf->size = sizeof(*p) - sizeof(size_t); \
-} while(0)
+#include "strbuf.h"
 
 enum n2n_mgmt_type {
     N2N_MGMT_UNKNOWN = 0,
