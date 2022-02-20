@@ -49,9 +49,6 @@ uint8_t PKT_CONTENT[]={
 /* Prototypes */
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
 static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf);
-static void init_compression_for_benchmark(void);
-static void deinit_compression_for_benchmark(void);
-static void run_compression_benchmark(void);
 static void run_hashing_benchmark(void);
 static void run_ecc_benchmark(void);
 
@@ -63,6 +60,9 @@ int main(int argc, char * argv[]) {
   n2n_trans_op_t transop_aes;
   n2n_trans_op_t transop_cc20;
   n2n_trans_op_t transop_lzo;
+#ifdef HAVE_ZSTD
+  n2n_trans_op_t transop_zstd;
+#endif
 
   n2n_trans_op_t transop_speck;
   n2n_edge_conf_t conf;
@@ -83,6 +83,9 @@ int main(int argc, char * argv[]) {
   n2n_transop_cc20_init(&conf, &transop_cc20);
   n2n_transop_speck_init(&conf, &transop_speck);
   n2n_transop_lzo_init(&conf, &transop_lzo);
+#ifdef HAVE_ZSTD
+  n2n_transop_zstd_init(&conf, &transop_zstd);
+#endif
 
   /* Run the tests */
   run_transop_benchmark("null", &transop_null, &conf, pktbuf);
@@ -91,12 +94,11 @@ int main(int argc, char * argv[]) {
   run_transop_benchmark("cc20", &transop_cc20, &conf, pktbuf);
   run_transop_benchmark("speck", &transop_speck, &conf, pktbuf);
   run_transop_benchmark("lzo1x", &transop_lzo, &conf, pktbuf);
+#ifdef HAVE_ZSTD
+  run_transop_benchmark("zstd", &transop_zstd, &conf, pktbuf);
+#endif
 
   run_ecc_benchmark();
-
-  /* Also for compression (init moved here for ciphers get run before in case of lzo init error) */
-  init_compression_for_benchmark();
-  run_compression_benchmark();
 
   run_hashing_benchmark();
 
@@ -107,97 +109,10 @@ int main(int argc, char * argv[]) {
   transop_cc20.deinit(&transop_cc20);
   transop_speck.deinit(&transop_speck);
   transop_lzo.deinit(&transop_lzo);
-
-  deinit_compression_for_benchmark();
-
+#ifdef HAVE_ZSTD
+  transop_zstd.deinit(&transop_zstd);
+#endif
   return 0;
-}
-
-// --- compression benchmark --------------------------------------------------------------
-
-static void init_compression_for_benchmark(void) {
-
-#ifdef N2N_HAVE_ZSTD
-  // zstd does not require initialization. if it were required, this would be a good place
-#endif
-}
-
-
-static void deinit_compression_for_benchmark(void) {
-
-#ifdef N2N_HAVE_ZSTD
-  // zstd does not require de-initialization. if it were required, this would be a good place
-#endif
-}
-
-
-static void run_compression_benchmark() {
-
-#ifdef N2N_HAVE_ZSTD
-  const float target_sec = DURATION;
-  struct timeval t1;
-  struct timeval t2;
-  ssize_t target_usec = target_sec * 1e6;
-  ssize_t tdiff; // microseconds
-  size_t num_packets;
-  float mpps;
-  uint8_t compression_buffer[N2N_PKT_BUF_SIZE]; // size allows enough of a reserve required for compression
-  lzo_uint compression_len = N2N_PKT_BUF_SIZE;
-  uint8_t deflation_buffer[N2N_PKT_BUF_SIZE];
-  int64_t deflated_len;
-
-  // compression
-  printf("{%s}\t%s\t%.1f sec\t(%u bytes)",
-	 "zstd", "compr", target_sec, (unsigned int)sizeof(PKT_CONTENT));
-  fflush(stdout);
-  tdiff = 0;
-  num_packets = 0;
-  gettimeofday( &t1, NULL );
-  while(tdiff < target_usec) {
-    compression_len = N2N_PKT_BUF_SIZE;
-    compression_len = ZSTD_compress(compression_buffer, compression_len, PKT_CONTENT, sizeof(PKT_CONTENT), ZSTD_COMPRESSION_LEVEL) ;
-    if(ZSTD_isError(compression_len)) {
-      printf("\n\t compression error\n");
-      exit(1);
-    }
-    num_packets++;
-    if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
-    }
-  }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
-  printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
-	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
-
-  // decompression
-  printf("\t%s\t%.1f sec\t(%u bytes)",
-	 "decompr", target_sec, (unsigned int)sizeof(PKT_CONTENT));
-  fflush(stdout);
-  tdiff = 0;
-  num_packets = 0;
-  gettimeofday( &t1, NULL );
-  while(tdiff < target_usec) {
-    deflated_len = N2N_PKT_BUF_SIZE;
-    deflated_len = (int32_t)ZSTD_decompress (deflation_buffer, deflated_len, compression_buffer, compression_len);
-    if(ZSTD_isError(deflated_len)) {
-      printf("\n\tdecompression error '%s'\n",
-             ZSTD_getErrorName(deflated_len));
-        exit(1);
-    }
-    num_packets++;
-    if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
-    }
-  }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
-  printf(" <--- (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
-	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
-  if(memcmp(deflation_buffer, PKT_CONTENT, sizeof(PKT_CONTENT)) != 0)
-    printf("\n\tdecompression error\n");
-  printf ("\n");
-#endif
 }
 
 // --- hashing benchmark ------------------------------------------------------------------

@@ -391,7 +391,7 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
     // always initialize compression transforms so we can at least decompress
     rc = n2n_transop_lzo_init(&eee->conf, &eee->transop_lzo);
     if(rc) goto edge_init_error; /* error message is printed in lzo_init */
-#ifdef N2N_HAVE_ZSTD
+#ifdef HAVE_ZSTD
     rc = n2n_transop_zstd_init(&eee->conf, &eee->transop_zstd);
     if(rc) goto edge_init_error; /* error message is printed in zstd_init */
 #endif
@@ -1687,21 +1687,16 @@ static int handle_PACKET (n2n_edge_t * eee,
                     break; // continue afterwards
 
                 case N2N_COMPRESSION_ID_LZO:
-                    deflate_len = eee->transop_lzo.rev(&eee->transop,
+                    deflate_len = eee->transop_lzo.rev(&eee->transop_lzo,
                                                        deflate_buf, N2N_PKT_BUF_SIZE,
                                                        decode_buf, eth_size, pkt->srcMac);
                     break;
-#ifdef N2N_HAVE_ZSTD
+
+#ifdef HAVE_ZSTD
                 case N2N_COMPRESSION_ID_ZSTD:
-                    deflated_len = N2N_PKT_BUF_SIZE;
-                    deflation_buffer = malloc(deflated_len);
-                    deflated_len = ZSTD_decompress(deflation_buffer, deflated_len, eth_payload, eth_size);
-                    if(ZSTD_isError(deflated_len)) {
-                        traceEvent(TRACE_WARNING, "payload decompression failed with zstd error '%s'.",
-                                   ZSTD_getErrorName(deflated_len));
-                        free(deflation_buffer);
-                        return(-1); // cannot help it
-                    }
+                    deflate_len = eee->transop_zstd.rev(&eee->transop_zstd,
+                                                        deflate_buf, N2N_PKT_BUF_SIZE,
+                                                        decode_buf, eth_size, pkt->srcMac);
                     break;
 #endif
                 default:
@@ -2019,7 +2014,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
 
         switch(eee->conf.compression) {
             case N2N_COMPRESSION_ID_LZO:
-                compression_len = eee->transop_lzo.fwd(&eee->transop,
+                compression_len = eee->transop_lzo.fwd(&eee->transop_lzo,
                                                        compression_buf, sizeof(compression_buf),
                                                        tap_pkt, len,
                                                        pkt.dstMac);
@@ -2029,20 +2024,15 @@ void edge_send_packet2net (n2n_edge_t * eee,
                 }
                 break;
 
-#ifdef N2N_HAVE_ZSTD
+#ifdef HAVE_ZSTD
             case N2N_COMPRESSION_ID_ZSTD:
-                compression_len = N2N_PKT_BUF_SIZE + 128;
-                compression_buffer = malloc(compression_len);  // leaves enough room, for exact size call compression_len = ZSTD_compressBound (len); (slower)
-                compression_len = (int32_t)ZSTD_compress(compression_buffer, compression_len, tap_pkt, len, ZSTD_COMPRESSION_LEVEL);
-                if(!ZSTD_isError(compression_len)) {
-                    if(compression_len < len) {
-                        pkt.compression = N2N_COMPRESSION_ID_ZSTD;
-                    }
-                } else {
-                    traceEvent(TRACE_ERROR, "payload compression failed with zstd error '%s'.",
-                               ZSTD_getErrorName(compression_len));
-                    free(compression_buffer);
-                    // continue with unset without pkt.compression --> will send uncompressed
+                compression_len = eee->transop_zstd.fwd(&eee->transop_zstd,
+                                                        compression_buf, sizeof(compression_buf),
+                                                        tap_pkt, len,
+                                                        pkt.dstMac);
+
+                if((compression_len > 0) && (compression_len < len)) {
+                    pkt.compression = N2N_COMPRESSION_ID_ZSTD;
                 }
                 break;
 #endif
@@ -3000,7 +2990,7 @@ void edge_term (n2n_edge_t * eee) {
 
     eee->transop.deinit(&eee->transop);
     eee->transop_lzo.deinit(&eee->transop_lzo);
-#ifdef N2N_HAVE_ZSTD
+#ifdef HAVE_ZSTD
     eee->transop_zstd.deinit(&eee->transop_zstd);
 #endif
 

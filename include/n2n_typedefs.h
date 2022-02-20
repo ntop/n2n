@@ -716,7 +716,7 @@ struct n2n_edge {
     tuntap_dev                       device;                             /**< All about the TUNTAP device */
     n2n_trans_op_t                   transop;                            /**< The transop to use when encoding */
     n2n_trans_op_t                   transop_lzo;                        /**< The transop for LZO  compression */
-#ifdef N2N_HAVE_ZSTD
+#ifdef HAVE_ZSTD
     n2n_trans_op_t                   transop_zstd;                       /**< The transop for ZSTD compression */
 #endif
     n2n_route_t                      *sn_route_to_clean;                 /**< Supernode route to clean */

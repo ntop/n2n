@@ -293,7 +293,7 @@ static void help (int level) {
         printf(" -H                | use header encryption, supernode needs fixed community\n");
         printf(" -z1 ... -z2       | compress outgoing data packets, -z1 = lzo1x,\n"
                "                   | "
-#ifdef N2N_HAVE_ZSTD
+#ifdef HAVE_ZSTD
                                      "-z2 = zstd, "
 #endif
                                      "disabled by default\n");
@@ -383,7 +383,7 @@ static void setPayloadCompression (n2n_edge_conf_t *conf, int compression) {
             conf->compression = N2N_COMPRESSION_ID_LZO;
             break;
         }
-#ifdef N2N_HAVE_ZSTD
+#ifdef HAVE_ZSTD
         case 2: {
             conf->compression = N2N_COMPRESSION_ID_ZSTD;
             break;

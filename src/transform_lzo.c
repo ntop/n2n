@@ -20,15 +20,12 @@
 #include "n2n.h"
 
 
-/* heap allocation for compression as per lzo example doc, not thread safe */
+/* heap allocation for compression as per lzo example doc  */
 #define HEAP_ALLOC(var,size)   lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
-static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
 
 
 typedef struct transop_lzo {
-    // the following would be great to have for making lzo thread safe,
-    // but lzo does not seem to allow, so we need to keep it global
-    // HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
+    HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
 } transop_lzo_t;
 
 
@@ -53,7 +50,7 @@ static int transop_encode_lzo (n2n_trans_op_t *arg,
                                size_t in_len,
                                const uint8_t *peer_mac) {
 
-    /* transop_lzo_t *priv = (transop_lzo_t *)arg->priv; */
+    transop_lzo_t *priv = (transop_lzo_t *)arg->priv;
     lzo_uint compression_len = 0;
 
     if(in_len > N2N_PKT_BUF_SIZE) {
@@ -67,9 +64,7 @@ static int transop_encode_lzo (n2n_trans_op_t *arg,
         return 0;
     }
 
-    // if we just could use priv->wrkmem instead of static gloabl wrkmem,
-    // this would be thread safe for each instance of this transop
-    if(lzo1x_1_compress(inbuf, in_len, outbuf, &compression_len, wrkmem) != LZO_E_OK) {
+    if(lzo1x_1_compress(inbuf, in_len, outbuf, &compression_len, priv->wrkmem) != LZO_E_OK) {
         traceEvent(TRACE_ERROR, "encode_lzo compression error");
         compression_len = 0;
     }
