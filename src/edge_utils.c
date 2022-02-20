@@ -20,9 +20,6 @@
 #include "network_traffic_filter.h"
 #include "edge_utils_win32.h"
 
-/* heap allocation for compression as per lzo example doc */
-#define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
-static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
 
 /* ************************************** */
 
@@ -391,13 +388,12 @@ n2n_edge_t* edge_init (const n2n_edge_conf_t *conf, int *rv) {
 
     pearson_hash_init();
 
-    if(eee->conf.compression == N2N_COMPRESSION_ID_LZO)
-        if(lzo_init() != LZO_E_OK) {
-            traceEvent(TRACE_ERROR, "LZO compression error");
-            goto edge_init_error;
-        }
+    // always initialize compression transforms so we can at least decompress
+    rc = n2n_transop_lzo_init(&eee->conf, &eee->transop_lzo);
+    if(rc) goto edge_init_error; /* error message is printed in lzo_init */
 #ifdef N2N_HAVE_ZSTD
-    // zstd does not require initialization. if it were required, this would be a good place
+    rc = n2n_transop_zstd_init(&eee->conf, &eee->transop_zstd);
+    if(rc) goto edge_init_error; /* error message is printed in zstd_init */
 #endif
 
     traceEvent(TRACE_NORMAL, "number of supernodes in the list: %d\n", HASH_COUNT(eee->conf.supernodes));
@@ -1665,7 +1661,8 @@ static int handle_PACKET (n2n_edge_t * eee,
 
     /* Handle transform. */
     {
-        uint8_t decodebuf[N2N_PKT_BUF_SIZE];
+        uint8_t decode_buf[N2N_PKT_BUF_SIZE];
+        uint8_t deflate_buf[N2N_PKT_BUF_SIZE];
         size_t eth_size;
         n2n_transform_t rx_transop_id;
         uint8_t rx_compression_id;
@@ -1675,23 +1672,24 @@ static int handle_PACKET (n2n_edge_t * eee,
 
         if(rx_transop_id == eee->conf.transop_id) {
             uint8_t is_multicast;
-            eth_payload = decodebuf;
-            eh = (ether_hdr_t*)eth_payload;
+            // decrypt
+            eth_payload = decode_buf;
             eth_size = eee->transop.rev(&eee->transop,
                                         eth_payload, N2N_PKT_BUF_SIZE,
                                         payload, psize, pkt->srcMac);
             ++(eee->transop.rx_cnt); /* stats */
 
             /* decompress if necessary */
-            uint8_t * deflation_buffer = 0;
-            lzo_uint deflated_len;
+            size_t deflate_len;
+
             switch(rx_compression_id) {
                 case N2N_COMPRESSION_ID_NONE:
                     break; // continue afterwards
 
                 case N2N_COMPRESSION_ID_LZO:
-                    deflation_buffer = malloc(N2N_PKT_BUF_SIZE);
-                    lzo1x_decompress(eth_payload, eth_size, deflation_buffer, &deflated_len, NULL);
+                    deflate_len = eee->transop_lzo.rev(&eee->transop,
+                                                       deflate_buf, N2N_PKT_BUF_SIZE,
+                                                       decode_buf, eth_size, pkt->srcMac);
                     break;
 #ifdef N2N_HAVE_ZSTD
                 case N2N_COMPRESSION_ID_ZSTD:
@@ -1714,11 +1712,11 @@ static int handle_PACKET (n2n_edge_t * eee,
 
             if(rx_compression_id != N2N_COMPRESSION_ID_NONE) {
                 traceEvent(TRACE_DEBUG, "payload decompression %s: deflated %u bytes to %u bytes",
-                           compression_str(rx_compression_id), eth_size, (int)deflated_len);
-                memcpy(eth_payload,deflation_buffer, deflated_len );
-                eth_size = deflated_len;
-                free(deflation_buffer);
+                                        compression_str(rx_compression_id), eth_size, (int)deflate_len);
+                eth_payload = deflate_buf;
+                eth_size = deflate_len;
             }
+            eh = (ether_hdr_t*)eth_payload;
 
             is_multicast = (is_ip6_discovery(eth_payload, eth_size) || is_ethMulticast(eth_payload, eth_size));
 
@@ -1729,6 +1727,7 @@ static int handle_PACKET (n2n_edge_t * eee,
                 /* Check if it is a routed packet */
 
                 if((ntohs(eh->type) == 0x0800) && (eth_size >= ETH_FRAMESIZE + IP4_MIN_SIZE)) {
+
                     uint32_t *dst = (uint32_t*)&eth_payload[ETH_FRAMESIZE + IP4_DSTOFFSET];
                     uint8_t *dst_mac = (uint8_t*)eth_payload;
 
@@ -1964,6 +1963,9 @@ void edge_send_packet2net (n2n_edge_t * eee,
     n2n_mac_t destMac;
     n2n_common_t cmn;
     n2n_PACKET_t pkt;
+    uint8_t *enc_src = tap_pkt;
+    size_t enc_len = len;
+    uint8_t compression_buf[N2N_PKT_BUF_SIZE];
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     size_t idx = 0;
     n2n_transform_t tx_transop_idx = eee->transop.transform_id;
@@ -2013,18 +2015,20 @@ void edge_send_packet2net (n2n_edge_t * eee,
     pkt.compression = N2N_COMPRESSION_ID_NONE;
 
     if(eee->conf.compression) {
-        uint8_t * compression_buffer = NULL;
         int32_t   compression_len;
 
         switch(eee->conf.compression) {
             case N2N_COMPRESSION_ID_LZO:
-                compression_buffer = malloc(len + len / 16 + 64 + 3);
-                if(lzo1x_1_compress(tap_pkt, len, compression_buffer, (lzo_uint*)&compression_len, wrkmem) == LZO_E_OK) {
-                    if(compression_len < len) {
-                        pkt.compression = N2N_COMPRESSION_ID_LZO;
-                    }
+                compression_len = eee->transop_lzo.fwd(&eee->transop,
+                                                       compression_buf, sizeof(compression_buf),
+                                                       tap_pkt, len,
+                                                       pkt.dstMac);
+
+                if((compression_len > 0) && (compression_len < len)) {
+                    pkt.compression = N2N_COMPRESSION_ID_LZO;
                 }
                 break;
+
 #ifdef N2N_HAVE_ZSTD
             case N2N_COMPRESSION_ID_ZSTD:
                 compression_len = N2N_PKT_BUF_SIZE + 128;
@@ -2042,6 +2046,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
                 }
                 break;
 #endif
+
             default:
                 break;
         }
@@ -2049,13 +2054,8 @@ void edge_send_packet2net (n2n_edge_t * eee,
         if(pkt.compression != N2N_COMPRESSION_ID_NONE) {
             traceEvent(TRACE_DEBUG, "payload compression [%s]: compressed %u bytes to %u bytes\n",
                        compression_str(pkt.compression), len, compression_len);
-
-            memcpy(tap_pkt, compression_buffer, compression_len);
-            len = compression_len;
-        }
-
-        if(compression_buffer) {
-            free(compression_buffer);
+            enc_src = compression_buf;
+            enc_len = compression_len;
         }
     }
 
@@ -2066,7 +2066,7 @@ void edge_send_packet2net (n2n_edge_t * eee,
 
     idx += eee->transop.fwd(&eee->transop,
                             pktbuf + idx, N2N_PKT_BUF_SIZE - idx,
-                            tap_pkt, len, pkt.dstMac);
+                            enc_src, enc_len, pkt.dstMac);
 
     traceEvent(TRACE_DEBUG, "encode PACKET of %u bytes, %u bytes data, %u bytes overhead, transform %u",
                (u_int)idx, (u_int)len, (u_int)(idx - len), tx_transop_idx);
@@ -2999,6 +2999,10 @@ void edge_term (n2n_edge_t * eee) {
     clear_peer_list(&eee->known_peers);
 
     eee->transop.deinit(&eee->transop);
+    eee->transop_lzo.deinit(&eee->transop_lzo);
+#ifdef N2N_HAVE_ZSTD
+    eee->transop_zstd.deinit(&eee->transop_zstd);
+#endif
 
     edge_cleanup_routes(eee);
 

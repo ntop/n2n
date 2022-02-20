@@ -27,10 +27,6 @@
 #define DURATION                2.5   // test duration per algorithm
 #define PACKETS_BEFORE_GETTIME  2047  // do not check time after every packet but after (2 ^ n - 1)
 
-/* heap allocation for compression as per lzo example doc */
-#define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]
-static HEAP_ALLOC(wrkmem, LZO1X_1_MEM_COMPRESS);
-
 
 uint8_t PKT_CONTENT[]={
   0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
@@ -61,10 +57,12 @@ static void run_ecc_benchmark(void);
 
 
 int main(int argc, char * argv[]) {
+
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
   n2n_trans_op_t transop_null, transop_tf;
   n2n_trans_op_t transop_aes;
   n2n_trans_op_t transop_cc20;
+  n2n_trans_op_t transop_lzo;
 
   n2n_trans_op_t transop_speck;
   n2n_edge_conf_t conf;
@@ -78,12 +76,13 @@ int main(int argc, char * argv[]) {
 
   pearson_hash_init();
 
-  /* Init transopts */
+  /* Init transops */
   n2n_transop_null_init(&conf, &transop_null);
   n2n_transop_tf_init(&conf, &transop_tf);
   n2n_transop_aes_init(&conf, &transop_aes);
   n2n_transop_cc20_init(&conf, &transop_cc20);
   n2n_transop_speck_init(&conf, &transop_speck);
+  n2n_transop_lzo_init(&conf, &transop_lzo);
 
   /* Run the tests */
   run_transop_benchmark("null", &transop_null, &conf, pktbuf);
@@ -91,6 +90,7 @@ int main(int argc, char * argv[]) {
   run_transop_benchmark("aes", &transop_aes, &conf, pktbuf);
   run_transop_benchmark("cc20", &transop_cc20, &conf, pktbuf);
   run_transop_benchmark("speck", &transop_speck, &conf, pktbuf);
+  run_transop_benchmark("lzo1x", &transop_lzo, &conf, pktbuf);
 
   run_ecc_benchmark();
 
@@ -100,13 +100,13 @@ int main(int argc, char * argv[]) {
 
   run_hashing_benchmark();
 
-
   /* Cleanup */
   transop_null.deinit(&transop_null);
   transop_tf.deinit(&transop_tf);
   transop_aes.deinit(&transop_aes);
   transop_cc20.deinit(&transop_cc20);
   transop_speck.deinit(&transop_speck);
+  transop_lzo.deinit(&transop_lzo);
 
   deinit_compression_for_benchmark();
 
@@ -117,11 +117,6 @@ int main(int argc, char * argv[]) {
 
 static void init_compression_for_benchmark(void) {
 
-  if(lzo_init() != LZO_E_OK) {
-    traceEvent(TRACE_ERROR, "LZO compression init error");
-    exit(1);
-  }
-
 #ifdef N2N_HAVE_ZSTD
   // zstd does not require initialization. if it were required, this would be a good place
 #endif
@@ -130,8 +125,6 @@ static void init_compression_for_benchmark(void) {
 
 static void deinit_compression_for_benchmark(void) {
 
-  // lzo1x does not require de-initialization. if it were required, this would be a good place
-
 #ifdef N2N_HAVE_ZSTD
   // zstd does not require de-initialization. if it were required, this would be a good place
 #endif
@@ -139,6 +132,8 @@ static void deinit_compression_for_benchmark(void) {
 
 
 static void run_compression_benchmark() {
+
+#ifdef N2N_HAVE_ZSTD
   const float target_sec = DURATION;
   struct timeval t1;
   struct timeval t2;
@@ -151,55 +146,6 @@ static void run_compression_benchmark() {
   uint8_t deflation_buffer[N2N_PKT_BUF_SIZE];
   int64_t deflated_len;
 
-  // compression
-  printf("{%s}\t%s\t%.1f sec\t(%u bytes)",
-	 "lzo1x", "compr", target_sec, (unsigned int)sizeof(PKT_CONTENT));
-  fflush(stdout);
-  tdiff = 0;
-  num_packets = 0;
-  gettimeofday( &t1, NULL );
-
-  while(tdiff < target_usec) {
-    compression_len = N2N_PKT_BUF_SIZE;
-    if(lzo1x_1_compress(PKT_CONTENT, sizeof(PKT_CONTENT), compression_buffer, &compression_len, wrkmem) != LZO_E_OK) {
-      printf("\n\t compression error\n");
-      exit(1);
-    }
-    num_packets++;
-    if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
-    }
-  }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
-  printf(" ---> (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
-	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
-
-  // decompression
-  printf("\t%s\t%.1f sec\t(%u bytes)",
-	 "decompr", target_sec, (unsigned int)sizeof(PKT_CONTENT));
-  fflush(stdout);
-  tdiff = 0;
-  num_packets = 0;
-  gettimeofday( &t1, NULL );
-
-  while(tdiff < target_usec) {
-    deflated_len = N2N_PKT_BUF_SIZE;
-    lzo1x_decompress (compression_buffer, compression_len, deflation_buffer, (lzo_uint*)&deflated_len, NULL);
-    num_packets++;
-    if (!(num_packets & PACKETS_BEFORE_GETTIME)) {
-      gettimeofday( &t2, NULL );
-      tdiff = ((t2.tv_sec - t1.tv_sec) * 1000000) + (t2.tv_usec - t1.tv_usec);
-    }
-  }
-  mpps = num_packets / (tdiff / 1e6) / 1e6;
-  printf(" <--- (%u bytes)\t%12u packets\t%8.1f Kpps\t%8.1f MB/s\n",
-	 (unsigned int)compression_len, (unsigned int)num_packets, mpps * 1e3, mpps * sizeof(PKT_CONTENT));
-  if(memcmp(deflation_buffer, PKT_CONTENT, sizeof(PKT_CONTENT)) != 0)
-    printf("\n\tdecompression error\n");
-  printf ("\n");
-
-#ifdef N2N_HAVE_ZSTD
   // compression
   printf("{%s}\t%s\t%.1f sec\t(%u bytes)",
 	 "zstd", "compr", target_sec, (unsigned int)sizeof(PKT_CONTENT));
@@ -331,7 +277,7 @@ static void run_ecc_benchmark(void) {
   printf("\n");
 }
 
-// --- cipher benchmark -------------------------------------------------------------------
+// --- transop benchmark ------------------------------------------------------------------
 
 static void run_transop_benchmark(const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf) {
   n2n_common_t cmn;

@@ -715,6 +715,10 @@ struct n2n_edge {
     size_t                           sup_attempts;                       /**< Number of remaining attempts to this supernode. */
     tuntap_dev                       device;                             /**< All about the TUNTAP device */
     n2n_trans_op_t                   transop;                            /**< The transop to use when encoding */
+    n2n_trans_op_t                   transop_lzo;                        /**< The transop for LZO  compression */
+#ifdef N2N_HAVE_ZSTD
+    n2n_trans_op_t                   transop_zstd;                       /**< The transop for ZSTD compression */
+#endif
     n2n_route_t                      *sn_route_to_clean;                 /**< Supernode route to clean */
     n2n_edge_callbacks_t cb;                                             /**< API callbacks */
     void                             *user_data;                         /**< Can hold user data */
