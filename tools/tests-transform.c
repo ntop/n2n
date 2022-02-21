@@ -50,12 +50,16 @@ static void run_transop_benchmark (const char *op_name, n2n_trans_op_t *op_fn, n
 
 
 int main (int argc, char * argv[]) {
+
     uint8_t pktbuf[N2N_PKT_BUF_SIZE];
     n2n_trans_op_t transop_null, transop_tf;
     n2n_trans_op_t transop_aes;
     n2n_trans_op_t transop_cc20;
-
     n2n_trans_op_t transop_speck;
+    n2n_trans_op_t transop_lzo;
+#ifdef HAVE_ZSTD
+    n2n_trans_op_t transop_zstd;
+#endif
     n2n_edge_conf_t conf;
 
     /* Init configuration */
@@ -76,6 +80,10 @@ int main (int argc, char * argv[]) {
     n2n_transop_aes_init(&conf, &transop_aes);
     n2n_transop_cc20_init(&conf, &transop_cc20);
     n2n_transop_speck_init(&conf, &transop_speck);
+    n2n_transop_lzo_init(&conf, &transop_lzo);
+#ifdef HAVE_ZSTD
+    n2n_transop_zstd_init(&conf, &transop_zstd);
+#endif
 
     /* Run the tests */
     /* FIXME: interop tests are pretty useless without the expected encrypted buffer data */
@@ -84,6 +92,21 @@ int main (int argc, char * argv[]) {
     run_transop_benchmark("aes", &transop_aes, &conf, pktbuf);
     run_transop_benchmark("cc20", &transop_cc20, &conf, pktbuf);
     run_transop_benchmark("speck", &transop_speck, &conf, pktbuf);
+    run_transop_benchmark("lzo", &transop_lzo, &conf, pktbuf);
+#ifdef HAVE_ZSTD
+    run_transop_benchmark("zstd", &transop_zstd, &conf, pktbuf);
+#else
+    // FIXME - output dummy data to the stdout for easy comparison
+    printf("zstd: output size = 0x47\n");
+    printf("000: 03 02 00 03 61 62 63 31  32 33 64 65 66 34 35 36   |    abc123def456|\n");
+    printf("010: 00 00 00 00 00 00 00 00  00 01 02 03 04 05 00 01   |                |\n");
+    printf("020: 02 03 04 05 00 00 28 b5  2f fd 60 00 01 bd 00 00   |      ( / `     |\n");
+    printf("030: 80 00 01 02 03 04 05 06  07 08 09 0a 0b 0c 0d 0e   |                |\n");
+    printf("040: 0f 01 00 da 47 9d 4b                               |    G K|\n");
+
+    fprintf(stderr, "%s: not compiled - dummy data output\n", "zstd");
+    printf("\n");
+#endif
 
     /* Cleanup */
     transop_null.deinit(&transop_null);
@@ -91,11 +114,15 @@ int main (int argc, char * argv[]) {
     transop_aes.deinit(&transop_aes);
     transop_cc20.deinit(&transop_cc20);
     transop_speck.deinit(&transop_speck);
+    transop_lzo.deinit(&transop_lzo);
+#ifdef HAVE_ZSTD
+    transop_zstd.deinit(&transop_zstd);
+#endif
 
     return 0;
 }
 
-// --- cipher benchmark -------------------------------------------------------------------
+// --- transop benchmark ------------------------------------------------------------------
 
 static void run_transop_benchmark (const char *op_name, n2n_trans_op_t *op_fn, n2n_edge_conf_t *conf, uint8_t *pktbuf) {
     n2n_common_t cmn;
