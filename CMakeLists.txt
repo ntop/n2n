@@ -74,7 +74,7 @@ if(N2N_OPTION_USE_ZSTD)
     MESSAGE(FATAL_ERROR "libzstd not found.")
   endif(NOT LIBZSTD)
   MESSAGE(STATUS "Using libztd.")
-  add_definitions(-DN2N_HAVE_ZSTD)
+  add_definitions(-DHAVE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
 
 if(N2N_OPTION_USE_PCAPLIB)
@@ -185,6 +185,8 @@ add_library(n2n STATIC
         src/transform_aes.c
         src/transform_cc20.c
         src/transform_speck.c
+        src/transform_lzo.c
+        src/transform_zstd.c
         src/aes.c
         src/speck.c
         src/random_numbers.c

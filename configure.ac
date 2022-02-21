@@ -34,7 +34,7 @@ AC_ARG_WITH([zstd],
 AS_IF([test "x$with_zstd" != "xno"],
     [AC_CHECK_LIB([zstd], [ZSTD_compress],
         [
-            AC_DEFINE([N2N_HAVE_ZSTD], [1], [Have ZSTD support])
+            AC_DEFINE([HAVE_ZSTD], [1], [Have ZSTD support])
             N2N_LIBS="-lzstd ${N2N_LIBS}"
         ],
         [AC_MSG_ERROR([zstd library not found])]
