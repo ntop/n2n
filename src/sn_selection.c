@@ -166,7 +166,7 @@ static int sn_selection_criterion_sort (peer_info_t *a, peer_info_t *b) {
     if(a->selection_criterion > b->selection_criterion)
         ret = 1;
     else if(a->selection_criterion < b->selection_criterion)
-        ret = -2;
+        ret = -1;
 
     return ret;
 }
