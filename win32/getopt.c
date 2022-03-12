@@ -1,3 +1,21 @@
+/**
+ * (C) 2007-22 - ntop.org and contributors
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not see see <http://www.gnu.org/licenses/>
+ *
+ */
+
 /* Getopt for GNU.
    NOTE: getopt is now part of the C library, so if you don't know what
    "Keep this file name-space clean" means, talk to drepper@gnu.org
@@ -20,7 +38,7 @@
    License along with the GNU C Library; see the file COPYING.LIB.  If not,
    write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
    Boston, MA 02111-1307, USA.  */
-
+
 /* This tells Alpha OSF/1 not to define a getopt prototype in <stdio.h>.
    Ditto for AIX 3.2 and <stdlib.h>.  */
 #ifndef _NO_PROTO
@@ -255,7 +273,7 @@ extern int strlen (const char *);
 #endif /* __GNUC__ */
 
 #endif /* not __GNU_LIBRARY__ */
-
+
 /* Handle permutation of arguments.  */
 
 /* Describe the part of ARGV that contains non-options that have

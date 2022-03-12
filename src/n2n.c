@@ -1,5 +1,5 @@
 /**
- * (C) 2007-21 - ntop.org and contributors
+ * (C) 2007-22 - ntop.org and contributors
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -582,7 +582,7 @@ void print_n2n_version () {
 
     printf("Welcome to n2n v.%s for %s\n"
            "Built on %s\n"
-           "Copyright 2007-2021 - ntop.org and contributors\n\n",
+           "Copyright 2007-2022 - ntop.org and contributors\n\n",
            PACKAGE_VERSION, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
 }
 

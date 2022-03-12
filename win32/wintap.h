@@ -1,5 +1,5 @@
 /*
-	(C) 2007 - Luca Deri <deri@ntop.org>
+	(C) 2007-22 - Luca Deri <deri@ntop.org>
 */
 
 #ifndef _WINTAP_H_
