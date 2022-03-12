@@ -28,23 +28,7 @@
 #define PACKETS_BEFORE_GETTIME  2047  // do not check time after every packet but after (2 ^ n - 1)
 
 
-uint8_t PKT_CONTENT[]={
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
-  0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 };
+uint8_t PKT_CONTENT[DEFAULT_MTU];
 
 /* Prototypes */
 static ssize_t do_encode_packet( uint8_t * pktbuf, size_t bufsize, const n2n_community_t c );
@@ -56,6 +40,8 @@ static void run_ecc_benchmark(void);
 int main(int argc, char * argv[]) {
 
   uint8_t pktbuf[N2N_PKT_BUF_SIZE];
+  size_t i;
+
   n2n_trans_op_t transop_null, transop_tf;
   n2n_trans_op_t transop_aes;
   n2n_trans_op_t transop_cc20;
@@ -71,6 +57,7 @@ int main(int argc, char * argv[]) {
 
   /* Init configuration */
   edge_init_conf_defaults(&conf);
+
   strncpy((char*)conf.community_name, "abc123def456", sizeof(conf.community_name));
   conf.encrypt_key = "SoMEVer!S$cUREPassWORD";
 
@@ -86,6 +73,11 @@ int main(int argc, char * argv[]) {
 #ifdef HAVE_ZSTD
   n2n_transop_zstd_init(&conf, &transop_zstd);
 #endif
+
+  /* Setup packet content */
+  for (i = 0; i < sizeof(PKT_CONTENT) / sizeof(PKT_CONTENT[0]); i++) {
+    PKT_CONTENT[i] = i & 0x0f;
+  }
 
   /* Run the tests */
   run_transop_benchmark("null", &transop_null, &conf, pktbuf);
