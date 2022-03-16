@@ -1938,6 +1938,11 @@ static int process_udp (n2n_sn_t * sss,
                }
             }
 
+            if(!memcmp(reg.edgeMac, sss->mac_addr, sizeof(n2n_mac_t))) {
+                traceEvent(TRACE_DEBUG, "Rx REGISTER_SUPER from self, ignoring");
+                return -1;
+            }
+
             cmn2.ttl = N2N_DEFAULT_TTL;
             cmn2.pc = n2n_register_super_ack;
             cmn2.flags = N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
