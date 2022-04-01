@@ -13,47 +13,27 @@ cd packages/rpm
 rpmbuild -bb ./n2n.spec
 ```
 
-## New Features between 2.0.x and 2.1.x
 
-- Better ming Windows build support.
-- Added `-E` flag to allow multicast ethernet traffic.
+## Version Update
 
-## Draft changelog between 2.8 and 3.0 (as of September 27, 2021)
+- change `VERSION` file to new version, e.g. `4.0.1`
+- `git add VERSION`
+- `git commit -m "moved to version 4.0.1"`
+- `git tag -a 4.0.1 -m "moved to version 4.0.1"`
+- `git push --tags`
+
+
+## Draft changelog between 3.0 and 3.2 (as of 2022)
 
 ### New Features
 
-- Federated supernodes to allow multiple supernodes for load balancing and fail-over (`doc/Federation.md`)
-- Automatic IP address assignment allows edges to draw IP addresses from the supernode (just skip `-a`)
-- Allowed community names can be restricted by regular expressions (`community.list` file)
-- Network filter for rules (`-R`) allowing and denying specific traffic to tunnel
-- Experimental TCP support (`-S2`) lets edges connect to the supernodes via TCP in case firewalls block UDP (not available on Windows yet)
-- All four supported ciphers offer integrated versions rendering OpenSSL dependency non-mandatory (optionally still available)
-- MAC and IP address spoofing prevention
-- Network interface metric can be set by command-line option `-x` (Windows only)
-- Re-enabled local peer detection by multicast on Windows
-- Edge identifier (`-I`) helps to identify edges more easily in management port output
-- Optionally bind edge to one local IP address only (extension to `-p`)
-- A preferred local socket can be advertised to other edges for better local peer-to-peer connections (`-e`)
-- Optional edge user and password authentication (`-J`, `-P`, `doc/Authentication.md`)
-- Optional json format at management port allows for machine-driven handling such as `.html` page generation (`scripts/n2n-httpd`) or script-based evaluation (`scripts/n2n-ctl`)
-- Completely overhauled build system including GitHub's action runners performing code syntax and formal checks, creating and running test builds, providing binairies and packages as artifacts and running verification tests
-
+- Enhanced management port JSON interface to let n2n interact with external tools
+- Added UPnP and PMP support at edge
+- Furthered the build system
 
 ### Improvements
 
-- Increased edges' resilience to temporary supernode failure
-- Fixed a compression-related memory leak
-- Ciphers partly come with platform-specific hardware acceleration
-- Added a test framework (`tools/test-*.c` and `tests/`)
-- Clean-up management port output
-- Polished benchmark tool output
-- Spun-off the name resolution into a separate thread avoiding lags
-- Added support for additional environment variables (`N2N_COMMUNITY`, `N2N_PASSWORD`, and `N2N_FEDERATION`)
-- Implemented new `reload_communities` command to make supernode hot-reload the `-c` provided `community.list` file, issued through management port
-- Reactivated send out of gratuitous ARP packet on establishing connection
-- Enhanced documentation (`doc/` folder) including the man pages and command-line help text (`-h` and more detailed `--help`)
-- Self-monitoring time stamp accuracy for use on systems with less accurate clocks
-- Fixed man pages' and config files' paths
+- Fixed a federation related bug
 - Code clean-up
 
 

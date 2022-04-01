@@ -16,8 +16,8 @@ PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finlin
 export CFLAGS
 export LDFLAGS
 
-CFLAGS=@CFLAGS@ -I ./include
-LDFLAGS=@LDFLAGS@ -L .
+CFLAGS=@CFLAGS@ -I./include
+LDFLAGS=@LDFLAGS@ -L.
 
 OPENSSL_CFLAGS=$(shell pkg-config openssl; echo $$?)
 ifeq ($(OPENSSL_CFLAGS), 0)
