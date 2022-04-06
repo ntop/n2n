@@ -1742,6 +1742,22 @@ static int handle_PACKET (n2n_edge_t * eee,
                 }
             }
 
+            if ((eee->conf.allow_routing) && (!is_multi_broadcast(eh->shost))) {
+                struct host_info *host = NULL;
+
+                HASH_FIND(hh, eee->known_hosts, eh->shost, sizeof(n2n_mac_t), host);
+                if (host == NULL) {
+                    struct host_info *host = calloc(1, sizeof(struct host_info));
+                    memcpy(host->mac_addr, eh->shost, sizeof(n2n_mac_t));
+                    memcpy(host->edge_addr, pkt->srcMac, sizeof(n2n_mac_t));
+                    host->last_seen = now;
+                    HASH_ADD(hh, eee->known_hosts, mac_addr, sizeof(n2n_mac_t), host);
+                } else {
+                    memcpy(host->edge_addr, pkt->srcMac, sizeof(n2n_mac_t));
+                    host->last_seen = now;
+                }
+            }
+
             if(eee->network_traffic_filter->filter_packet_from_peer(eee->network_traffic_filter, eee, orig_sender,
                                                                     eth_payload, eth_size) == N2N_DROP) {
                 traceEvent(TRACE_DEBUG, "filtered packet of size %u", (unsigned int)eth_size);
@@ -1993,6 +2009,13 @@ void edge_send_packet2net (n2n_edge_t * eee,
     /* Once processed, send to destination in PACKET */
 
     memcpy(destMac, tap_pkt, N2N_MAC_SIZE); /* dest MAC is first in ethernet header */
+    if ((eee->conf.allow_routing) && (!is_multi_broadcast(destMac))) {//find the destMac behind which edge, and change dest to this edge
+        struct host_info *host = NULL;
+        HASH_FIND(hh, eee->known_hosts, destMac, sizeof(n2n_mac_t), host);
+        if (host) {
+            memcpy(destMac, host->edge_addr, N2N_MAC_SIZE);
+        }
+    }
 
     memset(&cmn, 0, sizeof(cmn));
     cmn.ttl = N2N_DEFAULT_TTL;
@@ -2797,6 +2820,7 @@ int run_edge_loop (n2n_edge_t *eee) {
     time_t lastTransop = 0;
     time_t last_purge_known = 0;
     time_t last_purge_pending = 0;
+    time_t last_purge_host = 0;
 
     uint16_t expected = sizeof(uint16_t);
     uint16_t position = 0;
@@ -2930,6 +2954,17 @@ int run_edge_loop (n2n_edge_t *eee) {
                        numPurged,
                        HASH_COUNT(eee->pending_peers),
                        HASH_COUNT(eee->known_peers));
+        }
+
+        if ((eee->conf.allow_routing) && (now - last_purge_host > SWEEP_TIME)) {
+            struct host_info *host, *host_tmp;
+            HASH_ITER(hh, eee->known_hosts, host, host_tmp) {
+                if (now - host->last_seen > 300) {         
+                    HASH_DEL(eee->known_hosts, host);
+                    free(host);
+                }
+            }
+            last_purge_host = now;
         }
 
         if((eee->conf.tuntap_ip_mode == TUNTAP_IP_MODE_DHCP) &&
