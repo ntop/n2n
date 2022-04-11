@@ -1,6 +1,15 @@
 # n2n Frequently Asked Questions
 
 
+## Releases
+
+### Where can I find binaries for Windows?
+
+We do not explicitly release Windows binaries, but the automated test workflow creates them. You can find the the most current binaries at the _Actions_ tab, at the _Testing_ workflow, select the newest run, scroll down to the _Artifacts_ sections where the _binaries_ file contains the Windows binaries in its `/x86_64-pc-mingw64/usr/sbin/` folder.
+
+Furthermore and as [mentioned](https://github.com/ntop/n2n#further-readings-and-related-projects) in our README, you might find some Windows binaries [provided](https://github.com/lucktu/n2n) by github-user lucktu who updates them from time to time.
+
+
 ## Supernode
 
 
