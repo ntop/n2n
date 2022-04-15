@@ -195,7 +195,7 @@ void setTraceFile (FILE *f);
 int getTraceLevel ();
 void closeTraceFile ();
 void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...);
-#define traceEvent(level, format, args...) _traceEvent(level, __FILE__, __LINE__, format, ##args)
+#define traceEvent(level, format, ...) _traceEvent(level, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 /* Tuntap API */
 int tuntap_open (struct tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
