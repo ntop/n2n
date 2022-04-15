@@ -1036,7 +1036,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
     if(check_sock_ready(eee) > 0) {
 
         sent = sendto(eee->sock, buf, len, 0 /*flags*/,
-                      (struct sockaddr *)dest, sizeof(struct sockaddr_in));
+                      (struct sockaddr *)dest, sizeof(*dest));
 
         if(sent > 0) {
             traceEvent(TRACE_DEBUG, "sent=%d to ", (signed int)sent);
