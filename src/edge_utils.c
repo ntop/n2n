@@ -1029,7 +1029,8 @@ static int check_sock_ready (n2n_edge_t *eee) {
 
 /** Send a datagram to a socket file descriptor */
 static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
-                          size_t len, struct sockaddr_in *dest) {
+                          size_t len, struct sockaddr_in *dest,
+                          const n2n_sock_t * n2ndest) {
 
     ssize_t sent = 0;
 
@@ -1045,6 +1046,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
 
         if(errno) {
             char * c = strerror(errno);
+            n2n_sock_str_t sockbuf;
 
             int level = TRACE_WARNING;
             // downgrade to TRACE_DEBUG in case of custom AF_INVALID, i.e. supernode not resolved yet
@@ -1052,7 +1054,9 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
                 level = TRACE_DEBUG;
             }
 
-            traceEvent(level, "sendto failed (%d) %s", errno, c);
+            traceEvent(level, "sendto(%s) failed (%d) %s",
+                    sock_to_cstr(sockbuf, n2ndest),
+                    errno, c);
 #ifdef WIN32
             traceEvent(level, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
@@ -1097,13 +1101,13 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 
         // prepend packet length...
         uint16_t pktsize16 = htobe16(len);
-        sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr);
+        sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr, dest);
 
         if(sent <= 0)
             return -1;
         // ...before sending the actual data
     }
-    sent = sendto_fd(eee, buf, len, &peer_addr);
+    sent = sendto_fd(eee, buf, len, &peer_addr, dest);
 
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
