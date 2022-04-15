@@ -99,7 +99,7 @@ void closeTraceFile () {
 }
 
 #define N2N_TRACE_DATESIZE 32
-void traceEvent (int eventTraceLevel, char* file, int line, char * format, ...) {
+void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...) {
 
     va_list va_ap;
 
