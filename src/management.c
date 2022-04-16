@@ -6,8 +6,8 @@
 #include <stdio.h>
 #ifndef WIN32
 #include <sys/socket.h>
-#endif
 #include <netdb.h>
+#endif
 
 // TODO: move logging defs in their own header and include that
 void setTraceLevel (int level);
