@@ -143,10 +143,10 @@ void mgmt_help_events_row (mgmt_req_t *req, strbuf_t *buf, mgmt_req_t *sub, char
     char serv[6];
 
     if((sub->type != N2N_MGMT_SUB) ||
-        getnameinfo((struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
-                       host, sizeof(host),
-                       serv, sizeof(serv),
-                       NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
+       getnameinfo((struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
+                   host, sizeof(host),
+                   serv, sizeof(serv),
+                   NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
         host[0] = '?';
         host[1] = 0;
         serv[0] = '?';

@@ -288,7 +288,7 @@ void mgmt_event_post (enum n2n_event_topic topic, int data0, void *data1) {
     mgmt_req_t *sub = &mgmt_event_subscribers[topic];
     mgmt_event_handler_t *fn =  mgmt_events[topic];
 
-    mgmt_event_post2 (topic, data0, data1, debug, sub, fn);
+    mgmt_event_post2(topic, data0, data1, debug, sub, fn);
 }
 
 static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf) {
