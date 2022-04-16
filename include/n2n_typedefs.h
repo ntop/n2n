@@ -20,7 +20,9 @@
 #define _N2N_TYPEDEFS_H_
 
 #include <stdint.h>     // for uint8_t and friends
+#ifndef WIN32
 #include <arpa/inet.h>  // for in_addr_t
+#endif
 #include <uthash.h>
 #include <n2n_define.h>
 
