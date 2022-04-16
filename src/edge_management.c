@@ -59,8 +59,6 @@ size_t event_peer (strbuf_t *buf, char *tag, int data0, void *data1) {
 
 
 
-}
-
 static void mgmt_communities (mgmt_req_t *req, strbuf_t *buf) {
 
     if(req->eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
