@@ -4,7 +4,9 @@
  */
 
 #include <stdio.h>
+#ifndef WIN32
 #include <sys/socket.h>
+#endif
 #include <netdb.h>
 
 // TODO: move logging defs in their own header and include that
