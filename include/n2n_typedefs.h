@@ -19,6 +19,10 @@
 #ifndef _N2N_TYPEDEFS_H_
 #define _N2N_TYPEDEFS_H_
 
+#include <stdint.h>     // for uint8_t and friends
+#include <arpa/inet.h>  // for in_addr_t
+#include <uthash.h>
+#include <n2n_define.h>
 
 typedef uint8_t  n2n_community_t[N2N_COMMUNITY_SIZE];
 typedef uint8_t  n2n_private_public_key_t[N2N_PRIVATE_PUBLIC_KEY_SIZE];
@@ -37,11 +41,6 @@ typedef char     n2n_sock_str_t[N2N_SOCKBUF_SIZE]; /* tracing string buffer */
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
-
-/* sys/types.h typedefs (not present in Visual Studio) */
-typedef unsigned int u_int32_t;
-typedef unsigned short u_int16_t;
-typedef unsigned char u_int8_t;
 
 #ifndef __MINGW32__
 typedef int ssize_t;
@@ -139,45 +138,45 @@ typedef struct ether_hdr ether_hdr_t;
 
 struct n2n_iphdr {
 #if defined(__LITTLE_ENDIAN__)
-        u_int8_t ihl:4, version:4;
+        uint8_t ihl:4, version:4;
 #elif defined(__BIG_ENDIAN__)
-        u_int8_t version:4, ihl:4;
+        uint8_t version:4, ihl:4;
 #else
 # error "Byte order must be defined"
 #endif
-        u_int8_t tos;
-        u_int16_t tot_len;
-        u_int16_t id;
-        u_int16_t frag_off;
-        u_int8_t ttl;
-        u_int8_t protocol;
-        u_int16_t check;
-        u_int32_t saddr;
-        u_int32_t daddr;
+        uint8_t tos;
+        uint16_t tot_len;
+        uint16_t id;
+        uint16_t frag_off;
+        uint8_t ttl;
+        uint8_t protocol;
+        uint16_t check;
+        uint32_t saddr;
+        uint32_t daddr;
 } PACK_STRUCT;
 
 struct n2n_tcphdr {
-    u_int16_t source;
-    u_int16_t dest;
-    u_int32_t seq;
-    u_int32_t ack_seq;
+    uint16_t source;
+    uint16_t dest;
+    uint32_t seq;
+    uint32_t ack_seq;
 #if defined(__LITTLE_ENDIAN__)
-    u_int16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
+    uint16_t res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
 #elif defined(__BIG_ENDIAN__)
-    u_int16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
+    uint16_t doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
 #else
 # error "Byte order must be defined"
 #endif
-    u_int16_t window;
-    u_int16_t check;
-    u_int16_t urg_ptr;
+    uint16_t window;
+    uint16_t check;
+    uint16_t urg_ptr;
 } PACK_STRUCT;
 
 struct n2n_udphdr {
-    u_int16_t source;
-    u_int16_t dest;
-    u_int16_t len;
-    u_int16_t check;
+    uint16_t source;
+    uint16_t dest;
+    uint16_t len;
+    uint16_t check;
 } PACK_STRUCT;
 
 #if defined(_MSC_VER) || defined(__MINGW32__)

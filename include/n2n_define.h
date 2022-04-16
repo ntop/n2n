@@ -16,6 +16,9 @@
  *
  */
 
+#ifndef _N2N_DEFINE_H_
+#define _N2N_DEFINE_H_
+
 /* N2N packet header indicators. */
 #define MSG_TYPE_REGISTER                   1
 #define MSG_TYPE_DEREGISTER                 2
@@ -218,4 +221,6 @@ enum skip_add {SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 
 #ifndef min
 #define min(a, b) (((a) >(b)) ? (b) : (a))
+#endif
+
 #endif
