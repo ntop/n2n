@@ -162,6 +162,8 @@
 #include "n2n_port_mapping.h"
 #endif // HAVE_MINIUPNP || HAVE_NATPMP
 
+#include "json.h"
+
 /* ************************************** */
 
 #include "header_encryption.h"
