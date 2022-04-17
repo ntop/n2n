@@ -26,12 +26,12 @@
 #include "json.h"
 
 
-static int json_str_next_occurence (string str, char ch);
-static int json_str_next_non_numeral (string str);
-static json_object_t *_json_parse (string str, int * offset);
+static int json_str_next_occurence (char *str, char ch);
+static int json_str_next_non_numeral (char *str);
+static json_object_t *_json_parse (char *str, int *offset);
 
 
-json_object_t *json_parse (string str) {
+json_object_t *json_parse (char *str) {
 
     int offset = 0;
 
@@ -72,7 +72,7 @@ void json_free (json_object_t *obj) {
 }
 
 
-static int json_str_next_occurence (string str, char ch) {
+static int json_str_next_occurence (char *str, char ch) {
 
     int pos = 0;
 
@@ -88,14 +88,14 @@ static int json_str_next_occurence (string str, char ch) {
 }
 
 
-static int json_str_next_non_numeral (string str) {
+static int json_str_next_non_numeral (char *str) {
 
     int pos = 0;
 
     if(str == NULL)
         return -1;
 
-    while((isNumeral(*str)) && (*str != '\0')) {
+    while((json_str_is_numeral(*str)) && (*str != '\0')) {
         str++;
         pos++;
     }
@@ -103,16 +103,16 @@ static int json_str_next_non_numeral (string str) {
 }
 
 
-static json_object_t *_json_parse (string str, int * offset) {
+static json_object_t *_json_parse (char *str, int *offset) {
 
     int _offset = 0;
 
-    json_object_t *obj = new(json_object_t);
+    json_object_t *obj = (json_object_t*)malloc(sizeof(json_object_t));
     obj->count = 1;
-    obj->pairs = newWithSize(json_pair_t, 1);
+    obj->pairs = (json_pair_t*)malloc(sizeof(json_pair_t));
 
     while(*str != '\0') {
-        removeWhitespaceCalcOffset(str, _offset);
+        json_str_remove_whitespace_calc_offset(str, _offset);
         if(*str == '{') {
             str++;
             _offset++;
@@ -126,8 +126,8 @@ static json_object_t *_json_parse (string str, int * offset) {
 
             json_pair_t tempPtr = obj->pairs[obj->count - 1];
 
-            tempPtr.key = newWithSize(character , i + 1);
-            memcpy(tempPtr.key, str, i * sizeof(character));
+            tempPtr.key = (char*)malloc((i + 1) * sizeof(char));
+            memcpy(tempPtr.key, str, i * sizeof(char));
             tempPtr.key[i] = '\0';
 
             str += i + 1;
@@ -139,13 +139,13 @@ static json_object_t *_json_parse (string str, int * offset) {
             str += i + 1;
             _offset += i + 1;
 
-            removeWhitespaceCalcOffset(str, _offset);
+            json_str_remove_whitespace_calc_offset(str, _offset);
 
             if(*str == '{') {
                 int _offsetBeforeParsingChildObject = _offset;
                 int _sizeOfChildObject;
 
-                tempPtr.value = new(json_value_t);
+                tempPtr.value = (json_value_t*)malloc(sizeof(json_value_t));
                 tempPtr.type = JSON_OBJECT;
                 tempPtr.value->json_object = _json_parse(str, &_offset);
                 if(tempPtr.value->json_object == NULL) {
@@ -161,24 +161,24 @@ static json_object_t *_json_parse (string str, int * offset) {
                     json_free(obj);
                     return NULL;
                 }
-                tempPtr.value = new(json_value_t);
+                tempPtr.value = (json_value_t*)malloc(sizeof(json_value_t));
                 tempPtr.type = JSON_STRING;
-                tempPtr.value->string_value = newWithSize(character, i + 1);
-                memcpy(tempPtr.value->string_value, str, i * sizeof(character));
+                tempPtr.value->string_value = (char*)malloc((i + 1) * sizeof(char));
+                memcpy(tempPtr.value->string_value, str, i * sizeof(char));
                 tempPtr.value->string_value[i] = '\0';
                 str += i + 1;
                 _offset += i + 2;
-            } else if(isNumeral(*str)) {
+            } else if(json_str_is_numeral(*str)) {
                 i = json_str_next_non_numeral(str);
                 if(i == -1) {
                     json_free(obj);
                     return NULL;
                 }
-                string tempStr = newWithSize(character, i + 1);
-                memcpy(tempStr, str, i * sizeof(character));
+                char *tempStr = (char*)malloc((i + 1) * sizeof(char));
+                memcpy(tempStr, str, i * sizeof(char));
                 tempStr[i] = '\0';
 
-                tempPtr.value = new(json_value_t);
+                tempPtr.value = (json_value_t*)malloc(sizeof(json_value_t));
                 tempPtr.type = JSON_DOUBLE;
                 tempPtr.value->double_value = atof(tempStr);
 
@@ -190,7 +190,7 @@ static json_object_t *_json_parse (string str, int * offset) {
 
         } else if (*str == ',') {
             obj->count++;
-            obj->pairs = renewWithSize(obj->pairs, json_pair_t, obj->count);
+            obj->pairs = (json_pair_t*)realloc(obj->pairs, obj->count * sizeof(json_pair_t));
             str++;
             _offset++;
         } else if (*str == '}') {

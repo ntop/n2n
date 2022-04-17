@@ -30,25 +30,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifndef __cplusplus
-typedef char*                                   string;
-typedef unsigned char                           bool;
-#define true                                    (1)
-#define false                                   (0)
-#define TRUE                                    true
-#define FALSE                                   false
-#endif
-
-#define new(x)                                  (x *) malloc(sizeof(x))
-#define newWithSize(x, y)                       (x *) malloc(y * sizeof(x))
-#define renewWithSize(x, y, z)                  (y *) realloc(x, z * sizeof(y))
-#define isWhitespace(x)                         x == '\r' || x == '\n' || x == '\t' || x == ' '
-#define isNumeral(x)                            (x >= '0' && x <= '9') || x == 'e' || x == 'E' \
-                                                || x == '.'  || x == '+' || x == '-'
-#define removeWhitespace(x)                     while(isWhitespace(*x)) x++
-#define removeWhitespaceCalcOffset(x, y)        while(isWhitespace(*x)) { x++; y++; }
-
-typedef char                                    character;
+#define json_str_is_whitespace(x)                     x == '\r' || x == '\n' || x == '\t' || x == ' '
+#define json_str_is_numeral(x)                        (x >= '0' && x <= '9') || x == 'e' || x == 'E' \
+                                                      || x == '.'  || x == '+' || x == '-'
+#define json_str_remove_whitespace_calc_offset(x, y)  while(json_str_is_whitespace(*x)) { x++; y++; }
 
 struct _jsonobject;
 struct _jsonpair;
@@ -58,7 +43,7 @@ typedef enum {
     JSON_STRING = 0,
     JSON_DOUBLE,
     JSON_OBJECT
-} JSONValueType;
+} json_value_type;
 
 typedef struct _jsonobject {
     struct _jsonpair *pairs;
@@ -66,19 +51,19 @@ typedef struct _jsonobject {
 } json_object_t;
 
 typedef struct _jsonpair {
-    string key;
+    char *key;
     union _jsonvalue *value;
-    JSONValueType type;
+    json_value_type type;
 } json_pair_t;
 
 typedef union _jsonvalue {
-    string string_value;
+    char *string_value;
     double double_value;
     struct _jsonobject *json_object;
 } json_value_t;
 
 
-json_object_t *json_parse (string str);
+json_object_t *json_parse (char *str);
 void json_free (json_object_t *obj);
 
 
