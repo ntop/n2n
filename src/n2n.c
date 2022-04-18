@@ -623,7 +623,7 @@ size_t purge_peer_list (struct peer_info **peer_list,
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
-        if((scan->purgeable == SN_PURGEABLE) && (scan->last_seen < purge_before)) {
+        if((scan->purgeable == PURGEABLE) && (scan->last_seen < purge_before)) {
             if((scan->socket_fd >=0) && (scan->socket_fd != socket_not_to_close)) {
                 if(tcp_connections) {
                     HASH_FIND_INT(*tcp_connections, &scan->socket_fd, conn);

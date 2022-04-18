@@ -461,12 +461,6 @@ struct peer_info {
 
 typedef struct peer_info peer_info_t;
 
-typedef struct n2n_route {
-    in_addr_t    net_addr;
-    uint8_t      net_bitlen;
-    in_addr_t    gateway;
-} n2n_route_t;
-
 typedef struct n2n_edge n2n_edge_t;
 
 /* *************************************************** */
@@ -654,7 +648,6 @@ typedef struct n2n_port_map_parameter {
 
 typedef struct n2n_edge_conf {
     struct peer_info         *supernodes;            /**< List of supernodes */
-    n2n_route_t              *routes;                /**< Networks to route through n2n */
     n2n_community_t          community_name;         /**< The community. 16 full octets. */
     n2n_desc_t               dev_desc;               /**< The device description (hint) */
     n2n_private_public_key_t *public_key;            /**< edge's public key (for user/password based authentication) */
@@ -668,7 +661,6 @@ typedef struct n2n_edge_conf {
     he_context_t             *header_iv_ctx_dynamic; /**< Header IV ecnryption cipher context, REMOVE as soon as separate fileds for checksum and replay protection available */
     n2n_transform_t          transop_id;             /**< The transop to use. */
     uint8_t                  compression;            /**< Compress outgoing data packets before encryption */
-    uint16_t                 num_routes;             /**< Number of routes in routes */
     uint8_t                  tuntap_ip_mode;         /**< Interface IP address allocated mode, eg. DHCP. */
     uint8_t                  allow_routing;          /**< Accept packet no to interface address. */
     uint8_t                  drop_multicast;         /**< Multicast ethernet addresses. */
@@ -719,7 +711,6 @@ struct n2n_edge {
 #ifdef HAVE_ZSTD
     n2n_trans_op_t                   transop_zstd;                       /**< The transop for ZSTD compression */
 #endif
-    n2n_route_t                      *sn_route_to_clean;                 /**< Supernode route to clean */
     n2n_edge_callbacks_t cb;                                             /**< API callbacks */
     void                             *user_data;                         /**< Can hold user data */
     SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_data;

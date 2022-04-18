@@ -51,7 +51,6 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                                        uint8_t *pktbuf, uint16_t *expected, uint16_t *position,
                                        time_t now);
 int resolve_check (n2n_resolve_parameter_t *param, uint8_t resolution_request, time_t now);
-int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
 
 /* ***************************************************** */
 
@@ -342,8 +341,6 @@ static void help (int level) {
         printf(" --management_...  | management port password, defaults to '%s'\n"
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
-        printf(" -n <cidr:gateway> | route an IPv4 network via the gateway, use 0.0.0.0/0 for\n"
-               "                   | the default gateway, can be set multiple times\n");
 #ifndef WIN32
         printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
         printf(" -g <GID>          | numeric group ID to use when privileges are dropped\n");
@@ -685,42 +682,6 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 #endif
-        case 'n': {
-            char cidr_net[64], gateway[64];
-            n2n_route_t route;
-
-            if(sscanf(optargument, "%63[^/]/%hhd:%63s", cidr_net, &route.net_bitlen, gateway) != 3) {
-                traceEvent(TRACE_WARNING, "bad cidr/gateway format '%d'", optargument);
-                return 2;
-            }
-
-            route.net_addr = inet_addr(cidr_net);
-            route.gateway = inet_addr(gateway);
-
-            if((route.net_bitlen < 0) || (route.net_bitlen > 32)) {
-                traceEvent(TRACE_WARNING, "bad prefix '%d' in '%s'", route.net_bitlen, optargument);
-                return 2;
-            }
-
-            if(route.net_addr == INADDR_NONE) {
-                traceEvent(TRACE_WARNING, "bad network '%s' in '%s'", cidr_net, optargument);
-                return 2;
-            }
-
-            if(route.gateway == INADDR_NONE) {
-                traceEvent(TRACE_WARNING, "bad gateway '%s' in '%s'", gateway, optargument);
-                return 2;
-            }
-
-            traceEvent(TRACE_NORMAL, "adding %s/%d via %s", cidr_net, route.net_bitlen, gateway);
-
-            conf->routes = realloc(conf->routes, sizeof(struct n2n_route) * (conf->num_routes + 1));
-            conf->routes[conf->num_routes] = route;
-            conf->num_routes++;
-
-            break;
-        }
-
         case 'S': {
             int solitude;
             if(optargument) {
@@ -1259,11 +1220,6 @@ int main (int argc, char* argv[]) {
                                      eee->tuntap_priv_conf.ip_addr,
                                      eee->tuntap_priv_conf.netmask,
                                      macaddr_str(mac_buf, eee->device.mac_addr));
-            // routes
-            if(edge_init_routes(eee, eee->conf.routes, eee->conf.num_routes) < 0) {
-                traceEvent(TRACE_ERROR, "routes setup failed");
-                exit(1);
-            }
             runlevel = 5;
             // no more answers required
             seek_answer = 0;
