@@ -74,7 +74,7 @@ int get_addr_from_json (struct in_addr *addr, json_object_t *json, char *key, in
                 if((colon = strchr(json->pairs[i].value->string_value, ':'))) {
                     *colon = '\0';
                 }
-                if(inet_aton(json->pairs[i].value->string_value, addr)) {
+                if(inet_pton(AF_INET, json->pairs[i].value->string_value, addr)) {
                     flags |= WITH_ADDRESS;
                 }
             }
