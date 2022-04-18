@@ -98,7 +98,7 @@
 enum federation {IS_NO_FEDERATION = 0,IS_FEDERATION = 1};
 
 /* (un)purgeable indicator for supernodes, communities, routes, ... */
-enum sn_purge {PURGEABLE = 0, UNPURGEABLE = 1};
+enum sn_purge {UNPURGEABLE = 0, PURGEABLE = 1};
 
 /* Header encryption indicators */
 #define HEADER_ENCRYPTION_UNKNOWN             0
