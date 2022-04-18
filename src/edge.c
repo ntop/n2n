@@ -211,7 +211,6 @@ static void help (int level) {
                "[--management-password <pw>] "
             "\n                      "
                "[-v] "
-               "[-n <cidr:gateway>] "
 #ifndef WIN32
             "\n                      "
                "[-u <numerical user id>] "
@@ -682,6 +681,12 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 #endif
+        case 'n': {
+            traceEvent(TRACE_WARNING, "route support (-n) has been removed from n2n's core since version 3.1, "
+                                      "please try tools/n2n-route instead");
+            return 2;
+        }
+
         case 'S': {
             int solitude;
             if(optargument) {
