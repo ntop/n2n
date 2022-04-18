@@ -286,6 +286,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
         case 'F': { /* federation name */
             snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1 ,"*%s", _optarg);
             sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
+            sss->federation->purgeable = UNPURGEABLE;
             break;
         }
 #ifdef SN_MANUAL_MAC
