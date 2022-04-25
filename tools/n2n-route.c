@@ -189,7 +189,7 @@ reset_main_loop:
                 goto reset_main_loop;
             }
         } else {
-            // select(): error or time out -- including the initial timeout
+            // select(): error or timeout -- including the initial timeout of 0
 
             // send info read request
             while(!(tag_info = ((uint32_t)n2n_rand()) >> 23));
