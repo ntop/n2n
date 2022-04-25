@@ -1005,13 +1005,12 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
 
 /* ************************************** */
 
-/** Send a datagram to a socket file descriptor */
-static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
-                          size_t len, struct sockaddr_in *dest) {
-
-    ssize_t sent = 0;
-    int rc = 1;
-
+/*
+ * Confirm that we can send to this edge.
+ * TODO: for the TCP case, this could cause a stall in the packet
+ * send path, so this probably should be reworked to use a queue
+ */
+static int check_sock_ready (n2n_edge_t *eee) {
     // if required (tcp), wait until writeable as soket is set to O_NONBLOCK, could require
     // some wait time directly after re-opening
     if(eee->conf.connect_tcp) {
@@ -1022,45 +1021,53 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
         FD_SET(eee->sock, &socket_mask);
         wait_time.tv_sec = 0;
         wait_time.tv_usec = 500000;
-        rc = select(eee->sock + 1, NULL, &socket_mask, NULL, &wait_time);
+        return select(eee->sock + 1, NULL, &socket_mask, NULL, &wait_time);
+    } else {
+        return 1;
     }
+}
 
-    if(rc > 0) {
+/** Send a datagram to a socket file descriptor */
+static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
+                          size_t len, struct sockaddr_in *dest,
+                          const n2n_sock_t * n2ndest) {
+
+    ssize_t sent = 0;
+
+    if(check_sock_ready(eee) > 0) {
 
         sent = sendto(eee->sock, buf, len, 0 /*flags*/,
-                      (struct sockaddr *)dest, sizeof(struct sockaddr_in));
+                      (struct sockaddr *)dest, sizeof(*dest));
 
-        if((sent <= 0) && (errno)) {
+        if(sent > 0) {
+            traceEvent(TRACE_DEBUG, "sent=%d to ", (signed int)sent);
+            return sent;
+        }
+
+        if(errno) {
             char * c = strerror(errno);
+            n2n_sock_str_t sockbuf;
+
+            int level = TRACE_WARNING;
             // downgrade to TRACE_DEBUG in case of custom AF_INVALID, i.e. supernode not resolved yet
             if(errno == EAFNOSUPPORT /* 93 */) {
-                traceEvent(TRACE_DEBUG, "sendto failed (%d) %s", errno, c);
-#ifdef WIN32
-                traceEvent(TRACE_DEBUG, "WSAGetLastError(): %u", WSAGetLastError());
-#endif
-            } else {
-                traceEvent(TRACE_WARNING, "sendto failed (%d) %s", errno, c);
-#ifdef WIN32
-                traceEvent(TRACE_WARNING, "WSAGetLastError(): %u", WSAGetLastError());
-#endif
+                level = TRACE_DEBUG;
             }
 
-            if(eee->conf.connect_tcp) {
-                supernode_disconnect(eee);
-                eee->sn_wait = 1;
-                traceEvent(TRACE_DEBUG, "disconnected supernode due to sendto() error");
-                return -1;
-            }
-        } else {
-            traceEvent(TRACE_DEBUG, "sent=%d to ", (signed int)sent);
+            traceEvent(level, "sendto(%s) failed (%d) %s",
+                    sock_to_cstr(sockbuf, n2ndest),
+                    errno, c);
+#ifdef WIN32
+            traceEvent(level, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
         }
-    } else {
-        supernode_disconnect(eee);
-        eee->sn_wait = 1;
-        traceEvent(TRACE_DEBUG, "disconnected supernode due to select() timeout");
-        return -1;
     }
-    return sent;
+
+    /* we reach here, either because !check_sock_ready() or (errno) */
+    supernode_disconnect(eee);
+    eee->sn_wait = 1;
+    traceEvent(TRACE_DEBUG, "disconnected supernode due to error while sendto_fd");
+    return -1;
 }
 
 
@@ -1094,13 +1101,13 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 
         // prepend packet length...
         uint16_t pktsize16 = htobe16(len);
-        sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr);
+        sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr, dest);
 
         if(sent <= 0)
             return -1;
         // ...before sending the actual data
     }
-    sent = sendto_fd(eee, buf, len, &peer_addr);
+    sent = sendto_fd(eee, buf, len, &peer_addr, dest);
 
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {

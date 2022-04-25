@@ -168,11 +168,11 @@
 #include "tf.h"
 
 #ifndef TRACE_ERROR
-#define TRACE_ERROR       0, __FILE__, __LINE__
-#define TRACE_WARNING     1, __FILE__, __LINE__
-#define TRACE_NORMAL      2, __FILE__, __LINE__
-#define TRACE_INFO        3, __FILE__, __LINE__
-#define TRACE_DEBUG       4, __FILE__, __LINE__
+#define TRACE_ERROR       0
+#define TRACE_WARNING     1
+#define TRACE_NORMAL      2
+#define TRACE_INFO        3
+#define TRACE_DEBUG       4
 #endif
 
 /* ************************************** */
@@ -194,7 +194,8 @@ void setUseSyslog (int use_syslog);
 void setTraceFile (FILE *f);
 int getTraceLevel ();
 void closeTraceFile ();
-void traceEvent (int eventTraceLevel, char* file, int line, char * format, ...);
+void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...);
+#define traceEvent(level, format, ...) _traceEvent(level, __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 /* Tuntap API */
 int tuntap_open (struct tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
