@@ -100,8 +100,11 @@ LINT_CCODE=\
 	src/edge_utils_win32.c \
 	src/example_edge_embed_quick_edge_init.c \
 	src/header_encryption.c \
+	src/management.c \
+	src/management.h \
 	src/sn_management.c \
 	src/sn_selection.c \
+	src/strbuf.h \
 	src/transform_cc20.c \
 	src/transform_null.c \
 	src/tuntap_freebsd.c \

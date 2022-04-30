@@ -190,6 +190,7 @@ add_library(n2n STATIC
         src/aes.c
         src/speck.c
         src/random_numbers.c
+        src/management.c
         src/pearson.c
         src/header_encryption.c
         src/tuntap_freebsd.c

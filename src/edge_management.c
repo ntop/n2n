@@ -19,106 +19,8 @@
 #include "n2n.h"
 #include "edge_utils_win32.h"
 
-typedef struct strbuf {
-    size_t size;
-    char str[];
-} strbuf_t;
-
-#define STRBUF_INIT(buf,p) do { \
-        buf = (void *)p; \
-        buf->size = sizeof(*p) - sizeof(size_t); \
-} while(0)
-
-enum n2n_mgmt_type {
-    N2N_MGMT_UNKNOWN = 0,
-    N2N_MGMT_READ = 1,
-    N2N_MGMT_WRITE = 2,
-    N2N_MGMT_SUB = 3,
-};
-
-/*
- * Everything needed to reply to a request
- */
-typedef struct mgmt_req {
-    n2n_edge_t *eee;
-    enum n2n_mgmt_type type;
-    char tag[10];
-    struct sockaddr_in sender_sock;
-} mgmt_req_t;
-
-/*
- * Read/Write handlers are defined in this structure
- */
-#define FLAG_WROK 1
-typedef struct mgmt_handler {
-    int flags;
-    char  *cmd;
-    char  *help;
-    void (*func)(mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv);
-} mgmt_handler_t;
-
-/*
- * Event topic names are defined in this structure
- */
-typedef struct mgmt_events {
-    enum n2n_event_topic topic;
-    char  *cmd;
-    char  *help;
-} mgmt_events_t;
-
-// Lookup the index of matching argv0 in a cmd list
-// store index in "Result", or -1 for not found
-#define lookup_handler(Result, list, argv0) do { \
-        int nr_max = sizeof(list) / sizeof(list[0]); \
-        for( Result=0; Result < nr_max; Result++ ) { \
-            if(0 == strcmp(list[Result].cmd, argv0)) { \
-                break; \
-            } \
-        } \
-        if( Result >= nr_max ) { \
-            Result = -1; \
-        } \
-} while(0)
-
-ssize_t send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
-    // TODO: better error handling (counters?)
-    return sendto(req->eee->udp_mgmt_sock, buf->str, msg_len, 0,
-                  (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
-}
-
-size_t gen_json_1str (strbuf_t *buf, char *tag, char *_type, char *key, char *val) {
-    return snprintf(buf->str, buf->size,
-                    "{"
-                    "\"_tag\":\"%s\","
-                    "\"_type\":\"%s\","
-                    "\"%s\":\"%s\"}\n",
-                    tag,
-                    _type,
-                    key,
-                    val);
-}
-
-size_t gen_json_1uint (strbuf_t *buf, char *tag, char *_type, char *key, unsigned int val) {
-    return snprintf(buf->str, buf->size,
-                    "{"
-                    "\"_tag\":\"%s\","
-                    "\"_type\":\"%s\","
-                    "\"%s\":%u}\n",
-                    tag,
-                    _type,
-                    key,
-                    val);
-}
-
-static void send_json_1str (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, char *val) {
-    size_t msg_len = gen_json_1str(buf, req->tag, _type, key, val);
-    send_reply(req, buf, msg_len);
-}
-
-static void send_json_1uint (mgmt_req_t *req, strbuf_t *buf, char *_type, char *key, unsigned int val) {
-    size_t msg_len = gen_json_1uint(buf, req->tag, _type, key, val);
-    send_reply(req, buf, msg_len);
-}
+#include "strbuf.h"
+#include "management.h"
 
 size_t event_debug (strbuf_t *buf, char *tag, int data0, void *data1) {
     traceEvent(TRACE_DEBUG, "Unexpected call to event_debug");
@@ -155,31 +57,9 @@ size_t event_peer (strbuf_t *buf, char *tag, int data0, void *data1) {
                     sock_to_cstr(sockbuf, &(peer->sock)));
 }
 
-static void mgmt_error (mgmt_req_t *req, strbuf_t *buf, char *msg) {
-    send_json_1str(req, buf, "error", "error", msg);
-}
 
-static void mgmt_stop (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
 
-    if(req->type==N2N_MGMT_WRITE) {
-        *req->eee->keep_running = 0;
-    }
-
-    send_json_1uint(req, buf, "row", "keep_running", *req->eee->keep_running);
-}
-
-static void mgmt_verbose (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
-
-    if(req->type==N2N_MGMT_WRITE) {
-        if(argv) {
-            setTraceLevel(strtoul(argv, NULL, 0));
-        }
-    }
-
-    send_json_1uint(req, buf, "row", "traceLevel", getTraceLevel());
-}
-
-static void mgmt_communities (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
+static void mgmt_communities (mgmt_req_t *req, strbuf_t *buf) {
 
     if(req->eee->conf.header_encryption != HEADER_ENCRYPTION_NONE) {
         mgmt_error(req, buf, "noaccess");
@@ -189,7 +69,7 @@ static void mgmt_communities (mgmt_req_t *req, strbuf_t *buf, char *argv0, char 
     send_json_1str(req, buf, "row", "community", (char *)req->eee->conf.community_name);
 }
 
-static void mgmt_supernodes (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
+static void mgmt_supernodes (mgmt_req_t *req, strbuf_t *buf) {
     size_t msg_len;
     struct peer_info *peer, *tmpPeer;
     macstr_t mac_buf;
@@ -266,7 +146,7 @@ static void mgmt_edges_row (mgmt_req_t *req, strbuf_t *buf, struct peer_info *pe
     send_reply(req, buf, msg_len);
 }
 
-static void mgmt_edges (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
+static void mgmt_edges (mgmt_req_t *req, strbuf_t *buf) {
     struct peer_info *peer, *tmpPeer;
 
     // dump nodes with forwarding through supernodes
@@ -280,7 +160,7 @@ static void mgmt_edges (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv)
     }
 }
 
-static void mgmt_timestamps (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
+static void mgmt_timestamps (mgmt_req_t *req, strbuf_t *buf) {
     size_t msg_len;
 
     msg_len = snprintf(buf->str, buf->size,
@@ -298,7 +178,7 @@ static void mgmt_timestamps (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *
     send_reply(req, buf, msg_len);
 }
 
-static void mgmt_packetstats (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
+static void mgmt_packetstats (mgmt_req_t *req, strbuf_t *buf) {
     size_t msg_len;
 
     msg_len = snprintf(buf->str, buf->size,
@@ -354,20 +234,15 @@ static void mgmt_packetstats (mgmt_req_t *req, strbuf_t *buf, char *argv0, char 
     send_reply(req, buf, msg_len);
 }
 
-static void mgmt_post_test (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
+static void mgmt_post_test (mgmt_req_t *req, strbuf_t *buf) {
 
     send_json_1str(req, buf, "row", "sending", "test");
-    mgmt_event_post(N2N_EVENT_TEST, -1, argv);
-}
-
-static void mgmt_unimplemented (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
-
-    mgmt_error(req, buf, "unimplemented");
+    mgmt_event_post(N2N_EVENT_TEST, -1, req->argv);
 }
 
 // Forward define so we can include this in the mgmt_handlers[] table
-static void mgmt_help (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv);
-static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv);
+static void mgmt_help (mgmt_req_t *req, strbuf_t *buf);
+static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf);
 
 static const mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "reload_communities", .flags = FLAG_WROK, .help = "Reserved for supernode", .func = mgmt_unimplemented},
@@ -392,7 +267,8 @@ static mgmt_req_t mgmt_event_subscribers[] = {
 };
 
 /* Map topic number to function */
-static const size_t (*mgmt_events[])(strbuf_t *buf, char *tag, int data0, void *data1) = {
+// TODO: want this to be const
+static mgmt_event_handler_t *mgmt_events[] = {
     [N2N_EVENT_DEBUG] = event_debug,
     [N2N_EVENT_TEST] = event_test,
     [N2N_EVENT_PEER] = event_peer,
@@ -408,81 +284,25 @@ static const mgmt_events_t mgmt_event_names[] = {
 void mgmt_event_post (enum n2n_event_topic topic, int data0, void *data1) {
     mgmt_req_t *debug = &mgmt_event_subscribers[N2N_EVENT_DEBUG];
     mgmt_req_t *sub = &mgmt_event_subscribers[topic];
+    mgmt_event_handler_t *fn =  mgmt_events[topic];
 
-    traceEvent(TRACE_DEBUG, "post topic=%i data0=%i", topic, data0);
-
-    if( sub->type != N2N_MGMT_SUB && debug->type != N2N_MGMT_SUB) {
-        // If neither of this topic or the debug topic have a subscriber
-        // then we dont need to do any work
-        return;
-    }
-
-    char buf_space[100];
-    strbuf_t *buf;
-    STRBUF_INIT(buf, buf_space);
-
-    char *tag;
-    if(sub->type == N2N_MGMT_SUB) {
-        tag = sub->tag;
-    } else {
-        tag = debug->tag;
-    }
-
-    size_t msg_len = mgmt_events[topic](buf, tag, data0, data1);
-
-    if(sub->type == N2N_MGMT_SUB) {
-        send_reply(sub, buf, msg_len);
-    }
-    if(debug->type == N2N_MGMT_SUB) {
-        send_reply(debug, buf, msg_len);
-    }
+    mgmt_event_post2(topic, data0, data1, debug, sub, fn);
 }
 
-static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
-    size_t msg_len;
-
+static void mgmt_help_events (mgmt_req_t *req, strbuf_t *buf) {
     int i;
     int nr_handlers = sizeof(mgmt_event_names) / sizeof(mgmt_events_t);
     for( i=0; i < nr_handlers; i++ ) {
         int topic = mgmt_event_names[i].topic;
         mgmt_req_t *sub = &mgmt_event_subscribers[topic];
-        char host[40];
-        char serv[6];
 
-        if((sub->type != N2N_MGMT_SUB) ||
-           getnameinfo((struct sockaddr *)&sub->sender_sock, sizeof(sub->sender_sock),
-                       host, sizeof(host),
-                       serv, sizeof(serv),
-                       NI_NUMERICHOST|NI_NUMERICSERV) != 0) {
-            host[0] = '?';
-            host[1] = 0;
-            serv[0] = '?';
-            serv[1] = 0;
-        }
-
-        // TODO: handle a topic with no subscribers more cleanly
-
-        msg_len = snprintf(buf->str, buf->size,
-                           "{"
-                           "\"_tag\":\"%s\","
-                           "\"_type\":\"row\","
-                           "\"topic\":\"%s\","
-                           "\"tag\":\"%s\","
-                           "\"sockaddr\":\"%s:%s\","
-                           "\"help\":\"%s\"}\n",
-                           req->tag,
-                           mgmt_event_names[i].cmd,
-                           sub->tag,
-                           host, serv,
-                           mgmt_event_names[i].help);
-
-        send_reply(req, buf, msg_len);
+        mgmt_help_events_row(req, buf, sub, mgmt_event_names[i].cmd, mgmt_event_names[i].help);
     }
 }
 
-static void mgmt_help (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) {
-    size_t msg_len;
-
+// TODO: want to keep the mgmt_handlers defintion const static, otherwise
+// this whole function could be shared
+static void mgmt_help (mgmt_req_t *req, strbuf_t *buf) {
     /*
      * Even though this command is readonly, we deliberately do not check
      * the type - allowing help replies to both read and write requests
@@ -491,60 +311,14 @@ static void mgmt_help (mgmt_req_t *req, strbuf_t *buf, char *argv0, char *argv) 
     int i;
     int nr_handlers = sizeof(mgmt_handlers) / sizeof(mgmt_handler_t);
     for( i=0; i < nr_handlers; i++ ) {
-        msg_len = snprintf(buf->str, buf->size,
-                           "{"
-                           "\"_tag\":\"%s\","
-                           "\"_type\":\"row\","
-                           "\"cmd\":\"%s\","
-                           "\"help\":\"%s\"}\n",
-                           req->tag,
-                           mgmt_handlers[i].cmd,
-                           mgmt_handlers[i].help);
-
-        send_reply(req, buf, msg_len);
+        mgmt_help_row(req, buf, mgmt_handlers[i].cmd, mgmt_handlers[i].help);
     }
-}
-
-/*
- * Check if the user is authorised for this command.
- * - this should be more configurable!
- * - for the moment we use some simple heuristics:
- *   Reads are not dangerous, so they are simply allowed
- *   Writes are possibly dangerous, so they need a fake password
- */
-static int mgmt_auth (mgmt_req_t *req, char *auth, char *argv0, char *argv) {
-
-    if(auth) {
-        /* If we have an auth key, it must match */
-        if(req->eee->conf.mgmt_password_hash == pearson_hash_64((uint8_t*)auth, strlen(auth))) {
-            return 1;
-        }
-        return 0;
-    }
-    /* if we dont have an auth key, we can still read */
-    if(req->type == N2N_MGMT_READ) {
-        return 1;
-    }
-
-    return 0;
 }
 
 static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 
     strbuf_t *buf;
     char cmdlinebuf[80];
-    char *typechar;
-    char *options;
-    char *argv0;
-    char *argv;
-    char *flagstr;
-    int flags;
-    char *auth;
-
-    /* Initialise the tag field until we extract it from the cmdline */
-    req->tag[0] = '-';
-    req->tag[1] = '1';
-    req->tag[2] = '\0';
 
     /* save a copy of the commandline before we reuse the udp_buf */
     strncpy(cmdlinebuf, udp_buf, sizeof(cmdlinebuf)-1);
@@ -555,71 +329,11 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     /* we reuse the buffer already on the stack for all our strings */
     STRBUF_INIT(buf, udp_buf);
 
-    typechar = strtok(cmdlinebuf, " \r\n");
-    if(!typechar) {
-        /* should not happen */
-        mgmt_error(req, buf, "notype");
-        return;
-    }
-    if(*typechar == 'r') {
-        req->type=N2N_MGMT_READ;
-    } else if(*typechar == 'w') {
-        req->type=N2N_MGMT_WRITE;
-    } else if(*typechar == 's') {
-        req->type=N2N_MGMT_SUB;
-    } else {
-        mgmt_error(req, buf, "badtype");
-        return;
-    }
-
-    /* Extract the tag to use in all reply packets */
-    options = strtok(NULL, " \r\n");
-    if(!options) {
-        mgmt_error(req, buf, "nooptions");
-        return;
-    }
-
-    argv0 = strtok(NULL, " \r\n");
-    if(!argv0) {
-        mgmt_error(req, buf, "nocmd");
-        return;
-    }
-
-    /*
-     * The entire rest of the line is the argv. We apply no processing
-     * or arg separation so that the cmd can use it however it needs.
-     */
-    argv = strtok(NULL, "\r\n");
-
-    /*
-     * There might be an auth token mixed in with the tag
-     */
-    char *tagp = strtok(options, ":");
-    strncpy(req->tag, tagp, sizeof(req->tag)-1);
-    req->tag[sizeof(req->tag)-1] = '\0';
-
-    flagstr = strtok(NULL, ":");
-    if(flagstr) {
-        flags = strtoul(flagstr, NULL, 16);
-    } else {
-        flags = 0;
-    }
-
-    /* Only 1 flag bit defined at the moment - "auth option present" */
-    if(flags & 1) {
-        auth = strtok(NULL, ":");
-    } else {
-        auth = NULL;
-    }
-
-    if(!mgmt_auth(req, auth, argv0, argv)) {
-        mgmt_error(req, buf, "badauth");
-        return;
-    }
+    mgmt_req_init2(req, buf, (char *)&cmdlinebuf);
 
     if(req->type == N2N_MGMT_SUB) {
         int handler;
-        lookup_handler(handler, mgmt_event_names, argv0);
+        lookup_handler(handler, mgmt_event_names, req->argv0);
         if(handler == -1) {
             mgmt_error(req, buf, "unknowntopic");
             return;
@@ -628,18 +342,18 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
         int topic = mgmt_event_names[handler].topic;
         if(mgmt_event_subscribers[topic].type == N2N_MGMT_SUB) {
             send_json_1str(&mgmt_event_subscribers[topic], buf,
-                           "unsubscribed", "topic", argv0);
-            send_json_1str(req, buf, "replacing", "topic", argv0);
+                           "unsubscribed", "topic", req->argv0);
+            send_json_1str(req, buf, "replacing", "topic", req->argv0);
         }
 
         memcpy(&mgmt_event_subscribers[topic], req, sizeof(*req));
 
-        send_json_1str(req, buf, "subscribe", "topic", argv0);
+        send_json_1str(req, buf, "subscribe", "topic", req->argv0);
         return;
     }
 
     int handler;
-    lookup_handler(handler, mgmt_handlers, argv0);
+    lookup_handler(handler, mgmt_handlers, req->argv0);
     if(handler == -1) {
         mgmt_error(req, buf, "unknowncmd");
         return;
@@ -656,11 +370,11 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
      * that make our JSON invalid.
      * - do we care?
      */
-    send_json_1str(req, buf, "begin", "cmd", argv0);
+    send_json_1str(req, buf, "begin", "cmd", req->argv0);
 
-    mgmt_handlers[handler].func(req, buf, argv0, argv);
+    mgmt_handlers[handler].func(req, buf);
 
-    send_json_1str(req, buf, "end", "cmd", argv0);
+    send_json_1str(req, buf, "end", "cmd", req->argv0);
     return;
 }
 
@@ -688,7 +402,11 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     uint32_t num = 0;
     selection_criterion_str_t sel_buf;
 
+    req.sss = NULL;
     req.eee = eee;
+    req.mgmt_sock = eee->udp_mgmt_sock;
+    req.keep_running = eee->keep_running;
+    req.mgmt_password_hash = eee->conf.mgmt_password_hash;
 
     now = time(NULL);
     i = sizeof(req.sender_sock);

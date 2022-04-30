@@ -1,6 +1,8 @@
 # Management API
 
-This document is focused on the machine readable API interfaces.
+This document is focused on the machine readable API interfaces.  It is a
+generic document describing the protocol framing, but not the specific
+messages and replies.
 
 Both the edge and the supernode provide a management interface UDP port.
 These interfaces have some documentation on their non machine readable
@@ -30,8 +32,7 @@ where this flexibility is easy to provide.
 Since the API is over UDP, the replies are structured so that each part of
 the reply is clearly tagged as belonging to one request and there is a
 clear begin and end marker for the reply.  This is expected to support the
-future possibilities of pipelined and overlapping transactions as well as
-pub/sub asynchronous event channels.
+future possibilities of pipelined and overlapping transactions.
 
 The replies will also handle some small amount of re-ordering of the
 packets, but that is not an specific goal of the protocol.
@@ -104,6 +105,11 @@ on a given socket.
 
 One possible client implementation is a number between 0 and 999, incremented
 for each request and wrapping around to zero when it is greater than 999.
+
+The client is also expected to use the tag to determine the format of the
+data in the reply - since the client requested that data, it also knows what
+should be in the matching reply.  This is especially important with
+asynchronous pub/sub events.
 
 #### Message Flags
 
