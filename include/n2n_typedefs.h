@@ -54,8 +54,6 @@ typedef unsigned long in_addr_t;
 
 #endif /* #if defined(_MSC_VER) || defined(__MINGW32__) */
 
-
-
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <machine/endian.h>
 #endif
@@ -119,6 +117,7 @@ typedef unsigned long in_addr_t;
 #pragma pack(push,1)
 #endif
 
+#include <time.h>
 
 // those are definitely not typedefs (with a view to the filename) but neither are they defines
 static const n2n_mac_t broadcast_mac      = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
