@@ -98,10 +98,11 @@ uint64_t n2n_seed (void) {
 
     uint64_t seed = 0;   /* this could even go uninitialized */
     uint64_t ret = 0;    /* this could even go uninitialized */
-    size_t i = 0;
 
 #ifdef SYS_getrandom
+    size_t i = 0;
     int rc = -1;
+    
     for(i = 0; (i < RND_RETRIES) && (rc != sizeof(seed)); i++) {
         rc = syscall (SYS_getrandom, &seed, sizeof(seed), GRND_NONBLOCK);
         // if successful, rc should contain the requested number of random bytes
