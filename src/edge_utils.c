@@ -2994,6 +2994,7 @@ void edge_term (n2n_edge_t * eee) {
 
     clear_peer_list(&eee->pending_peers);
     clear_peer_list(&eee->known_peers);
+    clear_peer_list(&eee->conf.supernodes);
 
     eee->transop.deinit(&eee->transop);
     eee->transop_lzo.deinit(&eee->transop_lzo);
