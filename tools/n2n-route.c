@@ -129,7 +129,7 @@ int main (int argc, char* argv[]) {
 reset_main_loop:
     wait_time.tv_sec = SOCKET_TIMEOUT;
     wait_time.tv_usec = 0;
-    edge.s_addr = 1; // !!! should be INADDR_NONE; // set to 1 for testing without info request
+    edge.s_addr = INADDR_NONE;
     tag_info = 0;
     tag_route_ip = 0;
 
@@ -213,6 +213,7 @@ reset_main_loop:
                     if(tag_info) {
                         ret = get_addr_from_json(&addr, json, "ip4addr", tag_info, 0);
                         if(ret == (WITH_ADDRESS | CORRECT_TAG)) {
+                            printf("edge IP: %s\n", inet_ntoa(addr)); // !!!
                             // !!! has it changed? special action required such as changing default route?
                             edge = addr;
                         }

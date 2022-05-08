@@ -160,6 +160,29 @@ static void mgmt_edges (mgmt_req_t *req, strbuf_t *buf) {
     }
 }
 
+static void mgmt_edge_info (mgmt_req_t *req, strbuf_t *buf) {
+    size_t msg_len;
+    macstr_t mac_buf;
+    struct in_addr ip_addr;
+
+    ip_addr.s_addr = req->eee->device.ip_addr;
+
+    msg_len = snprintf(buf->str, buf->size,
+                       "{"
+                       "\"_tag\":\"%s\","
+                       "\"_type\":\"row\","
+                       "\"version\":\"%s\","
+                       "\"macaddr\":\"%s\","
+                       "\"ip4addr\":\"%s\"}\n",
+                       req->tag,
+                       PACKAGE_VERSION,
+                       is_null_mac(req->eee->device.mac_addr) ?
+                           "" : macaddr_str(mac_buf, req->eee->device.mac_addr),
+                       inet_ntoa(ip_addr));
+
+    send_reply(req, buf, msg_len);
+}
+
 static void mgmt_timestamps (mgmt_req_t *req, strbuf_t *buf) {
     size_t msg_len;
 
@@ -252,6 +275,7 @@ static const mgmt_handler_t mgmt_handlers[] = {
     { .cmd = "communities", .help = "Show current community", .func = mgmt_communities},
     { .cmd = "edges", .help = "List current edges/peers", .func = mgmt_edges},
     { .cmd = "supernodes", .help = "List current supernodes", .func = mgmt_supernodes},
+    { .cmd = "info", .help = "Provide basic edge information", .func = mgmt_edge_info},
     { .cmd = "timestamps", .help = "Event timestamps", .func = mgmt_timestamps},
     { .cmd = "packetstats", .help = "traffic counters", .func = mgmt_packetstats},
     { .cmd = "post.test", .help = "send a test event", .func = mgmt_post_test},
