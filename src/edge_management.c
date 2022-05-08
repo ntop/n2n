@@ -176,8 +176,7 @@ static void mgmt_edge_info (mgmt_req_t *req, strbuf_t *buf) {
                        "\"ip4addr\":\"%s\"}\n",
                        req->tag,
                        PACKAGE_VERSION,
-                       is_null_mac(req->eee->device.mac_addr) ?
-                           "" : macaddr_str(mac_buf, req->eee->device.mac_addr),
+                       is_null_mac(req->eee->device.mac_addr) ? "" : macaddr_str(mac_buf, req->eee->device.mac_addr),
                        inet_ntoa(ip_addr));
 
     send_reply(req, buf, msg_len);
