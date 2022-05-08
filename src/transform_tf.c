@@ -41,10 +41,9 @@ static int transop_deinit_tf (n2n_trans_op_t *arg) {
 
     transop_tf_t *priv = (transop_tf_t *)arg->priv;
 
-    if(priv->ctx)
-        tf_deinit(priv->ctx);
-
     if(priv)
+        if(priv->ctx)
+            tf_deinit(priv->ctx);
         free(priv);
 
     return 0;
