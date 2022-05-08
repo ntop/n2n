@@ -33,10 +33,11 @@ static int transop_deinit_speck (n2n_trans_op_t *arg) {
 
     transop_speck_t *priv = (transop_speck_t *)arg->priv;
 
-    if(priv)
+    if(priv) {
         if(priv->ctx)
             speck_deinit(priv->ctx);
         free(priv);
+    }
 
     return 0;
 }
