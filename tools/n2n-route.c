@@ -18,6 +18,12 @@
 
 
 #include "n2n.h"
+
+#ifdef __linux__  /* currently, Linux only !!! */
+
+
+
+
 #include <net/route.h>
 
 
@@ -549,3 +555,18 @@ end_route_tool:
 
     return 0;
 }
+
+
+
+#else  /* ifdef __linux__  --  currently, Linux only !!! */
+
+
+int main (int argc, char* argv[]) {
+
+    traceEvent(TRACE_WARNING, "Currently, only Linux supported");
+
+    return 0;
+}
+
+
+#endif /* ifdef __linux__  --  currently, Linux only !!! */
