@@ -22,8 +22,6 @@
 #ifdef __linux__  /* currently, Linux only !!! */
 
 
-
-
 #include <net/route.h>
 
 
@@ -44,12 +42,13 @@
 #define NEW_GATEWAY "10.1.1.1"            /* !!! Logan's test enviornment */
 
 typedef struct n2n_route {
-
-    in_addr_t         net_addr;           /* key -- though doubles some information from route struct */
-    struct rtentry    route;
+    struct in_addr    net_addr;           /* network address to be routed, also key for hash table*/
+    struct in_addr    net_mask;           /* network address mask */
+    struct in_addr    gateway;            /* gateway address */
 
     uint8_t           purgeable;          /* unpurgeable user-supplied or new default route */
     time_t            last_seen;          /* last seen at management port output */
+
     UT_hash_handle    hh;                 /* makes this structure hashable */
 } n2n_route_t;
 
@@ -253,40 +252,54 @@ int get_gateway_and_iface (struct in_addr *gateway_addr) {
 // -------------------------------------------------------------------------------------------------------
 
 
-struct rtentry fill_route (in_addr_t dst, in_addr_t mask, in_addr_t gateway) {
+// wraps inet_addr()'s return value in in_addr type for unfied handling opportunities in rest of code
+struct in_addr inet_address (char* in) {
 
-    struct sockaddr_in *addr_tmp;
-    struct rtentry route;
+    struct in_addr out;
 
-    memset(&route, 0, sizeof(route));
+    out.s_addr = inet_addr(in);
 
-    addr_tmp = (struct sockaddr_in*)&route.rt_dst;
-    addr_tmp->sin_family = AF_INET;
-    addr_tmp->sin_addr.s_addr = dst;
-    addr_tmp = (struct sockaddr_in*)&route.rt_genmask;
-    addr_tmp->sin_family = AF_INET;
-    addr_tmp->sin_addr.s_addr = mask;
-    addr_tmp = (struct sockaddr_in*)&route.rt_gateway;
-    addr_tmp->sin_family = AF_INET;
-    addr_tmp->sin_addr.s_addr = gateway;
-    route.rt_flags = RTF_UP | RTF_GATEWAY;
-    route.rt_metric = 0;
-
-    return route;
+    return out;
 }
 
 
-/* adds (verb == ROUTE_ADD == 0) or deletes (ROUTE_DEL = 1) a route */
-void handle_route (struct rtentry route, int verb) {
+void fill_route (n2n_route_t* route, struct in_addr net_addr, struct in_addr net_mask, struct in_addr gateway) {
 
+    route->net_addr = net_addr;
+    route->net_mask = net_mask;
+    route->gateway = gateway;
+}
+
+
+/* adds (verb == ROUTE_ADD == 0) or deletes (verb == ROUTE_DEL == 1) a route */
+void handle_route (n2n_route_t* in_route, int verb) {
+
+    struct sockaddr_in *addr_tmp;
+    struct rtentry route;
     SOCKET sock;
     struct sockaddr_in *dst, *mask, *gateway;
     char dst_ip_str[128], gateway_ip_str[128];
     in_addr_t mask_addr;
     int bitlen = 0;
 
+    // prepare rtentry-typed route entry
+    memset(&route, 0, sizeof(route));
+    addr_tmp = (struct sockaddr_in*)&route.rt_dst;
+    addr_tmp->sin_family = AF_INET;
+    addr_tmp->sin_addr.s_addr = in_route->net_addr.s_addr;
+    addr_tmp = (struct sockaddr_in*)&route.rt_genmask;
+    addr_tmp->sin_family = AF_INET;
+    addr_tmp->sin_addr.s_addr = in_route->net_mask.s_addr;
+    addr_tmp = (struct sockaddr_in*)&route.rt_gateway;
+    addr_tmp->sin_family = AF_INET;
+    addr_tmp->sin_addr.s_addr = in_route->gateway.s_addr;
+    route.rt_flags = RTF_UP | RTF_GATEWAY;
+    route.rt_metric = 0;
+
+    // open a socket
     sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 
+    // prepare route data for eventual text output
     dst = (struct sockaddr_in*)&route.rt_dst;
     inet_ntop(AF_INET, &dst->sin_addr, dst_ip_str, sizeof(dst_ip_str));
     mask = (struct sockaddr_in*)&route.rt_genmask;
@@ -296,13 +309,13 @@ void handle_route (struct rtentry route, int verb) {
     gateway = (struct sockaddr_in*)&route.rt_gateway;
     inet_ntop(AF_INET, &gateway->sin_addr, gateway_ip_str, sizeof(gateway_ip_str));
 
+    // try to set route through ioctl
     if(ioctl(sock, !verb ? SIOCADDRT : SIOCDELRT, &route) < 0) {
         traceEvent(TRACE_WARNING, "error '%s' while %s route for %s/%u via %s",
-                                 strerror(errno),
-                                 !verb ? "adding" : "deleting",
-                                 dst_ip_str, bitlen, gateway_ip_str);
+                                  strerror(errno),
+                                  !verb ? "adding" : "deleting",
+                                  dst_ip_str, bitlen, gateway_ip_str);
     } else {
-
         traceEvent(TRACE_NORMAL, "%s route for %s/%u via %s",
                                  !verb ? "added" : "deleted",
                                  dst_ip_str, bitlen, gateway_ip_str);
@@ -386,19 +399,17 @@ int main (int argc, char* argv[]) {
     // set new default route
     route = calloc(1, sizeof(n2n_route_t));
     if(route) {
-        route->net_addr = inet_addr("0.0.0.0");
-        route->route = fill_route(route->net_addr, inet_addr("128.0.0.0"), inet_addr(NEW_GATEWAY));
+        fill_route(route, inet_address("0.0.0.0"), inet_address("128.0.0.0"), inet_address(NEW_GATEWAY));
         route->purgeable = UNPURGEABLE;
         HASH_ADD(hh, routes, net_addr, sizeof(struct in_addr), route);
-        handle_route(route->route, ROUTE_ADD);
+        handle_route(route, ROUTE_ADD);
     }
     route = calloc(1, sizeof(n2n_route_t));
     if(route) {
-        route->net_addr = inet_addr("128.0.0.0");
-        route->route = fill_route(route->net_addr, inet_addr("128.0.0.0"), inet_addr(NEW_GATEWAY));
+        fill_route(route, inet_address("128.0.0.0"), inet_address("128.0.0.0"), inet_address(NEW_GATEWAY));
         route->purgeable = UNPURGEABLE;
-        HASH_ADD(hh, routes, net_addr, sizeof(struct in_addr), route);
-        handle_route(route->route, ROUTE_ADD);
+        HASH_ADD(hh, routes, net_addr, sizeof(route->net_addr), route);
+        handle_route(route, ROUTE_ADD);
     }
 
     sock = connect_to_management_port();
@@ -464,7 +475,7 @@ reset_main_loop:
             last_purge = now;
             HASH_ITER(hh, routes, route, tmp_route) {
                 if((route->purgeable == PURGEABLE) && (now > route->last_seen + REMOVE_ROUTE_AGE)) {
-                    handle_route(route->route, ROUTE_DEL);
+                    handle_route(route, ROUTE_DEL);
                     HASH_DEL(routes, route);
                     free(route);
                 }
@@ -511,11 +522,10 @@ reset_main_loop:
                             else
                                HASH_DEL(routes, route);
                             if(route) {
-                                route->net_addr = addr.s_addr;
-                                route->route = fill_route(addr.s_addr, inet_addr(HOST_MASK), gateway.s_addr);
+                                fill_route(route, addr, inet_address(HOST_MASK), gateway);
                                 route->purgeable = PURGEABLE;
                                 if(!(route->last_seen)) {
-                                    handle_route(route->route, ROUTE_ADD);
+                                    handle_route(route, ROUTE_ADD);
                                 }
                                 route->last_seen = now;
                                 HASH_ADD(hh, routes, net_addr, sizeof(route->net_addr), route);
@@ -546,7 +556,7 @@ end_route_tool:
 
     // delete all routes
     HASH_ITER(hh, routes, route, tmp_route) {
-        handle_route(route->route, ROUTE_DEL);
+        handle_route(route, ROUTE_DEL);
         HASH_DEL(routes, route);
         free(route);
     }
