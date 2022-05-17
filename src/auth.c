@@ -50,7 +50,7 @@ int bin_to_ascii (char *out, uint8_t *in, size_t in_len) {
         buf1 = in[bit_count / 8];
         buf1 <<= bit_count % 8;
 
-        buf2 = ((bit_count + 6) < (8 * in_len)) ? in[bit_count / 8 + 1] : 0;
+        buf2 = ((bit_count + 8) < (8 * in_len)) ? in[bit_count / 8 + 1] : 0;
         buf2 >>= 8 - (bit_count % 8);
 
         buf1 |= buf2;

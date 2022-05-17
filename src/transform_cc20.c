@@ -33,11 +33,11 @@ static int transop_deinit_cc20 (n2n_trans_op_t *arg) {
 
     transop_cc20_t *priv = (transop_cc20_t *)arg->priv;
 
-    if(priv->ctx)
-        cc20_deinit(priv->ctx);
-
-    if(priv)
+    if(priv) {
+        if(priv->ctx)
+            cc20_deinit(priv->ctx);
         free(priv);
+    }
 
     return 0;
 }

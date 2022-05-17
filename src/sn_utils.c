@@ -1348,8 +1348,10 @@ static int re_register_and_purge_supernodes (n2n_sn_t *sss, struct sn_community 
         }
 
         // purge long-time-not-seen supernodes
-        purge_expired_nodes(&(comm->edges), sss->sock, &sss->tcp_connections, p_last_re_reg_and_purge,
-                            RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
+        if (comm) {
+            purge_expired_nodes(&(comm->edges), sss->sock, &sss->tcp_connections, p_last_re_reg_and_purge,
+                                RE_REG_AND_PURGE_FREQUENCY, LAST_SEEN_SN_INACTIVE);
+        }
     }
 
     if(comm != NULL) {

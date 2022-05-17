@@ -52,6 +52,42 @@ jobs:
         run: |
           make lint
 
+  analyse:
+    name: Code Analysers
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        flags:
+          - -fsanitize=leak
+          - -fsanitize=address -static-libasan
+          - -fsanitize=undefined -static-libubsan
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Make the makefiles
+        run: |
+          ./autogen.sh
+
+          export CFLAGS="${{ matrix.flags }}"
+          export LDFLAGS="${{ matrix.flags }}"
+          ./configure
+
+      - name: Install essential
+        run: |
+          sudo apt update
+          make build-dep
+
+      - name: Run the analysis
+        run: |
+          make test
+
   test_linux:
     needs: smoketest
     name: Test Linux
