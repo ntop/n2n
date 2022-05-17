@@ -1061,13 +1061,14 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
             traceEvent(level, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
         }
+    } else {
+        /* we reach here, either because !check_sock_ready() or (errno) */
+        supernode_disconnect(eee);
+        eee->sn_wait = 1;
+        traceEvent(TRACE_DEBUG, "disconnected supernode due to error while sendto_fd");
+        return -1;
     }
-
-    /* we reach here, either because !check_sock_ready() or (errno) */
-    supernode_disconnect(eee);
-    eee->sn_wait = 1;
-    traceEvent(TRACE_DEBUG, "disconnected supernode due to error while sendto_fd");
-    return -1;
+    return sent;
 }
 
 
