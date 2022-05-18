@@ -1044,7 +1044,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
     sent = sendto(eee->sock, buf, len, 0 /*flags*/,
                   (struct sockaddr *)dest, sizeof(struct sockaddr_in));
 
-    if(sent != -1) {
+    if(sent > 0) {
         // sendto success
         traceEvent(TRACE_DEBUG, "sent=%d", (signed int)sent);
         return sent;
@@ -1072,6 +1072,8 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
 #ifdef WIN32
     traceEvent(level, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
+
+    return sent;
 
     /*
      * we get here if the sock is not ready or
