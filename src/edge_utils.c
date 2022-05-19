@@ -1071,7 +1071,7 @@ err_out:
 
 
 /** Send a datagram to a socket defined by a n2n_sock_t */
-static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
+static void sendto_sock (n2n_edge_t *eee, const void * buf,
                             size_t len, const n2n_sock_t * dest) {
 
     struct sockaddr_in peer_addr;
@@ -1081,16 +1081,16 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     // TODO: audit callers and confirm if this can ever happen
     if(!eee) {
         traceEvent(TRACE_WARNING, "bad eee");
-        return -1;
+        return;
     }
 
     if(!dest->family)
         // invalid socket
-        return 0;
+        return;
 
     if(eee->sock < 0)
         // invalid socket file descriptor, e.g. TCP unconnected has fd of '-1'
-        return 0;
+        return;
 
     // network order socket
     fill_sockaddr((struct sockaddr *) &peer_addr, sizeof(peer_addr), dest);
@@ -1109,7 +1109,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
         sent = sendto_fd(eee, (uint8_t*)&pktsize16, sizeof(pktsize16), &peer_addr, dest);
 
         if(sent <= 0)
-            return -1;
+            return;
         // ...before sending the actual data
     }
     sent = sendto_fd(eee, buf, len, &peer_addr, dest);
@@ -1124,7 +1124,7 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
 #endif
     }
 
-    return sent;
+    return;
 }
 
 
@@ -1301,7 +1301,7 @@ void send_register_super (n2n_edge_t *eee) {
         }
     }
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
+    sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
 }
 
 
@@ -1337,7 +1337,7 @@ static void send_unregister_super (n2n_edge_t *eee) {
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
+    sendto_sock(eee, pktbuf, idx, &(eee->curr_sn->sock));
 
 }
 
@@ -1438,7 +1438,7 @@ static void send_register (n2n_edge_t * eee,
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
+    sendto_sock(eee, pktbuf, idx, remote_peer);
 }
 
 /* ************************************** */
@@ -1483,7 +1483,7 @@ static void send_register_ack (n2n_edge_t * eee,
                               eee->conf.header_encryption_ctx_dynamic, eee->conf.header_iv_ctx_dynamic,
                               time_stamp());
 
-    /* sent = */ sendto_sock(eee, pktbuf, idx, remote_peer);
+    sendto_sock(eee, pktbuf, idx, remote_peer);
 }
 
 /* ************************************** */
@@ -1948,13 +1948,13 @@ static int send_packet (n2n_edge_t * eee,
         // if no supernode around, foward the broadcast to all known peers
         if(eee->sn_wait) {
             HASH_ITER(hh, eee->known_peers, peer, tmp_peer)
-                /* s = */ sendto_sock(eee, pktbuf, pktlen, &peer->sock);
+                sendto_sock(eee, pktbuf, pktlen, &peer->sock);
             return 0;
         }
         // fall through otherwise
     }
 
-    /* s = */ sendto_sock(eee, pktbuf, pktlen, &destination);
+    sendto_sock(eee, pktbuf, pktlen, &destination);
 
     return 0;
 }
