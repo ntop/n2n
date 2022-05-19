@@ -1063,9 +1063,19 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
      * if the sendto had an error
      */
 err_out:
-    supernode_disconnect(eee);
-    eee->sn_wait = 1;
-    traceEvent(TRACE_DEBUG, "error in sendto_fd");
+    if(eee->conf.connect_tcp) {
+        supernode_disconnect(eee);
+        eee->sn_wait = 1;
+        traceEvent(TRACE_DEBUG, "error in sendto_fd");
+    }
+
+    /*
+     * If we got an error and are using UDP, this is still an error
+     * case.  The only caller of sendto_fd() checks the return only
+     * in the TCP case.
+     *
+     * Thus, we can safely return an error code for any error.
+     */
     return -1;
 }
 
