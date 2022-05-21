@@ -417,5 +417,6 @@ int cc20_deinit (cc20_context_t *ctx) {
 #if defined (HAVE_OPENSSL_1_1)
     if(ctx->ctx) EVP_CIPHER_CTX_free(ctx->ctx);
 #endif
+    free(ctx);
     return 0;
 }

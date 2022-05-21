@@ -343,10 +343,13 @@ int supernode_connect (n2n_edge_t *eee) {
 
 // always closes the socket
 void supernode_disconnect (n2n_edge_t *eee) {
-
+    if(!eee) {
+        return;
+    }
     if(eee->sock >= 0) {
         closesocket(eee->sock);
         eee->sock = -1;
+        traceEvent(TRACE_DEBUG, "closed");
     }
 }
 
@@ -1011,8 +1014,8 @@ static void check_known_peer_sock_change (n2n_edge_t *eee,
  * send path, so this probably should be reworked to use a queue
  */
 static int check_sock_ready (n2n_edge_t *eee) {
-    // if required (tcp), wait until writeable as soket is set to O_NONBLOCK, could require
-    // some wait time directly after re-opening
+    // if required (tcp), wait until writeable as soket is set to
+    // O_NONBLOCK, could require some wait time directly after re-opening
     if(eee->conf.connect_tcp) {
         fd_set socket_mask;
         struct timeval wait_time;
@@ -1022,9 +1025,9 @@ static int check_sock_ready (n2n_edge_t *eee) {
         wait_time.tv_sec = 0;
         wait_time.tv_usec = 500000;
         return select(eee->sock + 1, NULL, &socket_mask, NULL, &wait_time);
-    } else {
-        return 1;
     }
+
+    return 1;
 }
 
 /** Send a datagram to a socket file descriptor */
@@ -1034,39 +1037,50 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
 
     ssize_t sent = 0;
 
-    if(check_sock_ready(eee) > 0) {
-
-        sent = sendto(eee->sock, buf, len, 0 /*flags*/,
-                      (struct sockaddr *)dest, sizeof(*dest));
-
-        if(sent > 0) {
-            traceEvent(TRACE_DEBUG, "sent=%d to ", (signed int)sent);
-            return sent;
-        }
-
-        if(errno) {
-            char * c = strerror(errno);
-            n2n_sock_str_t sockbuf;
-
-            int level = TRACE_WARNING;
-            // downgrade to TRACE_DEBUG in case of custom AF_INVALID, i.e. supernode not resolved yet
-            if(errno == EAFNOSUPPORT /* 93 */) {
-                level = TRACE_DEBUG;
-            }
-
-            traceEvent(level, "sendto(%s) failed (%d) %s",
-                    sock_to_cstr(sockbuf, n2ndest),
-                    errno, c);
-#ifdef WIN32
-            traceEvent(level, "WSAGetLastError(): %u", WSAGetLastError());
-#endif
-        }
+    if(check_sock_ready(eee) < 1) {
+        goto err_out;
     }
 
-    /* we reach here, either because !check_sock_ready() or (errno) */
+    sent = sendto(eee->sock, buf, len, 0 /*flags*/,
+                  (struct sockaddr *)dest, sizeof(struct sockaddr_in));
+
+    if(sent != -1) {
+        // sendto success
+        traceEvent(TRACE_DEBUG, "sent=%d", (signed int)sent);
+        return sent;
+    }
+
+    // We only get here if sendto failed, so errno must be valid
+
+    char * errstr = strerror(errno);
+    n2n_sock_str_t sockbuf;
+
+    if(!errstr) {
+        traceEvent(TRACE_WARNING, "bad strerror");
+    }
+
+    int level = TRACE_WARNING;
+    // downgrade to TRACE_DEBUG in case of custom AF_INVALID,
+    // i.e. supernode not resolved yet
+    if(errno == EAFNOSUPPORT /* 93 */) {
+        level = TRACE_DEBUG;
+    }
+
+    traceEvent(level, "sendto(%s) failed (%d) %s",
+            sock_to_cstr(sockbuf, n2ndest),
+            errno, errstr);
+#ifdef WIN32
+    traceEvent(level, "WSAGetLastError(): %u", WSAGetLastError());
+#endif
+
+    /*
+     * we get here if the sock is not ready or
+     * if the sendto had an error
+     */
+err_out:
     supernode_disconnect(eee);
     eee->sn_wait = 1;
-    traceEvent(TRACE_DEBUG, "disconnected supernode due to error while sendto_fd");
+    traceEvent(TRACE_DEBUG, "error in sendto_fd");
     return -1;
 }
 
@@ -1078,6 +1092,12 @@ static ssize_t sendto_sock (n2n_edge_t *eee, const void * buf,
     struct sockaddr_in peer_addr;
     ssize_t sent;
     int value = 0;
+
+    // TODO: audit callers and confirm if this can ever happen
+    if(!eee) {
+        traceEvent(TRACE_WARNING, "bad eee");
+        return -1;
+    }
 
     if(!dest->family)
         // invalid socket
@@ -1584,7 +1604,6 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
                 if(eee->close_socket_counter >= N2N_CLOSE_SOCKET_COUNTER_MAX) {
                     eee->close_socket_counter = 0;
                     supernode_disconnect(eee);
-                    traceEvent(TRACE_DEBUG, "disconnected supernode");
                 }
             }
 
@@ -2748,7 +2767,6 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
 #endif
             supernode_disconnect(eee);
             eee->sn_wait = 1;
-            traceEvent(TRACE_DEBUG, "disconnected supernode due to connection error");
             goto tcp_done;
         }
         *position = *position + bread;
@@ -2760,7 +2778,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                 if(*expected > N2N_PKT_BUF_SIZE) {
                     supernode_disconnect(eee);
                     eee->sn_wait = 1;
-                    traceEvent(TRACE_DEBUG, "disconnected supernode due to too many bytes expected");
+                    traceEvent(TRACE_DEBUG, "too many bytes expected");
                     goto tcp_done;
                 }
             } else {
@@ -2994,6 +3012,7 @@ void edge_term (n2n_edge_t * eee) {
 
     clear_peer_list(&eee->pending_peers);
     clear_peer_list(&eee->known_peers);
+    clear_peer_list(&eee->conf.supernodes);
 
     eee->transop.deinit(&eee->transop);
     eee->transop_lzo.deinit(&eee->transop_lzo);

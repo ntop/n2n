@@ -41,11 +41,11 @@ static int transop_deinit_aes (n2n_trans_op_t *arg) {
 
     transop_aes_t *priv = (transop_aes_t *)arg->priv;
 
-    if(priv->ctx)
-        aes_deinit(priv->ctx);
-
-    if(priv)
+    if(priv) {
+        if(priv->ctx)
+            aes_deinit(priv->ctx);
         free(priv);
+    }
 
     return 0;
 }
