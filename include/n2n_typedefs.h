@@ -22,9 +22,6 @@
 #include <stdint.h>     // for uint8_t and friends
 #ifndef WIN32
 #include <arpa/inet.h>  // for in_addr_t
-#include <net/if.h>     // for IF_NAMESIZE
-#else
-#include <netioapi.h>   // for IF_NAMESIZE on Windows
 #endif
 #include <uthash.h>
 #include <n2n_define.h>
@@ -228,7 +225,7 @@ typedef char ipstr_t[INET_ADDRSTRLEN];
 typedef char macstr_t[N2N_MACSTR_SIZE];
 typedef char dec_ip_str_t[N2N_NETMASK_STR_SIZE];
 typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
-typedef char devstr_t[IF_NAMESIZE];
+typedef char devstr_t[N2N_IFNAMSIZ];
 
 
 #ifndef WIN32
