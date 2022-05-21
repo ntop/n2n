@@ -29,6 +29,7 @@
 #define CORRECT_TAG             2
 
 #define SOCKET_TIMEOUT          2
+#define GATEWAY_INTERVAL        5
 #define INFO_INTERVAL           5
 #define REFRESH_INTERVAL       10
 #define PURGE_INTERVAL         30
@@ -60,66 +61,8 @@ static int keep_running = 1;              /* for main loop, handled by signals *
 // -------------------------------------------------------------------------------------------------------
 
 
-SOCKET connect_to_management_port (void) {
-
-    SOCKET ret;
-    struct sockaddr_in sock_addr;
-
-    ret = socket (PF_INET, SOCK_DGRAM, 0);
-    if((int)ret < 0)
-        return -1;
-
-    sock_addr.sin_family = AF_INET;
-    sock_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    sock_addr.sin_port = htons(N2N_EDGE_MGMT_PORT);
-    if(0 != connect(ret, (struct sockaddr *)&sock_addr, sizeof(sock_addr)))
-        return -1;
-
-    return ret;
-}
-
-
-// -------------------------------------------------------------------------------------------------------
-
-
-int get_addr_from_json (struct in_addr *addr, json_object_t *json, char *key, int tag, int flags) {
-
-    int i;
-    char *colon = NULL;
-
-    if(NULL == json)
-        return 0;
-
-    for(i = 0; i < json->count; i++) {
-        if(json->pairs[i].type == JSON_STRING) {
-            if(!strcmp(json->pairs[i].key, key)) {
-                // cut off port from IP address
-                if((colon = strchr(json->pairs[i].value->string_value, ':'))) {
-                    *colon = '\0';
-                }
-                if(inet_pton(AF_INET, json->pairs[i].value->string_value, addr)) {
-                    flags |= WITH_ADDRESS;
-                }
-            }
-            if(!strcmp(json->pairs[i].key, "_tag" )) {
-                if(atoi(json->pairs[i].value->string_value) == tag) {
-                    flags |= CORRECT_TAG;
-                }
-            }
-        } else if(json->pairs[i].type == JSON_OBJECT) {
-            flags |= get_addr_from_json(addr, json, key, tag, flags);
-        }
-    }
-
-    return flags;
-}
-
-
-// -------------------------------------------------------------------------------------------------------
-
-
 // taken from https://gist.github.com/javiermon/6272065
-// with modifacations, originally licensed under GPLV2, Apache, and MIT
+// with modifications, originally licensed under GPLV2, Apache, and MIT
 
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -142,7 +85,8 @@ int get_gateway_and_iface (struct in_addr *gateway_addr) {
     struct  nlmsghdr *nlh, *nlmsg;
     struct  rtmsg *route_entry;
     struct  rtattr *route_attribute; /* this contains route attributes (route type) */
-    char    gateway_address[INET_ADDRSTRLEN], interface[IF_NAMESIZE];
+    ipstr_t gateway_address;
+    devstr_t interface;
     char    msgbuf[BUFFER_SIZE], buffer[BUFFER_SIZE];
     char    *ptr = buffer;
     struct timeval tv;
@@ -238,8 +182,8 @@ int get_gateway_and_iface (struct in_addr *gateway_addr) {
         if((*gateway_address) && (*interface)) {
             // REVISIT: inet_ntop followed by inet_pton... maybe not too elegant
             if(inet_pton(AF_INET, gateway_address, gateway_addr)) {
-                traceEvent(TRACE_NORMAL, "found default gateway %s on interface %s\n", gateway_address, interface);
-                break;
+                traceEvent(TRACE_DEBUG, "found default gateway %s on interface %s\n", gateway_address, interface);
+               break;
             }
         }
     }
@@ -252,15 +196,20 @@ int get_gateway_and_iface (struct in_addr *gateway_addr) {
 // -------------------------------------------------------------------------------------------------------
 
 
-// wraps inet_addr()'s return value in in_addr type for unfied handling opportunities in rest of code
+// applies inet_pton on input string and returns address struct-in_addr-typed address
 struct in_addr inet_address (char* in) {
 
     struct in_addr out;
 
-    out.s_addr = inet_addr(in);
+    if(inet_pton(AF_INET, in, &out) <= 0) {
+        out.s_addr = INADDR_NONE;
+    }
 
     return out;
 }
+
+
+// -------------------------------------------------------------------------------------------------------
 
 
 void fill_route (n2n_route_t* route, struct in_addr net_addr, struct in_addr net_mask, struct in_addr gateway) {
@@ -271,14 +220,14 @@ void fill_route (n2n_route_t* route, struct in_addr net_addr, struct in_addr net
 }
 
 
-/* adds (verb == ROUTE_ADD == 0) or deletes (verb == ROUTE_DEL == 1) a route */
+/* adds (verb == ROUTE_ADD) or deletes (verb == ROUTE_DEL) a route */
 void handle_route (n2n_route_t* in_route, int verb) {
 
     struct sockaddr_in *addr_tmp;
     struct rtentry route;
     SOCKET sock;
     struct sockaddr_in *dst, *mask, *gateway;
-    char dst_ip_str[128], gateway_ip_str[128];
+    ipstr_t dst_ip_str, gateway_ip_str;
     in_addr_t mask_addr;
     int bitlen = 0;
 
@@ -301,26 +250,86 @@ void handle_route (n2n_route_t* in_route, int verb) {
 
     // prepare route data for eventual text output
     dst = (struct sockaddr_in*)&route.rt_dst;
-    inet_ntop(AF_INET, &dst->sin_addr, dst_ip_str, sizeof(dst_ip_str));
     mask = (struct sockaddr_in*)&route.rt_genmask;
     mask_addr = ntohl(mask->sin_addr.s_addr);
     for(bitlen = 0; (int)mask_addr < 0; mask_addr <<= 1)
         bitlen++;
     gateway = (struct sockaddr_in*)&route.rt_gateway;
-    inet_ntop(AF_INET, &gateway->sin_addr, gateway_ip_str, sizeof(gateway_ip_str));
 
     // try to set route through ioctl
-    if(ioctl(sock, !verb ? SIOCADDRT : SIOCDELRT, &route) < 0) {
+    if(ioctl(sock, verb == ROUTE_ADD ? SIOCADDRT : SIOCDELRT, &route) < 0) {
         traceEvent(TRACE_WARNING, "error '%s' while %s route for %s/%u via %s",
                                   strerror(errno),
                                   !verb ? "adding" : "deleting",
-                                  dst_ip_str, bitlen, gateway_ip_str);
+                                  inaddrtoa(dst_ip_str, dst->sin_addr),
+                                  bitlen,
+                                  inaddrtoa(gateway_ip_str, gateway->sin_addr));
     } else {
         traceEvent(TRACE_NORMAL, "%s route for %s/%u via %s",
                                  !verb ? "added" : "deleted",
-                                 dst_ip_str, bitlen, gateway_ip_str);
+                                 inaddrtoa(dst_ip_str, dst->sin_addr),
+                                 bitlen,
+                                 inaddrtoa(gateway_ip_str, gateway->sin_addr));
     }
+
     closesocket(sock);
+}
+
+
+// -------------------------------------------------------------------------------------------------------
+
+
+SOCKET connect_to_management_port (void) {
+
+    SOCKET ret;
+    struct sockaddr_in sock_addr;
+
+    ret = socket (PF_INET, SOCK_DGRAM, 0);
+    if((int)ret < 0)
+        return -1;
+
+    sock_addr.sin_family = AF_INET;
+    sock_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    sock_addr.sin_port = htons(N2N_EDGE_MGMT_PORT);
+    if(0 != connect(ret, (struct sockaddr *)&sock_addr, sizeof(sock_addr)))
+        return -1;
+
+    return ret;
+}
+
+
+// -------------------------------------------------------------------------------------------------------
+
+
+int get_addr_from_json (struct in_addr *addr, json_object_t *json, char *key, int tag, int flags) {
+
+    int i;
+    char *colon = NULL;
+
+    if(NULL == json)
+        return 0;
+
+    for(i = 0; i < json->count; i++) {
+        if(json->pairs[i].type == JSON_STRING) {
+            if(!strcmp(json->pairs[i].key, key)) {
+                // cut off port from IP address
+                if((colon = strchr(json->pairs[i].value->string_value, ':'))) {
+                    *colon = '\0';
+                }
+                *addr = inet_address(json->pairs[i].value->string_value);
+                flags |= WITH_ADDRESS;
+            }
+            if(!strcmp(json->pairs[i].key, "_tag" )) {
+                if(atoi(json->pairs[i].value->string_value) == tag) {
+                    flags |= CORRECT_TAG;
+                }
+            }
+        } else if(json->pairs[i].type == JSON_OBJECT) {
+            flags |= get_addr_from_json(addr, json, key, tag, flags);
+        }
+    }
+
+    return flags;
 }
 
 
@@ -355,6 +364,25 @@ BOOL WINAPI term_handler(DWORD sig)
 // -------------------------------------------------------------------------------------------------------
 
 
+// taken from https://web.archive.org/web/20170407122137/http://cc.byexamples.com/2007/04/08/non-blocking-user-input-in-loop-without-ncurses/
+int kbhit () {
+
+    struct timeval tv;
+    fd_set fds;
+
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds); //STDIN_FILENO is 0
+    select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+
+    return FD_ISSET(STDIN_FILENO, &fds);
+}
+
+
+// -------------------------------------------------------------------------------------------------------
+
+
 int main (int argc, char* argv[]) {
 
     SOCKET sock;
@@ -363,18 +391,23 @@ int main (int argc, char* argv[]) {
     fd_set socket_mask;
     struct timeval wait_time;
     time_t now = 0;
-    time_t last_info = 0;
-    time_t last_refresh = 0;
+    time_t last_gateway_check = 0;
+    time_t last_info_req = 0;
+    time_t last_read_req = 0;
     time_t last_purge = 0;
     json_object_t *json;
     int ret;
     int tag_info, tag_route_ip;
-    struct in_addr addr, edge, gateway;
+    struct in_addr addr, edge, gateway_org, gateway_vpn, addr_tmp;
+    ipstr_t ip_str;
+
     n2n_route_t *routes = NULL;
     n2n_route_t *route, *tmp_route;
 
 
     n2n_srand(n2n_seed());
+
+    // !!! can we check if forwarding is enabled and, if not so,  warn the user?
 
     // handle signals to properly end the tool
 #ifdef __linux__
@@ -386,9 +419,6 @@ int main (int argc, char* argv[]) {
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
-    // determine the original default gateway
-    get_gateway_and_iface(&gateway);
-
 // !!! evaluate some cli parameters, e.g. for port, password, additional manual routes for dns or so, gateway to use
 // -t management port
 // -p port
@@ -398,15 +428,16 @@ int main (int argc, char* argv[]) {
 
     // set new default route
     route = calloc(1, sizeof(n2n_route_t));
+    gateway_vpn = inet_address(NEW_GATEWAY);
     if(route) {
-        fill_route(route, inet_address("0.0.0.0"), inet_address("128.0.0.0"), inet_address(NEW_GATEWAY));
+        fill_route(route, inet_address("0.0.0.0"), inet_address("128.0.0.0"), gateway_vpn);
         route->purgeable = UNPURGEABLE;
         HASH_ADD(hh, routes, net_addr, sizeof(struct in_addr), route);
         handle_route(route, ROUTE_ADD);
     }
     route = calloc(1, sizeof(n2n_route_t));
     if(route) {
-        fill_route(route, inet_address("128.0.0.0"), inet_address("128.0.0.0"), inet_address(NEW_GATEWAY));
+        fill_route(route, inet_address("128.0.0.0"), inet_address("128.0.0.0"), gateway_vpn);
         route->purgeable = UNPURGEABLE;
         HASH_ADD(hh, routes, net_addr, sizeof(route->net_addr), route);
         handle_route(route, ROUTE_ADD);
@@ -420,28 +451,57 @@ reset_main_loop:
     wait_time.tv_sec = SOCKET_TIMEOUT;
     wait_time.tv_usec = 0;
     edge.s_addr = INADDR_NONE;
+    addr_tmp.s_addr = INADDR_NONE;
+    gateway_org.s_addr = INADDR_NONE;
     tag_info = 0;
     tag_route_ip = 0;
+
 
     // main loop
     // read answer packet by packet which are only accepted if a corresponding request was sent before
     // of which we know about by having set the related tag, tag_info or tag_route_ip resp.
     // a valid edge ip address indicates that we have seen a valid answer to the info request
-    while(keep_running) {
+    while(keep_running && !kbhit()) {
         // current time
         now = time(NULL);
 
-        if(now > last_info + INFO_INTERVAL) {
+        // check for (changed) default gateway from time to time (and initially)
+        if(now > last_gateway_check + GATEWAY_INTERVAL) {
+            // determine the original default gateway
+            get_gateway_and_iface(&addr_tmp);
+            if(memcmp(&addr_tmp, &gateway_org, sizeof(gateway_org))) {
+                // store the detected change
+                gateway_org = addr_tmp;
+                // delete all purgeable routes as they are still relying on old original default gateway
+                HASH_ITER(hh, routes, route, tmp_route) {
+                    if((route->purgeable == PURGEABLE)) {
+                        handle_route(route, ROUTE_DEL);
+                        HASH_DEL(routes, route);
+                        free(route);
+                    }
+                }
+                // give way for new info and read requests
+                last_info_req = 0;
+                last_read_req = 0;
+
+                traceEvent(TRACE_NORMAL, "using default gateway %s\n",  inaddrtoa(ip_str, gateway_org));
+            }
+            last_gateway_check = now;
+        }
+
+        // check if we need to send info request again
+        if(now > last_info_req + INFO_INTERVAL) {
             // send info read request
             while(!(tag_info = ((uint32_t)n2n_rand()) >> 23));
             msg_len = 0;
             msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                                  "r %u info\n", tag_info);
             ret = send(sock, udp_buf, msg_len, 0);
-            last_info = now;
+            last_info_req = now;
         }
 
-        if(now > last_refresh + REFRESH_INTERVAL) {
+        // check if we need to send read request again
+        if(now > last_read_req + REFRESH_INTERVAL) {
             // the following requests shall only be sent if we have a valid local edge ip address,
             // i.e. a valid answer to the info request
             if(edge.s_addr != INADDR_NONE) {
@@ -466,7 +526,7 @@ reset_main_loop:
                                     "r %u supernodes\n", tag_route_ip);
                 ret = send(sock, udp_buf, msg_len, 0);
 
-                last_refresh = now;
+                last_read_req = now;
             }
         }
 
@@ -482,7 +542,7 @@ reset_main_loop:
             }
         }
 
-        // wait for any answer
+        // wait for any answer to info or read request
         FD_ZERO(&socket_mask);
         FD_SET(sock, &socket_mask);
         ret = select(sock + 1, &socket_mask, NULL, NULL, &wait_time);
@@ -499,14 +559,16 @@ reset_main_loop:
                     // handle the answer
                     json = json_parse(udp_buf);
 
-                    // look for local edge information, especially edge's local
-                    // ip address for the new 'default' route
+                    // look for local edge information, especially edge's local ip address
                     if(tag_info) {
                         ret = get_addr_from_json(&addr, json, "ip4addr", tag_info, 0);
                         if(ret == (WITH_ADDRESS | CORRECT_TAG)) {
-                            printf("edge IP: %s\n", inet_ntoa(addr)); // !!!
-                            // !!! has it changed? special action required such as changing default route?
-                            edge = addr;
+                            traceEvent(TRACE_DEBUG, "received information about %s being edge's IP address", inaddrtoa(ip_str, addr));
+                            if(memcmp(&edge, &addr, sizeof(edge))) {
+                                edge = addr;
+                                // do we need it beyond output?
+                                traceEvent(TRACE_NORMAL, "found %s being edge's IP address", inaddrtoa(ip_str, addr));
+                            }
                         }
                     }
 
@@ -515,14 +577,14 @@ reset_main_loop:
                         ret = get_addr_from_json(&addr, json, "sockaddr", tag_route_ip, 0);
                         if(ret == (WITH_ADDRESS | CORRECT_TAG)) {
                             // add to hash list if required
-                            printf("IP: %s\n", inet_ntoa(addr)); // !!!
+                            traceEvent(TRACE_DEBUG, "received information about %s to be routed via default gateway", inaddrtoa(ip_str, addr));
                             HASH_FIND(hh, routes, &addr, sizeof(route->net_addr), route);
                             if(!route)
                                 route = calloc(1, sizeof(n2n_route_t));
                             else
                                HASH_DEL(routes, route);
                             if(route) {
-                                fill_route(route, addr, inet_address(HOST_MASK), gateway);
+                                fill_route(route, addr, inet_address(HOST_MASK), gateway_org);
                                 route->purgeable = PURGEABLE;
                                 if(!(route->last_seen)) {
                                     handle_route(route, ROUTE_ADD);

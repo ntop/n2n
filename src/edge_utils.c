@@ -1810,7 +1810,7 @@ static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
 
     FILE *fd;
     dec_ip_str_t ip_str = {'\0'};
-    char dev_str[N2N_IFNAMSIZ] = {'\0'};
+    devstr_t dev_str = {'\0'};
     macstr_t mac_str = {'\0'};
     n2n_mac_t mac = {'\0'};
 

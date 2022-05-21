@@ -22,6 +22,9 @@
 #include <stdint.h>     // for uint8_t and friends
 #ifndef WIN32
 #include <arpa/inet.h>  // for in_addr_t
+#include <net/if.h>     // for IF_NAMESIZE
+#else
+#include <netioapi.h>   // for IF_NAMESIZE on Windows
 #endif
 #include <uthash.h>
 #include <n2n_define.h>
@@ -213,6 +216,21 @@ typedef struct filter_rule {
 } filter_rule_t;
 
 
+/** Uncomment this to enable the MTU check, then try to ssh to generate a fragmented packet. */
+/** NOTE: see doc/MTU.md for an explanation on the 1400 value */
+//#define MTU_ASSERT_VALUE 1400
+
+/** Common type used to hold stringified IP addresses. */
+typedef char ipstr_t[INET_ADDRSTRLEN];
+
+/** Common type used to hold stringified MAC addresses. */
+#define N2N_MACSTR_SIZE 32
+typedef char macstr_t[N2N_MACSTR_SIZE];
+typedef char dec_ip_str_t[N2N_NETMASK_STR_SIZE];
+typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
+typedef char devstr_t[IF_NAMESIZE];
+
+
 #ifndef WIN32
 typedef struct tuntap_dev {
     int                  fd;
@@ -221,24 +239,12 @@ typedef struct tuntap_dev {
     uint32_t             ip_addr;
     uint32_t             device_mask;
     uint16_t             mtu;
-    char                 dev_name[N2N_IFNAMSIZ];
+    devstr_t             dev_name;
 } tuntap_dev;
 
 #define SOCKET int
 #endif /* #ifndef WIN32 */
 
-/** Uncomment this to enable the MTU check, then try to ssh to generate a fragmented packet. */
-/** NOTE: see doc/MTU.md for an explanation on the 1400 value */
-//#define MTU_ASSERT_VALUE 1400
-
-/** Common type used to hold stringified IP addresses. */
-typedef char ipstr_t[32];
-
-/** Common type used to hold stringified MAC addresses. */
-#define N2N_MACSTR_SIZE 32
-typedef char macstr_t[N2N_MACSTR_SIZE];
-typedef char dec_ip_str_t[N2N_NETMASK_STR_SIZE];
-typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
 
 typedef struct speck_context_t he_context_t;
 typedef char n2n_sn_name_t[N2N_EDGE_SN_HOST_SIZE];
@@ -545,7 +551,7 @@ typedef struct n2n_edge_callbacks {
 } n2n_edge_callbacks_t;
 
 typedef struct n2n_tuntap_priv_config {
-    char            tuntap_dev_name[N2N_IFNAMSIZ];
+    devstr_t        tuntap_dev_name;
     char            ip_mode[N2N_IF_MODE_SIZE];
     dec_ip_str_t    ip_addr;
     dec_ip_str_t    netmask;

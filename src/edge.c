@@ -570,8 +570,8 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
 
 #if defined(N2N_CAN_NAME_IFACE)
         case 'd': /* TUNTAP name */ {
-            strncpy(ec->tuntap_dev_name, optargument, N2N_IFNAMSIZ);
-            ec->tuntap_dev_name[N2N_IFNAMSIZ - 1] = '\0';
+            strncpy(ec->tuntap_dev_name, optargument, sizeof(devstr_t));
+            ec->tuntap_dev_name[sizeof(devstr_t) - 1] = '\0';
             break;
         }
 #endif

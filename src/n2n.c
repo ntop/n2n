@@ -165,7 +165,19 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
 
 }
 
+
 /* *********************************************** */
+
+
+/* stringify in_addr type to ipstr_t */
+char* inaddrtoa (ipstr_t out, struct in_addr addr) {
+
+    if(!inet_ntop(AF_INET, &addr, out, sizeof(ipstr_t)))
+        out[0] = '\0';
+
+    return out;
+}
+
 
 /* addr should be in network order. Things are so much simpler that way. */
 char* intoa (uint32_t /* host order */ addr, char* buf, uint16_t buf_len) {
