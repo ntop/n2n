@@ -40,7 +40,12 @@
 #define ROUTE_DEL              1
 
 
-#define NEW_GATEWAY "10.1.1.1"            /* !!! Logan's test enviornment */
+typedef struct n2n_route_conf {
+    struct in_addr    gateway_vpn;        /* gateway address */
+    char*             password;           /* pointer to management port password */
+    uint16_t          port;               /* management port */
+} n2n_route_conf_t;
+
 
 typedef struct n2n_route {
     struct in_addr    net_addr;           /* network address to be routed, also key for hash table*/
@@ -77,7 +82,7 @@ static int keep_running = 1;              /* for main loop, handled by signals *
 #define BUFFER_SIZE 4096
 
 
-int get_gateway_and_iface (struct in_addr *gateway_addr) {
+int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude) {
 
     int     received_bytes = 0, msg_len = 0, route_attribute_len = 0;
     SOCKET  sock = -1;
@@ -168,11 +173,11 @@ int get_gateway_and_iface (struct in_addr *gateway_addr) {
                route_attribute = RTA_NEXT(route_attribute, route_attribute_len)) {
             switch(route_attribute->rta_type) {
                 case RTA_OIF:
+                    // for informational purposes only
                     if_indextoname(*(int*)RTA_DATA(route_attribute), interface);
                     break;
                 case RTA_GATEWAY:
-                    inet_ntop(AF_INET, RTA_DATA(route_attribute),
-                              gateway_address, sizeof(gateway_address));
+                    inaddrtoa(gateway_address, *(struct in_addr*)RTA_DATA(route_attribute));
                     break;
                 default:
                     break;
@@ -182,8 +187,10 @@ int get_gateway_and_iface (struct in_addr *gateway_addr) {
         if((*gateway_address) && (*interface)) {
             // REVISIT: inet_ntop followed by inet_pton... maybe not too elegant
             if(inet_pton(AF_INET, gateway_address, gateway_addr)) {
-                traceEvent(TRACE_DEBUG, "found default gateway %s on interface %s\n", gateway_address, interface);
-               break;
+                // do not use the one to be excluded
+                if(!memcmp(gateway_addr, exclude, sizeof(*gateway_addr))) continue;
+                traceEvent(TRACE_NORMAL, "found default gateway %s on interface %s\n", gateway_address, interface);
+                break;
             }
         }
     }
@@ -206,6 +213,15 @@ struct in_addr inet_address (char* in) {
     }
 
     return out;
+}
+
+
+int inet_address_valid (struct in_addr in) {
+
+    if(in.s_addr == INADDR_NONE)
+        return 0;
+    else
+        return 1;
 }
 
 
@@ -258,14 +274,14 @@ void handle_route (n2n_route_t* in_route, int verb) {
 
     // try to set route through ioctl
     if(ioctl(sock, verb == ROUTE_ADD ? SIOCADDRT : SIOCDELRT, &route) < 0) {
-        traceEvent(TRACE_WARNING, "error '%s' while %s route for %s/%u via %s",
+        traceEvent(TRACE_WARNING, "error '%s' while %s route to %s/%u via %s",
                                   strerror(errno),
                                   !verb ? "adding" : "deleting",
                                   inaddrtoa(dst_ip_str, dst->sin_addr),
                                   bitlen,
                                   inaddrtoa(gateway_ip_str, gateway->sin_addr));
     } else {
-        traceEvent(TRACE_NORMAL, "%s route for %s/%u via %s",
+        traceEvent(TRACE_NORMAL, "%s route to %s/%u via %s",
                                  !verb ? "added" : "deleted",
                                  inaddrtoa(dst_ip_str, dst->sin_addr),
                                  bitlen,
@@ -279,7 +295,7 @@ void handle_route (n2n_route_t* in_route, int verb) {
 // -------------------------------------------------------------------------------------------------------
 
 
-SOCKET connect_to_management_port (void) {
+SOCKET connect_to_management_port (n2n_route_conf_t *rrr) {
 
     SOCKET ret;
     struct sockaddr_in sock_addr;
@@ -290,7 +306,7 @@ SOCKET connect_to_management_port (void) {
 
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    sock_addr.sin_port = htons(N2N_EDGE_MGMT_PORT);
+    sock_addr.sin_port = htons(rrr->port);
     if(0 != connect(ret, (struct sockaddr *)&sock_addr, sizeof(sock_addr)))
         return -1;
 
@@ -346,7 +362,7 @@ BOOL WINAPI term_handler(DWORD sig)
     static int called = 0;
 
     if(called) {
-        traceEvent(TRACE_NORMAL, "ok, I am leaving now");
+        traceEvent(TRACE_NORMAL, "ok, leaving now");
         _exit(0);
     } else {
         traceEvent(TRACE_NORMAL, "shutting down...");
@@ -382,9 +398,58 @@ int kbhit () {
 
 // -------------------------------------------------------------------------------------------------------
 
+static void help (int level) {
+
+    if(level == 0) return; /* no help required */
+
+    printf("n2n-route [-t <manangement_port>] [-p <management_port_password>] <new gateway>"
+        "\n"
+        "\n           This tool sets new routes for all the traffic to be routed via the"
+        "\n           <new gateway> and polls the management port of a local n2n edge for"
+        "\n           it can add routes to supernodes and peers via the original default"
+        "\n           gateway. Adapt port (default: %d) and password (default: '%s')"
+        "\n           to match your edge's configuration."
+      "\n\n",
+           N2N_EDGE_MGMT_PORT, N2N_MGMT_PASSWORD);
+
+    exit(0);
+}
+
+
+static int set_option (n2n_route_conf_t *rrr, int optkey, char *optargument) {
+
+    /* traceEvent(TRACE_NORMAL, "option %c = %s", optkey, optargument ? optargument : ""); */
+
+    switch(optkey) {
+        case 't': /* management port */ {
+            uint16_t port = atoi(optargument);
+            if(port) {
+                rrr->port = port;
+            }
+            break;
+        }
+
+        case 'p': /* management port password string */ {
+            rrr->password = optargument;
+            break;
+        }
+
+        default: /* unknown option */ {
+            return 1; /* for help */
+        }
+    }
+
+   return 0;
+}
+
+
+// -------------------------------------------------------------------------------------------------------
+
 
 int main (int argc, char* argv[]) {
 
+    n2n_route_conf_t rrr;
+    uint8_t c;
     SOCKET sock;
     size_t msg_len;
     char udp_buf[N2N_PKT_BUF_SIZE];
@@ -398,16 +463,42 @@ int main (int argc, char* argv[]) {
     json_object_t *json;
     int ret;
     int tag_info, tag_route_ip;
-    struct in_addr addr, edge, gateway_org, gateway_vpn, addr_tmp;
+    struct in_addr addr, edge, gateway_org, addr_tmp;
     ipstr_t ip_str;
-
     n2n_route_t *routes = NULL;
     n2n_route_t *route, *tmp_route;
 
 
+    // init
     n2n_srand(n2n_seed());
+    setTraceLevel(7); /* defaults to 2 */
+    rrr.gateway_vpn = inet_address("");
+    rrr.password = N2N_MGMT_PASSWORD;
+    rrr.port = N2N_EDGE_MGMT_PORT;
 
+    print_n2n_version();
+
+    // get command line options and eventually overwrite initialized conf
+    while((c = getopt_long(argc, argv, "t:p:", NULL, NULL))) {
+        if(c == 255) break;
+        help(set_option(&rrr, c, optarg));
+    }
+
+    // get mandatory gateway from command line
+    if(argv[optind]) {
+        rrr.gateway_vpn = inet_address(argv[optind]);
+    }
+    // output help if still invalid
+    help(!inet_address_valid(rrr.gateway_vpn));
+
+    // verify conf
+    // !!!
+
+    // additional checks
     // !!! can we check if forwarding is enabled and, if not so,  warn the user?
+
+    // output status
+
 
     // handle signals to properly end the tool
 #ifdef __linux__
@@ -419,43 +510,37 @@ int main (int argc, char* argv[]) {
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
-// !!! evaluate some cli parameters, e.g. for port, password, additional manual routes for dns or so, gateway to use
-// -t management port
-// -p port
-// -r route
-// -g regular gateway
-//    new gateway (some n2n node)
-
     // set new default route
     route = calloc(1, sizeof(n2n_route_t));
-    gateway_vpn = inet_address(NEW_GATEWAY);
     if(route) {
-        fill_route(route, inet_address("0.0.0.0"), inet_address("128.0.0.0"), gateway_vpn);
+        fill_route(route, inet_address("0.0.0.0"), inet_address("128.0.0.0"), rrr.gateway_vpn);
         route->purgeable = UNPURGEABLE;
         HASH_ADD(hh, routes, net_addr, sizeof(struct in_addr), route);
         handle_route(route, ROUTE_ADD);
     }
     route = calloc(1, sizeof(n2n_route_t));
     if(route) {
-        fill_route(route, inet_address("128.0.0.0"), inet_address("128.0.0.0"), gateway_vpn);
+        fill_route(route, inet_address("128.0.0.0"), inet_address("128.0.0.0"), rrr.gateway_vpn);
         route->purgeable = UNPURGEABLE;
         HASH_ADD(hh, routes, net_addr, sizeof(route->net_addr), route);
         handle_route(route, ROUTE_ADD);
     }
 
-    sock = connect_to_management_port();
-    if(sock == -1)
+    traceEvent(TRACE_NORMAL, "connecting to edge management port %d\n", rrr.port);
+    sock = connect_to_management_port(&rrr);
+    if(sock == -1) {
+        traceEvent(TRACE_ERROR, "unable to open socket for management port connection\n");
         goto end_route_tool;
+    }
 
 reset_main_loop:
     wait_time.tv_sec = SOCKET_TIMEOUT;
     wait_time.tv_usec = 0;
-    edge.s_addr = INADDR_NONE;
-    addr_tmp.s_addr = INADDR_NONE;
-    gateway_org.s_addr = INADDR_NONE;
+    edge = inet_address("");
+    addr_tmp = inet_address("");
+    gateway_org = inet_address("");
     tag_info = 0;
     tag_route_ip = 0;
-
 
     // main loop
     // read answer packet by packet which are only accepted if a corresponding request was sent before
@@ -467,8 +552,8 @@ reset_main_loop:
 
         // check for (changed) default gateway from time to time (and initially)
         if(now > last_gateway_check + GATEWAY_INTERVAL) {
-            // determine the original default gateway
-            get_gateway_and_iface(&addr_tmp);
+            // determine the original default gateway excluding the VPN gateway from search
+            get_gateway_and_iface(&addr_tmp, &rrr.gateway_vpn);
             if(memcmp(&addr_tmp, &gateway_org, sizeof(gateway_org))) {
                 // store the detected change
                 gateway_org = addr_tmp;
@@ -484,7 +569,7 @@ reset_main_loop:
                 last_info_req = 0;
                 last_read_req = 0;
 
-                traceEvent(TRACE_NORMAL, "using default gateway %s\n",  inaddrtoa(ip_str, gateway_org));
+                traceEvent(TRACE_NORMAL, "using default gateway %s\n", inaddrtoa(ip_str, gateway_org));
             }
             last_gateway_check = now;
         }
@@ -504,7 +589,7 @@ reset_main_loop:
         if(now > last_read_req + REFRESH_INTERVAL) {
             // the following requests shall only be sent if we have a valid local edge ip address,
             // i.e. a valid answer to the info request
-            if(edge.s_addr != INADDR_NONE) {
+            if(inet_address_valid(edge)) {
 
                 // !!! send unsubscribe request to management port if required to re-subscribe
 
@@ -554,9 +639,12 @@ reset_main_loop:
             if(FD_ISSET(sock, &socket_mask)) {
                 msg_len = recv(sock, udp_buf, sizeof(udp_buf), 0);
                 if((msg_len > 0) && (msg_len < sizeof(udp_buf))) {
-                    // make sure it is a string
-                    udp_buf[msg_len] = 0;
-                    // handle the answer
+                    // make sure it is a string and without trailing newline or carriage return
+                    udp_buf[msg_len] = '\0';
+                    udp_buf[strcspn(udp_buf, "\r\n")] = '\0';
+                    traceEvent(TRACE_DEBUG, "received '%s' from management port\n", udp_buf);
+
+                    // handle the answer, json needs to be freed later
                     json = json_parse(udp_buf);
 
                     // look for local edge information, especially edge's local ip address
@@ -600,6 +688,7 @@ reset_main_loop:
                 }
             } else {
                 // can this happen? reset the loop
+                traceEvent(TRACE_WARNING, "loop reset");
                 goto reset_main_loop;
             }
         } else if(ret == 0) {
@@ -629,13 +718,12 @@ end_route_tool:
 }
 
 
-
 #else  /* ifdef __linux__  --  currently, Linux only !!! */
 
 
 int main (int argc, char* argv[]) {
 
-    traceEvent(TRACE_WARNING, "Currently, only Linux supported");
+    traceEvent(TRACE_WARNING, "Currently, only Linux is supported");
 
     return 0;
 }
