@@ -138,14 +138,14 @@ static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, si
       continue;
 
     len = sizeof(adapter_name);
-    err = RegQueryValueEx(key2, "NetCfgInstanceId", 0, 0, adapter_name, &len);
+    err = RegQueryValueEx(key2, "NetCfgInstanceId", 0, 0, &adapter_name, &len);
 
     RegCloseKey(key2);
 
     if(err)
       continue;
 
-    if(!strcmp(adapter_name, target_adapter)) {
+    if(!strcmp(&adapter_name, target_adapter)) {
       rv = 1;
       break;
     }
