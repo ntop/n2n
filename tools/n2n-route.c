@@ -38,14 +38,17 @@
 #define HOST_MASK              "255.255.255.255" /* <ip address>/32 */
 #define ROUTE_ADD              0
 #define ROUTE_DEL              1
+#define NO_DETECT              0
+#define AUTO_DETECT            1
 
 
 typedef struct n2n_route_conf {
-    struct in_addr    gateway_vpn;        /* gateway address */
+    struct in_addr    gateway_vpn;        /* vpn gateway address */
+    struct in_addr    gateway_org;        /* original default gateway used for peer/supernode traffic */
+    uint8_t           gateway_detect;     /* have the gateway automatically detected */
     char*             password;           /* pointer to management port password */
     uint16_t          port;               /* management port */
 } n2n_route_conf_t;
-
 
 typedef struct n2n_route {
     struct in_addr    net_addr;           /* network address to be routed, also key for hash table*/
@@ -60,7 +63,6 @@ typedef struct n2n_route {
 
 
 static int keep_running = 1;              /* for main loop, handled by signals */
-
 
 
 // -------------------------------------------------------------------------------------------------------
@@ -189,7 +191,7 @@ int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude
             if(inet_pton(AF_INET, gateway_address, gateway_addr)) {
                 // do not use the one to be excluded
                 if(!memcmp(gateway_addr, exclude, sizeof(*gateway_addr))) continue;
-                traceEvent(TRACE_NORMAL, "found default gateway %s on interface %s\n", gateway_address, interface);
+                traceEvent(TRACE_DEBUG, "found default gateway %s on interface %s", gateway_address, interface);
                 break;
             }
         }
@@ -281,11 +283,11 @@ void handle_route (n2n_route_t* in_route, int verb) {
                                   bitlen,
                                   inaddrtoa(gateway_ip_str, gateway->sin_addr));
     } else {
-        traceEvent(TRACE_NORMAL, "%s route to %s/%u via %s",
-                                 !verb ? "added" : "deleted",
-                                 inaddrtoa(dst_ip_str, dst->sin_addr),
-                                 bitlen,
-                                 inaddrtoa(gateway_ip_str, gateway->sin_addr));
+        traceEvent(TRACE_INFO, "%s route to %s/%u via %s",
+                               !verb ? "added" : "deleted",
+                               inaddrtoa(dst_ip_str, dst->sin_addr),
+                               bitlen,
+                               inaddrtoa(gateway_ip_str, gateway->sin_addr));
     }
 
     closesocket(sock);
@@ -402,13 +404,18 @@ static void help (int level) {
 
     if(level == 0) return; /* no help required */
 
-    printf("n2n-route [-t <manangement_port>] [-p <management_port_password>] <new gateway>"
+    printf("  n2n-route [-t <manangement_port>] [-p <management_port_password>] [-V] [-v]"
+        "\n           [-g <original default gateway>] <new gateway>"
         "\n"
         "\n           This tool sets new routes for all the traffic to be routed via the"
         "\n           <new gateway> and polls the management port of a local n2n edge for"
         "\n           it can add routes to supernodes and peers via the original default"
         "\n           gateway. Adapt port (default: %d) and password (default: '%s')"
         "\n           to match your edge's configuration."
+      "\n\n           If no <default gateway> provided, the tool will try to auto-detect."
+      "\n\n           Verbosity can be increased or decreased with -V or -v , repeat as"
+        "\n           as required."
+      "\n\n           Run with sufficient rights to let the tool add and delete routes."
       "\n\n",
            N2N_EDGE_MGMT_PORT, N2N_MGMT_PASSWORD);
 
@@ -418,19 +425,39 @@ static void help (int level) {
 
 static int set_option (n2n_route_conf_t *rrr, int optkey, char *optargument) {
 
-    /* traceEvent(TRACE_NORMAL, "option %c = %s", optkey, optargument ? optargument : ""); */
-
     switch(optkey) {
         case 't': /* management port */ {
             uint16_t port = atoi(optargument);
             if(port) {
                 rrr->port = port;
+            } else {
+                traceEvent(TRACE_WARNING, "invalid management port provided with '-t'");
             }
             break;
         }
 
         case 'p': /* management port password string */ {
             rrr->password = optargument;
+            break;
+        }
+
+        case 'g': /* user-provided original default route */ {
+            rrr->gateway_org = inet_address(optargument);
+            if(inet_address_valid(rrr->gateway_org)) {
+                rrr->gateway_detect = NO_DETECT;
+            } else {
+                traceEvent(TRACE_WARNING, "invalid original default gateway provided with '-g'");
+            }
+            break;
+        }
+
+        case 'V': /* more verbose */ {
+            setTraceLevel(getTraceLevel() + 1);
+            break;
+        }
+
+        case 'v': /* less verbose */ {
+            setTraceLevel(getTraceLevel() - 1);
             break;
         }
 
@@ -463,42 +490,44 @@ int main (int argc, char* argv[]) {
     json_object_t *json;
     int ret;
     int tag_info, tag_route_ip;
-    struct in_addr addr, edge, gateway_org, addr_tmp;
+    struct in_addr addr, edge, addr_tmp;
     ipstr_t ip_str;
     n2n_route_t *routes = NULL;
     n2n_route_t *route, *tmp_route;
 
-
-    // init
-    n2n_srand(n2n_seed());
-    setTraceLevel(7); /* defaults to 2 */
-    rrr.gateway_vpn = inet_address("");
-    rrr.password = N2N_MGMT_PASSWORD;
-    rrr.port = N2N_EDGE_MGMT_PORT;
-
+    // version
     print_n2n_version();
 
+    // init
+    rrr.gateway_vpn = inet_address("");
+    rrr.gateway_org = inet_address("");
+    rrr.gateway_detect = AUTO_DETECT;
+    rrr.password = N2N_MGMT_PASSWORD;
+    rrr.port = N2N_EDGE_MGMT_PORT;
+    setTraceLevel(2); /* NORMAL, should already be default */
+    n2n_srand(n2n_seed());
+
     // get command line options and eventually overwrite initialized conf
-    while((c = getopt_long(argc, argv, "t:p:", NULL, NULL))) {
+    while((c = getopt_long(argc, argv, "t:p:g:vV", NULL, NULL)) != '?') {
         if(c == 255) break;
         help(set_option(&rrr, c, optarg));
     }
 
-    // get mandatory gateway from command line
+    // get mandatory vpn gateway from command line and ...
     if(argv[optind]) {
         rrr.gateway_vpn = inet_address(argv[optind]);
     }
-    // output help if still invalid
+    // ... output help if invalid
     help(!inet_address_valid(rrr.gateway_vpn));
 
-    // verify conf
-    // !!!
+    // verify conf and react with output to conf-related changes
+    if(rrr.gateway_detect == NO_DETECT) {
+        traceEvent(TRACE_NORMAL, "using default gateway %s", inaddrtoa(ip_str, rrr.gateway_org));
+    }
 
     // additional checks
     // !!! can we check if forwarding is enabled and, if not so,  warn the user?
-
-    // output status
-
+    // !!! can we check for sufficient rights for adding/deleting routes?
 
     // handle signals to properly end the tool
 #ifdef __linux__
@@ -510,7 +539,16 @@ int main (int argc, char* argv[]) {
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
+    // connect to mamagement port
+    traceEvent(TRACE_NORMAL, "connecting to edge management port %d", rrr.port);
+    sock = connect_to_management_port(&rrr);
+    if(sock == -1) {
+        traceEvent(TRACE_ERROR, "unable to open socket for management port connection");
+        goto end_route_tool;
+    }
+
     // set new default route
+    // REVISIT: can we do this in main loop and repeatedly check if it needs to be renewed?
     route = calloc(1, sizeof(n2n_route_t));
     if(route) {
         fill_route(route, inet_address("0.0.0.0"), inet_address("128.0.0.0"), rrr.gateway_vpn);
@@ -526,19 +564,15 @@ int main (int argc, char* argv[]) {
         handle_route(route, ROUTE_ADD);
     }
 
-    traceEvent(TRACE_NORMAL, "connecting to edge management port %d\n", rrr.port);
-    sock = connect_to_management_port(&rrr);
-    if(sock == -1) {
-        traceEvent(TRACE_ERROR, "unable to open socket for management port connection\n");
-        goto end_route_tool;
-    }
+    // output status
+    traceEvent(TRACE_NORMAL, "press ENTER to end the program");
 
 reset_main_loop:
+
     wait_time.tv_sec = SOCKET_TIMEOUT;
     wait_time.tv_usec = 0;
     edge = inet_address("");
     addr_tmp = inet_address("");
-    gateway_org = inet_address("");
     tag_info = 0;
     tag_route_ip = 0;
 
@@ -550,13 +584,13 @@ reset_main_loop:
         // current time
         now = time(NULL);
 
-        // check for (changed) default gateway from time to time (and initially)
-        if(now > last_gateway_check + GATEWAY_INTERVAL) {
+        // in case of AUTO_DETECT, check for (changed) default gateway from time to time (and initially)
+        if((rrr.gateway_detect == AUTO_DETECT) && (now > last_gateway_check + GATEWAY_INTERVAL)) {
             // determine the original default gateway excluding the VPN gateway from search
             get_gateway_and_iface(&addr_tmp, &rrr.gateway_vpn);
-            if(memcmp(&addr_tmp, &gateway_org, sizeof(gateway_org))) {
+            if(memcmp(&addr_tmp, &rrr.gateway_org, sizeof(rrr.gateway_org))) {
                 // store the detected change
-                gateway_org = addr_tmp;
+                rrr.gateway_org = addr_tmp;
                 // delete all purgeable routes as they are still relying on old original default gateway
                 HASH_ITER(hh, routes, route, tmp_route) {
                     if((route->purgeable == PURGEABLE)) {
@@ -569,7 +603,7 @@ reset_main_loop:
                 last_info_req = 0;
                 last_read_req = 0;
 
-                traceEvent(TRACE_NORMAL, "using default gateway %s\n", inaddrtoa(ip_str, gateway_org));
+                traceEvent(TRACE_NORMAL, "using default gateway %s", inaddrtoa(ip_str, rrr.gateway_org));
             }
             last_gateway_check = now;
         }
@@ -597,7 +631,7 @@ reset_main_loop:
                 while(!(tag_route_ip = ((uint32_t)n2n_rand()) >> 23)); /* >> 23: tags too long can crash the mgmt */
                 msg_len = 0;
                 msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
-                                    "s %u:1:%s peer\n", tag_route_ip, N2N_MGMT_PASSWORD);
+                                    "s %u:1:%s peer\n", tag_route_ip, rrr.password);
                 // !!! something smashes the edge when sending subscritpion request or when edge sends event
                 // !!! ret = send(sock, udp_buf, msg_len, 0);
 
@@ -642,7 +676,7 @@ reset_main_loop:
                     // make sure it is a string and without trailing newline or carriage return
                     udp_buf[msg_len] = '\0';
                     udp_buf[strcspn(udp_buf, "\r\n")] = '\0';
-                    traceEvent(TRACE_DEBUG, "received '%s' from management port\n", udp_buf);
+                    traceEvent(TRACE_DEBUG, "received '%s' from management port", udp_buf);
 
                     // handle the answer, json needs to be freed later
                     json = json_parse(udp_buf);
@@ -656,6 +690,8 @@ reset_main_loop:
                                 edge = addr;
                                 // do we need it beyond output?
                                 traceEvent(TRACE_NORMAL, "found %s being edge's IP address", inaddrtoa(ip_str, addr));
+// !!!
+// check for consistency with rrr.gateway_vpn, requires bitlen of edge address, maybe some net-address-mask field in info string, and WARN user
                             }
                         }
                     }
@@ -672,7 +708,7 @@ reset_main_loop:
                             else
                                HASH_DEL(routes, route);
                             if(route) {
-                                fill_route(route, addr, inet_address(HOST_MASK), gateway_org);
+                                fill_route(route, addr, inet_address(HOST_MASK), rrr.gateway_org);
                                 route->purgeable = PURGEABLE;
                                 if(!(route->last_seen)) {
                                     handle_route(route, ROUTE_ADD);
@@ -688,7 +724,7 @@ reset_main_loop:
                 }
             } else {
                 // can this happen? reset the loop
-                traceEvent(TRACE_WARNING, "loop reset");
+                traceEvent(TRACE_ERROR, "loop reset");
                 goto reset_main_loop;
             }
         } else if(ret == 0) {
