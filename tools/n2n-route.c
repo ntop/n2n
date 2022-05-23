@@ -38,7 +38,7 @@
 
 #define LOWER_HALF             "0.0.0.0"
 #define UPPER_HALF             "128.0.0.0"
-#define MASK_HALF              "128.0.0.0"
+#define MASK_HALF              "128.0.0.0"       /* <ip address>/1  */
 #define HOST_MASK              "255.255.255.255" /* <ip address>/32 */
 #define ROUTE_ADD              0
 #define ROUTE_DEL              1
@@ -131,7 +131,7 @@ static void term_handler (int sig) {
 // with modifications
 // originally licensed under GPLV2, Apache, and/or MIT
 
-#define RTLINK_BUFFER_SIZE 4096
+#define RTLINK_BUFFER_SIZE 8192
 
 int find_default_gateway (struct in_addr *gateway_addr, struct in_addr *exclude) {
 
@@ -446,10 +446,10 @@ static void help (int level) {
     if(level == 0) return; /* no help required */
 
     printf("  n2n-route [-t <manangement_port>] [-p <management_port_password>] [-V] [-v]"
-        "\n           [-g <default gateway>] [-n <network address>/bitlen]  <new gateway>"
+         "\n            [-g <default gateway>] [-n <network address>/bitlen] <vpn gateway>"
         "\n"
         "\n           This tool sets new routes for all the traffic to be routed via the"
-        "\n           <new gateway> and polls the management port of a local n2n edge for"
+        "\n           <vpn gateway> and polls the management port of a local n2n edge for"
         "\n           it can add routes to supernodes and peers via the original default"
         "\n           gateway. Adapt port (default: %d) and password (default: '%s')"
         "\n           to match your edge's configuration."
@@ -457,7 +457,7 @@ static void help (int level) {
       "\n\n           To not route all traffic through vpn, inidicate the networks to be"
         "\n           routed with '-n' option and use as many as required."
       "\n\n           Verbosity can be increased or decreased with -V or -v , repeat as"
-        "\n           as required."
+        "\n           as needed."
       "\n\n           Run with sufficient rights to let the tool add and delete routes."
       "\n\n",
            N2N_EDGE_MGMT_PORT, N2N_MGMT_PASSWORD);
@@ -494,7 +494,7 @@ static int set_option (n2n_route_conf_t *rrr, int optkey, char *optargument) {
             break;
         }
 
-        case 'n': /* user-provided original default route */ {
+        case 'n': /* user-provided network to be routed */ {
             char cidr_net[64], bitlen;
             n2n_route_t *route;
             struct in_addr mask;
@@ -596,6 +596,7 @@ int main (int argc, char* argv[]) {
     }
     // ... output help if invalid
     help(!inet_address_valid(rrr.gateway_vpn));
+    traceEvent(TRACE_NORMAL, "using vpn gateway %s", inaddrtoa(ip_str, rrr.gateway_vpn));
 
     // verify conf and react with output to conf-related changes
     if(rrr.gateway_detect == NO_DETECT) {
