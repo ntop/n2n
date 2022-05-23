@@ -46,14 +46,6 @@
 #define AUTO_DETECT            1
 
 
-typedef struct n2n_route_conf {
-    struct in_addr    gateway_vpn;        /* vpn gateway address */
-    struct in_addr    gateway_org;        /* original default gateway used for peer/supernode traffic */
-    uint8_t           gateway_detect;     /* have the gateway automatically detected */
-    char*             password;           /* pointer to management port password */
-    uint16_t          port;               /* management port */
-} n2n_route_conf_t;
-
 typedef struct n2n_route {
     struct in_addr    net_addr;           /* network address to be routed, also key for hash table*/
     struct in_addr    net_mask;           /* network address mask */
@@ -64,6 +56,15 @@ typedef struct n2n_route {
 
     UT_hash_handle    hh;                 /* makes this structure hashable */
 } n2n_route_t;
+
+typedef struct n2n_route_conf {
+    struct in_addr    gateway_vpn;        /* vpn gateway address */
+    struct in_addr    gateway_org;        /* original default gateway used for peer/supernode traffic */
+    uint8_t           gateway_detect;     /* have the gateway automatically detected */
+    char*             password;           /* pointer to management port password */
+    uint16_t          port;               /* management port */
+    n2n_route_t       *routes;            /* list of routes */
+} n2n_route_conf_t;
 
 
 static int keep_running = 1;              /* for main loop, handled by signals */
@@ -445,7 +446,7 @@ static void help (int level) {
     if(level == 0) return; /* no help required */
 
     printf("  n2n-route [-t <manangement_port>] [-p <management_port_password>] [-V] [-v]"
-        "\n           [-g <original default gateway>] <new gateway>"
+        "\n           [-g <default gateway>] [-n <network address>/bitlen]  <new gateway>"
         "\n"
         "\n           This tool sets new routes for all the traffic to be routed via the"
         "\n           <new gateway> and polls the management port of a local n2n edge for"
@@ -453,6 +454,8 @@ static void help (int level) {
         "\n           gateway. Adapt port (default: %d) and password (default: '%s')"
         "\n           to match your edge's configuration."
       "\n\n           If no <default gateway> provided, the tool will try to auto-detect."
+      "\n\n           To not route all traffic through vpn, inidicate the networks to be"
+        "\n           routed with '-n' option and use as many as required."
       "\n\n           Verbosity can be increased or decreased with -V or -v , repeat as"
         "\n           as required."
       "\n\n           Run with sufficient rights to let the tool add and delete routes."
@@ -487,6 +490,37 @@ static int set_option (n2n_route_conf_t *rrr, int optkey, char *optargument) {
                 rrr->gateway_detect = NO_DETECT;
             } else {
                 traceEvent(TRACE_WARNING, "invalid original default gateway provided with '-g'");
+            }
+            break;
+        }
+
+        case 'n': /* user-provided original default route */ {
+            char cidr_net[64], bitlen;
+            n2n_route_t *route;
+            struct in_addr mask;
+
+            if(sscanf(optargument, "%63[^/]/%hhd", cidr_net, &bitlen) != 2) {
+                traceEvent(TRACE_WARNING, "bad cidr network format '%d'", optargument);
+                return 1;
+            }
+            if((bitlen < 0) || (bitlen > 32)) {
+                traceEvent(TRACE_WARNING, "bad prefix '%d' in '%s'", bitlen, optargument);
+                return 1;
+            }
+            if(!inet_address_valid(inet_address(cidr_net))) {
+                traceEvent(TRACE_WARNING, "bad network '%s' in '%s'", cidr_net, optargument);
+                return 1;
+            }
+
+            traceEvent(TRACE_NORMAL, "routing %s/%d", cidr_net, bitlen);
+
+            route = calloc(1, sizeof(*route));
+            if(route) {
+                mask.s_addr = htonl(bitlen2mask(bitlen));
+                // gateway is unknown at this point, will be rectified later
+                fill_route(route, inet_address(cidr_net), mask, inet_address(""));
+                HASH_ADD(hh, rrr->routes, net_addr, sizeof(route->net_addr), route);
+                // will be added to system table later
             }
             break;
         }
@@ -532,23 +566,26 @@ int main (int argc, char* argv[]) {
     int tag_info, tag_route_ip;
     struct in_addr addr, edge, edge_netmask, addr_tmp;
     ipstr_t ip_str;
-    n2n_route_t *routes = NULL;
     n2n_route_t *route, *tmp_route;
 
     // version
     print_n2n_version();
 
-    // init
+    // handle signals to properly end the tool
+    set_term_handler(term_handler);
+
+    // init data structure
     rrr.gateway_vpn = inet_address("");
     rrr.gateway_org = inet_address("");
     rrr.gateway_detect = AUTO_DETECT;
     rrr.password = N2N_MGMT_PASSWORD;
     rrr.port = N2N_EDGE_MGMT_PORT;
+    rrr.routes = NULL;
     setTraceLevel(2); /* NORMAL, should already be default */
     n2n_srand(n2n_seed());
 
     // get command line options and eventually overwrite initialized conf
-    while((c = getopt_long(argc, argv, "t:p:g:vV", NULL, NULL)) != '?') {
+    while((c = getopt_long(argc, argv, "t:p:g:n:vV", NULL, NULL)) != '?') {
         if(c == 255) break;
         help(set_option(&rrr, c, optarg));
     }
@@ -564,6 +601,28 @@ int main (int argc, char* argv[]) {
     if(rrr.gateway_detect == NO_DETECT) {
         traceEvent(TRACE_NORMAL, "using default gateway %s", inaddrtoa(ip_str, rrr.gateway_org));
     }
+    // if nothing else set, set new default route
+    if(!rrr.routes) {
+        route = calloc(1, sizeof(n2n_route_t));
+        if(route) {
+            traceEvent(TRACE_NORMAL, "routing 0.0.0.1/1");
+            fill_route(route, inet_address(LOWER_HALF), inet_address(MASK_HALF), rrr.gateway_vpn);
+            HASH_ADD(hh, rrr.routes, net_addr, sizeof(route->net_addr), route);
+        }
+        route = calloc(1, sizeof(n2n_route_t));
+        if(route) {
+            traceEvent(TRACE_NORMAL, "routing 128.0.0.1/1");
+            fill_route(route, inet_address(UPPER_HALF), inet_address(MASK_HALF), rrr.gateway_vpn);
+            HASH_ADD(hh, rrr.routes, net_addr, sizeof(route->net_addr), route);
+        }
+    }
+    // set gateway for all so far present routes as '-n'-provided do not have it yet,
+    // make them UNPURGEABLE and add them to system table
+    HASH_ITER(hh, rrr.routes, route, tmp_route) {
+        route->gateway = rrr.gateway_vpn;
+        route->purgeable = UNPURGEABLE;
+        handle_route(route, ROUTE_ADD);
+    }
 
     // additional checks
     // check for sufficient rights for adding/deleting routes
@@ -572,34 +631,12 @@ int main (int argc, char* argv[]) {
     }
     // REVISIT: can we check if forwarding is enabled and, if not so,  warn the user?
 
-    // handle signals to properly end the tool
-    set_term_handler(term_handler);
-
     // connect to mamagement port
     traceEvent(TRACE_NORMAL, "connecting to edge management port %d", rrr.port);
     sock = connect_to_management_port(&rrr);
     if(sock == -1) {
         traceEvent(TRACE_ERROR, "unable to open socket for management port connection");
         goto end_route_tool;
-    }
-
-    // set new default route
-    // REVISIT: can we do this in main loop and repeatedly check if it needs to be renewed?
-    //          or even better, check all routes for still being in system table from time to time?
-    //          or even apply some rtlink magic to get notified on route changes?
-    route = calloc(1, sizeof(n2n_route_t));
-    if(route) {
-        fill_route(route, inet_address(LOWER_HALF), inet_address(MASK_HALF), rrr.gateway_vpn);
-        route->purgeable = UNPURGEABLE;
-        HASH_ADD(hh, routes, net_addr, sizeof(struct in_addr), route);
-        handle_route(route, ROUTE_ADD);
-    }
-    route = calloc(1, sizeof(n2n_route_t));
-    if(route) {
-        fill_route(route, inet_address(UPPER_HALF), inet_address(MASK_HALF), rrr.gateway_vpn);
-        route->purgeable = UNPURGEABLE;
-        HASH_ADD(hh, routes, net_addr, sizeof(route->net_addr), route);
-        handle_route(route, ROUTE_ADD);
     }
 
     // output status
@@ -631,10 +668,10 @@ reset_main_loop:
                 // store the detected change
                 rrr.gateway_org = addr_tmp;
                 // delete all purgeable routes as they are still relying on old original default gateway
-                HASH_ITER(hh, routes, route, tmp_route) {
+                HASH_ITER(hh, rrr.routes, route, tmp_route) {
                     if((route->purgeable == PURGEABLE)) {
                         handle_route(route, ROUTE_DEL);
-                        HASH_DEL(routes, route);
+                        HASH_DEL(rrr.routes, route);
                         free(route);
                     }
                 }
@@ -692,14 +729,17 @@ reset_main_loop:
         // purge the routes from time to time
         if(now > last_purge + PURGE_INTERVAL) {
             last_purge = now;
-            HASH_ITER(hh, routes, route, tmp_route) {
+            HASH_ITER(hh, rrr.routes, route, tmp_route) {
                 if((route->purgeable == PURGEABLE) && (now > route->last_seen + REMOVE_ROUTE_AGE)) {
                     handle_route(route, ROUTE_DEL);
-                    HASH_DEL(routes, route);
+                    HASH_DEL(rrr.routes, route);
                     free(route);
                 }
             }
         }
+
+        // REVISIT: check all routes from rrr.routes for still being in system table from time to time?
+        //          or even apply some rtlink magic to get notified on route changes?
 
         // wait for any answer to info or read request
         FD_ZERO(&socket_mask);
@@ -753,11 +793,11 @@ reset_main_loop:
                         if(ret == (WITH_ADDRESS | CORRECT_TAG)) {
                             // add to hash list if required
                             traceEvent(TRACE_DEBUG, "received information about %s to be routed via default gateway", inaddrtoa(ip_str, addr));
-                            HASH_FIND(hh, routes, &addr, sizeof(route->net_addr), route);
+                            HASH_FIND(hh, rrr.routes, &addr, sizeof(route->net_addr), route);
                             if(!route)
                                 route = calloc(1, sizeof(n2n_route_t));
                             else
-                               HASH_DEL(routes, route);
+                               HASH_DEL(rrr.routes, route);
                             if(route) {
                                 fill_route(route, addr, inet_address(HOST_MASK), rrr.gateway_org);
                                 route->purgeable = PURGEABLE;
@@ -765,7 +805,7 @@ reset_main_loop:
                                     handle_route(route, ROUTE_ADD);
                                 }
                                 route->last_seen = now;
-                                HASH_ADD(hh, routes, net_addr, sizeof(route->net_addr), route);
+                                HASH_ADD(hh, rrr.routes, net_addr, sizeof(route->net_addr), route);
                             }
                         }
                     }
@@ -785,7 +825,6 @@ reset_main_loop:
             // select() error
             // action required?
         }
-
     }
 
     // REVISIT: send unsubscribe request to management port if required
@@ -793,9 +832,9 @@ reset_main_loop:
 end_route_tool:
 
     // delete all routes
-    HASH_ITER(hh, routes, route, tmp_route) {
+    HASH_ITER(hh, rrr.routes, route, tmp_route) {
         handle_route(route, ROUTE_DEL);
-        HASH_DEL(routes, route);
+        HASH_DEL(rrr.routes, route);
         free(route);
     }
     // close connection
