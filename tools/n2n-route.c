@@ -19,7 +19,8 @@
 
 #include "n2n.h"
 
-#ifdef __linux__  /* currently, Linux only !!! */
+
+#ifdef __linux__  /* currently, Linux only */
 
 
 #include <net/route.h>
@@ -35,6 +36,9 @@
 #define PURGE_INTERVAL         30
 #define REMOVE_ROUTE_AGE       75
 
+#define LOWER_HALF             "0.0.0.0"
+#define UPPER_HALF             "128.0.0.0"
+#define MASK_HALF              "128.0.0.0"
 #define HOST_MASK              "255.255.255.255" /* <ip address>/32 */
 #define ROUTE_ADD              0
 #define ROUTE_DEL              1
@@ -66,26 +70,71 @@ static int keep_running = 1;              /* for main loop, handled by signals *
 
 
 // -------------------------------------------------------------------------------------------------------
+// PLATFORM-DEPENDANT CODE
+
+
+// taken from https://stackoverflow.com/questions/4159910/check-if-user-is-root-in-c
+int is_privileged (void) {
+
+    uid_t euid = geteuid();
+
+    return euid == 0;
+}
+
+
+// -------------------------------------------------------------------------------------------------------
+// PLATFORM-DEPENDANT CODE
+
+
+void set_term_handler(const void *handler) {
+
+#ifdef __linux__
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGTERM, handler);
+    signal(SIGINT, handler);
+#endif
+#ifdef WIN32 /* the beginning of Windows support ...? */
+    SetConsoleCtrlHandler(handler, TRUE);
+#endif
+}
+
+
+#ifdef WIN32 /* the beginning of Windows support ...? */
+BOOL WINAPI term_handler (DWORD sig) {
+#else
+static void term_handler (int sig) {
+#endif
+
+    static int called = 0;
+
+    if(called) {
+        traceEvent(TRACE_NORMAL, "ok, leaving now");
+        _exit(0);
+    } else {
+        traceEvent(TRACE_NORMAL, "shutting down...");
+        called = 1;
+    }
+
+    keep_running = 0;
+#ifdef WIN32 /* the beginning of Windows support ...? */
+    return TRUE;
+#endif
+}
+
+
+// -------------------------------------------------------------------------------------------------------
+// PLATFORM-DEPENDANT CODE
 
 
 // taken from https://gist.github.com/javiermon/6272065
-// with modifications, originally licensed under GPLV2, Apache, and MIT
+// with modifications
+// originally licensed under GPLV2, Apache, and/or MIT
 
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <net/if.h>
+#define RTLINK_BUFFER_SIZE 4096
 
-#define BUFFER_SIZE 4096
+int find_default_gateway (struct in_addr *gateway_addr, struct in_addr *exclude) {
 
-
-int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude) {
-
+    int     ret = 0;
     int     received_bytes = 0, msg_len = 0, route_attribute_len = 0;
     SOCKET  sock = -1;
     int     msgseq = 0;
@@ -94,19 +143,20 @@ int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude
     struct  rtattr *route_attribute; /* this contains route attributes (route type) */
     ipstr_t gateway_address;
     devstr_t interface;
-    char    msgbuf[BUFFER_SIZE], buffer[BUFFER_SIZE];
+    char    msgbuf[RTLINK_BUFFER_SIZE], buffer[RTLINK_BUFFER_SIZE];
     char    *ptr = buffer;
     struct timeval tv;
 
     if((sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) < 0) {
         traceEvent(TRACE_WARNING, "error from socket() while determining gateway");
+        // return immediately
         return EXIT_FAILURE;
     }
 
     memset(msgbuf, 0, sizeof(msgbuf));
+    memset(buffer, 0, sizeof(buffer));
     memset(gateway_address, 0, sizeof(gateway_address));
     memset(interface, 0, sizeof(interface));
-    memset(buffer, 0, sizeof(buffer));
 
     // point the header and the msg structure pointers into the buffer
     nlmsg = (struct nlmsghdr*)msgbuf;
@@ -125,7 +175,8 @@ int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude
     // send msg
     if (send(sock, nlmsg, nlmsg->nlmsg_len, 0) < 0) {
         traceEvent(TRACE_WARNING, "error from send() while determining gateway");
-        return EXIT_FAILURE;
+        ret = EXIT_FAILURE;
+        goto find_default_gateway_end;
     }
 
     // receive response
@@ -133,7 +184,8 @@ int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude
         received_bytes = recv(sock, ptr, sizeof(buffer) - msg_len, 0);
         if(received_bytes < 0) {
             traceEvent(TRACE_WARNING, "error from recv() while determining gateway");
-            return EXIT_FAILURE;
+            ret = EXIT_FAILURE;
+            goto find_default_gateway_end;
         }
 
         nlh = (struct nlmsghdr *) ptr;
@@ -141,8 +193,9 @@ int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude
         // check if the header is valid
         if((NLMSG_OK(nlmsg, received_bytes) == 0) ||
            (nlmsg->nlmsg_type == NLMSG_ERROR)) {
-            traceEvent(TRACE_WARNING, "error in received paket while determining gateway");
-            return EXIT_FAILURE;
+            traceEvent(TRACE_WARNING, "error in received packet while determining gateway");
+            ret = EXIT_FAILURE;
+            goto find_default_gateway_end;
         }
 
         // if we received all data break
@@ -170,6 +223,8 @@ int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude
         route_attribute = (struct rtattr*)RTM_RTA(route_entry);
         route_attribute_len = RTM_PAYLOAD(nlh);
 
+        gateway_address[0] = '\0';
+        interface[0] = '\0';
         // loop through all attributes
         for( ; RTA_OK(route_attribute, route_attribute_len);
                route_attribute = RTA_NEXT(route_attribute, route_attribute_len)) {
@@ -190,52 +245,25 @@ int get_gateway_and_iface (struct in_addr *gateway_addr, struct in_addr *exclude
             // REVISIT: inet_ntop followed by inet_pton... maybe not too elegant
             if(inet_pton(AF_INET, gateway_address, gateway_addr)) {
                 // do not use the one to be excluded
-                if(!memcmp(gateway_addr, exclude, sizeof(*gateway_addr))) continue;
-                traceEvent(TRACE_DEBUG, "found default gateway %s on interface %s", gateway_address, interface);
+                if(!memcmp(gateway_addr, exclude, sizeof(*gateway_addr)))
+                    continue;
+                traceEvent(TRACE_DEBUG, "assuming default gateway %s on interface %s",
+                                        gateway_address, interface);
                 break;
             }
         }
+
     }
+
+find_default_gateway_end:
+
     closesocket(sock);
-
-    return 0;
+    return ret;
 }
 
 
 // -------------------------------------------------------------------------------------------------------
-
-
-// applies inet_pton on input string and returns address struct-in_addr-typed address
-struct in_addr inet_address (char* in) {
-
-    struct in_addr out;
-
-    if(inet_pton(AF_INET, in, &out) <= 0) {
-        out.s_addr = INADDR_NONE;
-    }
-
-    return out;
-}
-
-
-int inet_address_valid (struct in_addr in) {
-
-    if(in.s_addr == INADDR_NONE)
-        return 0;
-    else
-        return 1;
-}
-
-
-// -------------------------------------------------------------------------------------------------------
-
-
-void fill_route (n2n_route_t* route, struct in_addr net_addr, struct in_addr net_mask, struct in_addr gateway) {
-
-    route->net_addr = net_addr;
-    route->net_mask = net_mask;
-    route->gateway = gateway;
-}
+// PLATFORM-DEPENDANT CODE
 
 
 /* adds (verb == ROUTE_ADD) or deletes (verb == ROUTE_DEL) a route */
@@ -291,6 +319,45 @@ void handle_route (n2n_route_t* in_route, int verb) {
     }
 
     closesocket(sock);
+}
+
+
+// -------------------------------------------------------------------------------------------------------
+
+
+void fill_route (n2n_route_t* route, struct in_addr net_addr, struct in_addr net_mask, struct in_addr gateway) {
+
+    route->net_addr = net_addr;
+    route->net_mask = net_mask;
+    route->gateway = gateway;
+}
+
+
+// applies inet_pton on input string and returns address struct-in_addr-typed address
+struct in_addr inet_address (char* in) {
+
+    struct in_addr out;
+
+    if(inet_pton(AF_INET, in, &out) <= 0) {
+        out.s_addr = INADDR_NONE;
+    }
+
+    return out;
+}
+
+
+int inet_address_valid (struct in_addr in) {
+
+    if(in.s_addr == INADDR_NONE)
+        return 0;
+    else
+        return 1;
+}
+
+
+int same_subnet (struct in_addr addr0, struct in_addr addr1, struct in_addr subnet) {
+
+    return (addr0.s_addr & subnet.s_addr) == (addr1.s_addr & subnet.s_addr);
 }
 
 
@@ -354,34 +421,6 @@ int get_addr_from_json (struct in_addr *addr, json_object_t *json, char *key, in
 // -------------------------------------------------------------------------------------------------------
 
 
-#if defined(__linux__) || defined(WIN32)
-#ifdef WIN32
-BOOL WINAPI term_handler(DWORD sig)
-#else
-    static void term_handler(int sig)
-#endif
-{
-    static int called = 0;
-
-    if(called) {
-        traceEvent(TRACE_NORMAL, "ok, leaving now");
-        _exit(0);
-    } else {
-        traceEvent(TRACE_NORMAL, "shutting down...");
-        called = 1;
-    }
-
-    keep_running = 0;
-#ifdef WIN32
-    return(TRUE);
-#endif
-}
-#endif /* defined(__linux__) || defined(WIN32) */
-
-
-// -------------------------------------------------------------------------------------------------------
-
-
 // taken from https://web.archive.org/web/20170407122137/http://cc.byexamples.com/2007/04/08/non-blocking-user-input-in-loop-without-ncurses/
 int kbhit () {
 
@@ -399,6 +438,7 @@ int kbhit () {
 
 
 // -------------------------------------------------------------------------------------------------------
+
 
 static void help (int level) {
 
@@ -490,7 +530,7 @@ int main (int argc, char* argv[]) {
     json_object_t *json;
     int ret;
     int tag_info, tag_route_ip;
-    struct in_addr addr, edge, addr_tmp;
+    struct in_addr addr, edge, edge_netmask, addr_tmp;
     ipstr_t ip_str;
     n2n_route_t *routes = NULL;
     n2n_route_t *route, *tmp_route;
@@ -526,18 +566,14 @@ int main (int argc, char* argv[]) {
     }
 
     // additional checks
-    // !!! can we check if forwarding is enabled and, if not so,  warn the user?
-    // !!! can we check for sufficient rights for adding/deleting routes?
+    // check for sufficient rights for adding/deleting routes
+    if(!is_privileged()) {
+        traceEvent(TRACE_WARNING, "did not detect sufficient privileges to exercise route control");
+    }
+    // REVISIT: can we check if forwarding is enabled and, if not so,  warn the user?
 
     // handle signals to properly end the tool
-#ifdef __linux__
-    signal(SIGPIPE, SIG_IGN);
-    signal(SIGTERM, term_handler);
-    signal(SIGINT, term_handler);
-#endif
-#ifdef WIN32
-    SetConsoleCtrlHandler(term_handler, TRUE);
-#endif
+    set_term_handler(term_handler);
 
     // connect to mamagement port
     traceEvent(TRACE_NORMAL, "connecting to edge management port %d", rrr.port);
@@ -549,16 +585,18 @@ int main (int argc, char* argv[]) {
 
     // set new default route
     // REVISIT: can we do this in main loop and repeatedly check if it needs to be renewed?
+    //          or even better, check all routes for still being in system table from time to time?
+    //          or even apply some rtlink magic to get notified on route changes?
     route = calloc(1, sizeof(n2n_route_t));
     if(route) {
-        fill_route(route, inet_address("0.0.0.0"), inet_address("128.0.0.0"), rrr.gateway_vpn);
+        fill_route(route, inet_address(LOWER_HALF), inet_address(MASK_HALF), rrr.gateway_vpn);
         route->purgeable = UNPURGEABLE;
         HASH_ADD(hh, routes, net_addr, sizeof(struct in_addr), route);
         handle_route(route, ROUTE_ADD);
     }
     route = calloc(1, sizeof(n2n_route_t));
     if(route) {
-        fill_route(route, inet_address("128.0.0.0"), inet_address("128.0.0.0"), rrr.gateway_vpn);
+        fill_route(route, inet_address(UPPER_HALF), inet_address(MASK_HALF), rrr.gateway_vpn);
         route->purgeable = UNPURGEABLE;
         HASH_ADD(hh, routes, net_addr, sizeof(route->net_addr), route);
         handle_route(route, ROUTE_ADD);
@@ -572,6 +610,7 @@ reset_main_loop:
     wait_time.tv_sec = SOCKET_TIMEOUT;
     wait_time.tv_usec = 0;
     edge = inet_address("");
+    edge_netmask = inet_address("");
     addr_tmp = inet_address("");
     tag_info = 0;
     tag_route_ip = 0;
@@ -587,7 +626,7 @@ reset_main_loop:
         // in case of AUTO_DETECT, check for (changed) default gateway from time to time (and initially)
         if((rrr.gateway_detect == AUTO_DETECT) && (now > last_gateway_check + GATEWAY_INTERVAL)) {
             // determine the original default gateway excluding the VPN gateway from search
-            get_gateway_and_iface(&addr_tmp, &rrr.gateway_vpn);
+            find_default_gateway(&addr_tmp, &rrr.gateway_vpn);
             if(memcmp(&addr_tmp, &rrr.gateway_org, sizeof(rrr.gateway_org))) {
                 // store the detected change
                 rrr.gateway_org = addr_tmp;
@@ -625,15 +664,16 @@ reset_main_loop:
             // i.e. a valid answer to the info request
             if(inet_address_valid(edge)) {
 
-                // !!! send unsubscribe request to management port if required to re-subscribe
+                // REVISIT: send unsubscribe request to management port if required to re-subscribe
 
                 // send subscribe request to management port, generate fresh tag
                 while(!(tag_route_ip = ((uint32_t)n2n_rand()) >> 23)); /* >> 23: tags too long can crash the mgmt */
                 msg_len = 0;
                 msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                                     "s %u:1:%s peer\n", tag_route_ip, rrr.password);
-                // !!! something smashes the edge when sending subscritpion request or when edge sends event
-                // !!! ret = send(sock, udp_buf, msg_len, 0);
+                // REVISIT:  something smashes the edge when sending subscritpion request or when edge sends event
+                //           so, the subscription request is not sent yet
+                // ret = send(sock, udp_buf, msg_len, 0);
 
                 // send read requests to management port with same tag
                 msg_len = 0;
@@ -673,25 +713,36 @@ reset_main_loop:
             if(FD_ISSET(sock, &socket_mask)) {
                 msg_len = recv(sock, udp_buf, sizeof(udp_buf), 0);
                 if((msg_len > 0) && (msg_len < sizeof(udp_buf))) {
-                    // make sure it is a string and without trailing newline or carriage return
+                    // make sure it is a string and replace all newlines with spaces
                     udp_buf[msg_len] = '\0';
-                    udp_buf[strcspn(udp_buf, "\r\n")] = '\0';
+                    for (char *p = udp_buf; (p = strchr(p, '\n')) != NULL; p++) *p = ' ';
                     traceEvent(TRACE_DEBUG, "received '%s' from management port", udp_buf);
 
                     // handle the answer, json needs to be freed later
                     json = json_parse(udp_buf);
 
-                    // look for local edge information, especially edge's local ip address
+                    // look for local edge information
                     if(tag_info) {
+                        // local IP address (for information)
                         ret = get_addr_from_json(&addr, json, "ip4addr", tag_info, 0);
                         if(ret == (WITH_ADDRESS | CORRECT_TAG)) {
                             traceEvent(TRACE_DEBUG, "received information about %s being edge's IP address", inaddrtoa(ip_str, addr));
                             if(memcmp(&edge, &addr, sizeof(edge))) {
                                 edge = addr;
-                                // do we need it beyond output?
                                 traceEvent(TRACE_NORMAL, "found %s being edge's IP address", inaddrtoa(ip_str, addr));
-// !!!
-// check for consistency with rrr.gateway_vpn, requires bitlen of edge address, maybe some net-address-mask field in info string, and WARN user
+                            }
+                        }
+                        // local netmask
+                        ret = get_addr_from_json(&addr, json, "ip4netmask", tag_info, 0);
+                        if(ret == (WITH_ADDRESS | CORRECT_TAG)) {
+                            traceEvent(TRACE_DEBUG, "received information about %s being edge's IP netmask", inaddrtoa(ip_str, addr));
+                            if(memcmp(&edge_netmask, &addr, sizeof(edge_netmask))) {
+                                edge_netmask = addr;
+                                traceEvent(TRACE_NORMAL, "found %s being edge's IP netmask", inaddrtoa(ip_str, addr));
+                                // check if vpn gateway matches edge information and warn user if not so
+                                if(!same_subnet(edge, rrr.gateway_vpn, edge_netmask)) {
+                                    traceEvent(TRACE_WARNING, "vpn gateway and edge do not share the same subnet");
+                                }
                             }
                         }
                     }
@@ -737,7 +788,7 @@ reset_main_loop:
 
     }
 
-    // !!! send unsubscribe request to management port if required
+    // REVISIT: send unsubscribe request to management port if required
 
 end_route_tool:
 
@@ -754,15 +805,16 @@ end_route_tool:
 }
 
 
-#else  /* ifdef __linux__  --  currently, Linux only !!! */
+#else  /* ifdef __linux__  --  currently, Linux only */
 
 
 int main (int argc, char* argv[]) {
 
-    traceEvent(TRACE_WARNING, "Currently, only Linux is supported");
+    traceEvent(TRACE_WARNING, "currently, only Linux is supported");
+    traceEvent(TRACE_WARNING, "if you want to port to other OS, please find the source code having clearly marked the platform-dependant portions");
 
     return 0;
 }
 
 
-#endif /* ifdef __linux__  --  currently, Linux only !!! */
+#endif /* ifdef __linux__  --  currently, Linux only */

@@ -163,9 +163,13 @@ static void mgmt_edges (mgmt_req_t *req, strbuf_t *buf) {
 static void mgmt_edge_info (mgmt_req_t *req, strbuf_t *buf) {
     size_t msg_len;
     macstr_t mac_buf;
-    struct in_addr ip_addr;
+    struct in_addr ip_addr, ip_addr_mask;
+    ipstr_t ip_address, ip_address_mask;
 
     ip_addr.s_addr = req->eee->device.ip_addr;
+    inaddrtoa(ip_address, ip_addr);
+    ip_addr_mask.s_addr = req->eee->device.device_mask;
+    inaddrtoa(ip_address_mask, ip_addr_mask);
 
     msg_len = snprintf(buf->str, buf->size,
                        "{"
@@ -173,11 +177,12 @@ static void mgmt_edge_info (mgmt_req_t *req, strbuf_t *buf) {
                        "\"_type\":\"row\","
                        "\"version\":\"%s\","
                        "\"macaddr\":\"%s\","
-                       "\"ip4addr\":\"%s\"}\n",
+                       "\"ip4addr\":\"%s\","
+                       "\"ip4netmask\":\"%s\"}\n",
                        req->tag,
                        PACKAGE_VERSION,
                        is_null_mac(req->eee->device.mac_addr) ? "" : macaddr_str(mac_buf, req->eee->device.mac_addr),
-                       inet_ntoa(ip_addr));
+                       ip_address, ip_address_mask);
 
     send_reply(req, buf, msg_len);
 }
