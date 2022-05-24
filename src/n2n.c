@@ -165,7 +165,19 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
 
 }
 
+
 /* *********************************************** */
+
+
+/* stringify in_addr type to ipstr_t */
+char* inaddrtoa (ipstr_t out, struct in_addr addr) {
+
+    if(!inet_ntop(AF_INET, &addr, out, sizeof(ipstr_t)))
+        out[0] = '\0';
+
+    return out;
+}
+
 
 /* addr should be in network order. Things are so much simpler that way. */
 char* intoa (uint32_t /* host order */ addr, char* buf, uint16_t buf_len) {
@@ -623,7 +635,7 @@ size_t purge_peer_list (struct peer_info **peer_list,
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
-        if((scan->purgeable == SN_PURGEABLE) && (scan->last_seen < purge_before)) {
+        if((scan->purgeable == PURGEABLE) && (scan->last_seen < purge_before)) {
             if((scan->socket_fd >=0) && (scan->socket_fd != socket_not_to_close)) {
                 if(tcp_connections) {
                     HASH_FIND_INT(*tcp_connections, &scan->socket_fd, conn);
@@ -653,7 +665,7 @@ size_t clear_peer_list (struct peer_info ** peer_list) {
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
-        if (scan->purgeable == SN_UNPURGEABLE && scan->ip_addr) {
+        if (scan->purgeable == UNPURGEABLE && scan->ip_addr) {
             free(scan->ip_addr);
         }
         HASH_DEL(*peer_list, scan);

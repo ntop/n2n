@@ -379,7 +379,7 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
         if(comm != NULL) {
             comm_init(comm, cmn_str);
             /* loaded from file, this community is unpurgeable */
-            comm->purgeable = COMMUNITY_UNPURGEABLE;
+            comm->purgeable = UNPURGEABLE;
             /* we do not know if header encryption is used in this community,
              * first packet will show. just in case, setup the key. */
             comm->header_encryption = HEADER_ENCRYPTION_UNKNOWN;
@@ -766,7 +766,7 @@ int sn_init_defaults (n2n_sn_t *sss) {
         sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
         /* enable the flag for federation */
         sss->federation->is_federation = IS_FEDERATION;
-        sss->federation->purgeable = COMMUNITY_UNPURGEABLE;
+        sss->federation->purgeable = UNPURGEABLE;
         /* header encryption enabled by default */
         sss->federation->header_encryption = HEADER_ENCRYPTION_ENABLED;
         /*setup the encryption key */
@@ -1443,7 +1443,7 @@ static int purge_expired_communities (n2n_sn_t *sss,
             }
         }
 
-        if((comm->edges == NULL) && (comm->purgeable == COMMUNITY_PURGEABLE)) {
+        if((comm->edges == NULL) && (comm->purgeable == PURGEABLE)) {
             traceEvent(TRACE_INFO, "purging idle community %s", comm->community);
             if(NULL != comm->header_encryption_ctx_static) {
                 /* this should not happen as 'purgeable' and thus only communities w/o encrypted header here */
@@ -1909,7 +1909,7 @@ static int process_udp (n2n_sn_t * sss,
                     comm->header_encryption_ctx_static = NULL;
                     comm->header_encryption_ctx_dynamic = NULL;
                     /* ... and also are purgeable during periodic purge */
-                    comm->purgeable = COMMUNITY_PURGEABLE;
+                    comm->purgeable = PURGEABLE;
                     comm->number_enc_packets = 0;
                     HASH_ADD_STR(sss->communities, community, comm);
 
