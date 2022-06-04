@@ -264,6 +264,8 @@ add_executable(n2n-keygen tools/n2n-keygen.c)
 target_link_libraries(n2n-keygen n2n)
 add_executable(n2n-route tools/n2n-route.c)
 target_link_libraries(n2n-route n2n)
+add_executable(n2n-portfwd tools/n2n-portfwd.c)
+target_link_libraries(n2n-portfwd n2n)
 
 add_executable(tests-auth tools/tests-auth.c)
 target_link_libraries(tests-auth n2n)
