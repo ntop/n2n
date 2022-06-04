@@ -62,7 +62,6 @@ AS_IF([test "x$enable_miniupnp" != xno],
     [AC_CHECK_LIB([miniupnpc], [upnpDiscover],
         [
             AC_DEFINE([HAVE_MINIUPNP], [1], [Have miniupnp library])
-            AC_DEFINE([HAVE_PORT_FORWARDING],[1],[upnp libs are used])
             N2N_LIBS="-lminiupnpc ${N2N_LIBS}"
         ],
         [AC_MSG_ERROR([miniupnp library not found])]
@@ -76,7 +75,6 @@ AS_IF([test "x$enable_natpmp" != xno],
     [AC_CHECK_LIB([natpmp], [initnatpmp],
         [
             AC_DEFINE([HAVE_NATPMP], [1], [Have natpmp library])
-            AC_DEFINE([HAVE_PORT_FORWARDING],[1],[upnp libs are used])
             N2N_LIBS="-lnatpmp ${N2N_LIBS}"
         ],
         [AC_MSG_ERROR([natpmp library not found])]
