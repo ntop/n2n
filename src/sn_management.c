@@ -355,7 +355,7 @@ int process_mgmt (n2n_sn_t *sss,
 
         ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                             "%s '%s'\n",
-                            (community->is_federation) ? "FEDERATION" : ((community->purgeable == COMMUNITY_UNPURGEABLE) ? "FIXED NAME COMMUNITY" : "COMMUNITY"),
+                            (community->is_federation) ? "FEDERATION" : ((community->purgeable == UNPURGEABLE) ? "FIXED NAME COMMUNITY" : "COMMUNITY"),
                             (community->is_federation) ? "-/-" : community->community);
         sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
         ressize = 0;
@@ -366,7 +366,7 @@ int process_mgmt (n2n_sn_t *sss,
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                                 "%4u | %-19s | %-17s | %-21s %-3s | %-15s | %9s\n",
                                 ++num,
-                                (peer->dev_addr.net_addr == 0) ? ((peer->purgeable == SN_UNPURGEABLE) ? "-l" : "") : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
+                                (peer->dev_addr.net_addr == 0) ? ((peer->purgeable == UNPURGEABLE) ? "-l" : "") : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                                 (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                                 sock_to_cstr(sockbuf, &(peer->sock)),
                                 ((peer->socket_fd >= 0) && (peer->socket_fd != sss->sock)) ? "TCP" : "",

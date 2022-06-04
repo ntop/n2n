@@ -33,7 +33,7 @@ The [TAP Configuration Guide](TapConfiguration.md) contains hints on various set
 
 ## Routing the Traffic
 
-Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`-n`). Details can be found in the [Routing document](Routing.md).
+Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs providing options for packet forwarding (`-r`) including broadcasts (`-E`) as well as temporarily modifying the routing table (`tools/n2n-route`). Details can be found in the [Routing document](Routing.md).
 
 
 ## Traffic Restrictions

@@ -12,14 +12,16 @@ In order to enable routing, the `server` must be configured as follows:
 2. Enable packet forwarding with `sudo sysctl -w net.ipv4.ip_forward=1`
 3. Enable IP masquerading: `sudo iptables -t nat -A POSTROUTING -j MASQUERADE`
 
-On the client side, the easiest way to configure routing is via the `-n` option. For example:
+On the client side, the easiest way to configure routing is via the `tools/n2n-route` utility. For example:
 
-- In order to connect to the remote network `192.168.100.0/24`, use `-n 192.168.100.0/24:10.0.0.1`
-- In order to tunnel all the internet traffic, use `-n 0.0.0.0/0:10.0.0.1`
+- In order to tunnel all the internet traffic, use `tools/n2n-route 10.0.0.1`
+- In order to connect to the remote network `192.168.100.0/24`, use `tools/n2n-route -n 192.168.100.0/24 10.0.0.1`
 
 10.0.0.1 is the IP address of the gateway to use to route the specified network. It should correspond to the IP address of the `server` within n2n. Multiple `-n` options can be specified.
 
-As an alternative to the `-n` option, the `ip route` linux command can be manually used. See the [n2n-gateway.sh](scripts/n2n-gateway.sh) script for an example. See also the following description of other use cases and in depth explanation.
+The utility connects to the local edge's management port to receive information about peers and supernodes. It currently works on Linux only.
+
+As an alternative to the `tools/n2n-route` utility, the `ip route` linux command can be manually used. See the [n2n-gateway.sh](scripts/n2n-gateway.sh) script for an example. See also the following description of other use cases and in depth explanation.
 
 ## Special Scenarios
 

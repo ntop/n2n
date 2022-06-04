@@ -162,6 +162,8 @@
 #include "n2n_port_mapping.h"
 #endif // HAVE_MINIUPNP || HAVE_NATPMP
 
+#include "json.h"
+
 /* ************************************** */
 
 #include "header_encryption.h"
@@ -210,6 +212,7 @@ void tuntap_close (struct tuntap_dev *tuntap);
 void tuntap_get_address (struct tuntap_dev *tuntap);
 
 /* Utils */
+char* inaddrtoa (ipstr_t out, struct in_addr addr);
 char* intoa (uint32_t addr, char* buf, uint16_t buf_len);
 uint32_t bitlen2mask (uint8_t bitlen);
 uint8_t mask2bitlen (uint32_t mask);
