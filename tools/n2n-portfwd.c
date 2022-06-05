@@ -255,7 +255,7 @@ int main (int argc, char* argv[]) {
     json_object_t *json;
     int ret;
     int tag_info;
-    uint16_t port, current_port;
+    uint16_t port = 0, current_port = 0;
 
     // version
     print_n2n_version();
@@ -347,12 +347,12 @@ reset_main_loop:
                             traceEvent(TRACE_DEBUG, "received information about %d being edge's port", port);
                             // evaluate current situation and take appropriate action
                             if(port != current_port) {
+                                traceEvent(TRACE_NORMAL, "found %d being edge's port", current_port);
                                 if(current_port)
                                     n2n_del_port_mapping(current_port);
                                 if(port)
                                     n2n_set_port_mapping(port);
                                 current_port = port;
-                                traceEvent(TRACE_NORMAL, "found %d being edge's port", current_port);
                             }
                         }
                     }
@@ -375,6 +375,10 @@ reset_main_loop:
     }
 
 end_route_tool:
+
+    // delete port forwarding if any
+    if(current_port)
+        n2n_del_port_mapping(current_port);
 
     // close connection
     closesocket(sock);
