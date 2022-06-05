@@ -25,7 +25,7 @@
 
 #ifdef HAVE_MINIUPNP
 #ifdef CMAKE_BUILD
-// CMAKE uses staticly linked lib as submodule which requires different includes than
+// CMAKE uses statically linked lib as submodule which requires different includes than
 //       the dynamically linked, intalled library in case of plain make
 #include <miniupnpc.h>
 #include <upnpcommands.h>
