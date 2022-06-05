@@ -211,6 +211,7 @@ static void help (int level) {
                "[--management-password <pw>] "
             "\n                      "
                "[-v] "
+               "[-V] "
 #ifndef WIN32
             "\n                      "
                "[-u <numerical user id>] "
@@ -238,6 +239,7 @@ static void help (int level) {
           "\n                      [-f]  do not fork but run in foreground"
 #endif
           "\n                      [-v]  make more verbose, repeat as required"
+          "\n                      [-V]  make less verbose, repeat as required"
           "\n                      "
 
           "\n  -h    shows this quick reference including all available options"
@@ -332,6 +334,7 @@ static void help (int level) {
         printf(" --management_...  | management port password, defaults to '%s'\n"
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
+        printf(" -V                | make less verbose, repeat as required\n");
 #ifndef WIN32
         printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
         printf(" -g <GID>          | numeric group ID to use when privileges are dropped\n");
@@ -732,6 +735,11 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             setTraceLevel(getTraceLevel() + 1);
             break;
 
+        case 'V': /* less verbose */ {
+            setTraceLevel(getTraceLevel() - 1);
+            break;
+        }
+
         case 'R': /* network traffic filter */ {
             filter_rule_t *new_rule = malloc(sizeof(filter_rule_t));
             memset(new_rule, 0, sizeof(filter_rule_t));
@@ -787,7 +795,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
     u_char c;
 
     while ((c = getopt_long(argc, argv,
-                            "k:a:c:Eu:g:m:M:s:d:l:p:fvhrt:i:I:J:P:S::DL:z::A::Hn:R:e:"
+                            "k:a:c:Eu:g:m:M:s:d:l:p:fvVhrt:i:I:J:P:S::DL:z::A::Hn:R:e:"
 #ifdef __linux__
                             "T:"
 #endif
