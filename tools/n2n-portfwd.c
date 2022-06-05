@@ -26,6 +26,10 @@
 #define SOCKET_TIMEOUT          2
 #define INFO_INTERVAL           5
 
+#ifdef WIN32
+#define FILENO_STDIN            _fileno(stdin)
+#endif
+
 
 typedef struct n2n_portfwd_conf {
     uint16_t          port;               /* management port */
@@ -177,7 +181,7 @@ int kbhit () {
     tv.tv_usec = 0;
     FD_ZERO(&fds);
     FD_SET(STDIN_FILENO, &fds); //STDIN_FILENO is 0
-    select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+    select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
 
     return FD_ISSET(STDIN_FILENO, &fds);
 }
@@ -344,10 +348,10 @@ reset_main_loop:
                         port = 0;
                         ret = get_port_from_json(&port, json, "sockaddr", tag_info, 0);
                         if(ret == (WITH_PORT | CORRECT_TAG)) {
-                            traceEvent(TRACE_DEBUG, "received information about %d being edge's port", port);
+                            traceEvent(TRACE_DEBUG, "received information about edge port %d", port);
                             // evaluate current situation and take appropriate action
                             if(port != current_port) {
-                                traceEvent(TRACE_NORMAL, "found %d being edge's port", current_port);
+                                traceEvent(TRACE_NORMAL, "found edge port %d", port);
                                 if(current_port)
                                     n2n_del_port_mapping(current_port);
                                 if(port)
