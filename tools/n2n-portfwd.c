@@ -82,37 +82,6 @@ static void term_handler (int sig) {
 // -------------------------------------------------------------------------------------------------------
 
 
-// applies inet_pton on input string and returns address struct-in_addr-typed address
-struct in_addr inet_address (char* in) {
-
-    struct in_addr out;
-
-    if(inet_pton(AF_INET, in, &out) <= 0) {
-        out.s_addr = INADDR_NONE;
-    }
-
-    return out;
-}
-
-
-int inet_address_valid (struct in_addr in) {
-
-    if(in.s_addr == INADDR_NONE)
-        return 0;
-    else
-        return 1;
-}
-
-
-int same_subnet (struct in_addr addr0, struct in_addr addr1, struct in_addr subnet) {
-
-    return (addr0.s_addr & subnet.s_addr) == (addr1.s_addr & subnet.s_addr);
-}
-
-
-// -------------------------------------------------------------------------------------------------------
-
-
 SOCKET connect_to_management_port (n2n_portfwd_conf_t *ppp) {
 
     SOCKET ret;
@@ -263,6 +232,22 @@ int main (int argc, char* argv[]) {
 
     // version
     print_n2n_version();
+
+    // ensure prerequisites
+#ifndef HAVE_MINIUPNP
+    traceEvent(TRACE_WARNING, "no miniupnp support compiled");
+#else
+    traceEvent(TRACE_NORMAL, "compiled with miniupnp support");
+#endif
+#ifndef HAVE_NATPMP
+    traceEvent(TRACE_WARNING, "no natpmp support compiled");
+#else
+    traceEvent(TRACE_NORMAL, "compiled with natpmp support");
+#endif
+#if !defined(HAVE_MINIUPNP) && !defined(HAVE_NATPMP)
+    traceEvent(TRACE_WARNING, "no port forwarding method found");
+    return -1;
+#endif
 
     // handle signals to properly end the tool
     set_term_handler(term_handler);
