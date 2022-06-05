@@ -20,13 +20,12 @@
 #ifndef _N2N_PORT_MAPPING_H_
 #define _N2N_PORT_MAPPING_H_
 
-#ifdef HAVE_PORT_FORWARDING
 
 #include <stdint.h>
 
 #ifdef HAVE_MINIUPNP
 #ifdef CMAKE_BUILD
-// CMAKE uses static linked lib as submodule which requires different includes than
+// CMAKE uses statically linked lib as submodule which requires different includes than
 //       the dynamically linked, intalled library in case of plain make
 #include <miniupnpc.h>
 #include <upnpcommands.h>
@@ -44,8 +43,8 @@
 #endif // HAVE_NATPMP
 
 
-void n2n_chg_port_mapping (struct n2n_edge *eee, const uint16_t port);
+void n2n_set_port_mapping (const uint16_t port);
+void n2n_del_port_mapping (const uint16_t port);
 
 
-#endif // HAVE_PORT_FORWARDING
 #endif // _N2N_PORT_MAPPING_H_

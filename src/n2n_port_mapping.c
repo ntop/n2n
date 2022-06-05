@@ -56,7 +56,6 @@
 
 #include "n2n.h"
 
-#ifdef HAVE_PORT_FORWARDING
 
 #ifdef HAVE_MINIUPNP
 
@@ -463,9 +462,12 @@ static int n2n_natpmp_del_port_mapping (const uint16_t port) {
 #endif // HAVE_NATPMP
 
 
+// static
 // ----------------------------------------------------------------------------------------------------
+// public
 
-static void n2n_set_port_mapping (const uint16_t port) {
+
+void n2n_set_port_mapping (const uint16_t port) {
 
 #ifdef HAVE_NATPMP
     // since the NAT-PMP protocol is more concise than UPnP, NAT-PMP is preferred.
@@ -479,7 +481,7 @@ static void n2n_set_port_mapping (const uint16_t port) {
 }
 
 
-static void n2n_del_port_mapping (const uint16_t port) {
+void n2n_del_port_mapping (const uint16_t port) {
 
 #ifdef HAVE_NATPMP
     if(n2n_natpmp_del_port_mapping(port))
@@ -490,151 +492,3 @@ static void n2n_del_port_mapping (const uint16_t port) {
 #endif // HAVE_MINIUPNP
     }
 }
-
-
-// static
-// ----------------------------------------------------------------------------------------------------
-// public
-
-
-#ifdef HAVE_PTHREAD /* future management port subscriptions will deprecate the following temporary code */
-void n2n_chg_port_mapping (struct n2n_edge *eee, uint16_t port) {
-    // write a port change request to param struct, it will be handled in the thread
-    pthread_mutex_lock(&eee->port_map_parameter->access);
-    eee->port_map_parameter->new_port = port;
-    pthread_mutex_unlock(&eee->port_map_parameter->access);
-
-}
-#else
-#error "enabling port mapping requires enabling pthread"
-#endif
-
-
-N2N_THREAD_RETURN_DATATYPE port_map_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
-
-#ifdef HAVE_PTHREAD /* future management port subscriptions will deprecate the following temporary code */
-    n2n_port_map_parameter_t *param = (n2n_port_map_parameter_t*)p;
-
-    while(1) {
-        sleep(2);
-        pthread_mutex_lock(&param->access);
-        if(param->mapped_port != param->new_port) {
-            if(param->mapped_port)
-                n2n_del_port_mapping(param->mapped_port);
-            if(param->new_port)
-                n2n_set_port_mapping(param->new_port);
-            param->mapped_port = param->new_port;
-        }
-        pthread_mutex_unlock(&param->access);
-    }
-#endif
-
-#if 0 /* to be used with future management port subscriptions */
-    n2n_port_map_parameter_t *param = (n2n_port_map_parameter_t*)p;
-    SOCKET socket_fd;
-    fd_set socket_mask;
-    struct timeval wait_time;
-    int ret = 0;
-    char udp_buf[N2N_PKT_BUF_SIZE];
-    ssize_t msg_len;
-    uint32_t addr_tmp = htonl(INADDR_LOOPBACK);
-    n2n_sock_t sock_tmp;
-    struct sockaddr_in sock;
-    socklen_t sock_len;
-
-    // open a new socket ...
-    socket_fd = open_socket(0 /* no specific port */, INADDR_LOOPBACK, 0 /* UDP */);
-    if(socket_fd < 0) {
-        traceEvent(TRACE_ERROR, "port_map_thread failed to open a socket to management port");
-        return 0;
-    }
-    // ... and connect to local mgmt port
-    sock_tmp.family = AF_INET;
-    memcpy(&sock_tmp.addr.v4, &addr_tmp, IPV4_SIZE);
-    sock_tmp.port = param->mgmt_port;
-    sock_len = sizeof(sock);
-    fill_sockaddr((struct sockaddr*)&sock, sock_len, &sock_tmp);
-    connect(socket_fd, (struct sockaddr*)&sock, sock_len);
-
-    // prepare a subscription request in 'udp_buf' of length 'msg_len'
-    // !!! dummy
-    udp_buf[0] = '\n';
-    msg_len = 1;
-    send(socket_fd, udp_buf, msg_len, 0 /*flags*/);
-    // note: 'msg_len' and 'sock' get re-used hereafter
-
-    while(1) {
-        FD_ZERO(&socket_mask);
-        FD_SET(socket_fd, &socket_mask);
-
-        wait_time.tv_sec = SOCKET_TIMEOUT_INTERVAL_SECS;
-        wait_time.tv_usec = 0;
-
-        ret = select(socket_fd + 1, &socket_mask, NULL, NULL, &wait_time);
-
-        if(ret > 0) {
-            if(FD_ISSET(socket_fd, &socket_mask)) {
-                // get the data
-                sock_len = sizeof(sock);
-                msg_len = recv(socket_fd, udp_buf, N2N_PKT_BUF_SIZE, 0 /*flags*/);
-
-                // check message format, first message could be the still buffered answer to the subscription request
-                // !!!
-                if(1 /* !!! correct message format */) {
-                    // delete an eventually previous port mapping
-                    if(param->mapped_port)
-                        n2n_del_port_mapping(param->mapped_port);
-                    // extract port from message and set accordingly if valid
-                    param->mapped_port = 0; // !!!
-                    if(param->mapped_port)
-                        n2n_set_port_mapping(param->mapped_port);
-                }
-            }
-        }
-    }
-#endif
-
-    return 0; /* should never happen */
-}
-
-
-int port_map_create_thread (n2n_port_map_parameter_t **param, uint16_t mgmt_port) {
-
-#ifdef HAVE_PTHREAD
-    int ret;
-
-    // create parameter structure
-    *param = (n2n_port_map_parameter_t*)calloc(1, sizeof(n2n_port_map_parameter_t));
-    if(*param) {
-        // initialize
-        (*param)->mgmt_port = mgmt_port;
-    } else {
-        traceEvent(TRACE_WARNING, "port_map_create_thread was unable to create parameter structure");
-        return -1;
-    }
-
-    // create thread
-    ret = pthread_create(&((*param)->id), NULL, port_map_thread, (void *)*param);
-    if(ret) {
-        traceEvent(TRACE_WARNING, "port_map_create_thread failed to create port mapping thread with error number %d", ret);
-        return -1;
-    }
-
-    return 0;
-#else
-    return -1;
-#endif
-}
-
-
-void port_map_cancel_thread (n2n_port_map_parameter_t *param) {
-
-#ifdef HAVE_PTHREAD
-    pthread_cancel(param->id);
-    if(param->mapped_port)
-        n2n_del_port_mapping(param->mapped_port);
-    free(param);
-#endif
-}
-
-#endif // HAVE_PORT_FORWARDING

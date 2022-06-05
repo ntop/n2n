@@ -165,6 +165,7 @@ static void mgmt_edge_info (mgmt_req_t *req, strbuf_t *buf) {
     macstr_t mac_buf;
     struct in_addr ip_addr, ip_addr_mask;
     ipstr_t ip_address, ip_address_mask;
+    n2n_sock_str_t sockbuf;
 
     ip_addr.s_addr = req->eee->device.ip_addr;
     inaddrtoa(ip_address, ip_addr);
@@ -178,11 +179,13 @@ static void mgmt_edge_info (mgmt_req_t *req, strbuf_t *buf) {
                        "\"version\":\"%s\","
                        "\"macaddr\":\"%s\","
                        "\"ip4addr\":\"%s\","
-                       "\"ip4netmask\":\"%s\"}\n",
+                       "\"ip4netmask\":\"%s\","
+                       "\"sockaddr\":\"%s\"}\n",
                        req->tag,
                        PACKAGE_VERSION,
                        is_null_mac(req->eee->device.mac_addr) ? "" : macaddr_str(mac_buf, req->eee->device.mac_addr),
-                       ip_address, ip_address_mask);
+                       ip_address, ip_address_mask,
+                       sock_to_cstr(sockbuf, &req->eee->conf.preferred_sock));
 
     send_reply(req, buf, msg_len);
 }

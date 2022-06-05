@@ -14,7 +14,7 @@ LDFLAGS+=-L..
 
 N2N_LIB=../libn2n.a
 
-TOOLS=n2n-benchmark n2n-keygen n2n-route
+TOOLS=n2n-benchmark n2n-keygen n2n-route n2n-portfwd
 TOOLS+=@ADDITIONAL_TOOLS@
 
 TESTS=tests-compress tests-elliptic tests-hashing tests-transform
@@ -27,6 +27,7 @@ all: $(TOOLS) $(TESTS)
 n2n-benchmark.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 n2n-route.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
+n2n-portfwd.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 
 n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../Makefile Makefile
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -lpcap -o $@
