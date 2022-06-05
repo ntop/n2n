@@ -163,14 +163,14 @@ static void help (int level) {
 
     if(level == 0) return; /* no help required */
 
-    printf("  n2n-portfwd [-t <manangement_port>] [-V] [-v]"
+    printf("  n2n-portfwd [-t <manangement_port>] [-v] [-V]"
         "\n"
         "\n           This tool tries to find a router in local network and asks it to"
         "\n           forward the edge's port(UDP and TCP) by sending corresponding"
         "\n           UPnP and PMP requests."
       "\n\n           Adapt port (default: %d) to match your edge's management port"
         "\n           configuration."
-      "\n\n           Verbosity can be increased or decreased with -V or -v , repeat as"
+      "\n\n           Verbosity can be increased or decreased with -v or -V , repeat as"
         "\n           as needed."
       "\n\n",
            N2N_EDGE_MGMT_PORT);
@@ -192,12 +192,12 @@ static int set_option (n2n_portfwd_conf_t *ppp, int optkey, char *optargument) {
             break;
         }
 
-        case 'V': /* more verbose */ {
+        case 'v': /* more verbose */ {
             setTraceLevel(getTraceLevel() + 1);
             break;
         }
 
-        case 'v': /* less verbose */ {
+        case 'V': /* less verbose */ {
             setTraceLevel(getTraceLevel() - 1);
             break;
         }

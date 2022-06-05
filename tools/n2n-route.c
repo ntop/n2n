@@ -445,7 +445,7 @@ static void help (int level) {
 
     if(level == 0) return; /* no help required */
 
-    printf("  n2n-route [-t <manangement_port>] [-p <management_port_password>] [-V] [-v]"
+    printf("  n2n-route [-t <manangement_port>] [-p <management_port_password>] [-v] [-V]"
          "\n            [-g <default gateway>] [-n <network address>/bitlen] <vpn gateway>"
         "\n"
         "\n           This tool sets new routes for all the traffic to be routed via the"
@@ -456,7 +456,7 @@ static void help (int level) {
       "\n\n           If no <default gateway> provided, the tool will try to auto-detect."
       "\n\n           To not route all traffic through vpn, inidicate the networks to be"
         "\n           routed with '-n' option and use as many as required."
-      "\n\n           Verbosity can be increased or decreased with -V or -v , repeat as"
+      "\n\n           Verbosity can be increased or decreased with -v or -V , repeat as"
         "\n           as needed."
       "\n\n           Run with sufficient rights to let the tool add and delete routes."
       "\n\n",
@@ -525,12 +525,12 @@ static int set_option (n2n_route_conf_t *rrr, int optkey, char *optargument) {
             break;
         }
 
-        case 'V': /* more verbose */ {
+        case 'v': /* more verbose */ {
             setTraceLevel(getTraceLevel() + 1);
             break;
         }
 
-        case 'v': /* less verbose */ {
+        case 'V': /* less verbose */ {
             setTraceLevel(getTraceLevel() - 1);
             break;
         }
