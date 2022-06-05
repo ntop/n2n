@@ -27,7 +27,7 @@
 #define INFO_INTERVAL           5
 
 #ifdef WIN32
-#define FILENO_STDIN            _fileno(stdin)
+#define STDIN_FILENO            _fileno(stdin)
 #endif
 
 
