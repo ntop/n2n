@@ -125,9 +125,6 @@ if(N2N_OPTION_USE_PORTMAPPING)
   add_subdirectory(${THIRD_PARTY_DIR}/libnatpmp libnatpmp)
   link_directories(${PROJECT_BINARY_DIR}/libnatpmp)
 
-  # Turns on the generic code for supporting either of the above
-  ADD_DEFINITIONS("-DHAVE_PORT_FORWARDING")
-
   # TODO:
   # - this is the odd one out, is it needed?
   include_directories(${PROJECT_BINARY_DIR}/lib_miniupnpc)
@@ -264,6 +261,8 @@ add_executable(n2n-keygen tools/n2n-keygen.c)
 target_link_libraries(n2n-keygen n2n)
 add_executable(n2n-route tools/n2n-route.c)
 target_link_libraries(n2n-route n2n)
+add_executable(n2n-portfwd tools/n2n-portfwd.c)
+target_link_libraries(n2n-portfwd n2n)
 
 add_executable(tests-auth tools/tests-auth.c)
 target_link_libraries(tests-auth n2n)

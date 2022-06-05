@@ -158,9 +158,7 @@
 #include "network_traffic_filter.h"
 #include "auth.h"
 
-#if defined(HAVE_MINIUPNP) || defined(HAVE_NATPMP)
 #include "n2n_port_mapping.h"
-#endif // HAVE_MINIUPNP || HAVE_NATPMP
 
 #include "json.h"
 
