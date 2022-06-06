@@ -19,7 +19,7 @@ On the client side, the easiest way to configure routing is via the `tools/n2n-r
 
 10.0.0.1 is the IP address of the gateway to use to route the specified network. It should correspond to the IP address of the `server` within n2n. Multiple `-n` options can be specified.
 
-The utility connects to the local edge's management port to receive information about peers and supernodes. It currently works on Linux only.
+The utility connects to the local edge's management port to receive information about peers and supernodes. It currently works on Linux only but certainly can be ported to other OS (the route handling code is quite OS dependant).
 
 As an alternative to the `tools/n2n-route` utility, the `ip route` linux command can be manually used. See the [n2n-gateway.sh](scripts/n2n-gateway.sh) script for an example. See also the following description of other use cases and in depth explanation.
 

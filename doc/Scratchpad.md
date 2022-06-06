@@ -28,7 +28,8 @@ rpmbuild -bb ./n2n.spec
 ### New Features
 
 - Enhanced management port JSON interface to let n2n interact with external tools
-- Added UPnP and PMP support at edge
+- Added `n2n-route` tool (Linux only so far)
+- Introduced `n2n-portfwd` tool to support UPnP and PMP port forwarding
 - Furthered the build system
 
 ### Improvements
