@@ -112,6 +112,7 @@ Here is a list of third-party projects connected to this repository:
 - n2n for Android: [hin2n](https://github.com/switch-iot/hin2n)
 - Docker images: [Docker Hub](https://hub.docker.com/r/supermock/supernode/)
 - Go bindings, management daemons and CLIs for n2n edges and supernodes, Docker, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n/)
+- Windows GUI (along with a custom version of n2n) but also working with regular n2n: [HappyNet](https://github.com/happynclient/happynwindows)
 
 ---
 

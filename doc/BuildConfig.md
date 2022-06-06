@@ -96,9 +96,7 @@ this is `apt-get install libnatpmp-dev`
 Enables the other kind of UPnP port mapping protocol.
 
 Turning on either of these two UPnP libraries will enable UPnP support within
-the edge.
-
-Both the natpmp and miniupnp depend on the pthread library being enabled.
+the n2n-portfwd tool.
 
 This option depends on the library being installed - on Debian and Ubuntu,
 this is `apt-get install libminiupnpc-dev`
