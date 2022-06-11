@@ -105,17 +105,14 @@ static int scan_address (char * ip_addr, size_t addr_size,
     if(!end)
         // no slash present -- default end
         end = s + strlen(s);
+    else
+	// slash is present. now, handle the sub-network address
+	sscanf(end + 1, "%u", &bitlen);
 
     strncpy(ip_addr, start, (size_t)MIN(end - start, addr_size - 1)); // ensure NULL term
 
-    if(end) {
-        // slash is present
-
-        // now, handle the sub-network address
-        sscanf(end + 1, "%u", &bitlen);
-        bitlen = htobe32(bitlen2mask(bitlen));
-        inet_ntop(AF_INET, &bitlen, netmask, netmask_size);
-    }
+    bitlen = htobe32(bitlen2mask(bitlen));
+    inet_ntop(AF_INET, &bitlen, netmask, netmask_size);
 
     return retval;
 }
