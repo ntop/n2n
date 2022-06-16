@@ -659,7 +659,7 @@ typedef struct n2n_edge_conf {
     char                     *encrypt_key;
     int                      register_interval;      /**< Interval for supernode registration, also used for UDP NAT hole punching. */
     int                      register_ttl;           /**< TTL for registration packet when UDP NAT hole punching through supernode. */
-    in_addr_t                bind_address;           /**< The address to bind to if provided (-b) */
+    in_addr_t                bind_address;           /**< The address to bind to if provided */
     n2n_sock_t               preferred_sock;         /**< propagated local sock for better p2p in LAN (-e) */
     uint8_t                  preferred_sock_auto;    /**< indicates desired auto detect for preferred sock */
     int                      local_port;
@@ -813,6 +813,7 @@ typedef struct n2n_sn {
     sn_stats_t                             stats;
     int                                    daemon;          /* If non-zero then daemonise. */
     n2n_mac_t                              mac_addr;
+    in_addr_t                              bind_address;    /* The address to bind to if provided */
     uint16_t                               lport;           /* Local UDP port to bind to. */
     uint16_t                               mport;           /* Management UDP port to bind to. */
     int                                    sock;            /* Main socket for UDP traffic with edges. */
