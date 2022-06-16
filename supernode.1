@@ -26,8 +26,9 @@ Lines starting with a "#" are ignored.
 An equal sign ('=') should be used between key and value. Example: -p=7777
 .SH OPTIONS FOR THE UNDERLYING NETWORK CONNECTION
 .TP
-\fB\-p \fR<\fIlocal_port\fR>, \fB\-\-local-port\fR=<\fIlocal_port\fR>
-listen on this fixed local UDP port, defaults to 7654
+\fB\-p \fR[<\fIlocal_ip_address\fR>:]<\fIlocal_port\fR>, \fB\-\-local-port\fR=...
+binds supernode to this fixed UDP port on 'any' local IP address, defaults to 7654.
+Optionally, the edge can bind to the provided local ip address only.
 .TP
 \fB\-F \fR<\fIfed_name\fR>
 name of the supernode's federation, defaults to '*Federation' (see also N2N_FEDERATION in ENVIRONMENT)

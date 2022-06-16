@@ -60,7 +60,7 @@ static void help (int level) {
         printf(" general usage:  supernode <config file> (see supernode.conf)\n"
            "\n"
                "            or   supernode "
-               "[-p <local port>] "
+               "[-p [<local bind ip address>:]<local port>] "
             "\n                           "
                "[-F <federation name>] "
             "\n options for under-        "
@@ -113,7 +113,8 @@ static void help (int level) {
         );
         printf (" OPTIONS FOR THE UNDERLYING NETWORK CONNECTION\n");
         printf (" ---------------------------------------------\n\n");
-        printf(" -p <local port>   | fixed local UDP port, defaults to %u\n", N2N_SN_LPORT_DEFAULT);
+        printf(" -p [<ip>:]<port>  | fixed local UDP port (defaults to %u) and optionally\n"
+               "                   | bind to sepcified local IP address only ('any' by default)\n", N2N_SN_LPORT_DEFAULT);
         printf(" -F <fed name>     | name of the supernode's federation, defaults to\n"
                "                   | '%s'\n", (char *)FEDERATION_NAME);
         printf(" -l <host:port>    | ip address or name, and port of known supernode\n");
@@ -167,14 +168,39 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
     //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
 
     switch(optkey) {
-        case 'p': /* local-port */
-            sss->lport = atoi(_optarg);
+        case 'p': { /* local-port */
+            char* colon = strpbrk(_optarg, ":");
+            if(colon) { /*ip address:port */
+                *colon = 0;
+                sss->bind_address = ntohl(inet_addr(_optarg));
+                sss->lport = atoi(++colon);
 
-            if(sss->lport == 0)
-                traceEvent(TRACE_WARNING, "bad local port format, defaulting to %u", N2N_SN_LPORT_DEFAULT);
-                // default is made sure in sn_init()
-
+                if(sss->bind_address == INADDR_NONE) {
+                    traceEvent(TRACE_WARNING, "bad address to bind to, binding to any IP address");
+                    sss->bind_address = INADDR_ANY;
+                }
+                if(sss->lport == 0) {
+                    traceEvent(TRACE_WARNING, "bad local port format, defaulting to %u", N2N_SN_LPORT_DEFAULT);
+                    sss->lport = N2N_SN_LPORT_DEFAULT;
+                }
+            } else { /* ip address or port only */
+                char* dot = strpbrk(_optarg, ".");
+                if(dot) { /* ip address only */
+                    sss->bind_address = ntohl(inet_addr(_optarg));
+                    if(sss->bind_address == INADDR_NONE) {
+                        traceEvent(TRACE_WARNING, "bad address to bind to, binding to any IP address");
+                        sss->bind_address = INADDR_ANY;
+                    }
+                } else { /* port only */
+                    sss->lport = atoi(_optarg);
+                    if(sss->lport == 0) {
+                        traceEvent(TRACE_WARNING, "bad local port format, defaulting to %u", N2N_SN_LPORT_DEFAULT);
+                        sss->lport = N2N_SN_LPORT_DEFAULT;
+                    }
+                }
+            }
             break;
+        }
 
         case 't': /* mgmt-port */
             sss->mport = atoi(_optarg);
@@ -603,7 +629,7 @@ int main (int argc, char * const argv[]) {
 
     traceEvent(TRACE_DEBUG, "traceLevel is %d", getTraceLevel());
 
-    sss_node.sock = open_socket(sss_node.lport, INADDR_ANY, 0 /* UDP */);
+    sss_node.sock = open_socket(sss_node.lport, sss_node.bind_address, 0 /* UDP */);
     if(-1 == sss_node.sock) {
         traceEvent(TRACE_ERROR, "failed to open main socket. %s", strerror(errno));
         exit(-2);
@@ -612,7 +638,7 @@ int main (int argc, char * const argv[]) {
     }
 
 #ifdef N2N_HAVE_TCP
-    sss_node.tcp_sock = open_socket(sss_node.lport, INADDR_ANY, 1 /* TCP */);
+    sss_node.tcp_sock = open_socket(sss_node.lport, sss_node.bind_address, 1 /* TCP */);
     if(-1 == sss_node.tcp_sock) {
         traceEvent(TRACE_ERROR, "failed to open auxiliary TCP socket, %s", strerror(errno));
         exit(-2);
