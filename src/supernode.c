@@ -168,7 +168,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
     //traceEvent(TRACE_NORMAL, "Option %c = %s", optkey, _optarg ? _optarg : "");
 
     switch(optkey) {
-        case 'p': /* local-port */
+        case 'p': { /* local-port */
             char* colon = strpbrk(_optarg, ":");
             if(colon) { /*ip address:port */
                 *colon = 0;
@@ -200,6 +200,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
                 }
             }
             break;
+        }
 
         case 't': /* mgmt-port */
             sss->mport = atoi(_optarg);
