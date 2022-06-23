@@ -551,6 +551,7 @@ int main (int argc, char* argv[]) {
 
     n2n_route_conf_t rrr;
     uint8_t c;
+    char *p;
     SOCKET sock;
     size_t msg_len;
     char udp_buf[N2N_PKT_BUF_SIZE];
@@ -756,7 +757,7 @@ reset_main_loop:
                 if((msg_len > 0) && (msg_len < sizeof(udp_buf))) {
                     // make sure it is a string and replace all newlines with spaces
                     udp_buf[msg_len] = '\0';
-                    for (char *p = udp_buf; (p = strchr(p, '\n')) != NULL; p++) *p = ' ';
+                    for (p = udp_buf; (p = strchr(p, '\n')) != NULL; p++) *p = ' ';
                     traceEvent(TRACE_DEBUG, "received '%s' from management port", udp_buf);
 
                     // handle the answer, json needs to be freed later
