@@ -407,15 +407,19 @@ void handle_route (n2n_route_t* in_route, int verb) {
     uint32_t mask;
     uint8_t bitlen;
     char cmd[256];
+
+    // assemble route command components
     _snprintf(c_net_addr, sizeof(c_net_addr), inet_ntoa(in_route->net_addr));
     _snprintf(c_gateway, sizeof(c_gateway), inet_ntoa(in_route->gateway));
-    mask = ntohl(in_route->mask_addr.S_in.S_addr);
+    mask = ntohl(in_route->net_mask.S_un.S_addr);
     for(bitlen = 0; (int)mask < 0; mask <<= 1)
         bitlen++;
-    _snprintf(c_interface, sizeof(c_interface), "if %u", eee->device.if_idx);
+    _snprintf(c_interface, sizeof(c_interface), "if %u", /* !!! */ 0 /* !!! where to get eee->device.if_idx from ?! */);
     _snprintf(c_verb, sizeof(c_verb), (verb == ROUTE_ADD) ? "add" : "delete");
     _snprintf(cmd, sizeof(cmd), "route %s %s/%d %s %s > nul", c_verb, c_net_addr, bitlen, c_gateway, c_interface);
-    traceEvent(TRACE_NORMAL, "ROUTE CMD = '%s'\n", cmd);
+    traceEvent(TRACE_INFO, "ROUTE CMD = '%s'\n", cmd);
+
+    // issue the route command
     system(cmd);
 #endif
 }
