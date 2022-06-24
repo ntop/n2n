@@ -342,6 +342,71 @@ find_default_gateway_end:
 // PLATFORM-DEPENDANT CODE
 
 
+#if defined(WIN32)
+DWORD get_interface_index (struct in_addr addr) {
+    // taken from (and modified)
+    // https://docs.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-createipforwardentry
+
+    PMIB_IPFORWARDTABLE pIpForwardTable = NULL;
+    DWORD dwSize = 0;
+    BOOL bOrder = FALSE;
+    DWORD dwStatus = 0;
+    DWORD mask_addr = 0;
+    DWORD max_idx = 0;
+    uint8_t bitlen, max_bitlen = 0;
+    unsigned int i;
+    ipstr_t gateway_address;
+
+    // find out how big our buffer needs to be
+    dwStatus = GetIpForwardTable(pIpForwardTable, &dwSize, bOrder);
+    if(dwStatus == ERROR_INSUFFICIENT_BUFFER) {
+        // allocate the memory for the table
+        if(!(pIpForwardTable = (PMIB_IPFORWARDTABLE)malloc(dwSize))) {
+            traceEvent(TRACE_DEBUG, "malloc failed, out of memory\n");
+            return EXIT_FAILURE;
+        }
+        // now get the table
+        dwStatus = GetIpForwardTable(pIpForwardTable, &dwSize, bOrder);
+    }
+
+    if (dwStatus != ERROR_SUCCESS) {
+        traceEvent(TRACE_DEBUG, "getIpForwardTable failed\n");
+        if(pIpForwardTable)
+            free(pIpForwardTable);
+        return 0;
+    }
+
+    // search for the row in the table we want. The default gateway has a destination of 0.0.0.0
+    for(i = 0; i < pIpForwardTable->dwNumEntries; i++) {
+        mask_addr = pIpForwardTable->table[i].dwForwardMask;
+        // if same subnet ...
+        if((mask_addr & addr.S_un.S_addr) == (mask_addr & (pIpForwardTable->table[i].dwForwardDest) {
+            mask_addr = ntohl(mask_addr);
+            for(bitlen = 0; (int)mask_addr < 0; mask_addr <<= 1)
+                bitlen++;
+            if(bitlen > max_bitlen) {
+                max_bitlen = bitlen;
+                max_idx = pIpForwardTable->table[i].dwForwardIfIndex;
+            }
+        }
+    }
+
+    traceEvent(TRACE_DEBUG, "found interface index %u for gateway %s",
+                           max_idx, inaddrtoa(gateway_address, addr));
+
+    if(pIpForwardTable) {
+        free(pIpForwardTable);
+    }
+
+    return max_idx;
+}
+#endif
+
+
+// -------------------------------------------------------------------------------------------------------
+// PLATFORM-DEPENDANT CODE
+
+
 /* adds (verb == ROUTE_ADD) or deletes (verb == ROUTE_DEL) a route */
 void handle_route (n2n_route_t* in_route, int verb) {
 
@@ -406,6 +471,7 @@ void handle_route (n2n_route_t* in_route, int verb) {
     char c_verb[32];
     uint32_t mask;
     uint8_t bitlen;
+    DWORD if_idx;
     char cmd[256];
 
     // assemble route command components
@@ -414,7 +480,8 @@ void handle_route (n2n_route_t* in_route, int verb) {
     mask = ntohl(in_route->net_mask.S_un.S_addr);
     for(bitlen = 0; (int)mask < 0; mask <<= 1)
         bitlen++;
-    _snprintf(c_interface, sizeof(c_interface), "if %u", /* !!! */ 0 /* !!! where to get eee->device.if_idx from ?! */);
+    if_idx = get_interface_index(in_route->gateway);
+    _snprintf(c_interface, sizeof(c_interface), "if %u", if_idx);
     _snprintf(c_verb, sizeof(c_verb), (verb == ROUTE_ADD) ? "add" : "delete");
     _snprintf(cmd, sizeof(cmd), "route %s %s/%d %s %s > nul", c_verb, c_net_addr, bitlen, c_gateway, c_interface);
     traceEvent(TRACE_INFO, "ROUTE CMD = '%s'\n", cmd);
