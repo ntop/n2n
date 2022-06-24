@@ -8,6 +8,7 @@ HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
 ifeq ($(CONFIG_TARGET),mingw)
 CFLAGS+=-I../win32
+LDLIBS+=-lnetapi32
 endif
 CFLAGS+=$(DEBUG)
 LDFLAGS+=-L..
