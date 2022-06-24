@@ -88,8 +88,8 @@ int is_privileged (void) {
         DWORD size = sizeof(user_name);
 
         GetUserNameW(user_name, &size);
-        rc = NetUserGetInfo(NULL, user_name, 1, (byte**)&info);
-        if (rc != NERR_Success) {
+        rc = NetUserGetInfo(NULL, user_name, 1, (unsigned char**)&info);
+        if (rc) {
                 return 0;
         }
         result = (info->usri1_priv == USER_PRIV_ADMIN);
@@ -315,10 +315,10 @@ find_default_gateway_end:
         if(pIpForwardTable->table[i].dwForwardDest == 0) {
             // we have found a default route
             // do not use if the gateway is the one to be excluded
-            if(pIpForwardTable->table[i].dwForwardNextHop == exclude.S_addr)
+            if(pIpForwardTable->table[i].dwForwardNextHop == exclude->S_un.S_addr)
                 continue;
             dwStatus = 0;
-            gateway_addr.S_addr = pIpForwardTable->table[i].dwForwardNextHop;
+            gateway_addr->S_un.S_addr = pIpForwardTable->table[i].dwForwardNextHop;
             traceEvent(TRACE_DEBUG, "assuming default gateway %s",
                                     inaddrtoa(gateway_address, gateway_addr));
             break;
