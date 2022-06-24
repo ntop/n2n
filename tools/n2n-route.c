@@ -320,9 +320,10 @@ find_default_gateway_end:
             dwStatus = 0;
             gateway_addr->S_un.S_addr = pIpForwardTable->table[i].dwForwardNextHop;
             traceEvent(TRACE_DEBUG, "assuming default gateway %s",
-                                    inaddrtoa(gateway_address, gateway_addr));
+                                    inaddrtoa(gateway_address, *gateway_addr));
             break;
         }
+    }
 
     if(pIpForwardTable) {
         free(pIpForwardTable);
