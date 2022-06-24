@@ -42,6 +42,10 @@
 #define NO_DETECT              0
 #define AUTO_DETECT            1
 
+#ifdef WIN32
+#define STDIN_FILENO            _fileno(stdin)
+#endif
+
 
 typedef struct n2n_route {
     struct in_addr    net_addr;           /* network address to be routed, also key for hash table*/
@@ -394,7 +398,8 @@ void handle_route (n2n_route_t* in_route, int verb) {
     closesocket(sock);
 
 #elif defined(WIN32)
-    return 0;
+    /* !!! to be coded */
+    return;
 #endif
 }
 

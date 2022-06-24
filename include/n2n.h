@@ -137,6 +137,7 @@
 #ifdef WIN32
 #include <windows.h>            /* for privilege check in tools/n2n-route */
 #include <lmaccess.h>           /* for privilege check in tools/n2n-route */
+#include <lmapibuf.h>           /* for privilege check in tools/n2n-route */
 #include <winsock2.h>           /* for tcp */
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
 #include "wintap.h"
