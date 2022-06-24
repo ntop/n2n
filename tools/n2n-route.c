@@ -23,9 +23,6 @@
 #if defined (__linux__) || defined(WIN32)  /*  currently, Linux and Windows only */
 
 
-#include <net/route.h>
-
-
 #define WITH_ADDRESS            1
 #define CORRECT_TAG             2
 
