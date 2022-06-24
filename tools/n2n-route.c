@@ -20,7 +20,7 @@
 #include "n2n.h"
 
 
-#ifdef __linux__  /* currently, Linux only */
+#if defined (__linux__) || defined(WIN32)  /*  currently, Linux and Windows only */
 
 
 #include <net/route.h>
@@ -74,12 +74,32 @@ static int keep_running = 1;              /* for main loop, handled by signals *
 // PLATFORM-DEPENDANT CODE
 
 
-// taken from https://stackoverflow.com/questions/4159910/check-if-user-is-root-in-c
 int is_privileged (void) {
 
+#if defined(__linux__)
+// taken from https://stackoverflow.com/questions/4159910/check-if-user-is-root-in-c
     uid_t euid = geteuid();
 
     return euid == 0;
+
+#elif defined(WIN32)
+// taken from https://stackoverflow.com/a/10553065
+        int result;
+        DWORD rc;
+        wchar_t user_name[256];
+        USER_INFO_1 *info;
+        DWORD size = sizeof(user_name);
+
+        GetUserNameW(user_name, &size);
+        rc = NetUserGetInfo(NULL, user_name, 1, (byte**)&info);
+        if (rc != NERR_Success) {
+                return 0;
+        }
+        result = (info->usri1_priv == USER_PRIV_ADMIN);
+        NetApiBufferFree(info);
+
+        return result;
+#endif
 }
 
 
@@ -89,21 +109,20 @@ int is_privileged (void) {
 
 void set_term_handler(const void *handler) {
 
-#ifdef __linux__
+#if defined(__linux__)
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, handler);
     signal(SIGINT, handler);
-#endif
-#ifdef WIN32 /* the beginning of Windows support ...? */
+#elif defined(WIN32)
     SetConsoleCtrlHandler(handler, TRUE);
 #endif
 }
 
 
-#ifdef WIN32 /* the beginning of Windows support ...? */
-BOOL WINAPI term_handler (DWORD sig) {
-#else
+#if !defined(WIN32)
 static void term_handler (int sig) {
+#else
+BOOL WINAPI term_handler (DWORD sig) {
 #endif
 
     static int called = 0;
@@ -117,7 +136,7 @@ static void term_handler (int sig) {
     }
 
     keep_running = 0;
-#ifdef WIN32 /* the beginning of Windows support ...? */
+#if defined(WIN32)
     return TRUE;
 #endif
 }
@@ -127,13 +146,15 @@ static void term_handler (int sig) {
 // PLATFORM-DEPENDANT CODE
 
 
-// taken from https://gist.github.com/javiermon/6272065
-// with modifications
-// originally licensed under GPLV2, Apache, and/or MIT
 
 #define RTLINK_BUFFER_SIZE 8192
 
 int find_default_gateway (struct in_addr *gateway_addr, struct in_addr *exclude) {
+
+#if defined(__linux__)
+    // taken from https://gist.github.com/javiermon/6272065
+    // with modifications
+    // originally licensed under GPLV2, Apache, and/or MIT
 
     int     ret = 0;
     int     received_bytes = 0, msg_len = 0, route_attribute_len = 0;
@@ -260,6 +281,58 @@ find_default_gateway_end:
 
     closesocket(sock);
     return ret;
+
+#elif defined(WIN32)
+    // taken from (and modified)
+    // https://docs.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-createipforwardentry
+
+    PMIB_IPFORWARDTABLE pIpForwardTable = NULL;
+    DWORD dwSize = 0;
+    BOOL bOrder = FALSE;
+    DWORD dwStatus = 0;
+    unsigned int i;
+    ipstr_t gateway_address;
+
+    // find out how big our buffer needs to be
+    dwStatus = GetIpForwardTable(pIpForwardTable, &dwSize, bOrder);
+    if(dwStatus == ERROR_INSUFFICIENT_BUFFER) {
+        // allocate the memory for the table
+        if(!(pIpForwardTable = (PMIB_IPFORWARDTABLE)malloc(dwSize))) {
+            traceEvent(TRACE_DEBUG, "malloc failed, out of memory\n");
+            return EXIT_FAILURE;
+        }
+        // now get the table
+        dwStatus = GetIpForwardTable(pIpForwardTable, &dwSize, bOrder);
+    }
+
+    if (dwStatus != ERROR_SUCCESS) {
+        traceEvent(TRACE_DEBUG, "getIpForwardTable failed\n");
+        if(pIpForwardTable)
+            free(pIpForwardTable);
+        return EXIT_FAILURE;
+    }
+
+    dwStatus = EXIT_FAILURE;
+    // search for the row in the table we want. The default gateway has a destination of 0.0.0.0
+    for(i = 0; i < pIpForwardTable->dwNumEntries; i++) {
+        if(pIpForwardTable->table[i].dwForwardDest == 0) {
+            // we have found a default route
+            // do not use if the gateway is the one to be excluded
+            if(pIpForwardTable->table[i].dwForwardNextHop == exclude.S_addr)
+                continue;
+            dwStatus = 0;
+            gateway_addr.S_addr = pIpForwardTable->table[i].dwForwardNextHop;
+            traceEvent(TRACE_DEBUG, "assuming default gateway %s",
+                                    inaddrtoa(gateway_address, gateway_addr));
+            break;
+        }
+
+    if(pIpForwardTable) {
+        free(pIpForwardTable);
+    }
+
+    return dwStatus;
+#endif
 }
 
 
@@ -270,6 +343,7 @@ find_default_gateway_end:
 /* adds (verb == ROUTE_ADD) or deletes (verb == ROUTE_DEL) a route */
 void handle_route (n2n_route_t* in_route, int verb) {
 
+#if defined(__linux__)
     struct sockaddr_in *addr_tmp;
     struct rtentry route;
     SOCKET sock;
@@ -320,6 +394,10 @@ void handle_route (n2n_route_t* in_route, int verb) {
     }
 
     closesocket(sock);
+
+#elif defined(WIN32)
+    return 0;
+#endif
 }
 
 
@@ -846,16 +924,16 @@ end_route_tool:
 }
 
 
-#else  /* ifdef __linux__  --  currently, Linux only */
+#else  /* if defined(__linux__) || defined(WIN32) --  currently, Linux and Windows only */
 
 
 int main (int argc, char* argv[]) {
 
-    traceEvent(TRACE_WARNING, "currently, only Linux is supported");
+    traceEvent(TRACE_WARNING, "currently, only Linux and Windows are supported");
     traceEvent(TRACE_WARNING, "if you want to port to other OS, please find the source code having clearly marked the platform-dependant portions");
 
     return 0;
 }
 
 
-#endif /* ifdef __linux__  --  currently, Linux only */
+#endif /* if defined (__linux__) || defined(WIN32)  --  currently, Linux and Windows only */
