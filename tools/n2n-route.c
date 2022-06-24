@@ -380,7 +380,7 @@ DWORD get_interface_index (struct in_addr addr) {
     for(i = 0; i < pIpForwardTable->dwNumEntries; i++) {
         mask_addr = pIpForwardTable->table[i].dwForwardMask;
         // if same subnet ...
-        if((mask_addr & addr.S_un.S_addr) == (mask_addr & (pIpForwardTable->table[i].dwForwardDest) {
+        if((mask_addr & addr.S_un.S_addr) == (mask_addr & (pIpForwardTable->table[i].dwForwardDest)) {
             mask_addr = ntohl(mask_addr);
             for(bitlen = 0; (int)mask_addr < 0; mask_addr <<= 1)
                 bitlen++;
