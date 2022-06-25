@@ -624,7 +624,7 @@ static void help (int level) {
         "\n           gateway. Adapt port (default: %d) and password (default: '%s')"
         "\n           to match your edge's configuration."
       "\n\n           If no <default gateway> provided, the tool will try to auto-detect."
-      "\n\n           To not route all traffic through vpn, inidicate the networks to be"
+      "\n\n           To only route some traffic through vpn, inidicate the networks to be"
         "\n           routed with '-n' option and use as many as required."
       "\n\n           Verbosity can be increased or decreased with -v or -V , repeat as"
         "\n           as needed."
