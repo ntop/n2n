@@ -615,7 +615,8 @@ static void help (int level) {
     if(level == 0) return; /* no help required */
 
     printf("  n2n-route [-t <manangement_port>] [-p <management_port_password>] [-v] [-V]"
-         "\n            [-g <default gateway>] [-n <network address>/bitlen] <vpn gateway>"
+         "\n            [-g <default gateway>] [-n <network address>/bitlen[:gateway]]"
+         "\n            <vpn gateway>"
         "\n"
         "\n           This tool sets new routes for all the traffic to be routed via the"
         "\n           <vpn gateway> and polls the management port of a local n2n edge for"
@@ -664,14 +665,18 @@ static int set_option (n2n_route_conf_t *rrr, int optkey, char *optargument) {
         }
 
         case 'n': /* user-provided network to be routed */ {
-            char cidr_net[64], bitlen;
+            char cidr_net[64], bitlen, gateway[64];
             n2n_route_t *route;
             struct in_addr mask;
+            int ret;
 
-            if(sscanf(optargument, "%63[^/]/%hhd", cidr_net, &bitlen) != 2) {
-                traceEvent(TRACE_WARNING, "bad cidr network format '%d'", optargument);
+            gateway[0] = '\0'; // optional parameter
+            ret = sscanf(optargument, "%63[^/]/%hhd:%63s", cidr_net, &bitlen, gateway);
+            if((ret < 2) || (ret > 3)) {
+                traceEvent(TRACE_WARNING, "bad cidr network format '%s'", optargument);
                 return 1;
             }
+
             if((bitlen < 0) || (bitlen > 32)) {
                 traceEvent(TRACE_WARNING, "bad prefix '%d' in '%s'", bitlen, optargument);
                 return 1;
@@ -680,14 +685,19 @@ static int set_option (n2n_route_conf_t *rrr, int optkey, char *optargument) {
                 traceEvent(TRACE_WARNING, "bad network '%s' in '%s'", cidr_net, optargument);
                 return 1;
             }
-
-            traceEvent(TRACE_NORMAL, "routing %s/%d", cidr_net, bitlen);
+            if(gateway[0]) {
+                if(!inet_address_valid(inet_address(gateway))) {
+                    traceEvent(TRACE_WARNING, "bad gateway '%s' in '%s'", gateway, optargument);
+                    return 1;
+                 }
+            }
+            traceEvent(TRACE_NORMAL, "routing %s/%d via %s", cidr_net, bitlen, gateway[0] ? gateway : "vpn gateway");
 
             route = calloc(1, sizeof(*route));
             if(route) {
                 mask.s_addr = htonl(bitlen2mask(bitlen));
-                // gateway is unknown at this point, will be rectified later
-                fill_route(route, inet_address(cidr_net), mask, inet_address(""));
+                // gateway might be unknown at this point, will be rectified later
+                fill_route(route, inet_address(cidr_net), mask, inet_address(gateway));
                 HASH_ADD(hh, rrr->routes, net_addr, sizeof(route->net_addr), route);
                 // will be added to system table later
             }
@@ -786,11 +796,15 @@ int main (int argc, char* argv[]) {
             fill_route(route, inet_address(UPPER_HALF), inet_address(MASK_HALF), rrr.gateway_vpn);
             HASH_ADD(hh, rrr.routes, net_addr, sizeof(route->net_addr), route);
         }
+    } else {
+        traceEvent(TRACE_WARNING, "only user-supplied networks will be routed, not the complete traffic");
     }
-    // set gateway for all so far present routes as '-n'-provided do not have it yet,
+    // set gateway for all so far present routes if '-n'-provided do not have it yet,
     // make them UNPURGEABLE and add them to system table
     HASH_ITER(hh, rrr.routes, route, tmp_route) {
-        route->gateway = rrr.gateway_vpn;
+        if(!inet_address_valid(route->gateway)) {
+            route->gateway = rrr.gateway_vpn;
+        }
         route->purgeable = UNPURGEABLE;
         handle_route(route, ROUTE_ADD);
     }
