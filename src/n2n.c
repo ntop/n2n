@@ -712,14 +712,18 @@ extern int str2mac (uint8_t * outmac /* 6 bytes */, const char * s) {
 extern char * sock_to_cstr (n2n_sock_str_t out,
                             const n2n_sock_t * sock) {
 
+
     if(NULL == out) {
         return NULL;
     }
     memset(out, 0, N2N_SOCKBUF_SIZE);
 
     if(AF_INET6 == sock->family) {
-        /* INET6 not written yet */
-        snprintf(out, N2N_SOCKBUF_SIZE, "XXXX:%hu", sock->port);
+        char tmp[sizeof(n2n_sock_str_t)];
+
+        tmp[0] = '\0';
+        inet_ntop(AF_INET6, sock->addr.v6, tmp, sizeof(n2n_sock_str_t));
+        snprintf(out, N2N_SOCKBUF_SIZE, "%s:%hu", tmp[0] ? tmp : "", sock->port);
         return out;
     } else {
         const uint8_t * a = sock->addr.v4;
