@@ -240,6 +240,8 @@ typedef struct tuntap_dev {
 } tuntap_dev;
 
 #define SOCKET int
+#else /* #ifndef WIN32 */
+typedef u_short sa_family_t;
 #endif /* #ifndef WIN32 */
 
 
