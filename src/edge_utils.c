@@ -2190,9 +2190,9 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
         // TCP expects that we know our comm partner and does not deliver the sender
         memcpy(&sender, &(eee->curr_sn->sock), sizeof(struct sockaddr_in));
     else {
-        sender.family = AF_INET; /* UDP socket was opened PF_INET v4 */
-        sender.port = ntohs(sender_sock->sin_port);
-        memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+        // REVISIT: type conversion back and forth, choose a consistent approach throughout whole code,
+        //          i.e. stick with more general sockaddr as long as possible and narrow only if required
+        fill_n2nsock(&sender, (struct sockaddr*)sender_sock);
     }
     /* The packet may not have an orig_sender socket spec. So default to last
      * hop as sender. */

@@ -1655,9 +1655,7 @@ static int process_udp (n2n_sn_t * sss,
     /* REVISIT: when UDP/IPv6 is supported we will need a flag to indicate which
      * IP transport version the packet arrived on. May need to UDP sockets. */
     memset(&sender, 0, sizeof(n2n_sock_t));
-    sender.family = AF_INET; /* UDP socket was opened PF_INET v4 */
-    sender.port = ntohs(sender_sock->sin_port);
-    memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+    fill_n2nsock(&sender, (struct sockaddr*)sender_sock);
 
     from_supernode = cmn.flags & N2N_FLAGS_FROM_SUPERNODE;
     if(from_supernode) {
@@ -1720,9 +1718,7 @@ static int process_udp (n2n_sn_t * sss,
                 /* We are going to add socket even if it was not there before */
                 cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
 
-                pkt.sock.family = AF_INET;
-                pkt.sock.port = ntohs(sender_sock->sin_port);
-                memcpy(pkt.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+                fill_n2nsock(&pkt.sock, (struct sockaddr*)sender_sock);
 
                 rec_buf = encbuf;
                 /* Re-encode the header. */
@@ -1805,9 +1801,7 @@ static int process_udp (n2n_sn_t * sss,
                     /* We are going to add socket even if it was not there before */
                     cmn2.flags |= N2N_FLAGS_SOCKET | N2N_FLAGS_FROM_SUPERNODE;
 
-                    reg.sock.family = AF_INET;
-                    reg.sock.port = ntohs(sender_sock->sin_port);
-                    memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+                    fill_n2nsock(&reg.sock, (struct sockaddr*)sender_sock);
 
                     /* Re-encode the header. */
                     encode_REGISTER(encbuf, &encx, &cmn2, &reg);
@@ -1966,9 +1960,7 @@ static int process_udp (n2n_sn_t * sss,
 
             ack.lifetime = reg_lifetime(sss);
 
-            ack.sock.family = AF_INET;
-            ack.sock.port = ntohs(sender_sock->sin_port);
-            memcpy(ack.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+            fill_n2nsock(&ack.sock, (struct sockaddr*)sender_sock);
 
             /* Add sender's data to federation (or update it) */
             if(comm->is_federation == IS_FEDERATION) {
@@ -2049,9 +2041,7 @@ static int process_udp (n2n_sn_t * sss,
                     //     NULL comm and from_supernode parameter)
                     // exception: do not forward auto ip draw
                     if(!is_null_mac(reg.edgeMac)) {
-                        reg.sock.family = AF_INET;
-                        reg.sock.port = ntohs(sender_sock->sin_port);
-                        memcpy(reg.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+                        fill_n2nsock(&reg.sock, (struct sockaddr*)sender_sock);
 
                         cmn2.pc = n2n_register_super;
                         encode_REGISTER_SUPER(ackbuf, &encx, &cmn2, &reg);
@@ -2196,9 +2186,8 @@ static int process_udp (n2n_sn_t * sss,
             n2n_REGISTER_SUPER_ACK_payload_t *payload;
 
             memset(&sender, 0, sizeof(n2n_sock_t));
-            sender.family = AF_INET;
-            sender.port = ntohs(sender_sock->sin_port);
-            memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+            fill_n2nsock(&sender, (struct sockaddr*)sender_sock);
+
             orig_sender = &sender;
 
             memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
@@ -2282,9 +2271,7 @@ static int process_udp (n2n_sn_t * sss,
             n2n_sock_t                sender;
 
             memset(&sender, 0, sizeof(n2n_sock_t));
-            sender.family = AF_INET;
-            sender.port = ntohs(sender_sock->sin_port);
-            memcpy(&(sender.addr.v4), &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+            fill_n2nsock(&sender, (struct sockaddr*)sender_sock);
 
             memset(&nak, 0, sizeof(n2n_REGISTER_SUPER_NAK_t));
 
@@ -2401,9 +2388,9 @@ static int process_udp (n2n_sn_t * sss,
                 pi.aflags = 0;
                 memcpy(pi.mac, query.targetMac, sizeof(n2n_mac_t));
                 memcpy(pi.srcMac, sss->mac_addr, sizeof(n2n_mac_t));
-                pi.sock.family = AF_INET;
-                pi.sock.port = ntohs(sender_sock->sin_port);
-                memcpy(pi.sock.addr.v4, &(sender_sock->sin_addr.s_addr), IPV4_SIZE);
+
+                fill_n2nsock(&pi.sock, (struct sockaddr*)sender_sock);
+
                 pi.load = sn_selection_criterion_gather_data(sss);
 
                 snprintf(pi.version, sizeof(pi.version), "%s", sss->version);
