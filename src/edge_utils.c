@@ -2160,7 +2160,7 @@ void edge_read_from_tap (n2n_edge_t * eee) {
 
 
 /** handle a datagram from the main UDP socket to the internet. */
-void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const SOCKET in_sock,
+void process_udp (n2n_edge_t *eee, const struct sockaddr *sender_sock, const SOCKET in_sock,
                  uint8_t *udp_buf, size_t udp_size, time_t now) {
 
     n2n_common_t          cmn; /* common fields in the packet header */
@@ -2192,7 +2192,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr_in *sender_sock, const 
     else {
         // REVISIT: type conversion back and forth, choose a consistent approach throughout whole code,
         //          i.e. stick with more general sockaddr as long as possible and narrow only if required
-        fill_n2nsock(&sender, (struct sockaddr*)sender_sock);
+        fill_n2nsock(&sender, sender_sock);
     }
     /* The packet may not have an orig_sender socket spec. So default to last
      * hop as sender. */
@@ -2703,18 +2703,18 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
 
     ssize_t bread = 0;
 
+    struct sockaddr_storage sas;
+    struct sockaddr *sender_sock = (struct sockaddr*)&sas;
+    socklen_t ss_size = sizeof(sas);
+
     if((!eee->conf.connect_tcp)
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
     || (sock == eee->udp_multicast_sock)
 #endif
       ) {
         // udp
-        struct sockaddr_in sender_sock;
-        socklen_t i;
-
-        i = sizeof(sender_sock);
         bread = recvfrom(sock, pktbuf, N2N_PKT_BUF_SIZE, 0 /*flags*/,
-                         (struct sockaddr *)&sender_sock, (socklen_t *)&i);
+                         sender_sock, &ss_size);
 
         if((bread < 0)
 #ifdef WIN32
@@ -2733,18 +2733,14 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
         // we have a datagram to process...
         if(bread > 0) {
             // ...and the datagram has data (not just a header)
-            process_udp(eee, &sender_sock, sock, pktbuf, bread, now);
+            process_udp(eee, sender_sock, sock, pktbuf, bread, now);
         }
 
     } else {
         // tcp
-        struct sockaddr_in sender_sock;
-        socklen_t i;
-
-        i = sizeof(sender_sock);
         bread = recvfrom(sock,
                          pktbuf + *position, *expected - *position, 0 /*flags*/,
-                        (struct sockaddr *)&sender_sock, (socklen_t *)&i);
+                        sender_sock, &ss_size);
         if((bread <= 0) && (errno)) {
             traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
 #ifdef WIN32
@@ -2768,7 +2764,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                 }
             } else {
                 // full packet read, handle it
-                process_udp(eee, (struct sockaddr_in*)&sender_sock, sock,
+                process_udp(eee, sender_sock, sock,
                                  pktbuf + sizeof(uint16_t), *position - sizeof(uint16_t), now);
                 // reset, await new prepended length
                 *expected = sizeof(uint16_t);
