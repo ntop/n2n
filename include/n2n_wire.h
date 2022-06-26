@@ -191,7 +191,7 @@ int fill_sockaddr (struct sockaddr * addr,
                    const n2n_sock_t * sock);
 
 int fill_n2nsock (n2n_sock_t* sock,
-                  struct sockaddr* sa);
+                  const struct sockaddr* sa);
 
 int encode_PACKET (uint8_t * base,
                    size_t * idx,
