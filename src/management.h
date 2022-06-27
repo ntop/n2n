@@ -39,7 +39,11 @@ typedef struct mgmt_req {
     char *argv0;
     char *argv;
     char tag[10];
-    struct sockaddr_in sender_sock;
+    socklen_t sock_len;
+    union {
+        struct sockaddr sender_sock;
+        struct sockaddr_storage sas;  // memory for the socket, actual socket can be longer than sockaddr
+    };
 } mgmt_req_t;
 
 /*

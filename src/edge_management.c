@@ -417,7 +417,6 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     ssize_t recvlen;
     /* ssize_t sendlen; */
     mgmt_req_t req;
-    socklen_t i;
     size_t msg_len;
     time_t now;
     struct peer_info *peer, *tmpPeer;
@@ -438,11 +437,11 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
     req.mgmt_sock = eee->udp_mgmt_sock;
     req.keep_running = eee->keep_running;
     req.mgmt_password_hash = eee->conf.mgmt_password_hash;
+    req.sock_len = sizeof(req.sas);
 
     now = time(NULL);
-    i = sizeof(req.sender_sock);
     recvlen = recvfrom(eee->udp_mgmt_sock, udp_buf, N2N_PKT_BUF_SIZE, 0 /*flags*/,
-                       (struct sockaddr *) &req.sender_sock, (socklen_t *) &i);
+                       &req.sender_sock, &req.sock_len);
 
     if(recvlen < 0) {
         traceEvent(TRACE_WARNING, "mgmt recvfrom failed: %d - %s", errno, strerror(errno));
@@ -546,7 +545,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             (peer->last_seen) ? time_buf : "");
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
+               &req.sender_sock, req.sock_len);
         msg_len = 0;
     }
 
@@ -570,7 +569,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             (peer->last_seen) ? time_buf : "");
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
+               &req.sender_sock, req.sock_len);
         msg_len = 0;
     }
 
@@ -596,7 +595,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                             (peer->uptime) ? uptime_buf : "");
 
         sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-               (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
+               &req.sender_sock, req.sock_len);
         msg_len = 0;
     }
 
@@ -643,5 +642,5 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
                         "\nType \"help\" to see more commands.\n\n");
 
     sendto(eee->udp_mgmt_sock, udp_buf, msg_len, 0,
-           (struct sockaddr *) &req.sender_sock, sizeof(struct sockaddr_in));
+           &req.sender_sock, req.sock_len);
 }

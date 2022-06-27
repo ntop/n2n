@@ -751,7 +751,11 @@ typedef struct sn_stats {
 typedef struct node_supernode_association {
 
     n2n_mac_t                   mac;        /* mac address of an edge                          */
-    const struct sockaddr_in    sock;       /* network order socket of that edge's supernode   */
+    socklen_t                   sock_len;   /* amount of actually used space (of the following)    */
+    union {
+        struct sockaddr         sock;       /* network order socket of that edge's supernode       */
+        struct sockaddr_storage sas;        /* the actual memory for it, sockaddr can be too small */
+    };
     time_t                      last_seen;  /* time mark to keep track of purging requirements */
 
     UT_hash_handle hh;                      /* makes this structure hashable */
@@ -796,9 +800,12 @@ struct sn_community_regular_expression {
 
 
 typedef struct n2n_tcp_connection {
-    int    socket_fd;       /* file descriptor for tcp socket */
-    struct sockaddr sock;   /* network order socket */
-
+    int    socket_fd;                                     /* file descriptor for tcp socket */
+    socklen_t                   sock_len;                 /* amount of actually used space (of the following) */
+    union {
+        struct sockaddr         sock;                     /* network order socket */
+        struct sockaddr_storage sas;                      /* memory for it, can be longer than sockaddr */
+    };
     uint16_t expected;                                    /* number of bytes expected to be read */
     uint16_t position;                                    /* current position in the buffer */
     uint8_t  buffer[N2N_PKT_BUF_SIZE + sizeof(uint16_t)]; /* buffer for data collected from tcp socket incl. prepended length */
