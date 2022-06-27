@@ -255,12 +255,12 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 }
 
 static int sendto_mgmt (n2n_sn_t *sss,
-                        const struct sockaddr_in *sender_sock,
+                        const struct sockaddr *sender_sock, socklen_t sock_size,
                         const uint8_t *mgmt_buf,
                         size_t mgmt_size) {
 
     ssize_t r = sendto(sss->mgmt_sock, (void *)mgmt_buf, mgmt_size, 0 /*flags*/,
-                       (struct sockaddr *)sender_sock, sizeof (struct sockaddr_in));
+                       sender_sock, sock_size);
 
     if(r <= 0) {
         ++(sss->stats.errors);
@@ -272,7 +272,7 @@ static int sendto_mgmt (n2n_sn_t *sss,
 }
 
 int process_mgmt (n2n_sn_t *sss,
-                  const struct sockaddr_in *sender_sock,
+                  const struct sockaddr *sender_sock, socklen_t sock_size,
                   char *mgmt_buf,
                   size_t mgmt_size,
                   time_t now) {
@@ -297,7 +297,8 @@ int process_mgmt (n2n_sn_t *sss,
     req.mgmt_sock = sss->mgmt_sock;
     req.keep_running = sss->keep_running;
     req.mgmt_password_hash = sss->mgmt_password_hash;
-    memcpy(&req.sender_sock, sender_sock, sizeof(req.sender_sock));
+    memcpy(&req.sender_sock, sender_sock, sock_size);
+    req.sock_len = sock_size;
 
     /* avoid parsing any uninitialized junk from the stack */
     mgmt_buf[mgmt_size] = 0;
@@ -309,7 +310,7 @@ int process_mgmt (n2n_sn_t *sss,
                             "\thelp                 | This help message\n"
                             "\treload_communities   | Reloads communities and user's public keys\n"
                             "\t<enter>              | Display status and statistics\n");
-        sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+        sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
         return 0; /* no status output afterwards */
     }
 
@@ -317,7 +318,7 @@ int process_mgmt (n2n_sn_t *sss,
         if(!sss->community_file) {
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                                 "No community file provided (-c command line option)\n");
-            sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+            sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
             return 0; /* no status output afterwards */
         }
         traceEvent(TRACE_NORMAL, "'reload_communities' command");
@@ -325,12 +326,12 @@ int process_mgmt (n2n_sn_t *sss,
         if(load_allowed_sn_community(sss)) {
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                                 "Error while re-loading community file (not found or no valid content)\n");
-            sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+            sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
             return 0; /* no status output afterwards */
         }
         ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                             "OK.\n");
-        sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+        sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
         return 0; /* no status output afterwards */
     }
 
@@ -357,7 +358,7 @@ int process_mgmt (n2n_sn_t *sss,
                             "%s '%s'\n",
                             (community->is_federation) ? "FEDERATION" : ((community->purgeable == UNPURGEABLE) ? "FIXED NAME COMMUNITY" : "COMMUNITY"),
                             (community->is_federation) ? "-/-" : community->community);
-        sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+        sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
         ressize = 0;
 
         num = 0;
@@ -373,7 +374,7 @@ int process_mgmt (n2n_sn_t *sss,
                                 peer->dev_desc,
                                 (peer->last_seen) ? time_buf : "");
 
-            sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+            sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
             ressize = 0;
         }
     }
@@ -418,7 +419,7 @@ int process_mgmt (n2n_sn_t *sss,
                         "last reg  %lu sec ago\n\n",
                         (long unsigned int) (now - sss->stats.last_reg_super));
 
-    sendto_mgmt(sss, sender_sock, (const uint8_t *) resbuf, ressize);
+    sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
 
     return 0;
 }

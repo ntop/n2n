@@ -21,7 +21,7 @@ int getTraceLevel ();
 ssize_t send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
     // TODO: better error handling (counters?)
     return sendto(req->mgmt_sock, buf->str, msg_len, 0,
-                  (struct sockaddr *) &req->sender_sock, sizeof(struct sockaddr_in));
+                  &req->sender_sock, req->sock_len);
 }
 
 size_t gen_json_1str (strbuf_t *buf, char *tag, char *_type, char *key, char *val) {
