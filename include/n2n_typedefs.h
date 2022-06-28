@@ -302,8 +302,10 @@ typedef struct n2n_ip_subnet {
 } n2n_ip_subnet_t;
 
 typedef struct n2n_sock {
-    uint8_t         family;            /* AF_INET or AF_INET6; or 0 if invalid */
-    uint16_t        port;              /* host order */
+    uint8_t         family;           /* AF_INET, AF_INET6 or AF_INVALID (-1, a custom #define);
+                                         mind that AF_UNSPEC (0) means auto IPv4 or IPv6 */
+    uint8_t         type;             /* for later use, usually SOCK_STREAM (1) or SOCK_DGRAM (2) */
+    uint16_t        port;             /* host order */
     union {
         uint8_t     v6[IPV6_SIZE];    /* byte sequence */
         uint8_t     v4[IPV4_SIZE];    /* byte sequence */
