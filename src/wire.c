@@ -255,6 +255,9 @@ int encode_sock (uint8_t * base,
     switch(sock->family) {
         case AF_INET: {
             f = 0;
+            if(sock->type == SOCK_STREAM) {
+                f |= 0x4000;
+            }
             retval += encode_uint16(base, idx, f);
             retval += encode_uint16(base, idx, sock->port);
             retval += encode_buf(base, idx, sock->addr.v4, IPV4_SIZE);
@@ -263,6 +266,9 @@ int encode_sock (uint8_t * base,
 
         case AF_INET6: {
             f = 0x8000;
+            if(sock->type == SOCK_STREAM) {
+                f |= 0x4000;
+            }
             retval += encode_uint16(base, idx, f);
             retval += encode_uint16(base, idx, sock->port);
             retval += encode_buf(base, idx, sock->addr.v6, IPV6_SIZE);
@@ -286,19 +292,25 @@ int decode_sock (n2n_sock_t * sock,
     uint16_t f = 0;
 
     decode_uint16(&f, base, rem, idx);
+    decode_uint16(&(sock->port), base, rem, idx);
 
     if(f & 0x8000) {
-
-        /* IPv6 */
+        // IPv6
         sock->family = AF_INET6;
-        decode_uint16(&(sock->port), base, rem, idx);
         decode_buf(sock->addr.v6, IPV6_SIZE, base, rem, idx);
     } else {
-        /* IPv4 */
+        // IPv4
         sock->family = AF_INET;
-        decode_uint16(&(sock->port), base, rem, idx);
         memset(sock->addr.v6, 0, IPV6_SIZE); /* so memcmp() works for equality. */
         decode_buf(sock->addr.v4, IPV4_SIZE, base, rem, idx);
+    }
+
+    if(f & 0x4000) {
+        // TCP
+        sock->type = SOCK_STREAM;
+    } else {
+        // UDP
+        sock->type = SOCK_DGRAM;
     }
 
     return (idx - idx0);
