@@ -2414,6 +2414,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr *sender_sock, const SOC
                 uint8_t tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
                 char ip_tmp[N2N_EDGE_SN_HOST_SIZE];
                 n2n_REGISTER_SUPER_ACK_payload_t *payload;
+                n2n_sock_t payload_sock;
                 int i;
                 int skip_add;
 
@@ -2474,15 +2475,22 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr *sender_sock, const SOC
                 // from here on, 'sn' gets used differently
                 for(i = 0; i < ra.num_sn; i++) {
                     skip_add = SN_ADD;
-                    sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &(payload->sock), payload->mac, &skip_add);
+
+                    // bugfix for https://github.com/ntop/n2n/issues/1029
+                    // REVISIT: best to be removed with 4.0
+                    idx = 0;
+                    rem = sizeof(payload->sock);
+                    decode_sock_payload(&payload_sock, payload->sock, &rem, &idx);
+
+                    sn = add_sn_to_list_by_mac_or_sock(&(eee->conf.supernodes), &payload_sock, payload->mac, &skip_add);
 
                     if(skip_add == SN_ADD_ADDED) {
                         sn->ip_addr = calloc(1, N2N_EDGE_SN_HOST_SIZE);
                         if(sn->ip_addr != NULL) {
-                            inet_ntop(payload->sock.family,
-                                      (payload->sock.family == AF_INET) ? (void*)&(payload->sock.addr.v4) : (void*)&(payload->sock.addr.v6),
+                            inet_ntop(payload_sock.family,
+                                      (payload_sock.family == AF_INET) ? (void*)&(payload_sock.addr.v4) : (void*)&(payload_sock.addr.v6),
                                       sn->ip_addr, N2N_EDGE_SN_HOST_SIZE - 1);
-                            sprintf(ip_tmp, "%s:%u", (char*)sn->ip_addr, (uint16_t)(payload->sock.port));
+                            sprintf(ip_tmp, "%s:%u", (char*)sn->ip_addr, (uint16_t)(payload_sock.port));
                             memcpy(sn->ip_addr, ip_tmp, sizeof(ip_tmp));
                         }
                         sn_selection_criterion_default(&(sn->selection_criterion));

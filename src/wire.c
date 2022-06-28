@@ -305,6 +305,50 @@ int decode_sock (n2n_sock_t * sock,
 }
 
 
+// bugfix for https://github.com/ntop/n2n/issues/1029
+// REVISIT: best to be removed with 4.0
+int encode_sock_payload (uint8_t * base,
+                         size_t * idx,
+                         const n2n_sock_t * sock) {
+
+    int retval = 0;
+
+    retval += encode_uint8(base, idx, sock->family);
+    retval += encode_uint8(base, idx, 0); // blank
+    retval += encode_uint8(base, idx, sock->port & 0x00FF);
+    retval += encode_uint8(base, idx, sock->port >> 8);
+    // copy full address field length
+    retval += encode_buf(base, idx, sock->addr.v6, IPV6_SIZE);
+
+    return retval;
+}
+
+
+// bugfix for https://github.com/ntop/n2n/issues/1029
+// REVISIT: best to be removed with 4.0
+int decode_sock_payload (n2n_sock_t * sock,
+                         const uint8_t * base,
+                         size_t * rem,
+                         size_t * idx) {
+
+    int retval = 0;
+    uint8_t port_low = 0;
+    uint8_t port_high = 0;
+
+    retval += decode_uint8(&(sock->family), base, rem, idx);
+    ++(*idx); // skip blank
+    --(*rem);
+    ++retval;
+    retval += decode_uint8(&port_low, base, rem, idx);
+    retval += decode_uint8(&port_high, base, rem, idx);
+    sock->port = ((uint16_t)port_high << 8) + port_low;
+    // copy full address field length
+    retval += decode_buf(sock->addr.v6, IPV6_SIZE, base, rem, idx);
+
+    return retval;
+}
+
+
 int encode_REGISTER (uint8_t *base,
                      size_t *idx,
                      const n2n_common_t *common,
