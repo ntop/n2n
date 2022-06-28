@@ -1990,7 +1990,12 @@ static int process_udp (n2n_sn_t * sss,
                                                                             * We need to allow for a little extra time because supernodes sometimes exceed
                                                                             * their SN_ACTIVE time before they get re-registred to. */
                 if(((++num)*REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE) > REG_SUPER_ACK_PAYLOAD_SPACE) break; /* no more space available in REGISTER_SUPER_ACK payload */
-                memcpy(&(payload->sock), &(peer->sock), sizeof(n2n_sock_t));
+
+                // bugfix for https://github.com/ntop/n2n/issues/1029
+                // REVISIT: best to be removed with 4.0 (replace with encode_sock)
+                idx = 0;
+                encode_sock_payload(payload->sock, &idx, &(peer->sock));
+
                 memcpy(payload->mac, peer->mac_addr, sizeof(n2n_mac_t));
                 // shift to next payload entry
                 payload++;
@@ -2182,6 +2187,7 @@ static int process_udp (n2n_sn_t * sss,
             int                              i;
             uint8_t                          dec_tmpbuf[REG_SUPER_ACK_PAYLOAD_SPACE];
             n2n_REGISTER_SUPER_ACK_payload_t *payload;
+            n2n_sock_t                       payload_sock;
 
             memset(&ack, 0, sizeof(n2n_REGISTER_SUPER_ACK_t));
 
@@ -2224,7 +2230,14 @@ static int process_udp (n2n_sn_t * sss,
                 payload = (n2n_REGISTER_SUPER_ACK_payload_t *)dec_tmpbuf;
                 for(i = 0; i < ack.num_sn; i++) {
                     skip_add = SN_ADD;
-                    tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload->sock), payload->mac, &skip_add);
+
+                    // bugfix for https://github.com/ntop/n2n/issues/1029
+                    // REVISIT: best to be removed with 4.0
+                    idx = 0;
+                    rem = sizeof(payload->sock);
+                    decode_sock_payload(&payload_sock, payload->sock, &rem, &idx);
+
+                    tmp = add_sn_to_list_by_mac_or_sock(&(sss->federation->edges), &(payload_sock), payload->mac, &skip_add);
                     // other supernodes communicate via standard udp socket
                     tmp->socket_fd = sss->sock;
 

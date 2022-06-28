@@ -406,8 +406,10 @@ typedef struct n2n_REGISTER_SUPER_NAK {
 /* REGISTER_SUPER_ACK may contain extra payload (their number given by num_sn)
  * of following type describing a(nother) supernode */
 typedef struct n2n_REGISTER_SUPER_ACK_payload {
-    n2n_sock_t    sock;             /**< socket of supernode */
-    n2n_mac_t     mac;              /**< MAC of supernode */
+    // REVISIT: interim for bugfix (https://github.com/ntop/n2n/issues/1029)
+    //          remove with 4.0
+    uint8_t       sock[sizeof(uint16_t) + sizeof(uint16_t) + IPV6_SIZE]; /**< socket of supernode */
+    n2n_mac_t     mac;                                                   /**< MAC of supernode */
 } n2n_REGISTER_SUPER_ACK_payload_t;
 
 
