@@ -532,12 +532,30 @@ int same_subnet (struct in_addr addr0, struct in_addr addr1, struct in_addr subn
 
 
 // -------------------------------------------------------------------------------------------------------
+// PLATFORM-DEPENDANT CODE
 
 
 SOCKET connect_to_management_port (n2n_route_conf_t *rrr) {
 
     SOCKET ret;
     struct sockaddr_in sock_addr;
+
+#if defined(WIN32)
+    // Windows requires a call to WSAStartup() before it can work with sockets
+    WORD wVersionRequested;
+    WSADATA wsaData;
+    int err;
+
+    // Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h
+    wVersionRequested = MAKEWORD(2, 2);
+
+    err = WSAStartup(wVersionRequested, &wsaData);
+    if (err != 0) {
+        // tell the user that we could not find a usable Winsock DLL
+        traceEvent(TRACE_ERROR, "WSAStartup failed with error: %d\n", err);
+        return -1;
+    }
+#endif
 
     ret = socket (PF_INET, SOCK_DGRAM, 0);
     if((int)ret < 0)
