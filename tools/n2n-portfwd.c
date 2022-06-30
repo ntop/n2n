@@ -141,6 +141,7 @@ int get_port_from_json (uint16_t *port, json_object_t *json, char *key, int tag,
 // -------------------------------------------------------------------------------------------------------
 // PLATFORM-DEPENDANT CODE
 
+
 #if !defined(WIN32)
 // taken from https://web.archive.org/web/20170407122137/http://cc.byexamples.com/2007/04/08/non-blocking-user-input-in-loop-without-ncurses/
 int _kbhit () {
