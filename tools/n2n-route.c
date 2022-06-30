@@ -42,6 +42,7 @@
 #define NO_DETECT              0
 #define AUTO_DETECT            1
 
+// REVISIT: may become obsolete
 #ifdef WIN32
 #define STDIN_FILENO            _fileno(stdin)
 #endif
@@ -607,10 +608,12 @@ int get_addr_from_json (struct in_addr *addr, json_object_t *json, char *key, in
 
 
 // -------------------------------------------------------------------------------------------------------
+// PLATFORM-DEPENDANT CODE
 
 
+#if !defined(WIN32)
 // taken from https://web.archive.org/web/20170407122137/http://cc.byexamples.com/2007/04/08/non-blocking-user-input-in-loop-without-ncurses/
-int kbhit () {
+int _kbhit () {
 
     struct timeval tv;
     fd_set fds;
@@ -623,6 +626,7 @@ int kbhit () {
 
     return FD_ISSET(STDIN_FILENO, &fds);
 }
+#endif
 
 
 // -------------------------------------------------------------------------------------------------------
@@ -859,7 +863,7 @@ reset_main_loop:
     // read answer packet by packet which are only accepted if a corresponding request was sent before
     // of which we know about by having set the related tag, tag_info or tag_route_ip resp.
     // a valid edge ip address indicates that we have seen a valid answer to the info request
-    while(keep_running && !kbhit()) {
+    while(keep_running && !_kbhit()) {
         // current time
         now = time(NULL);
 
