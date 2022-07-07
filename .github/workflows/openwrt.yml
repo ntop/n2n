@@ -1,112 +1,81 @@
 ---
-name: Openwrt Build
+name: OpenWrt Build
 
 # yamllint disable-line rule:truthy
 on:
-  release:
-    types:
-      - published
-      - created
-      - edited
   push:
-    branches:
-      - openwrt
-
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build ipkg
+    name: Test ${{ matrix.arch }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arc_archs
+            target: archs38-generic
 
-    defaults:
-      run:
-        working-directory: openwrt
+          - arch: arm_cortex-a9_vfpv3-d16
+            target: mvebu-cortexa9
+
+          - arch: mips_24kc
+            target: ath79-generic
+
+          - arch: mipsel_24kc
+            target: mt7621
+
+          - arch: powerpc_464fp
+            target: apm821xx-nand
+
+          - arch: powerpc_8540
+            target: mpc85xx-p1010
+
+          - arch: aarch64_cortex-a53
+            target: mvebu-cortexa53
+
+          - arch: arm_cortex-a15_neon-vfpv4
+            target: armvirt-32
+
+          - arch: i386_pentium-mmx
+            target: x86-geode
+
+          - arch: x86_64
+            target: x86-64
 
     steps:
-      - name: Checkout openwrt
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          path: openwrt
-          repository: openwrt/openwrt
-
-      - name: Set openwrt ref
-        id: openwrt_ref
-        run: |
-          echo ::set-output name=REF::$(git rev-parse --short HEAD)
-          git rev-parse --short HEAD
-
-      - name: Checkout n2n
-        uses: actions/checkout@v2
-        with:
-          path: n2n
           fetch-depth: 0
 
-      - name: Fix Checkout
-        run: |
-          git fetch --force --tags
-        working-directory: n2n
-
-      - name: Set n2n ref
-        id: n2n_ref
-        run: |
-          echo ::set-output name=REF::$(./scripts/version.sh)
-          ./scripts/version.sh
-        working-directory: n2n
-
-      - name: Copy n2n package definition into openwrt
-        run: |
-          cp -r n2n/packages/openwrt openwrt/package/n2n
-        working-directory: ./
-
-      - name: Cache openwrt source downloads
-        uses: actions/cache@v2
-        with:
-          path: openwrt/dl
-          key: openwrt-dl-${{ steps.openwrt_ref.outputs.REF }}
-
-      - name: Setup openwrt config and environment
-        run: |
-          echo "CONFIG_TARGET_x86=y" >.config
-          echo "CONFIG_TARGET_x86_64=y" >>.config
-
-      - name: Add n2n package to openwrt config
-        run: |
-          echo "CONFIG_PACKAGE_n2n-edge=m" >>.config
-          echo "CONFIG_PACKAGE_n2n-supernode=m" >>.config
-
-      - name: Build a full config from our stub file
-        run: |
-          make defconfig
-
-      - name: Download openwrt sources
-        run: |
-          make download
-
-      - name: Build openwrt build environment
-        run: |
-          make -j `nproc` tools/install toolchain/install
-
-      - name: Build n2n dependancies
-        run: |
-          make -j `nproc` package/libs/libpcap/compile
-
-      - name: Build n2n openwrt packages
+      - name: Build
+        uses: openwrt/gh-action-sdk@v5
         env:
-          N2N_PKG_VERSION: ${{ steps.n2n_ref.outputs.REF }}
+          ARCH: ${{ matrix.arch }}
+          FEEDNAME: n2n_ci
+          PACKAGES: openwrt
+
+      - name: Move created packages to project dir
         run: |
-          echo "Build for $N2N_PKG_VERSION"
-          export N2N_PKG_VERSION
-          make package/n2n/clean V=s
-          make package/n2n/prepare USE_SOURCE_DIR=$GITHUB_WORKSPACE/n2n V=s
-          make package/n2n/compile V=s
+          mkdir -p ipk-${{ matrix.arch }}
+          cp bin/packages/${{ matrix.arch }}/n2n_ci/*.ipk ipk-${{ matrix.arch }} || true
 
-# FIXME: add a way to run the test suite!
-#      - name: Run embedded tests
-#        run: make test
-
-      - name: Upload built artifacts
+      - name: Store packages
         uses: actions/upload-artifact@v2
         with:
-          name: built-ipkgs
-          path: openwrt/bin/packages/*/base/*.ipk
+          name: packages
+          path: ipk-${{ matrix.arch }}/
+
+      - name: Rename logs
+        run: sudo mv -f logs logs-${{ matrix.arch }}
+
+      - name: Store logs
+        uses: actions/upload-artifact@v2
+        with:
+          name: logs
+          path: logs-${{ matrix.arch }}/
+
+      - name: Remove logs
+        run: sudo rm -rf logs-${{ matrix.arch }}/ || true
