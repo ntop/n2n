@@ -14,9 +14,10 @@ start_service() {
 	procd_close_instance
 }
 
-stop_service()
+reload_service()
 {
-	service_stop $PROG
+	stop
+	start
 }
 
 service_triggers()
