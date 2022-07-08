@@ -17,33 +17,43 @@ jobs:
         include:
           - arch: arc_archs
             target: archs38-generic
+            runtime_test: false
 
           - arch: arm_cortex-a9_vfpv3-d16
             target: mvebu-cortexa9
+            runtime_test: false
 
           - arch: mips_24kc
             target: ath79-generic
+            runtime_test: false
 
           - arch: mipsel_24kc
             target: mt7621
+            runtime_test: false
 
           - arch: powerpc_464fp
             target: apm821xx-nand
+            runtime_test: false
 
           - arch: powerpc_8540
             target: mpc85xx-p1010
+            runtime_test: false
 
           - arch: aarch64_cortex-a53
             target: mvebu-cortexa53
+            runtime_test: true
 
           - arch: arm_cortex-a15_neon-vfpv4
             target: armvirt-32
+            runtime_test: true
 
           - arch: i386_pentium-mmx
             target: x86-geode
+            runtime_test: true
 
           - arch: x86_64
             target: x86-64
+            runtime_test: true
 
     steps:
       - uses: actions/checkout@v3
@@ -79,3 +89,19 @@ jobs:
 
       - name: Remove logs
         run: sudo rm -rf logs-${{ matrix.arch }}/ || true
+
+      - name: Register QEMU
+        if: ${{ matrix.runtime_test }}
+        run: sudo docker run --rm --privileged aptman/qus -s -- -p
+
+      - name: Build Docker container
+        if: ${{ matrix.runtime_test }}
+        run: |
+          git checkout HEAD .github/openwrt
+          docker build -t test-container --build-arg ARCH .github/openwrt/
+        env:
+          ARCH: ${{ matrix.arch }}
+
+      - name: Test via Docker container
+        if: ${{ matrix.runtime_test }}
+        run: docker run --rm -v $GITHUB_WORKSPACE:/ci test-container
