@@ -24,7 +24,7 @@ define Package/n2n/Default
   TITLE:=N2N Peer-to-peer VPN
   URL:=http://www.ntop.org/n2n
   SUBMENU:=VPN
-  DEPENDS+=+libcap
+  DEPENDS+=+libcap +libpcap
 endef
 
 define Package/n2n-edge
@@ -54,7 +54,18 @@ define Package/n2n-supernode/conffiles
 /etc/n2n/supernode.conf
 endef
 
-CONFIGURE_ARGS+= --enable-cap
+define Package/n2n-utils
+  $(call Package/n2n/Default)
+  TITLE+= utilities
+endef
+
+define Package/n2n-utils/description
+  The extend utilities for the N2N infrastructure
+endef
+
+CONFIGURE_ARGS+= \
+	--enable-cap \
+	--enable-pcap
 
 MAKE_VARS+= CONFIG_TARGET=generic
 
@@ -76,6 +87,15 @@ define Package/n2n-supernode/install
 	$(INSTALL_CONF) $(PKG_BUILD_DIR)/packages/etc/n2n/supernode.conf.sample $(1)/etc/n2n/supernode.conf
 endef
 
+define Package/n2n-utils/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/n2n-benchmark $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/n2n-decode $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/n2n-keygen $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/n2n-portfwd $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/n2n-route $(1)/usr/bin/
+endef
 
 $(eval $(call BuildPackage,n2n-edge))
 $(eval $(call BuildPackage,n2n-supernode))
+$(eval $(call BuildPackage,n2n-utils))
