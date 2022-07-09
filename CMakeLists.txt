@@ -238,8 +238,7 @@ if(N2N_OPTION_USE_ZSTD)
 endif(N2N_OPTION_USE_ZSTD)
 
 if(N2N_OPTION_USE_CAPLIB)
-  # TODO: this is a static library, shouldnt we have a generic one?
-  target_link_libraries(edge cap.a)
+  target_link_libraries(edge cap)
 endif(N2N_OPTION_USE_CAPLIB)
 
 if(N2N_OPTION_USE_PORTMAPPING)
