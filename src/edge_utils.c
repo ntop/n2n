@@ -2877,7 +2877,7 @@ int run_edge_loop (n2n_edge_t *eee) {
             // any or all of the FDs could have input; check them all
 
             // external
-            if(FD_ISSET(eee->sock, &socket_mask)) {
+            if((eee->sock >= 0) && FD_ISSET(eee->sock, &socket_mask)) {
                 if(0 != fetch_and_eventually_process_data(eee, eee->sock,
                                                           pktbuf, &expected, &position,
                                                           now)) {
