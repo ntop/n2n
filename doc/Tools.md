@@ -47,13 +47,6 @@ Note that n2n needs to be compiled with the corresponding options enabled, e.g.
 ./configure --enable-miniupnp --enable-natpmp
 ```
 
-or
-
-```
-`cmake -DN2N_OPTION_USE_PORTMAPPING=ON`
-
-```
-
 Also see [build configuration](BuildConfig.md).
 
 Example:

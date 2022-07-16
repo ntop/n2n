@@ -14,29 +14,13 @@ jobs:
           name: Install Software
           command: |
             sudo apt-get update
-            sudo apt-get install -y cmake build-essential
-            mkdir build
-            cd build
-            cmake ..
+            sudo apt-get install -y build-essential
+            ./autogen.sh
+            ./configure
+            make build-dep
             make
-  windows-msvc:
-    executor: win/default
-    steps:
-      - checkout
-      - run:
-          name: Download CMake
-          # yamllint disable rule:line-length
-          command: |
-            $ProgressPreference = "SilentlyContinue"
-            Invoke-WebRequest -URI https://github.com/Kitware/CMake/releases/download/v3.16.4/cmake-3.16.4-win64-x64.zip -OutFile $Env:HOMEPATH\cmake-3.16.4-win64-x64.zip
-            Expand-Archive $Env:HOMEPATH\cmake-3.16.4-win64-x64.zip -DestinationPath "$Env:ProgramFiles"
-            Rename-Item "$Env:ProgramFiles\cmake-3.16.4-win64-x64" -NewName CMake
-          # yamllint enable rule:line-length
-      - run: .ci\install-vcpkg.ps1 "$Env:CIRCLE_WORKING_DIRECTORY"
-      - run: .ci\build-project.ps1
 workflows:
   version: 2
   run-all:
     jobs:
       - linux-gcc
-      - windows-msvc
