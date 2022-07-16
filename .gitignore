@@ -23,7 +23,6 @@ tools/n2n-route
 build
 .idea
 .vscode
-cmake-build-default
 packages/debian/debian/changelog
 packages/debian/debian/control
 packages/debian/debian/files
@@ -33,8 +32,6 @@ packages/etc/systemd/system/edge.service
 packages/etc/systemd/system/edge@.service
 packages/etc/systemd/system/supernode.service
 *dSYM*
-
-cmake-build-*/
 
 # Binaries built to run tests
 tools/tests-auth

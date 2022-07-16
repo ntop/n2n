@@ -12,8 +12,7 @@ configuration settings are being removed.
 ## Options
 
 After changing any configuration, please do no forget to `make clean` after
-the (re-)configuration and before building (again) using `make`.  (Or the
-equivalent with `cmake`)
+the (re-)configuration and before building (again) using `make`.
 
 ### `--with-zstd`
 
@@ -50,19 +49,7 @@ the hardware support and compiler optimizations such as.
 
 `./configure --with-openssl CFLAGS="-O3 -march=native"`
 
-#### Makefile
-
-Add `--with-openssl` to the `configure` command
-
-#### Cmake
-
-Add `-DN2N_OPTION_USE_OPENSSL=ON` to the cmake configure step.
-
-Additionally, it is possible to statically link the OpenSSL library.
-Add `-DOPENSSL_USE_STATIC_LIBS=true` to the cmake configure step.
-
-Building statically with openssl in this way has been known to have
-issues recently on Windows (See #944)
+To activate, add `--with-openssl` to the `configure` command
 
 ### `--with-edgex`
 
@@ -126,18 +113,6 @@ of any `--with-X` style options, thus to provide the highest confidence in
 the correctness of configuration and compilation, `--enable-X` style options
 are preferred.  As part of this, the older `--with-X` options will eventually
 be migrated to use `--enable-X`
-
-## CMake configuration
-
-There are a number of OPTION statements in the CMakeLists.txt file that can
-have their settings changed.  This is done by adding a commandline option
-to the cmake configure stage.
-
-e.g:
-`cmake -DN2N_OPTION_USE_ZSTD=ON ..`
-
-Note that the names of the configure option variables used in the cmake
-process will probably change to make the source code consistent.
 
 # Optimisation options
 

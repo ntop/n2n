@@ -47,51 +47,9 @@ these difficulties are being discussed for future n2n versions.
 
 # Build on Windows
 
-The following document some possible windows compile recipes.  Of them, the
-MinGW build process is more tested as it is more friendly to open source
+The following document one possible windows compile recipe.  The reason
+a MinGW build process is used is it is more friendly to open source
 development.
-
-## Visual Studio
-
-### Requirements
-In order to build with Vidual Studio on Windows the following tools should be installed:
-
-- Visual Studio. For a minimal install, the command line only build tools can be
-  downloaded and installed from https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2017.
-
-- CMake (From https://cmake.org/download/)
-
-  NOTE: You should always use the official cmake stable release as otherwise
-  you may have issues finding libraries (e.g: the installed OpenSSL library).
-  If you still have problems, you can try invoking it with `C:\Program Files\CMake\bin\cmake`.
-
-- (optional) The OpenSSL library.  This optional library can be enabled as
-  per the steps in the [Build time Configuration](BuildConfig.md)
-
-  Pre-built OpenSSL binaries can be downloaded from
-  https://slproweb.com/products/Win32OpenSSL.html.
-  The full version is required, i.e. not the "Light" version. The Win32
-  version of it is usually required for a standard build.
-
-### CLI steps
-
-In order to build from the command line, open a terminal window change to
-the directory where the git checkout of this repository is and run the
-following commands:
-
-Building using `cmake` works as follows:
-
-```batch
-cmake -E make_directory build
-cd build
-
-rem Append any options to the next line
-cmake ..
-
-cmake --build . --config Release
-```
-
-The compiled `.exe` files should now be available in the `build\Release` directory.
 
 ## MinGW
 
