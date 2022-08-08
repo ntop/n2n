@@ -51,7 +51,7 @@
 #define REGISTER_SUPER_INTERVAL_DFL      20 /* sec, usually UDP NAT entries in a firewall expire after 30 seconds */
 #define SWEEP_TIME                       30 /* sec, indicates the value after which we have to sort the hash list of supernodes in edges
                                              * and when we send out packets to query selection-relevant informations from supernodes. */
-
+#define HOSTINFO_AGEOUT_TIMEOUT          300 /* sec, How long after last seen will the hostinfo be deleted */
 #define NUMBER_SN_PINGS_INITIAL          15 /* number of supernodes to concurrently ping during bootstrap and immediately afterwards */
 #define NUMBER_SN_PINGS_REGULAR           5 /* number of supernodes to concurrently ping during regular edge operation */
 
