@@ -470,12 +470,14 @@ struct peer_info {
 
 typedef struct peer_info peer_info_t;
 
+#ifdef HAVE_BRIDGING_SUPPORT
 struct host_info {
     n2n_mac_t                        mac_addr;
     n2n_mac_t                        edge_addr;
     time_t                           last_seen;
     UT_hash_handle     hh; /* makes this structure hashable */
 };
+#endif
 
 typedef struct n2n_edge n2n_edge_t;
 
@@ -730,8 +732,10 @@ struct n2n_edge {
     /* Peers */
     struct peer_info *               known_peers;                        /**< Edges we are connected to. */
     struct peer_info *               pending_peers;                      /**< Edges we have tried to register with. */
+#ifdef HAVE_BRIDGING_SUPPORT    
     struct host_info *               known_hosts;                        /**< hosts we know. */
-    /* Timers */
+#endif
+/* Timers */
     time_t                           last_register_req;                  /**< Check if time to re-register with super*/
     time_t                           last_p2p;                           /**< Last time p2p traffic was received. */
     time_t                           last_sup;                           /**< Last time a packet arrived from supernode. */
