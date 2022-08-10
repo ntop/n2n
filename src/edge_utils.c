@@ -1753,11 +1753,11 @@ static int handle_PACKET (n2n_edge_t * eee,
                 }
             }
 
-            if ((eee->conf.allow_routing) && (!is_multi_broadcast(eh->shost))) {
+            if((eee->conf.allow_routing) && (!is_multi_broadcast(eh->shost))) {
                 struct host_info *host = NULL;
 
                 HASH_FIND(hh, eee->known_hosts, eh->shost, sizeof(n2n_mac_t), host);
-                if (host == NULL) {
+                if(host == NULL) {
                     struct host_info *host = calloc(1, sizeof(struct host_info));
                     memcpy(host->mac_addr, eh->shost, sizeof(n2n_mac_t));
                     memcpy(host->edge_addr, pkt->srcMac, sizeof(n2n_mac_t));
@@ -2021,10 +2021,10 @@ void edge_send_packet2net (n2n_edge_t * eee,
 
     memcpy(destMac, tap_pkt, N2N_MAC_SIZE); /* dest MAC is first in ethernet header */
     /* find the destMac behind which edge, and change dest to this edge */
-    if ((eee->conf.allow_routing) && (!is_multi_broadcast(destMac))) {
+    if((eee->conf.allow_routing) && (!is_multi_broadcast(destMac))) {
         struct host_info *host = NULL;
         HASH_FIND(hh, eee->known_hosts, destMac, sizeof(n2n_mac_t), host);
-        if (host) {
+        if(host) {
             memcpy(destMac, host->edge_addr, N2N_MAC_SIZE);
         }
     }
@@ -2971,10 +2971,10 @@ int run_edge_loop (n2n_edge_t *eee) {
                        HASH_COUNT(eee->known_peers));
         }
 
-        if ((eee->conf.allow_routing) && (now - last_purge_host > SWEEP_TIME)) {
+        if((eee->conf.allow_routing) && (now - last_purge_host > SWEEP_TIME)) {
             struct host_info *host, *host_tmp;
             HASH_ITER(hh, eee->known_hosts, host, host_tmp) {
-                if (now - host->last_seen > HOSTINFO_AGEOUT_TIMEOUT) {         
+                if(now - host->last_seen > HOSTINFO_TIMEOUT) {         
                     HASH_DEL(eee->known_hosts, host);
                     free(host);
                 }
@@ -3036,7 +3036,7 @@ void edge_term (n2n_edge_t * eee) {
     clear_peer_list(&eee->known_peers);
     clear_peer_list(&eee->conf.supernodes);
 
-    if (eee->conf.allow_routing) {
+    if(eee->conf.allow_routing) {
         struct host_info *host, *host_tmp;
         HASH_ITER(hh, eee->known_hosts, host, host_tmp) {   
             HASH_DEL(eee->known_hosts, host);
