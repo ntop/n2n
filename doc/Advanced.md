@@ -31,9 +31,11 @@ It is available a special community which provides interconnection between super
 The [TAP Configuration Guide](TapConfiguration.md) contains hints on various settings that can be applied to the virtual network device, including IPv6 addresses as well as notes on MTU and on how to draw IP addresses from DHCP servers.
 
 
-## Routing the Traffic
+## Bridging and Routing the Traffic
 
 Reaching a remote network or tunneling all the internet traffic via n2n are two common tasks which require a proper routing setup. n2n supports routing needs by temporarily modifying the routing table (`tools/n2n-route`). Details can be found in the [Routing document](Routing.md).
+
+Also, n2n supports [Bridging](Bridging.md) of LANs, e.g. to connect otherwise un-connected LANs by an encrypted n2n tunnel on level 2.
 
 
 ## Traffic Restrictions
