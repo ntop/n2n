@@ -306,7 +306,8 @@ static void help (int level) {
         printf(" -d <device>       | TAP device name\n");
 #endif
         printf(" -M <mtu>          | specify n2n MTU of TAP interface, default %d\n", DEFAULT_MTU);
-        printf(" -r                | enable packet forwarding through n2n community\n");
+        printf(" -r                | enable packet forwarding through n2n community,\n"
+               "                   | also required for bridging\n");
         printf(" -E                | accept multicast MAC addresses, drop by default\n");
         printf(" -I <description>  | annotate the edge's description used for easier\n"
                "                   | identification in management port output or username\n");
