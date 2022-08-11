@@ -132,7 +132,8 @@ specify n2n MTU of TAP interface, default 1290
 \fB\-r\fR
 enable IP packet forwarding/routing through the n2n virtual LAN. Without this
 option, IP packets arriving over n2n are dropped if not for the -a <addr> (or
-DHCP assigned) IP address of the edge interface.
+DHCP assigned) IP address of the edge interface. This option is also required
+to allow n2n device being used in network bridging, e.g. with brctl.
 .TP
 \fB\-E\fR
 accept packets destined for multicast ethernet MAC addresses. These addresses
