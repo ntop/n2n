@@ -114,7 +114,7 @@ static void help (int level) {
         printf (" OPTIONS FOR THE UNDERLYING NETWORK CONNECTION\n");
         printf (" ---------------------------------------------\n\n");
         printf(" -p [<ip>:]<port>  | fixed local UDP port (defaults to %u) and optionally\n"
-               "                   | bind to sepcified local IP address only ('any' by default)\n", N2N_SN_LPORT_DEFAULT);
+               "                   | bind to specified local IP address only ('any' by default)\n", N2N_SN_LPORT_DEFAULT);
         printf(" -F <fed name>     | name of the supernode's federation, defaults to\n"
                "                   | '%s'\n", (char *)FEDERATION_NAME);
         printf(" -l <host:port>    | ip address or name, and port of known supernode\n");
