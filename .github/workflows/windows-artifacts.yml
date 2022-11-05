@@ -42,4 +42,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: n2n for windows
-        path: ${{github.workspace}}/Release/edge.exe
+        path: Release/edge.exe
