@@ -14,6 +14,8 @@ supernode
 tools/n2n-benchmark
 tools/n2n-decode
 tools/n2n-keygen
+tools/n2n-portfwd
+tools/n2n-route
 build
 .idea
 .vscode
@@ -31,6 +33,7 @@ packages/etc/systemd/system/supernode.service
 cmake-build-*/
 
 # Binaries built to run tests
+tools/tests-auth
 tools/tests-compress
 tools/tests-elliptic
 tools/tests-hashing
