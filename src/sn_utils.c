@@ -1083,6 +1083,7 @@ static int update_edge (n2n_sn_t *sss,
                 scan->socket_fd = socket_fd;
                 scan->last_cookie = reg->cookie;
                 scan->last_valid_time_stamp = initial_time_stamp();
+              	scan->purgeable = PURGEABLE;
                 // eventually, store edge's preferred local socket from REGISTER_SUPER
                 if(cmn->flags & N2N_FLAGS_SOCKET)
                     memcpy(&scan->preferred_sock, &reg->sock, sizeof(n2n_sock_t));
