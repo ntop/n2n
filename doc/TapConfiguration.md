@@ -128,7 +128,7 @@ virtual ones.
 
 n2n does not transmit multicast packets by default. It can be enabled by edge's `-E` command-line parameter.
 
-## Egde Description
+## Edge Description
 
 To keep edge's and supernode's management port output well arranged and understandable, each edge can have a plain text description
 fed to the edge by the optional `-I <edge description>` command-line parameter. If not provided, n2n uses the
