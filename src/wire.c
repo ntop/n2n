@@ -673,7 +673,11 @@ int fill_sockaddr (struct sockaddr * addr,
 // fills struct sockaddr's data into n2n_sock
 int fill_n2nsock (n2n_sock_t* sock, const struct sockaddr* sa) {
 
+#ifdef __APPLE__
+    sock->family = sa->sa_family;
+#else
     sock->family = *(sa_family_t*)sa;
+#endif
     switch(sock->family) {
         case AF_INET: {
             sock->port = ntohs(((struct sockaddr_in*)sa)->sin_port);
