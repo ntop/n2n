@@ -88,6 +88,13 @@ jobs:
         run: |
           make test
 
+      - if: ${{ failure() }}
+        name: Upload tests output
+        uses: actions/upload-artifact@v2
+        with:
+          name: "analysis${{ matrix.flags }}"
+          path: tests
+
   test_linux:
     needs: smoketest
     name: Test Linux
