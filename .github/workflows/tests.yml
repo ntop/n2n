@@ -62,10 +62,10 @@ jobs:
           - -fsanitize=address -static-libasan
           - -fsanitize=undefined -static-libubsan
 
-# This option results in timeouts sending RPC requests during the
-# test_integration_supernode.sh test when running in github actions.
-# Disable it until more investigation can be done.
-#          - -fsanitize=leak
+          # This option results in timeouts sending RPC requests during the
+          # test_integration_supernode.sh test when running in github actions.
+          # Disable it until more investigation can be done.
+          # - -fsanitize=leak
 
     steps:
       - uses: actions/checkout@v3
