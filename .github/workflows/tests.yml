@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Fix Checkout
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Fix Checkout
@@ -59,12 +59,16 @@ jobs:
       fail-fast: true
       matrix:
         flags:
-          - -fsanitize=leak
           - -fsanitize=address -static-libasan
           - -fsanitize=undefined -static-libubsan
 
+          # This option results in timeouts sending RPC requests during the
+          # test_integration_supernode.sh test when running in github actions.
+          # Disable it until more investigation can be done.
+          # - -fsanitize=leak
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Fix Checkout
@@ -88,6 +92,13 @@ jobs:
         run: |
           make test
 
+      - if: ${{ failure() }}
+        name: Upload tests output
+        uses: actions/upload-artifact@v3
+        with:
+          name: "analysis${{ matrix.flags }}"
+          path: tests
+
   test_linux:
     needs: smoketest
     name: Test Linux
@@ -97,10 +108,10 @@ jobs:
       matrix:
         os:
           - ubuntu-20.04
-          - ubuntu-18.04
+          - ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Fix Checkout
@@ -140,7 +151,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: tests-out
           path: tests
@@ -152,13 +163,13 @@ jobs:
         shell: bash
 
       - name: Upload gcovr report artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: coverage
           path: coverage
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
 
   test_macos:
     needs: smoketest
@@ -168,11 +179,11 @@ jobs:
       fail-fast: true
       matrix:
         os:
-          - macos-10.15
+          - macos-12
           - macos-11
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Fix Checkout
@@ -211,7 +222,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: tests-out
           path: tests
@@ -230,13 +241,13 @@ jobs:
         shell: bash
 
       # - name: Upload gcovr report artifact
-      #  uses: actions/upload-artifact@v2
+      #  uses: actions/upload-artifact@v3
       #  with:
       #    name: coverage
       #    path: coverage
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
 
   test_windows:
     needs: smoketest
@@ -250,7 +261,7 @@ jobs:
           - windows-2022
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Fix Checkout
@@ -285,7 +296,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: tests-out
           path: tests
@@ -296,7 +307,7 @@ jobs:
         shell: bash
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
 
   package_dpkg:
     name: Package for Debian/Ubuntu
@@ -313,7 +324,7 @@ jobs:
           - i386
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -347,7 +358,7 @@ jobs:
           make
 
       - name: Upload dpkg
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: packages-dpkg
           path: packages/debian/*.deb
@@ -359,7 +370,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -388,7 +399,7 @@ jobs:
           mv ../rpmbuild ./
 
       - name: Upload rpm
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: packages-rpm
           path: rpmbuild/RPMS/x86_64/*.rpm
@@ -400,7 +411,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -420,7 +431,7 @@ jobs:
           make install DESTDIR=binaries/x86_64-pc-mingw64
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: binaries
           path: binaries
@@ -438,7 +449,7 @@ jobs:
           - arm64-apple-macos
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -464,7 +475,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: Upload config.log output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: config-log-${{ matrix.arch }}
           path: config.log
@@ -475,7 +486,7 @@ jobs:
           make install DESTDIR=binaries/${{ matrix.arch }}
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: binaries
           path: binaries
@@ -487,7 +498,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -517,7 +528,7 @@ jobs:
           make install DESTDIR=binaries/universal-apple-darwin
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: binaries
           path: binaries
@@ -542,7 +553,7 @@ jobs:
           - mipsel-linux-gnu
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -572,7 +583,7 @@ jobs:
           make install DESTDIR=binaries/${{ matrix.arch }}
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: binaries
           path: binaries
@@ -601,7 +612,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
@@ -620,7 +631,7 @@ jobs:
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           path: artifacts
 
