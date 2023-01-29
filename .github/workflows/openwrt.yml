@@ -25,15 +25,14 @@ jobs:
 
     steps:
       - name: Checkout openwrt
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: openwrt
           repository: openwrt/openwrt
 
       - name: Set openwrt ref
-        id: openwrt_ref
         run: |
-          echo ::set-output name=REF::$(git rev-parse --short HEAD)
+          echo "OPENWRT_REF=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           git rev-parse --short HEAD
 
       - name: Checkout n2n
@@ -48,9 +47,8 @@ jobs:
         working-directory: n2n
 
       - name: Set n2n ref
-        id: n2n_ref
         run: |
-          echo ::set-output name=REF::$(./scripts/version.sh)
+          echo "N2N_REF=$(./scripts/version.sh)" >> $GITHUB_ENV
           ./scripts/version.sh
         working-directory: n2n
 
@@ -60,10 +58,10 @@ jobs:
         working-directory: ./
 
       - name: Cache openwrt source downloads
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: openwrt/dl
-          key: openwrt-dl-${{ steps.openwrt_ref.outputs.REF }}
+          key: openwrt-dl-${{ env.OPENWRT_REF }}
 
       - name: Setup openwrt config and environment
         run: |
@@ -93,7 +91,7 @@ jobs:
 
       - name: Build n2n openwrt packages
         env:
-          N2N_PKG_VERSION: ${{ steps.n2n_ref.outputs.REF }}
+          N2N_PKG_VERSION: ${{ env.N2N_REF }}
         run: |
           echo "Build for $N2N_PKG_VERSION"
           export N2N_PKG_VERSION
