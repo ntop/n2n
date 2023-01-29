@@ -1,0 +1,5 @@
+# OpenWrt Configuration snippet
+# - will enable building on x86 target (mainly for build tests)
+#
+CONFIG_TARGET_x86=y
+CONFIG_TARGET_x86_64=y

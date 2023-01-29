@@ -36,13 +36,16 @@ the n2n repository.
 git clone https://github.com/ntop/n2n n2n
 N2N_PKG_VERSION=$(n2n/scripts/version.sh)
 export N2N_PKG_VERSION
+echo $N2N_PKG_VERSION
 
 cp -r n2n/packages/openwrt openwrt/package/n2n
 
 cd openwrt
-make menuconfig # select Network -> VPN -> n2n-edge and n2n-supernode
+make oldconfig
+# In the VPN section, select "m" for n2n-edge and n2n-supernode
+
 make package/n2n/clean V=s
-make package/n2n/prepare USE_SOURCE_DIR=../n2n V=s
+make package/n2n/prepare USE_SOURCE_DIR=$(realpath ../n2n) V=s
 make package/n2n/compile V=s
 ```
 
