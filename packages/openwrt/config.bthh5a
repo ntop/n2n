@@ -1,0 +1,11 @@
+# OpenWrt Configuration snippet
+# - will enable building for BT Home Hub 5a
+#
+CONFIG_TARGET_lantiq=y
+CONFIG_TARGET_lantiq_xrx200=y
+CONFIG_TARGET_lantiq_xrx200_DEVICE_bt_homehub-v5a=y
+
+# Would be needed for a full standalone build, but are packages that should
+# be available from the distributed openwrt build repository
+# CONFIG_PACKAGE_kmod-tun=m
+# CONFIG_PACKAGE_libcap=m

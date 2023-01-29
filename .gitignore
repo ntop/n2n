@@ -2,7 +2,11 @@
 *.a
 *.gz
 configure
-config.*
+config.log
+config.rpath
+config.status
+include/config.h
+include/config.h.in
 /Makefile
 tools/Makefile
 autom4te.cache
@@ -53,3 +57,15 @@ coverage/
 *.indent
 *.unc-backup.md5~
 *.unc-backup~
+
+# Empty files created by the openwrt build
+/.built
+/.built_check
+/.configured_*
+/.prepared
+/.quilt_checked
+/.source_dir
+/ABOUT-NLS
+/AUTHORS
+/ChangeLog
+/NEWS

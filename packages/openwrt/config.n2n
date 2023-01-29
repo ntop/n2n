@@ -1,0 +1,7 @@
+# OpenWrt Configuration snippet
+# - will enable building the N2N packages
+#
+CONFIG_TARGET_lantiq=y
+CONFIG_TARGET_lantiq_xrx200=y
+CONFIG_TARGET_lantiq_xrx200_DEVICE_bt_homehub-v5a=y
+

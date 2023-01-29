@@ -404,6 +404,84 @@ jobs:
           name: packages-rpm
           path: rpmbuild/RPMS/x86_64/*.rpm
 
+  package_ipk:
+    name: Package for OpenWrt
+    needs:
+      - test_linux
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: bthh5a
+            sdk: https://downloads.openwrt.org/releases/22.03.3/targets/lantiq/xrx200/openwrt-sdk-22.03.3-lantiq-xrx200_gcc-11.2.0_musl.Linux-x86_64.tar.xz
+          - name: x86
+            sdk: https://downloads.openwrt.org/releases/22.03.3/targets/x86/generic/openwrt-sdk-22.03.3-x86-generic_gcc-11.2.0_musl.Linux-x86_64.tar.xz
+
+    defaults:
+      run:
+        working-directory: openwrt
+
+    steps:
+      - name: Get sdk
+        run: |
+          wget ${{ matrix.sdk }} -O openwrt-sdk.tar.xz
+          tar xf openwrt-sdk.tar.xz
+          mv openwrt-sdk-* openwrt
+        working-directory: ./
+
+      - name: Checkout n2n
+        uses: actions/checkout@v3
+        with:
+          path: n2n
+          fetch-depth: 0
+
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+        working-directory: n2n
+
+      - name: Copy n2n package definition into openwrt
+        run: |
+          cp -r n2n/packages/openwrt openwrt/package/n2n
+        working-directory: ./
+
+      - name: Configure OpenWrt
+        run: |
+          make defconfig
+
+      - name: Build n2n openwrt packages
+        run: |
+          export N2N_PKG_VERSION=$(../n2n/scripts/version.sh)
+          echo "Build for $N2N_PKG_VERSION"
+          make package/n2n/clean V=s
+          make package/n2n/prepare USE_SOURCE_DIR=$GITHUB_WORKSPACE/n2n V=s
+          make package/n2n/compile V=s
+
+# FIXME: add a way to run the test suite!
+#      - name: Run embedded tests
+#        run: make test
+
+      - name: Save config used
+        if: always()
+        run: |
+          cp openwrt/.config config.${{ matrix.name }}
+        working-directory: ./
+
+      - name: Upload config file used for build
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: openwrt-config
+          path: config.*
+
+      - name: Upload ipk
+        uses: actions/upload-artifact@v3
+        with:
+          name: packages-ipk
+          path: openwrt/bin/packages/*/base/*.ipk
+
   binaries_windows:
     name: Binaries for Windows (x86_64-pc-mingw64)
     needs:
@@ -605,6 +683,7 @@ jobs:
     needs:
       - package_dpkg
       - package_rpm
+      - package_ipk
       - binaries_windows
       - binaries_macos
       - binaries_macos_universal
@@ -643,3 +722,4 @@ jobs:
           files: |
             artifacts/packages-dpkg/*.deb
             artifacts/packages-rpm/*.rpm
+            artifacts/packages-ipk/*/base/*.pkg
