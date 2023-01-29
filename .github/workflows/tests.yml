@@ -418,6 +418,8 @@ jobs:
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/lantiq/xrx200/openwrt-sdk-22.03.3-lantiq-xrx200_gcc-11.2.0_musl.Linux-x86_64.tar.xz
           - name: x86
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/x86/generic/openwrt-sdk-22.03.3-x86-generic_gcc-11.2.0_musl.Linux-x86_64.tar.xz
+          - name: x86_64
+            sdk: https://downloads.openwrt.org/releases/22.03.3/targets/x86/64/openwrt-sdk-22.03.3-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz
 
     defaults:
       run:
