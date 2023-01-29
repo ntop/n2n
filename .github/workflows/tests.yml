@@ -414,9 +414,9 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name: bthh5a
+          - name: mips_24kc
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/lantiq/xrx200/openwrt-sdk-22.03.3-lantiq-xrx200_gcc-11.2.0_musl.Linux-x86_64.tar.xz
-          - name: x86
+          - name: i386_pentium4
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/x86/generic/openwrt-sdk-22.03.3-x86-generic_gcc-11.2.0_musl.Linux-x86_64.tar.xz
           - name: x86_64
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/x86/64/openwrt-sdk-22.03.3-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz
