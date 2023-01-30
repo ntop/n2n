@@ -448,6 +448,12 @@ jobs:
           path: openwrt/bin
           key: openwrt-bin-${{ matrix.sdk_ver }}-${{ matrix.name }}
 
+      - name: Cache openwrt build_dir
+        uses: actions/cache@v3
+        with:
+          path: openwrt/build_dir
+          key: openwrt-build_dir-${{ matrix.sdk_ver }}-${{ matrix.name }}
+
       - name: Copy n2n package definition into openwrt
         run: |
           cp -r n2n/packages/openwrt openwrt/package/n2n
