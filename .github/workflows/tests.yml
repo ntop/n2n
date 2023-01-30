@@ -424,7 +424,15 @@ jobs:
         working-directory: openwrt
 
     steps:
+      - name: Cache entire openwrt dir
+        id: cache-openwrt
+        uses: actions/cache@v3
+        with:
+          path: openwrt
+          key: openwrt-${{ matrix.sdk_ver }}-${{ matrix.name }}
+
       - name: Get sdk
+        if: steps.cache-openwrt.outputs-cache-hit != 'true'
         run: |
           wget -q ${{ matrix.sdk }} -O openwrt-sdk.tar.xz
           tar xf openwrt-sdk.tar.xz
@@ -441,18 +449,6 @@ jobs:
         run: |
           git fetch --force --tags
         working-directory: n2n
-
-      - name: Cache openwrt bin
-        uses: actions/cache@v3
-        with:
-          path: openwrt/bin
-          key: openwrt-bin-${{ matrix.sdk_ver }}-${{ matrix.name }}
-
-      - name: Cache openwrt build_dir
-        uses: actions/cache@v3
-        with:
-          path: openwrt/build_dir
-          key: openwrt-build_dir-${{ matrix.sdk_ver }}-${{ matrix.name }}
 
       - name: Copy n2n package definition into openwrt
         run: |
