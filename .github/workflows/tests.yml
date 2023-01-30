@@ -415,10 +415,13 @@ jobs:
       matrix:
         include:
           - name: mips_24kc
+            sdk_ver: 22.03.3
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/lantiq/xrx200/openwrt-sdk-22.03.3-lantiq-xrx200_gcc-11.2.0_musl.Linux-x86_64.tar.xz
           - name: i386_pentium4
+            sdk_ver: 22.03.3
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/x86/generic/openwrt-sdk-22.03.3-x86-generic_gcc-11.2.0_musl.Linux-x86_64.tar.xz
           - name: x86_64
+            sdk_ver: 22.03.3
             sdk: https://downloads.openwrt.org/releases/22.03.3/targets/x86/64/openwrt-sdk-22.03.3-x86-64_gcc-11.2.0_musl.Linux-x86_64.tar.xz
 
     defaults:
@@ -443,6 +446,12 @@ jobs:
         run: |
           git fetch --force --tags
         working-directory: n2n
+
+      - name: Cache openwrt bin
+        uses: actions/cache@v3
+        with:
+          path: bin
+          key: openwrt-bin-${{ matrix.sdk_ver }}
 
       - name: Copy n2n package definition into openwrt
         run: |
