@@ -100,7 +100,6 @@ jobs:
           path: tests
 
   test_linux:
-    needs: smoketest
     name: Test Linux
     runs-on: ${{ matrix.os }}
     strategy:
@@ -172,7 +171,6 @@ jobs:
         uses: codecov/codecov-action@v3
 
   test_macos:
-    needs: smoketest
     name: Test MacOS
     runs-on: ${{ matrix.os }}
     strategy:
@@ -250,7 +248,6 @@ jobs:
         uses: codecov/codecov-action@v3
 
   test_windows:
-    needs: smoketest
     name: Test Windows
     runs-on: ${{ matrix.os }}
     strategy:
@@ -690,6 +687,7 @@ jobs:
     name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
     needs:
+      - smoketest
       - package_dpkg
       - package_rpm
       - package_ipk
