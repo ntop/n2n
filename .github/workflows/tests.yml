@@ -406,8 +406,6 @@ jobs:
 
   package_ipk:
     name: Package for OpenWrt
-    needs:
-      - test_linux
     runs-on: ubuntu-latest
 
     strategy:
@@ -431,7 +429,7 @@ jobs:
     steps:
       - name: Get sdk
         run: |
-          wget ${{ matrix.sdk }} -O openwrt-sdk.tar.xz
+          wget -q ${{ matrix.sdk }} -O openwrt-sdk.tar.xz
           tar xf openwrt-sdk.tar.xz
           mv openwrt-sdk-* openwrt
         working-directory: ./
@@ -450,8 +448,8 @@ jobs:
       - name: Cache openwrt bin
         uses: actions/cache@v3
         with:
-          path: bin
-          key: openwrt-bin-${{ matrix.sdk_ver }}
+          path: openwrt/bin
+          key: openwrt-bin-${{ matrix.sdk_ver }}-${{ matrix.name }}
 
       - name: Copy n2n package definition into openwrt
         run: |
