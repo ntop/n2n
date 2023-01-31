@@ -52,7 +52,7 @@ static void help (int level) {
                "\n short help text is displayed"
              "\n\n  -h    shows a quick reference including all available options"
                "\n --help gives a detailed parameter description"
-               "\n   man  files for n2n, edge, and superndode contain in-depth information"
+               "\n   man  files for n2n, edge, and supernode contain in-depth information"
                "\n\n");
 
     } else if(level == 2) /* quick reference */ {
@@ -102,7 +102,7 @@ static void help (int level) {
           "\n short help text is displayed"
         "\n\n  -h    shows this quick reference including all available options"
           "\n --help gives a detailed parameter description"
-          "\n   man  files for n2n, edge, and superndode contain in-depth information"
+          "\n   man  files for n2n, edge, and supernode contain in-depth information"
           "\n\n");
 
     } else /* long help */ {
@@ -153,7 +153,7 @@ static void help (int level) {
                "\n short help text is displayed"
              "\n\n  -h    shows a quick reference including all available options"
                "\n --help gives this detailed parameter description"
-               "\n   man  files for n2n, edge, and superndode contain in-depth information"
+               "\n   man  files for n2n, edge, and supernode contain in-depth information"
                "\n\n");
     }
 
