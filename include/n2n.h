@@ -92,8 +92,7 @@
 #include <net/if_arp.h>
 #include <net/if.h>
 #include <linux/if_tun.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
+#include <net/route.h>
 #endif /* #ifdef __linux__ */
 
 #ifdef __FreeBSD__
@@ -108,7 +107,6 @@
 #endif
 
 #include <netinet/in.h>
-#include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -137,6 +135,9 @@
 #include "n2n_typedefs.h"
 
 #ifdef WIN32
+#include <windows.h>            /* for privilege check in tools/n2n-route */
+#include <lmaccess.h>           /* for privilege check in tools/n2n-route */
+#include <lmapibuf.h>           /* for privilege check in tools/n2n-route */
 #include <winsock2.h>           /* for tcp */
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
 #include "wintap.h"

@@ -206,7 +206,7 @@ add_library(n2n STATIC
 if(DEFINED WIN32)
   add_library(edge_utils_win32 src/edge_utils_win32.c)
   add_subdirectory(win32)
-  target_link_libraries(n2n edge_utils_win32 n2n_win32 iphlpapi)
+  target_link_libraries(n2n edge_utils_win32 n2n_win32 iphlpapi netapi32)
 endif(DEFINED WIN32)
 
 add_executable(edge src/edge.c)

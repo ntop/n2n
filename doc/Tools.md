@@ -24,7 +24,7 @@ This C tool sets new routes for all the traffic to be routed via a VPN gateway
 appropriate routes to supernodes and peers via the original default gateway.
 
 The tool can auto-detect the default gateway and also has options to only route
-traffic to specified networks through the VPN gateway.
+traffic to some specified networks through the VPN gateway.
 
 Make sure to run with sufficient rights to let the tool add and delete routes.
 
@@ -34,7 +34,7 @@ including hints how to setup the remote edge (IP routing, masquerading).
 Example:
 - `tools/n2n-route <remote edge address>`
 - `tools/n2n-route -n 10.10.10.0/24 <remote edge address>`
-- `tools/n2n-route -n 8.8.8.8/32 <remote edge address>`
+- `tools/n2n-route -n 8.8.8.8/32:192.168.0.5  <some (other) remote edge address>`
 
 ### `n2n-portfwd`
 
