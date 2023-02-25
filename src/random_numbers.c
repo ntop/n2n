@@ -99,10 +99,25 @@ uint64_t n2n_seed (void) {
     uint64_t seed = 0;   /* this could even go uninitialized */
     uint64_t ret = 0;    /* this could even go uninitialized */
 
+    // each block goes with separate counter variables i, j, k because
+    // we do not know which one (or more) of them actually will be compiled
 #ifdef SYS_getrandom
     size_t i = 0;
     int rc = -1;
-    
+#endif
+
+#ifdef __RDRND__
+    size_t j = 0;
+#endif
+
+#ifdef __RDSEED__
+#if __GNUC__ > 4
+    size_t k = 0;
+#endif
+#endif
+
+
+#ifdef SYS_getrandom
     for(i = 0; (i < RND_RETRIES) && (rc != sizeof(seed)); i++) {
         rc = syscall (SYS_getrandom, &seed, sizeof(seed), GRND_NONBLOCK);
         // if successful, rc should contain the requested number of random bytes
@@ -126,7 +141,7 @@ uint64_t n2n_seed (void) {
 
     // __RDRND__ is set only if architecturual feature is set, e.g. compiled with -march=native
 #ifdef __RDRND__
-    for(i = 0; i < RND_RETRIES; i++) {
+    for(j = 0; j < RND_RETRIES; j++) {
         if(_rdrand64_step((unsigned long long*)&seed)) {
             // success!
             // from now on, we keep this inside the loop because in case of failure
@@ -136,7 +151,7 @@ uint64_t n2n_seed (void) {
         }
         // continue loop to try again otherwise
     }
-    if(i == RND_RETRIES) {
+    if(j == RND_RETRIES) {
         traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDRND.");
     }
 #endif
@@ -144,7 +159,7 @@ uint64_t n2n_seed (void) {
     // __RDSEED__ ist set only if architecturual feature is set, e.g. compile with -march=native
 #ifdef __RDSEED__
 #if __GNUC__ > 4
-    for(i = 0; i < RND_RETRIES; i++) {
+    for(k = 0; k < RND_RETRIES; k++) {
         if(_rdseed64_step((unsigned long long*)&seed)) {
             // success!
             ret += seed;
@@ -152,7 +167,7 @@ uint64_t n2n_seed (void) {
         }
         // continue loop to try again otherwise
     }
-    if(i == RND_RETRIES) {
+    if(k == RND_RETRIES) {
         traceEvent(TRACE_ERROR, "n2n_seed was not able to get a hardware generated random number from RDSEED.");
     }
 #endif
