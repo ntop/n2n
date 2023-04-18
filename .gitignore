@@ -34,6 +34,8 @@ packages/etc/systemd/system/edge@.service
 packages/etc/systemd/system/supernode.service
 *dSYM*
 
+__pycache__
+
 # Binaries built to run tests
 tools/tests-auth
 tools/tests-compress
