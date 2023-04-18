@@ -456,13 +456,15 @@ def main():
     snrpc.debug = args.debug
     snrpc.defaultkey = args.key
 
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    if hasattr(signal, 'SIGPIPE'):
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
     socketserver.TCPServer.allow_reuse_address = True
     handler = functools.partial(SimpleHandler, rpc, snrpc)
 
     httpd = socketserver.TCPServer(("", args.port), handler)
     try:
+        print(f"Serving HTTP at port {args.port} (http://localhost:{args.port}/) ...")
         httpd.serve_forever()
     except KeyboardInterrupt:
         return
