@@ -23,6 +23,7 @@ tools/n2n-route
 build
 .idea
 .vscode
+.vs
 packages/debian/debian/changelog
 packages/debian/debian/control
 packages/debian/debian/files
