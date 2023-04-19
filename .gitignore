@@ -1,6 +1,7 @@
 *.o
 *.a
 *.gz
+*.exe
 configure
 config.log
 config.mak
