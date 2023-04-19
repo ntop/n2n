@@ -201,6 +201,9 @@ tools: $(N2N_LIB)
 win32:
 	$(MAKE) -C $@
 
+win32/edge_rc.o: win32/edge.rc win32/edge.manifest
+	windres win32/edge.rc -O coff -o win32/edge_rc.o
+
 src/edge.o: $(N2N_DEPS)
 src/supernode.o: $(N2N_DEPS)
 src/example_edge_embed_quick_edge_init.o: $(N2N_DEPS)
@@ -212,6 +215,10 @@ src/supernode: $(N2N_LIB)
 src/example_edge_embed_quick_edge_init: $(N2N_LIB)
 src/example_sn_embed: $(N2N_LIB)
 src/example_edge_embed: $(N2N_LIB)
+
+ifeq ($(CONFIG_TARGET), mingw)
+src/edge: win32/edge_rc.o
+endif
 
 %: src/%
 	cp $< $@
