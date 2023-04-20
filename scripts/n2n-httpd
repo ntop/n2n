@@ -433,7 +433,7 @@ class SimpleHandler(http.server.BaseHTTPRequestHandler):
 
 def main():
     ap = argparse.ArgumentParser(
-            description='Control the running local n2n edge via http')
+        description='Control the running local n2n edge via http')
     ap.add_argument('-t', '--mgmtport', action='store', default=5644,
                     help='Management Port (default=5644)', type=int)
     ap.add_argument('--snmgmtport', action='store', default=5645,
@@ -464,7 +464,10 @@ def main():
 
     httpd = socketserver.TCPServer(("", args.port), handler)
     try:
-        print(f"Serving HTTP at port {args.port} (http://localhost:{args.port}/) ...")
+        print(
+            f'Serving HTTP at port {args.port} '
+            f'(http://localhost:{args.port}/) ...'
+        )
         httpd.serve_forever()
     except KeyboardInterrupt:
         return
