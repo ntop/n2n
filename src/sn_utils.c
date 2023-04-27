@@ -278,11 +278,13 @@ int load_allowed_sn_community (n2n_sn_t *sss) {
         // remove community
         HASH_DEL(sss->communities, comm);
         if(NULL != comm->header_encryption_ctx_static) {
-            // remove header encryption keys
-            free(comm->header_encryption_ctx_static);
-            free(comm->header_iv_ctx_static);
-            free(comm->header_encryption_ctx_dynamic);
-            free(comm->header_iv_ctx_dynamic);
+  			    if(comm->header_encryption == HEADER_ENCRYPTION_ENABLED) {
+				         // remove header encryption keys
+				        free(comm->header_encryption_ctx_static);
+				        free(comm->header_iv_ctx_static);
+				        free(comm->header_encryption_ctx_dynamic);
+				        free(comm->header_iv_ctx_dynamic);
+			      }
         }
         free(comm);
     }
