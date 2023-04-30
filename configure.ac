@@ -89,7 +89,7 @@ AS_IF([test "x$enable_pcap" != xno],
         [
             AC_DEFINE([N2N_HAVE_PCAP], [1], [Have PCAP library])
             N2N_LIBS_EXTRA="-lpcap ${N2N_LIBS_EXTRA}"
-            ADDITIONAL_TOOLS="$ADDITIONAL_TOOLS n2n-decode"
+            TOOLS_ADDITIONAL="$TOOLS_ADDITIONAL n2n-decode"
 
             # TODO
             # - pcap_set_immediate_mode has been available since libpcap 1.5
@@ -151,9 +151,9 @@ AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(N2N_VERSION)
 AC_SUBST(N2N_LIBS_EXTRA)
-AC_SUBST(ADDITIONAL_TOOLS)
+AC_SUBST(TOOLS_ADDITIONAL)
 AC_CONFIG_HEADERS(include/config.h)
 AC_CONFIG_FILES(config.mak)
-AC_CONFIG_FILES(tools/Makefile)
+AC_CONFIG_FILES(tools/config.mak)
 
 AC_OUTPUT

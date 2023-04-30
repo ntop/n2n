@@ -11,9 +11,9 @@ LDFLAGS=$LDFLAGS
 N2N_LIBS_EXTRA=$LDLIBS
 EOF
 
-sed \
-    -e "s%@ADDITIONAL_TOOLS@%%g" \
-    < tools/Makefile.in > tools/Makefile
+cat >tools/config.mak <<EOF
+TOOLS_ADDITIONAL=
+EOF
 
 cat <<EOF >include/config.h
 #define PACKAGE_VERSION "FIXME"

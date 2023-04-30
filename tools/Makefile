@@ -2,6 +2,8 @@
 # This is not a standalone makefile, it must be called from the toplevel
 # makefile to inherit the correct environment
 
+include config.mak
+
 DEBUG?=-g3
 
 HEADERS=$(wildcard include/*.h)
@@ -16,7 +18,7 @@ LDFLAGS+=-L..
 N2N_LIB=../libn2n.a
 
 TOOLS=n2n-benchmark n2n-keygen n2n-route n2n-portfwd
-TOOLS+=@ADDITIONAL_TOOLS@
+TOOLS+=$(TOOLS_ADDITIONAL)
 
 TESTS=tests-compress tests-elliptic tests-hashing tests-transform
 TESTS+=tests-wire

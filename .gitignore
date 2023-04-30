@@ -8,7 +8,7 @@ config.rpath
 config.status
 include/config.h
 include/config.h.in
-tools/Makefile
+tools/config.mak
 autom4te.cache
 edge
 example_edge_embed_quick_edge_init
