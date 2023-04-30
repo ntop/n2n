@@ -282,6 +282,10 @@ jobs:
           ./scripts/hack_fakeautoconf.sh
         shell: bash
 
+      - name: Build the project
+        run: make
+        shell: bash
+
       - name: Run embedded unit tests
         run: make test.units
         shell: bash
