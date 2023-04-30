@@ -3,13 +3,13 @@
 # Specifically for windows, where installing autoconf looks suspiciously
 # like boiling the ocean.
 
-sed \
-    -e "s%@CC@%gcc%g" \
-    -e "s%@AR@%ar%g" \
-    -e "s%@CFLAGS@%$CFLAGS%g" \
-    -e "s%@LDFLAGS@%$LDFLAGS%g" \
-    -e "s%@N2N_LIBS@%$LDLIBS%g" \
-    < Makefile.in > Makefile
+cat >config.mak <<EOF
+CC=gcc
+AR=ar
+CFLAGS=$CFLAGS
+LDFLAGS=$LDFLAGS
+N2N_LIBS_EXTRA=$LDLIBS
+EOF
 
 sed \
     -e "s%@ADDITIONAL_TOOLS@%%g" \
