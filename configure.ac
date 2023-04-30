@@ -11,7 +11,7 @@ if test "${AR+set}" != set; then
     AR=ar
 fi
 
-N2N_LIBS=
+N2N_LIBS_EXTRA=
 
 AC_PROG_CC
 
@@ -35,7 +35,7 @@ AS_IF([test "x$with_zstd" != "xno"],
     [AC_CHECK_LIB([zstd], [ZSTD_compress],
         [
             AC_DEFINE([HAVE_ZSTD], [1], [Have ZSTD support])
-            N2N_LIBS="-lzstd ${N2N_LIBS}"
+            N2N_LIBS_EXTRA="-lzstd ${N2N_LIBS_EXTRA}"
         ],
         [AC_MSG_ERROR([zstd library not found])]
     )],
@@ -49,7 +49,7 @@ AS_IF([test "x$with_openssl" != xno],
     [AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset],
         [
             AC_DEFINE([HAVE_OPENSSL_1_1], [1], [OpenSSL 1.1 is present])
-            N2N_LIBS="-lcrypto ${N2N_LIBS}"
+            N2N_LIBS_EXTRA="-lcrypto ${N2N_LIBS_EXTRA}"
         ],
         [AC_MSG_ERROR([openssl library not found])]
     )],
@@ -62,7 +62,7 @@ AS_IF([test "x$enable_miniupnp" != xno],
     [AC_CHECK_LIB([miniupnpc], [upnpDiscover],
         [
             AC_DEFINE([HAVE_MINIUPNP], [1], [Have miniupnp library])
-            N2N_LIBS="-lminiupnpc ${N2N_LIBS}"
+            N2N_LIBS_EXTRA="-lminiupnpc ${N2N_LIBS_EXTRA}"
         ],
         [AC_MSG_ERROR([miniupnp library not found])]
     )],
@@ -75,7 +75,7 @@ AS_IF([test "x$enable_natpmp" != xno],
     [AC_CHECK_LIB([natpmp], [initnatpmp],
         [
             AC_DEFINE([HAVE_NATPMP], [1], [Have natpmp library])
-            N2N_LIBS="-lnatpmp ${N2N_LIBS}"
+            N2N_LIBS_EXTRA="-lnatpmp ${N2N_LIBS_EXTRA}"
         ],
         [AC_MSG_ERROR([natpmp library not found])]
     )],
@@ -88,7 +88,7 @@ AS_IF([test "x$enable_pcap" != xno],
     [AC_CHECK_LIB([pcap], [pcap_open_live],
         [
             AC_DEFINE([N2N_HAVE_PCAP], [1], [Have PCAP library])
-            N2N_LIBS="-lpcap ${N2N_LIBS}"
+            N2N_LIBS_EXTRA="-lpcap ${N2N_LIBS_EXTRA}"
             ADDITIONAL_TOOLS="$ADDITIONAL_TOOLS n2n-decode"
 
             # TODO
@@ -109,7 +109,7 @@ AS_IF([test "x$enable_cap" != xno],
     [AC_CHECK_LIB([cap], [cap_get_proc],
         [
             AC_DEFINE([HAVE_LIBCAP],[1],[Support for linux capabilities])
-            N2N_LIBS="${N2N_LIBS} -lcap"
+            N2N_LIBS_EXTRA="${N2N_LIBS_EXTRA} -lcap"
         ],
         [AC_MSG_ERROR([cap library not found])]
     )],
@@ -150,10 +150,10 @@ AC_SUBST(AR)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(N2N_VERSION)
-AC_SUBST(N2N_LIBS)
+AC_SUBST(N2N_LIBS_EXTRA)
 AC_SUBST(ADDITIONAL_TOOLS)
 AC_CONFIG_HEADERS(include/config.h)
-AC_CONFIG_FILES(Makefile)
+AC_CONFIG_FILES(config.mak)
 AC_CONFIG_FILES(tools/Makefile)
 
 AC_OUTPUT

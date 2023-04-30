@@ -1,23 +1,15 @@
 
-# NOTE: these are needed by the configure.in inside the packages folder
-N2N_VERSION=@N2N_VERSION@
-
-########
-
 export CC
 export AR
-CC=@CC@
-AR=@AR@
+export CFLAGS
+export LDFLAGS
+export LDLIBS
+
+include config.mak
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
-
-export CFLAGS
-export LDFLAGS
-
-CFLAGS=@CFLAGS@ -I./include
-LDFLAGS=@LDFLAGS@ -L.
 
 OPENSSL_CFLAGS=$(shell pkg-config openssl; echo $$?)
 ifeq ($(OPENSSL_CFLAGS), 0)
@@ -119,10 +111,9 @@ LINT_CCODE=\
 	tools/tests-transform.c \
 	tools/tests-wire.c \
 
-export LDLIBS
 
 LDLIBS+=-ln2n
-LDLIBS+=@N2N_LIBS@
+LDLIBS+=$(LDLIBS_EXTRA)
 
 #For OpenSolaris (Solaris too?)
 ifeq ($(CONFIG_TARGET), sunos)

@@ -1,0 +1,9 @@
+
+# NOTE: these are needed by the configure.in inside the packages folder
+N2N_VERSION=@N2N_VERSION@
+
+CC=@CC@
+AR=@AR@
+CFLAGS=@CFLAGS@ -I./include
+LDFLAGS=@LDFLAGS@ -L.
+LDLIBS_EXTRA+=@N2N_LIBS_EXTRA@

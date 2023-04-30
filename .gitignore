@@ -3,11 +3,11 @@
 *.gz
 configure
 config.log
+config.mak
 config.rpath
 config.status
 include/config.h
 include/config.h.in
-/Makefile
 tools/Makefile
 autom4te.cache
 edge
