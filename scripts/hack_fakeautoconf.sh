@@ -6,8 +6,8 @@
 cat >config.mak <<EOF
 CC=gcc
 AR=ar
-CFLAGS=$CFLAGS
-LDFLAGS=$LDFLAGS
+CFLAGS=$CFLAGS -g -O2 -I./include
+LDFLAGS=$LDFLAGS -L.
 N2N_LIBS_EXTRA=$LDLIBS
 EOF
 

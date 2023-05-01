@@ -2,14 +2,20 @@
 # This is not a standalone makefile, it must be called from the toplevel
 # makefile to inherit the correct environment
 
+# The vars included here should be part of the environment.
+# TODO - refactor this and debug why they need to be included for windows
+include ../config.mak
+
 DEBUG?=-g3
 
 HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
 LDLIBS+=-ln2n
+
 ifeq ($(CONFIG_TARGET),mingw)
 CFLAGS+=-I../win32
-LDLIBS+=-lnetapi32
+LDLIBS+=$(abspath ../win32/n2n_win32.a)
+LDLIBS+=-lnetapi32 -lws2_32 -liphlpapi
 endif
 CFLAGS+=$(DEBUG)
 LDFLAGS+=-L..
