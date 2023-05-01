@@ -2,8 +2,6 @@
 # This is not a standalone makefile, it must be called from the toplevel
 # makefile to inherit the correct environment
 
-include config.mak
-
 DEBUG?=-g3
 
 HEADERS=$(wildcard include/*.h)

@@ -1,10 +1,4 @@
 
-export CC
-export AR
-export CFLAGS
-export LDFLAGS
-export LDLIBS
-
 include config.mak
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options

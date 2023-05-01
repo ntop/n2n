@@ -1,9 +1,15 @@
+export N2N_VERSION
+export CC
+export AR
+export CFLAGS
+export LDFLAGS
+export LDLIBS_EXTRA
+export TOOLS_ADDITIONAL
 
-# NOTE: these are needed by the configure.in inside the packages folder
 N2N_VERSION=@N2N_VERSION@
-
 CC=@CC@
 AR=@AR@
 CFLAGS=@CFLAGS@ -I./include
 LDFLAGS=@LDFLAGS@ -L.
-LDLIBS_EXTRA+=@N2N_LIBS_EXTRA@
+LDLIBS_EXTRA=@N2N_LIBS_EXTRA@
+TOOLS_ADDITIONAL=@TOOLS_ADDITIONAL@
