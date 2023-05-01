@@ -32,12 +32,12 @@ TESTS+=tests-auth
 .PHONY: all clean install
 all: $(TOOLS) $(TESTS)
 
-n2n-benchmark.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
-n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
-n2n-route.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
-n2n-portfwd.o: $(N2N_LIB) $(HEADERS) ../Makefile Makefile
+n2n-benchmark.o: $(N2N_LIB) $(HEADERS) ../config.mak
+n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../config.mak
+n2n-route.o: $(N2N_LIB) $(HEADERS) ../config.mak
+n2n-portfwd.o: $(N2N_LIB) $(HEADERS) ../config.mak
 
-n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../Makefile Makefile
+n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../config.mak
 	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -lpcap -o $@
 
 # See comments in the topdir Makefile about how to generate coverage
