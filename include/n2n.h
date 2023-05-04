@@ -35,6 +35,7 @@
 
 #define N2N_HAVE_DAEMON /* needs to be defined before it gets undefined */
 #define N2N_HAVE_TCP    /* needs to be defined before it gets undefined */
+#define HAVE_BRIDGING_SUPPORT
 
 /* #define N2N_CAN_NAME_IFACE */
 
