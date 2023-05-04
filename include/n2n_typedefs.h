@@ -51,6 +51,7 @@ typedef int ssize_t;
 typedef unsigned long in_addr_t;
 
 #include "n2n_win32.h"
+// FIXME - the above include is from a different subdir
 
 #endif /* #if defined(_MSC_VER) || defined(__MINGW32__) */
 

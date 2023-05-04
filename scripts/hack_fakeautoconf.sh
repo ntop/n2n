@@ -3,17 +3,17 @@
 # Specifically for windows, where installing autoconf looks suspiciously
 # like boiling the ocean.
 
-sed \
-    -e "s%@CC@%gcc%g" \
-    -e "s%@AR@%ar%g" \
-    -e "s%@CFLAGS@%$CFLAGS%g" \
-    -e "s%@LDFLAGS@%$LDFLAGS%g" \
-    -e "s%@N2N_LIBS@%$LDLIBS%g" \
-    < Makefile.in > Makefile
+cat >config.mak <<EOF
+CC=gcc
+AR=ar
+CFLAGS=$CFLAGS -g -O2 -I./include
+LDFLAGS=$LDFLAGS -L.
+N2N_LIBS_EXTRA=$LDLIBS
+EOF
 
-sed \
-    -e "s%@ADDITIONAL_TOOLS@%%g" \
-    < tools/Makefile.in > tools/Makefile
+cat >tools/config.mak <<EOF
+TOOLS_ADDITIONAL=
+EOF
 
 cat <<EOF >include/config.h
 #define PACKAGE_VERSION "FIXME"

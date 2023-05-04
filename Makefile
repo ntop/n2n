@@ -1,23 +1,9 @@
 
-# NOTE: these are needed by the configure.in inside the packages folder
-N2N_VERSION=@N2N_VERSION@
-
-########
-
-export CC
-export AR
-CC=@CC@
-AR=@AR@
+include config.mak
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
-
-export CFLAGS
-export LDFLAGS
-
-CFLAGS=@CFLAGS@ -I./include
-LDFLAGS=@LDFLAGS@ -L.
 
 OPENSSL_CFLAGS=$(shell pkg-config openssl; echo $$?)
 ifeq ($(OPENSSL_CFLAGS), 0)
@@ -78,8 +64,44 @@ MAN7DIR=$(MANDIR)/man7
 MAN8DIR=$(MANDIR)/man8
 
 N2N_LIB=libn2n.a
-N2N_OBJS=$(patsubst src/%.c, src/%.o, $(wildcard src/*.c))
-N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) Makefile
+N2N_OBJS=\
+	src/aes.o \
+	src/auth.o \
+	src/cc20.o \
+	src/curve25519.o \
+	src/edge_management.o \
+	src/edge_utils.o \
+	src/edge_utils_win32.o \
+	src/header_encryption.o \
+	src/hexdump.o \
+	src/json.o \
+	src/management.o \
+	src/minilzo.o \
+	src/n2n.o \
+	src/n2n_port_mapping.o \
+	src/n2n_regex.o \
+	src/network_traffic_filter.o \
+	src/pearson.o \
+	src/random_numbers.o \
+	src/sn_management.o \
+	src/sn_selection.o \
+	src/sn_utils.o \
+	src/speck.o \
+	src/tf.o \
+	src/transform_aes.o \
+	src/transform_cc20.o \
+	src/transform_lzo.o \
+	src/transform_null.o \
+	src/transform_speck.o \
+	src/transform_tf.o \
+	src/transform_zstd.o \
+	src/tuntap_freebsd.o \
+	src/tuntap_linux.o \
+	src/tuntap_netbsd.o \
+	src/tuntap_osx.o \
+	src/wire.o \
+
+N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) config.mak
 
 # As source files pass the linter, they can be added here (If all the source
 # is passing the linter tests, this can be refactored)
@@ -119,10 +141,9 @@ LINT_CCODE=\
 	tools/tests-transform.c \
 	tools/tests-wire.c \
 
-export LDLIBS
 
 LDLIBS+=-ln2n
-LDLIBS+=@N2N_LIBS@
+LDLIBS+=$(LDLIBS_EXTRA)
 
 #For OpenSolaris (Solaris too?)
 ifeq ($(CONFIG_TARGET), sunos)
@@ -259,6 +280,7 @@ endif
 
 .PHONY: clean
 clean:
+	rm -f src/edge.o src/supernode.o src/example_edge_embed.o src/example_edge_embed_quick_edge_init.o src/example_sn_embed.o
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
