@@ -39,7 +39,7 @@ jobs:
 
       - name: Install libraries needed for all options turned on
         run: |
-          sudo apt-get install -y libminiupnpc-dev libnatpmp-dev libpcap-dev
+          sudo apt-get install -y libminiupnpc-dev libnatpmp-dev libpcap-dev libcap-dev
 
       - name: Run minimal test set
         run: |
