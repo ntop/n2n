@@ -25,6 +25,28 @@ jobs:
           ./configure
           make test
 
+  smoketest_all_opts:
+    name: Smoke test With all options turned on
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Install libraries needed for all options turned on
+        run: |
+          sudo apt-get install -y libminiupnpc-dev libnatpmp-dev libpcap-dev
+
+      - name: Run minimal test set
+        run: |
+          ./autogen.sh
+          ./configure --enable-pthread --enable-miniupnp --enable-natpmp --enable-cap --enable-pcap CFLAGS="-O3 -DN2N_OPTION_USE_PORTMAPPING"
+          make test
+
   lint:
     name: Code syntax
     runs-on: ubuntu-latest
