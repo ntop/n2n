@@ -8,7 +8,7 @@ CC=gcc
 AR=ar
 CFLAGS=$CFLAGS -g -O2 -I./include
 LDFLAGS=$LDFLAGS -L.
-N2N_LIBS_EXTRA=$LDLIBS
+LDLIBS_EXTRA=$LDLIBS
 EOF
 
 cat >tools/config.mak <<EOF
