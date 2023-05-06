@@ -11,6 +11,7 @@ DEBUG?=-g3
 HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
 LDLIBS+=-ln2n
+LDLIBS+=$(LDLIBS_EXTRA)
 
 ifeq ($(CONFIG_TARGET),mingw)
 CFLAGS+=-I../win32
