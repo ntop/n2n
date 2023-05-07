@@ -4,6 +4,8 @@ dnl> Do not add anything above
 
 N2N_VERSION=${PACKAGE_VERSION}
 
+AC_DEFINE([PACKAGE_BUILDDATE], "[m4_esyscmd([scripts/version.sh date | tr -d '\n'])]", [Last change date])
+
 if test "${CC+set}" != set; then
     CC=gcc
 fi
