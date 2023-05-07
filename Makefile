@@ -171,6 +171,7 @@ DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 BUILD_DEP:=\
 	autoconf \
 	build-essential \
+	dh-strip-nondeterminism \
 	flake8 \
 	gcovr \
 	libcap-dev \
