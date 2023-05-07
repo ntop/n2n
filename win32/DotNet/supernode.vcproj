@@ -180,10 +180,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\version-msvc.c"
-				>
-			</File>
-			<File
 				RelativePath="..\wintap.c"
 				>
 			</File>
