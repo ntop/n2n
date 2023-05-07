@@ -51,8 +51,6 @@
 
 
 
-#define PACKAGE_BUILDDATE (__DATE__ " " __TIME__)
-
 #include <time.h>
 #include <ctype.h>
 #include <stdlib.h>

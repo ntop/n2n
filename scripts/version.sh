@@ -4,7 +4,7 @@
 #
 
 usage() {
-    echo "Usage: $0 [short|hash]"
+    echo "Usage: $0 [date|short|hash]"
     echo
     echo "Determine the correct version number for the current build"
     exit 0
@@ -32,6 +32,7 @@ if [ -d "$TOPDIR/.git" ]; then
     VER_SHORT="$VER_GIT_SHORT"
     VER_HASH=$(git rev-parse --short HEAD)
     VER=$(git describe --abbrev=7 --dirty)
+    DATE=$(git log -1 --format=%cd)
 else
     # If there is no .git directory in our TOPDIR, we fall back on relying on
     # the VERSION file
@@ -39,9 +40,13 @@ else
     VER_SHORT="$VER_FILE_SHORT"
     VER_HASH="HEAD"
     VER="$VER_FILE_SHORT"
+    DATE=$(date)
 fi
 
 case "$1" in
+    date)
+        echo "$DATE"
+        ;;
     hash)
         echo "$VER_HASH"
         ;;
