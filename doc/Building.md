@@ -59,7 +59,9 @@ applied as of 2021-09-29.
 - Install Chocolatey (Following instructions on https://chocolatey.org/install)
 - from an admin cmd prompt
     - `choco install git mingw make`
-- All the remaining commands must be run from inside a bash shell ("C:\Program Files\Git\usr\bin\bash.exe")
+- Once the git package is installed, you will have a new start menu item
+  called "Git Bash".  All the remaining commands must be run from inside the
+  shell started by that menu item:
     - `git clone $THIS_REPO`
     - `cd n2n`
     - `./scripts/hack_fakeautoconf.sh`
