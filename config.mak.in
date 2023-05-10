@@ -1,11 +1,3 @@
-export N2N_VERSION
-export CC
-export AR
-export CFLAGS
-export LDFLAGS
-export LDLIBS_EXTRA
-export TOOLS_ADDITIONAL
-
 N2N_VERSION=@N2N_VERSION@
 CC=@CC@
 AR=@AR@
