@@ -946,10 +946,12 @@ BOOL WINAPI term_handler(DWORD sig)
 
     keep_on_running = 0;
 #ifdef WIN32
-    if (sig == CTRL_CLOSE_EVENT) {
-        // Will terminate when we return
-        // Wait for cleanup or timeout (5000ms)
-        Sleep(INFINITE);
+    switch (sig) {
+        case CTRL_CLOSE_EVENT:
+        case CTRL_LOGOFF_EVENT:
+        case CTRL_SHUTDOWN_EVENT:
+            // Will terminate us after we return, blocking it to cleanup
+            Sleep(INFINITE);
     }
     return(TRUE);
 #endif
