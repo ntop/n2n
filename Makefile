@@ -178,7 +178,6 @@ DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 BUILD_DEP:=\
 	autoconf \
 	build-essential \
-	dh-strip-nondeterminism \
 	flake8 \
 	gcovr \
 	libcap-dev \
@@ -232,7 +231,7 @@ endif
 	cp $< $@
 
 %.gz : %
-	gzip -c $< > $@
+	gzip -n -c $< > $@
 
 $(N2N_LIB): $(N2N_OBJS)
 	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)

@@ -12,9 +12,6 @@
 # http://www.tin.org/bin/man.cgi?section=7&topic=debhelper
 #
 
-# Not needed for newer debhelper versions, but some builders run older ones
-export GZIP=-n
-
 package=@APP@
 
 build: build-stamp
@@ -47,7 +44,6 @@ binary-arch: build install
 	dh_installman
 	dh_strip
 	dh_compress
-	dh_strip_nondeterminism
 	dh_fixperms
 	dh_installdeb
 	cp -r n2n debian
