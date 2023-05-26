@@ -113,6 +113,7 @@ Here is a list of third-party projects connected to this repository:
 - Docker images: [Docker Hub](https://hub.docker.com/r/supermock/supernode/)
 - Go bindings, management daemons and CLIs for n2n edges and supernodes, Docker, Kubernetes & Helm Charts: [pojntfx/gon2n](https://pojntfx.github.io/gon2n/)
 - Windows GUI (along with a custom version of n2n) but also working with regular n2n: [HappyNet](https://github.com/happynclient/happynwindows)
+- IOS App  working with regular n2n 3.0: [HappyNet](https://apps.apple.com/us/app/happynet/id6448507986)
 
 ---
 
