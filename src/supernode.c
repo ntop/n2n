@@ -19,7 +19,6 @@
 /* Supernode for n2n-2.x */
 
 #include "n2n.h"
-#include "header_encryption.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 

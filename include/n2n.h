@@ -155,7 +155,6 @@
 
 /* ************************************** */
 
-#include "header_encryption.h"
 #include "tf.h"
 
 #ifndef TRACE_ERROR

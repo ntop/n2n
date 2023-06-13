@@ -16,6 +16,7 @@
  *
  */
 
+#include "n2n_typedefs.h"
 
 int packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
                            char *community_name,

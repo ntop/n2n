@@ -17,6 +17,7 @@
  */
 
 
+#include "header_encryption.h"  // for packet_header_change_dynamic_key, pac...
 #include "n2n.h"
 
 

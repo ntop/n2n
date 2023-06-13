@@ -17,6 +17,7 @@
  */
 
 #include "auth.h"                    // for generate_private_key
+#include "header_encryption.h"       // for packet_header_encrypt, packet_he...
 #include "n2n.h"
 #include "network_traffic_filter.h"
 #include "edge_utils_win32.h"
