@@ -16,6 +16,7 @@
  *
  */
 
+#include "auth.h"               // for ascii_to_bin, calculate_dynamic_key
 #include "n2n.h"
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)

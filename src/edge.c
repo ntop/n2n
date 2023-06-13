@@ -16,6 +16,7 @@
  *
  */
 
+#include "auth.h"                    // for generate_private_key, generate_p...
 #include "n2n.h"
 
 /* *************************************************** */

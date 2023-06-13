@@ -17,6 +17,7 @@
  */
 
 
+#include "auth.h"    // for bin_to_ascii, bind_private_key_to_username, gene...
 #include "n2n.h"
 
 

@@ -16,6 +16,7 @@
  *
  */
 
+#include "auth.h"                    // for generate_private_key
 #include "n2n.h"
 #include "network_traffic_filter.h"
 #include "edge_utils_win32.h"

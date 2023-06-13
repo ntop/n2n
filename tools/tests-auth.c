@@ -18,6 +18,7 @@
 
 #include <inttypes.h>
 
+#include "auth.h"     // for ascii_to_bin, bin_to_ascii, generate_private_key
 #include "n2n.h"
 #include "hexdump.h"
 
