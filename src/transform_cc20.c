@@ -17,6 +17,7 @@
  */
 
 
+#include "cc20.h"            // for CC20_IV_SIZE, cc20_crypt, cc20_deinit
 #include "n2n.h"
 
 

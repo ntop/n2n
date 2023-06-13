@@ -17,7 +17,11 @@
  */
 
 
+#include <stdlib.h>     // for calloc, free, size_t
+#include <string.h>     // for memcpy
 #include "cc20.h"
+#include "config.h"  // HAVE_OPENSSL_1_1
+#include "portable_endian.h"  // for htole32
 
 
 #if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------------------------------
@@ -82,6 +86,10 @@ int cc20_crypt (unsigned char *out, const unsigned char *in, size_t in_len,
 
 // taken (and heavily modified and enhanced) from
 // https://github.com/Ginurx/chacha20-c (public domain)
+
+
+#include <immintrin.h>  // for _mm_xor_si128, _mm_add_epi32, _mm_slli_epi32
+#include <xmmintrin.h>  // for _MM_SHUFFLE
 
 
 #define SL  _mm_slli_epi32

@@ -143,7 +143,6 @@
 #include "pearson.h"
 #include "portable_endian.h"
 #include "aes.h"
-#include "cc20.h"
 #include "speck.h"
 #include "curve25519.h"
 #include "n2n_regex.h"
