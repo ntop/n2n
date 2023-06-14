@@ -18,7 +18,8 @@
 
 
 #include "cc20.h"            // for CC20_IV_SIZE, cc20_crypt, cc20_deinit
-#include "n2n.h"
+#include "n2n.h"             // for n2n_trans_op_t, traceEvent, TRACE_ERROR
+#include "pearson.h"         // for pearson_hash_256
 
 
 // ChaCha20 plaintext preamble

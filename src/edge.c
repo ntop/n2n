@@ -18,6 +18,7 @@
 
 #include "auth.h"                    // for generate_private_key, generate_p...
 #include "n2n.h"
+#include "pearson.h"                 // for pearson_hash_64
 
 /* *************************************************** */
 

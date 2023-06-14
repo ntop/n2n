@@ -18,7 +18,10 @@
 
 /* Supernode for n2n-2.x */
 
-#include "n2n.h"
+
+#include "n2n.h"               // for n2n_sn_t, sn_community, traceEvent
+#include "pearson.h"           // for pearson_hash_64
+
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 

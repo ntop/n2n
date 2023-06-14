@@ -22,6 +22,7 @@
 
 
 #include "pearson.h"
+#include "portable_endian.h"  // for le64toh, htobe64
 
 
 // Christopher Wellons' triple32 from https://github.com/skeeto/hash-prospector

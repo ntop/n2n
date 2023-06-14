@@ -9,14 +9,15 @@
 #include <netdb.h>
 #endif
 
+#include <pearson.h>     // for pearson_hash_64
+#include "n2n.h"         // for TRACE_DEBUG, traceEvent
+
 // TODO: move logging defs in their own header and include that
 void setTraceLevel (int level);
 int getTraceLevel ();
 
 #include <pearson.h>
 #include "management.h"
-
-#include "n2n.h"    // for traceEvent and friends
 
 ssize_t send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
     // TODO: better error handling (counters?)

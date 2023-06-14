@@ -17,7 +17,8 @@
  */
 
 
-#include "n2n.h"
+#include "n2n.h"             // for n2n_trans_op_t, traceEvent, TRACE_ERROR
+#include "pearson.h"         // for pearson_hash_256
 
 
 // size of random value prepended to plaintext defaults to TF_BLOCK_SIZE;

@@ -17,8 +17,8 @@
  */
 
 
-#include "n2n.h"
-
+#include "n2n.h"             // for n2n_trans_op_t, traceEvent, TRACE_DEBUG
+#include "pearson.h"         // for pearson_hash_256
 
 // Speck plaintext preamble
 #define TRANSOP_SPECK_PREAMBLE_SIZE   (N2N_SPECK_IVEC_SIZE)

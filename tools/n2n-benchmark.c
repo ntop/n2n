@@ -22,7 +22,8 @@
 #include <sys/time.h>
 #endif
 
-#include "n2n.h"
+#include "n2n.h"         // for n2n_trans_op_t, n2n_common_t, n2n_edge_conf_t
+#include "pearson.h"     // for pearson_hash_64, pearson_hash_init
 
 #define DURATION                2.5   // test duration per algorithm
 #define PACKETS_BEFORE_GETTIME  2047  // do not check time after every packet but after (2 ^ n - 1)

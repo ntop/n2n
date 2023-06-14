@@ -19,7 +19,8 @@
 #include <inttypes.h>
 
 #include "n2n.h"
-#include "hexdump.h"
+#include "hexdump.h"   // for fhexdump
+#include "pearson.h"   // for pearson_hash_128, pearson_hash_16, pearson_has...
 
 
 uint8_t PKT_CONTENT[]={
