@@ -139,8 +139,6 @@
 #endif /* #ifdef WIN32 */
 
 #include "n2n_wire.h"
-#include "random_numbers.h"
-#include "pearson.h"
 #include "portable_endian.h"
 #include "aes.h"
 #include "speck.h"
