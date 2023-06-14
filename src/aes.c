@@ -17,7 +17,12 @@
  */
 
 
-#include "n2n.h"
+#include <endian.h>  // for be32toh, htobe32
+#include <stdint.h>  // for uint32_t, uint8_t
+#include <stdlib.h>  // for calloc, free
+#include <string.h>  // for memcpy, size_t
+#include "aes.h"     // for AES_BLOCK_SIZE, aes_context_t, AES128_KEY_BYTES
+#include "n2n.h"     // for TRACE_ERROR, traceEvent
 
 
 #if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------------------------------

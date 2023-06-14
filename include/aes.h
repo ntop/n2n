@@ -17,9 +17,6 @@
  */
 
 
-#include "n2n.h"               // HAVE_OPENSSL_1_1, traceEvent ...
-
-
 #ifndef AES_H
 #define AES_H
 

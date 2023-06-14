@@ -17,6 +17,7 @@
  */
 
 
+#include "aes.h"             // for AES_BLOCK_SIZE, aes_cbc_decrypt, aes_cbc...
 #include "n2n.h"             // for n2n_trans_op_t, traceEvent, TRACE_ERROR
 #include "pearson.h"         // for pearson_hash_256
 #include "random_numbers.h"  // for n2n_rand
