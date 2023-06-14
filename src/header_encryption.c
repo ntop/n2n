@@ -21,6 +21,7 @@
 #include "n2n.h"                // for he_context_t, N2N_COMMUNITY_SIZE, TRA...
 #include "pearson.h"            // for pearson_hash_128, pearson_hash_64
 #include "random_numbers.h"     // for n2n_rand
+#include "speck.h"              // for speck_init, speck_context_t, speck_ctr
 
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)

@@ -20,6 +20,7 @@
 #include "n2n.h"
 #include "pearson.h"                 // for pearson_hash_64
 #include "random_numbers.h"          // for n2n_seed, n2n_srand
+#include "speck.h"                   // for speck_init, speck_context_t
 
 
 /* *************************************************** */

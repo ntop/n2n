@@ -23,6 +23,7 @@
 #include "network_traffic_filter.h"  // for create_network_traffic_filter
 #include "pearson.h"                 // for pearson_hash_128, pearson_hash_64
 #include "random_numbers.h"          // for n2n_rand, n2n_rand_sqr
+#include "speck.h"                   // for speck_128_decrypt, speck_128_enc...
 
 
 /* ************************************** */

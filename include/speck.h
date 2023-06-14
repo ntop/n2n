@@ -26,10 +26,7 @@
 #define SPECK_H
 
 
-#include <stdint.h>
-#include <stdlib.h>
-
-#include "portable_endian.h"
+#include <stdint.h>     // for uint64_t, uint32_t
 
 
 #define u32 uint32_t

@@ -23,6 +23,9 @@
 
 
 #include "speck.h"
+#include <endian.h>     // for htole64, le64toh
+#include <mm_malloc.h>  // for _mm_free, _mm_malloc
+#include <stdlib.h>     // for size_t
 
 
 #if defined (__AVX512F__)  // AVX512 support ----------------------------------------------------------------------
