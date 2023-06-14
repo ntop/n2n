@@ -21,6 +21,7 @@
 #include "header_encryption.h"  // for packet_header_encrypt, packet_header_...
 #include "n2n.h"                // for sn_community, n2n_sn_t, peer_info
 #include "pearson.h"            // for pearson_hash_128, pearson_hash_32
+#include "random_numbers.h"     // for n2n_rand, n2n_rand_sqr, n2n_seed, n2n...
 
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)

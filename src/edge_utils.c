@@ -17,11 +17,12 @@
  */
 
 #include "auth.h"                    // for generate_private_key
+#include "edge_utils_win32.h"
 #include "header_encryption.h"       // for packet_header_encrypt, packet_he...
 #include "n2n.h"                     // for n2n_edge_t, peer_info, n2n_edge_...
+#include "network_traffic_filter.h"  // for create_network_traffic_filter
 #include "pearson.h"                 // for pearson_hash_128, pearson_hash_64
-#include "network_traffic_filter.h"
-#include "edge_utils_win32.h"
+#include "random_numbers.h"          // for n2n_rand, n2n_rand_sqr
 
 
 /* ************************************** */

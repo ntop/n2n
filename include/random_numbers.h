@@ -21,21 +21,16 @@
 #define RND_H
 
 
-#include <stdint.h>
-#include <stddef.h>
-#include <time.h>        /* time, clock */
-
-#include "n2n.h"         /* traceEvent */
+#include <stdint.h>   // for uint64_t, uint32_t
 
 
 // syscall and inquiring random number from hardware generators might fail, so we will retry
 #define RND_RETRIES      1000
 
 #if defined (__linux__)
-#include <sys/syscall.h> /* syscall, SYS_getrandom */
+#include <syscall.h>  // for SYS_getrandom
 #ifdef SYS_getrandom
 #define GRND_NONBLOCK       1
-#include <errno.h>       /* errno, EAGAIN */
 #endif
 #endif
 

@@ -19,6 +19,7 @@
 
 #include "json.h"              // for _jsonpair, json_object_t, json_free
 #include "n2n.h"               // for traceEvent, setTraceLevel, getTraceLevel
+#include "random_numbers.h"    // for n2n_rand, n2n_seed, n2n_srand
 
 
 #define WITH_PORT               1

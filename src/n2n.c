@@ -18,7 +18,8 @@
 
 #include "n2n.h"
 
-#include "sn_selection.h"
+#include "random_numbers.h"  // for n2n_rand
+#include "sn_selection.h"    // for sn_selection_criterion_default
 
 #include "minilzo.h"
 

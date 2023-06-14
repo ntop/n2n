@@ -19,6 +19,7 @@
 
 #include "json.h"              // for _jsonpair, json_object_t, _jsonvalue
 #include "n2n.h"               // for inaddrtoa, traceEvent, TRACE_WARNING
+#include "random_numbers.h"    // for n2n_rand, n2n_seed, n2n_srand
 
 
 #if defined (__linux__) || defined(WIN32)  /*  currently, Linux and Windows only */

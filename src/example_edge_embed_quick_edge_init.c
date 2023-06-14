@@ -16,7 +16,10 @@
  *
  */
 
-#include "n2n.h"
+
+#include "n2n.h"             // for quick_edge_init, setTraceLevel
+#include "random_numbers.h"  // for n2n_seed, n2n_srand
+
 
 /*
     This tool demonstrates how to easily embed
