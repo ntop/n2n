@@ -17,7 +17,8 @@
  */
 
 
-#include "n2n.h"
+#include "json.h"              // for _jsonpair, json_object_t, _jsonvalue
+#include "n2n.h"               // for inaddrtoa, traceEvent, TRACE_WARNING
 
 
 #if defined (__linux__) || defined(WIN32)  /*  currently, Linux and Windows only */

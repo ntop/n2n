@@ -17,7 +17,8 @@
  */
 
 
-#include "n2n.h"
+#include "json.h"              // for _jsonpair, json_object_t, json_free
+#include "n2n.h"               // for traceEvent, setTraceLevel, getTraceLevel
 
 
 #define WITH_PORT               1

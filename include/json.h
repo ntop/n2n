@@ -27,17 +27,11 @@
 #define JSON_H
 
 
-#include <string.h>
-#include <stdlib.h>
-
 #define json_str_is_whitespace(x)                     x == '\r' || x == '\n' || x == '\t' || x == ' '
 #define json_str_is_numeral(x)                        (x >= '0' && x <= '9') || x == 'e' || x == 'E' \
                                                       || x == '.'  || x == '+' || x == '-'
 #define json_str_remove_whitespace_calc_offset(x, y)  while(json_str_is_whitespace(*x)) { x++; y++; }
 
-struct _jsonobject;
-struct _jsonpair;
-union _jsonvalue;
 
 typedef enum {
     JSON_STRING = 0,

@@ -151,8 +151,6 @@
 
 #include "n2n_port_mapping.h"
 
-#include "json.h"
-
 /* ************************************** */
 
 #include "tf.h"
