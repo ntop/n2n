@@ -48,7 +48,7 @@
 
 
 #include "tf.h"
-#include <endian.h>  // for le32toh, htole32
+#include "portable_endian.h"  // for le32toh, htole32
 #include <string.h>  // for memcpy
 
 
