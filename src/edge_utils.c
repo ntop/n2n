@@ -16,14 +16,40 @@
  *
  */
 
+
+#include <errno.h>                   // for errno, EAFNOSUPPORT, EINPROGRESS
+#include <fcntl.h>                   // for fcntl, F_SETFL, O_NONBLOCK
+#include <stdint.h>                  // for uint8_t, uint16_t, uint32_t, uin...
+#include <stdio.h>                   // for snprintf, sprintf
+#include <stdlib.h>                  // for free, calloc, getenv
+#include <string.h>                  // for memcpy, memset, NULL, memcmp
+#include <sys/time.h>                // for timeval
+#include <sys/types.h>               // for time_t, ssize_t, u_int
+#include <time.h>                    // for time
+#include <unistd.h>                  // for gethostname, sleep
 #include "auth.h"                    // for generate_private_key
-#include "edge_utils_win32.h"
+#include "portable_endian.h"         // for be16toh, htobe16
 #include "header_encryption.h"       // for packet_header_encrypt, packet_he...
 #include "n2n.h"                     // for n2n_edge_t, peer_info, n2n_edge_...
+#include "n2n_wire.h"                // for encode_mac, fill_sockaddr, decod...
 #include "network_traffic_filter.h"  // for create_network_traffic_filter
 #include "pearson.h"                 // for pearson_hash_128, pearson_hash_64
 #include "random_numbers.h"          // for n2n_rand, n2n_rand_sqr
+#include "sn_selection.h"            // for sn_selection_criterion_common_da...
 #include "speck.h"                   // for speck_128_decrypt, speck_128_enc...
+#include "uthash.h"                  // for UT_hash_handle, HASH_COUNT, HASH...
+
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#include "edge_utils_win32.h"
+#else
+#include <arpa/inet.h>               // for inet_ntoa, inet_addr, inet_ntop
+#include <netinet/in.h>              // for sockaddr_in, ntohl, IPPROTO_IP
+#include <netinet/tcp.h>             // for TCP_NODELAY
+#include <sys/select.h>              // for select, FD_SET, FD_ISSET, FD_ZERO
+#include <sys/socket.h>              // for setsockopt, AF_INET, connect
+#endif
 
 
 /* ************************************** */
