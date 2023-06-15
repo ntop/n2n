@@ -16,7 +16,16 @@
  *
  */
 
-#include "n2n.h"
+
+#include <stdlib.h>      // for exit
+#include "n2n.h"         // for n2n_sn_t, open_socket, run_sn_loop, sn_init
+
+#ifdef WIN32
+#include <winsock.h>
+#else
+#include <netinet/in.h>  // for INADDR_ANY, INADDR_LOOPBACK
+#endif
+
 
 static int keep_running;
 
