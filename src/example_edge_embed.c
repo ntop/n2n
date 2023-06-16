@@ -18,7 +18,7 @@
 
 #include "n2n.h"
 
-static int keep_running;
+static int keep_running = true;
 
 int main() {
 
@@ -56,8 +56,8 @@ int main() {
                    DEFAULT_MTU         // MTU to use
 #ifdef WIN32
 				 , 0
-#endif                   
-                   ) < 0)    
+#endif
+                   ) < 0)
         {
                 return -1;
         }
@@ -67,7 +67,6 @@ int main() {
         exit(1);
     }
 
-    keep_running = 1;
     eee->keep_running = &keep_running;
     rc = run_edge_loop(eee);
 

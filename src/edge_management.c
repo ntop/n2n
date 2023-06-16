@@ -472,7 +472,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
 
     if(0 == memcmp(udp_buf, "stop", 4)) {
         traceEvent(TRACE_NORMAL, "stop command received");
-        *eee->keep_running = 0;
+        *eee->keep_running = false;
         return;
     }
 

@@ -2863,7 +2863,7 @@ int run_edge_loop (n2n_edge_t *eee) {
     HANDLE tun_read_thread = startTunReadThread(&arg);
 #endif
 
-    *eee->keep_running = 1;
+    *eee->keep_running = true;
     update_supernode_reg(eee, time(NULL));
 
     /* Main loop
@@ -2922,7 +2922,7 @@ int run_edge_loop (n2n_edge_t *eee) {
                 if(0 != fetch_and_eventually_process_data(eee, eee->sock,
                                                           pktbuf, &expected, &position,
                                                           now)) {
-                    *eee->keep_running = 0;
+                    *eee->keep_running = false;
                     break;
                 }
                 if(eee->conf.connect_tcp) {
@@ -2943,7 +2943,7 @@ int run_edge_loop (n2n_edge_t *eee) {
                 if(0 != fetch_and_eventually_process_data(eee, eee->udp_multicast_sock,
                                                           pktbuf, &expected, &position,
                                                           now)) {
-                    *eee->keep_running = 0;
+                    *eee->keep_running = false;
                     break;
                 }
             }
@@ -2991,7 +2991,7 @@ int run_edge_loop (n2n_edge_t *eee) {
         if((eee->conf.allow_routing) && (now > last_purge_host + SWEEP_TIME)) {
             struct host_info *host, *host_tmp;
             HASH_ITER(hh, eee->known_hosts, host, host_tmp) {
-                if(now > host->last_seen + HOSTINFO_TIMEOUT) {         
+                if(now > host->last_seen + HOSTINFO_TIMEOUT) {
                     HASH_DEL(eee->known_hosts, host);
                     free(host);
                 }
@@ -3057,12 +3057,12 @@ void edge_term (n2n_edge_t * eee) {
 #ifdef HAVE_BRIDGING_SUPPORT
     if(eee->conf.allow_routing) {
         struct host_info *host, *host_tmp;
-        HASH_ITER(hh, eee->known_hosts, host, host_tmp) {   
+        HASH_ITER(hh, eee->known_hosts, host, host_tmp) {
             HASH_DEL(eee->known_hosts, host);
             free(host);
         }
     }
-#endif   
+#endif
 
     eee->transop.deinit(&eee->transop);
     eee->transop_lzo.deinit(&eee->transop_lzo);
@@ -3241,7 +3241,7 @@ int quick_edge_init (char *device_name, char *community_name,
                      char *encrypt_key, char *device_mac,
                      char *local_ip_address,
                      char *supernode_ip_address_port,
-                     int *keep_on_running) {
+                     bool *keep_on_running) {
 
     tuntap_dev tuntap;
     n2n_edge_t *eee;
