@@ -16,9 +16,22 @@
  *
  */
 
-#include "n2n.h"
-#include "network_traffic_filter.h"
-#include "uthash.h"
+
+#include <stdint.h>                  // for uint8_t, uint16_t, uint32_t
+#include <stdio.h>                   // for sprintf
+#include <stdlib.h>                  // for free, malloc, atoi
+#include <string.h>                  // for memcpy, strcpy, NULL, memset
+#include "n2n.h"                     // for filter_rule_t, filter_rule_pair_...
+#include "network_traffic_filter.h"  // for create_network_traffic_filter
+#include "uthash.h"                  // for UT_hash_handle, HASH_ITER, HASH_DEL
+
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>               // for inet_ntoa, inet_addr
+#include <netinet/in.h>              // for in_addr, in_addr_t, ntohs, ntohl
+#endif
 
 // cache that hit less than 10 while 10000 package processed will be delete;
 #define CLEAR_CACHE_EVERY_X_COUNT 10000
