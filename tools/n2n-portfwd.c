@@ -37,7 +37,7 @@ typedef struct n2n_portfwd_conf {
 } n2n_portfwd_conf_t;
 
 
-static int keep_running = 1;              /* for main loop, handled by signals */
+static bool keep_running = true;              /* for main loop, handled by signals */
 
 
 // -------------------------------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ static void term_handler (int sig) {
         called = 1;
     }
 
-    keep_running = 0;
+    keep_running = false;
 #ifdef WIN32
     return TRUE;
 #endif

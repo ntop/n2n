@@ -69,7 +69,7 @@ typedef struct n2n_route_conf {
 } n2n_route_conf_t;
 
 
-static int keep_running = 1;              /* for main loop, handled by signals */
+static bool keep_running = true;              /* for main loop, handled by signals */
 
 
 // -------------------------------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ BOOL WINAPI term_handler (DWORD sig) {
         called = 1;
     }
 
-    keep_running = 0;
+    keep_running = false;
 #if defined(WIN32)
     return TRUE;
 #endif

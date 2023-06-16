@@ -541,7 +541,7 @@ static void dump_registrations (int signo) {
 
 /* *************************************************** */
 
-static int keep_running;
+static bool keep_running = true;
 
 #if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
@@ -560,7 +560,7 @@ BOOL WINAPI term_handler (DWORD sig)
         called = 1;
     }
 
-    keep_running = 0;
+    keep_running = false;
 #ifdef WIN32
     return(TRUE);
 #endif
@@ -714,7 +714,6 @@ int main (int argc, char * const argv[]) {
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
-    keep_running = 1;
     sss_node.keep_running = &keep_running;
     return run_sn_loop(&sss_node);
 }

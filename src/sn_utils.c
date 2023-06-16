@@ -2618,7 +2618,7 @@ int run_sn_loop (n2n_sn_t *sss) {
 #ifdef WIN32
                     traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
-                    *sss->keep_running = 0;
+                    *sss->keep_running = false;
                     break;
                 }
 
@@ -2736,7 +2736,7 @@ int run_sn_loop (n2n_sn_t *sss) {
                 // REVISIT: should we error out if ss_size returns bigger than before? can this ever happen?
                 if(bread <= 0) {
                     traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
-                    *sss->keep_running = 0;
+                    *sss->keep_running = false;
                     break;
                 }
 

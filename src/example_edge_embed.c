@@ -18,7 +18,7 @@
 
 #include "n2n.h"
 
-static int keep_running = true;
+static bool keep_running = true;
 
 int main() {
 

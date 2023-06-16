@@ -33,7 +33,7 @@ typedef struct mgmt_req {
     n2n_sn_t *sss;
     n2n_edge_t *eee;
     int mgmt_sock;                  // socket replies come from
-    int *keep_running;
+    bool *keep_running;
     uint64_t mgmt_password_hash;
     enum n2n_mgmt_type type;
     char *argv0;
