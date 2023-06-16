@@ -3,21 +3,23 @@
  *
  */
 
-#include <stdio.h>
-#ifndef WIN32
-#include <sys/socket.h>
-#include <netdb.h>
-#endif
 
 #include <pearson.h>     // for pearson_hash_64
+#include <stdio.h>       // for snprintf, NULL, size_t
+#include <stdlib.h>      // for strtoul
+#include <string.h>      // for strtok, strlen, strncpy
+#include "management.h"
 #include "n2n.h"         // for TRACE_DEBUG, traceEvent
+
+#ifndef WIN32
+#include <netdb.h>       // for getnameinfo, NI_NUMERICHOST, NI_NUMERICSERV
+#include <sys/socket.h>  // for sendto, sockaddr
+#endif
+
 
 // TODO: move logging defs in their own header and include that
 void setTraceLevel (int level);
 int getTraceLevel ();
-
-#include <pearson.h>
-#include "management.h"
 
 ssize_t send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len) {
     // TODO: better error handling (counters?)
