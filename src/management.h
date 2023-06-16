@@ -8,9 +8,18 @@
 #ifndef MANAGEMENT_H
 #define MANAGEMENT_H 1
 
-#include <n2n_typedefs.h>   // For the n2n_edge_t and n2n_sn_t defs
-
+#include <n2n_typedefs.h>  // For the n2n_edge_t and n2n_sn_t defs
+#include <stddef.h>        // for size_t
+#include <stdint.h>        // for uint64_t
+#include <sys/types.h>     // for ssize_t
+#include "n2n_define.h"    // for n2n_event_topic
 #include "strbuf.h"
+
+#ifdef WIN32
+#include <winsock.h>
+#else
+#include <sys/socket.h>    // for sockaddr, sockaddr_storage, socklen_t
+#endif
 
 enum n2n_mgmt_type {
     N2N_MGMT_UNKNOWN = 0,
