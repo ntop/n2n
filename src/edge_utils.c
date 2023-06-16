@@ -3223,7 +3223,7 @@ int edge_conf_add_supernode (n2n_edge_conf_t *conf, const char *ip_and_port) {
             strncpy(sn->ip_addr, ip_and_port, N2N_EDGE_SN_HOST_SIZE - 1);
             memcpy(&(sn->sock), sock, sizeof(n2n_sock_t));
             memcpy(sn->mac_addr, null_mac, sizeof(n2n_mac_t));
-            sn->purgeable = UNPURGEABLE;
+            sn->purgeable = false;
         }
     }
 

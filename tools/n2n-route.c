@@ -827,7 +827,7 @@ int main (int argc, char* argv[]) {
         if(!inet_address_valid(route->gateway)) {
             route->gateway = rrr.gateway_vpn;
         }
-        route->purgeable = UNPURGEABLE;
+        route->purgeable = false;
         handle_route(route, ROUTE_ADD);
     }
 
@@ -876,7 +876,7 @@ reset_main_loop:
                 rrr.gateway_org = addr_tmp;
                 // delete all purgeable routes as they are still relying on old original default gateway
                 HASH_ITER(hh, rrr.routes, route, tmp_route) {
-                    if((route->purgeable == PURGEABLE)) {
+                    if((route->purgeable == true)) {
                         handle_route(route, ROUTE_DEL);
                         HASH_DEL(rrr.routes, route);
                         free(route);
@@ -937,7 +937,7 @@ reset_main_loop:
         if(now > last_purge + PURGE_INTERVAL) {
             last_purge = now;
             HASH_ITER(hh, rrr.routes, route, tmp_route) {
-                if((route->purgeable == PURGEABLE) && (now > route->last_seen + REMOVE_ROUTE_AGE)) {
+                if((route->purgeable == true) && (now > route->last_seen + REMOVE_ROUTE_AGE)) {
                     handle_route(route, ROUTE_DEL);
                     HASH_DEL(rrr.routes, route);
                     free(route);
@@ -1007,7 +1007,7 @@ reset_main_loop:
                                HASH_DEL(rrr.routes, route);
                             if(route) {
                                 fill_route(route, addr, inet_address(HOST_MASK), rrr.gateway_org);
-                                route->purgeable = PURGEABLE;
+                                route->purgeable = true;
                                 if(!(route->last_seen)) {
                                     handle_route(route, ROUTE_ADD);
                                 }

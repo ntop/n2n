@@ -249,7 +249,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
                         strncpy(anchor_sn->ip_addr, _optarg, N2N_EDGE_SN_HOST_SIZE - 1);
 	                memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
                         memcpy(anchor_sn->mac_addr, null_mac, sizeof(n2n_mac_t));
-                        anchor_sn->purgeable = UNPURGEABLE;
+                        anchor_sn->purgeable = false;
                         anchor_sn->last_valid_time_stamp = initial_time_stamp();
                     }
                 }
@@ -312,7 +312,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
         case 'F': { /* federation name */
             snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1 ,"*%s", _optarg);
             sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
-            sss->federation->purgeable = UNPURGEABLE;
+            sss->federation->purgeable = false;
             break;
         }
 #ifdef SN_MANUAL_MAC

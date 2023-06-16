@@ -50,7 +50,7 @@
 #endif
 
 
-
+#include <stdbool.h>
 #include <time.h>
 #include <ctype.h>
 #include <stdlib.h>
