@@ -16,10 +16,11 @@
  *
  */
 
-#include <stdio.h>
 
-#include "n2n.h"
-#include "hexdump.h"
+#include <stdint.h>   // for uint8_t
+#include <stdio.h>    // for fprintf, FILE
+#include "hexdump.h"  // for fhexdump
+
 
 void fhexdump(unsigned int display_addr, void *in, int size, FILE *stream) {
   uint8_t *p = in;
