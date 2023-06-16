@@ -16,15 +16,29 @@
  *
  */
 
-#include "n2n.h"
 
+#include <errno.h>           // for errno
+#include <stdarg.h>          // for va_end, va_list, va_start
+#include <stdlib.h>          // for free, atoi, calloc, strtol
+#include <string.h>          // for memcmp, memcpy, memset, strlen, strerror
+#include <sys/time.h>        // for gettimeofday, timeval
+#include <time.h>            // for time, localtime, strftime
+#include "config.h"          // for PACKAGE_BUILDDATE, PACKAGE_OSNAME, PACKA...
+#include "n2n.h"
 #include "random_numbers.h"  // for n2n_rand
 #include "sn_selection.h"    // for sn_selection_criterion_default
+#include "uthash.h"          // for UT_hash_handle, HASH_DEL, HASH_ITER, HAS...
 
-#include "minilzo.h"
-
-#include <assert.h>
-
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2def.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>       // for inet_ntop
+#include <netdb.h>           // for addrinfo, freeaddrinfo, gai_strerror
+#include <sys/socket.h>      // for AF_INET, PF_INET, bind, setsockopt, shut...
+#include <syslog.h>          // for closelog, openlog, syslog, LOG_DAEMON
+#endif
 
 
 /* ************************************** */
