@@ -211,6 +211,45 @@ jobs:
       - name: Upload data to codecov
         uses: codecov/codecov-action@v3
 
+  test_bsd:
+    name: Test BSD
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - name: freebsd
+            architecture: x86-64
+            version: '13.2'
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Test on ${{ matrix.os.name }}
+        uses: cross-platform-actions/action@v0.15.0
+        with:
+          operating_system: ${{ matrix.os.name }}
+          architecture: ${{ matrix.os.architecture }}
+          version: ${{ matrix.os.version }}
+          shell: bash
+          memory: 5G
+          cpu_count: 4
+          run: |
+            sudo pkg install -y \
+              autoconf \
+              automake \
+              gcc \
+              git \
+              gmake \
+              python3
+            ./autogen.sh
+            ./configure
+            gmake test
+
   test_macos:
     name: Test MacOS
     runs-on: ${{ matrix.os }}
