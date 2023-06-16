@@ -17,12 +17,38 @@
  */
 
 
+#include <errno.h>              // for errno, EAFNOSUPPORT
+#include <stdint.h>             // for uint8_t, uint32_t, uint16_t, uint64_t
+#include <stdio.h>              // for sscanf, snprintf, fclose, fgets, fopen
+#include <stdlib.h>             // for free, calloc, getenv
+#include <string.h>             // for memcpy, NULL, memset, size_t, strerror
+#include <sys/param.h>          // for MAX
+#include <sys/time.h>           // for timeval
+#include <sys/types.h>          // for ssize_t
+#include <time.h>               // for time_t, time
 #include "auth.h"               // for ascii_to_bin, calculate_dynamic_key
+#include "config.h"             // for PACKAGE_VERSION
 #include "header_encryption.h"  // for packet_header_encrypt, packet_header_...
 #include "n2n.h"                // for sn_community, n2n_sn_t, peer_info
+#include "n2n_regex.h"          // for re_matchp, re_compile
+#include "n2n_wire.h"           // for encode_buf, encode_PEER_INFO, encode_...
 #include "pearson.h"            // for pearson_hash_128, pearson_hash_32
+#include "portable_endian.h"    // for be16toh, htobe16
 #include "random_numbers.h"     // for n2n_rand, n2n_rand_sqr, n2n_seed, n2n...
+#include "sn_selection.h"       // for sn_selection_criterion_gather_data
 #include "speck.h"              // for speck_128_encrypt, speck_context_t
+#include "uthash.h"             // for UT_hash_handle, HASH_ITER, HASH_DEL
+
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>          // for inet_addr, inet_ntoa
+#include <netinet/in.h>         // for ntohl, in_addr_t, sockaddr_in, INADDR...
+#include <netinet/tcp.h>        // for TCP_NODELAY
+#include <sys/select.h>         // for FD_ISSET, FD_SET, select, FD_SETSIZE
+#include <sys/socket.h>         // for recvfrom, shutdown, sockaddr_storage
+#endif
 
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
