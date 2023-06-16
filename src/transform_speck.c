@@ -17,7 +17,12 @@
  */
 
 
+#include <stdint.h>          // for uint8_t
+#include <stdlib.h>          // for size_t, calloc, free
+#include <string.h>          // for memset, strlen
+#include <sys/types.h>       // for u_char, ssize_t, time_t
 #include "n2n.h"             // for n2n_trans_op_t, traceEvent, TRACE_DEBUG
+#include "n2n_wire.h"        // for encode_uint64
 #include "pearson.h"         // for pearson_hash_256
 #include "random_numbers.h"  // for n2n_rand
 #include "speck.h"           // for N2N_SPECK_IVEC_SIZE, speck_ctr, speck_de...
