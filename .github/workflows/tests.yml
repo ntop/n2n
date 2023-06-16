@@ -46,12 +46,24 @@ jobs:
 
       - name: Install libraries needed for all options turned on
         run: |
-          sudo apt-get install -y libminiupnpc-dev libnatpmp-dev libpcap-dev libcap-dev
+          sudo apt-get install -y \
+            libminiupnpc-dev \
+            libnatpmp-dev \
+            libpcap-dev \
+            libcap-dev \
+            libzstd-dev
 
       - name: Run minimal test set
         run: |
           ./autogen.sh
-          ./configure --enable-pthread --enable-miniupnp --enable-natpmp --enable-cap --enable-pcap CFLAGS="-O3 -DN2N_OPTION_USE_PORTMAPPING"
+          ./configure \
+            --enable-pthread \
+            --enable-miniupnp \
+            --enable-natpmp \
+            --enable-cap \
+            --enable-pcap \
+            --with-zstd \
+            CFLAGS="-O3 -DN2N_OPTION_USE_PORTMAPPING"
           make test
 
   lint:
