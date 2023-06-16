@@ -17,8 +17,13 @@
  */
 
 
+#include <stdint.h>          // for uint8_t
+#include <stdlib.h>          // for size_t, calloc, free
+#include <string.h>          // for memset, strlen
+#include <sys/types.h>       // for u_char, ssize_t, time_t
 #include "cc20.h"            // for CC20_IV_SIZE, cc20_crypt, cc20_deinit
 #include "n2n.h"             // for n2n_trans_op_t, traceEvent, TRACE_ERROR
+#include "n2n_wire.h"        // for encode_uint64
 #include "pearson.h"         // for pearson_hash_256
 #include "random_numbers.h"  // for n2n_rand
 
