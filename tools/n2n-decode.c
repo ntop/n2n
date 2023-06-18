@@ -16,8 +16,11 @@
  *
  */
 
+#include <errno.h>             // for errno
 #include <pcap.h>
+#include <signal.h>            // for signal, SIGINT, SIGTERM
 #include "n2n.h"
+#include "n2n_wire.h"
 
 #define SNAPLEN 1500
 #define TIMEOUT 200
