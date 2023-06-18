@@ -19,6 +19,7 @@
 
 #include <errno.h>           // for errno
 #include <stdarg.h>          // for va_end, va_list, va_start
+#include <stdbool.h>
 #include <stdlib.h>          // for free, atoi, calloc, strtol
 #include <string.h>          // for memcmp, memcpy, memset, strlen, strerror
 #include <sys/time.h>        // for gettimeofday, timeval
@@ -440,13 +441,13 @@ uint8_t resolve_check (n2n_resolve_parameter_t *param, uint8_t requires_resoluti
 
     uint8_t ret = requires_resolution; /* if trylock fails, it still requires resolution */
 
-#ifdef HAVE_PTHREAD    
+#ifdef HAVE_PTHREAD
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
     n2n_sock_str_t sock_buf;
 
     if(NULL == param)
         return ret;
-    
+
     // check_interval and last_check do not need to be guarded by the mutex because
     // their values get changed and evaluated only here
 
@@ -650,7 +651,7 @@ size_t purge_peer_list (struct peer_info **peer_list,
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
-        if((scan->purgeable == PURGEABLE) && (scan->last_seen < purge_before)) {
+        if(scan->purgeable && scan->last_seen < purge_before) {
             if((scan->socket_fd >=0) && (scan->socket_fd != socket_not_to_close)) {
                 if(tcp_connections) {
                     HASH_FIND_INT(*tcp_connections, &scan->socket_fd, conn);
@@ -680,7 +681,7 @@ size_t clear_peer_list (struct peer_info ** peer_list) {
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
-        if (scan->purgeable == UNPURGEABLE && scan->ip_addr) {
+        if (scan->purgeable == false && scan->ip_addr) {
             free(scan->ip_addr);
         }
         HASH_DEL(*peer_list, scan);

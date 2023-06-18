@@ -17,6 +17,7 @@
  */
 
 
+#include <stdbool.h>
 #include "n2n.h"             // for quick_edge_init, setTraceLevel
 #include "random_numbers.h"  // for n2n_seed, n2n_srand
 
@@ -34,7 +35,7 @@ int main (int argc, char* argv[]) {
     char *my_mac_address = (char*)"DE:AD:BE:EF:01:10";
     char *my_ipv4_addr   = (char*)"1.2.3.4";
     char *supernode      = (char*)"7.8.9.10:1234";
-    int keep_on_running = 1;
+    bool keep_on_running = true;
 
     /* Increase tracelevel to see what's happening */
     setTraceLevel(10);

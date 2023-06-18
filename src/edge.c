@@ -21,6 +21,7 @@
 #include <errno.h>                   // for errno
 #include <getopt.h>                  // for required_argument, no_argument
 #include <signal.h>                  // for signal, SIG_IGN, SIGPIPE, SIGCHLD
+#include <stdbool.h>
 #include <stdint.h>                  // for uint8_t, uint16_t
 #include <stdio.h>                   // for printf, NULL, fclose, snprintf
 #include <stdlib.h>                  // for atoi, exit, calloc, free, malloc
@@ -958,7 +959,7 @@ static void daemonize () {
 
 /* *************************************************** */
 
-static int keep_on_running;
+static bool keep_on_running = true;
 
 #if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
@@ -977,8 +978,15 @@ BOOL WINAPI term_handler(DWORD sig)
         called = 1;
     }
 
-    keep_on_running = 0;
+    keep_on_running = false;
 #ifdef WIN32
+    switch (sig) {
+        case CTRL_CLOSE_EVENT:
+        case CTRL_LOGOFF_EVENT:
+        case CTRL_SHUTDOWN_EVENT:
+            // Will terminate us after we return, blocking it to cleanup
+            Sleep(INFINITE);
+    }
     return(TRUE);
 #endif
 }
@@ -1336,7 +1344,6 @@ int main (int argc, char* argv[]) {
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
-    keep_on_running = 1;
     eee->keep_running = &keep_on_running;
     traceEvent(TRACE_NORMAL, "edge started");
     rc = run_edge_loop(eee);

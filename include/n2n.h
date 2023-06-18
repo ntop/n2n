@@ -50,6 +50,7 @@
 #endif /* WIN32 */
 
 
+#include <stdbool.h>
 #include <stdio.h>         // for size_t, FILE
 #include "n2n_define.h"
 #include "n2n_typedefs.h"
@@ -207,7 +208,7 @@ int quick_edge_init (char *device_name, char *community_name,
                      char *encrypt_key, char *device_mac,
                      char *local_ip_address,
                      char *supernode_ip_address_port,
-                     int *keep_on_running);
+                     bool *keep_on_running);
 int comm_init (struct sn_community *comm, char *cmn);
 int sn_init_defaults (n2n_sn_t *sss);
 void sn_init (n2n_sn_t *sss);

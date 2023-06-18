@@ -20,6 +20,7 @@
 #include <getopt.h>            // for getopt_long
 #include <unistd.h>            // for optarg
 #include <signal.h>            // for signal, SIGINT, SIGPIPE, SIGTERM, SIG_IGN
+#include <stdbool.h>
 #include <stdint.h>            // for uint16_t, uint32_t, uint8_t
 #include <stdio.h>             // for printf, snprintf
 #include <stdlib.h>            // for NULL, atoi, exit, size_t
@@ -58,7 +59,7 @@ typedef struct n2n_portfwd_conf {
 } n2n_portfwd_conf_t;
 
 
-static int keep_running = 1;              /* for main loop, handled by signals */
+static bool keep_running = true;              /* for main loop, handled by signals */
 
 
 // -------------------------------------------------------------------------------------------------------
@@ -94,7 +95,7 @@ static void term_handler (int sig) {
         called = 1;
     }
 
-    keep_running = 0;
+    keep_running = false;
 #ifdef WIN32
     return TRUE;
 #endif

@@ -17,6 +17,7 @@
  */
 
 
+#include <stdbool.h>
 #include <stdlib.h>      // for exit
 #include "n2n.h"         // for n2n_sn_t, open_socket, run_sn_loop, sn_init
 
@@ -27,7 +28,7 @@
 #endif
 
 
-static int keep_running;
+static bool keep_running = true;
 
 int main () {
 
@@ -50,7 +51,6 @@ int main () {
 
         sn_init(&sss_node);
 
-        keep_running = 1;
         sss_node.keep_running = &keep_running;
         rc = run_sn_loop(&sss_node);
 

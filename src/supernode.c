@@ -23,6 +23,7 @@
 #include <errno.h>             // for errno
 #include <getopt.h>            // for required_argument, getopt_long, no_arg...
 #include <signal.h>            // for signal, SIGHUP, SIGINT, SIGPIPE, SIGTERM
+#include <stdbool.h>
 #include <stdint.h>            // for uint8_t, uint32_t
 #include <stdio.h>             // for printf, NULL, fclose, fgets, fopen
 #include <stdlib.h>            // for exit, atoi, calloc, free
@@ -272,7 +273,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
                         strncpy(anchor_sn->ip_addr, _optarg, N2N_EDGE_SN_HOST_SIZE - 1);
 	                memcpy(&(anchor_sn->sock), socket, sizeof(n2n_sock_t));
                         memcpy(anchor_sn->mac_addr, null_mac, sizeof(n2n_mac_t));
-                        anchor_sn->purgeable = UNPURGEABLE;
+                        anchor_sn->purgeable = false;
                         anchor_sn->last_valid_time_stamp = initial_time_stamp();
                     }
                 }
@@ -335,7 +336,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
         case 'F': { /* federation name */
             snprintf(sss->federation->community, N2N_COMMUNITY_SIZE - 1 ,"*%s", _optarg);
             sss->federation->community[N2N_COMMUNITY_SIZE - 1] = '\0';
-            sss->federation->purgeable = UNPURGEABLE;
+            sss->federation->purgeable = false;
             break;
         }
 #ifdef SN_MANUAL_MAC
@@ -564,7 +565,7 @@ static void dump_registrations (int signo) {
 
 /* *************************************************** */
 
-static int keep_running;
+static bool keep_running = true;
 
 #if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
@@ -583,7 +584,7 @@ BOOL WINAPI term_handler (DWORD sig)
         called = 1;
     }
 
-    keep_running = 0;
+    keep_running = false;
 #ifdef WIN32
     return(TRUE);
 #endif
@@ -737,7 +738,6 @@ int main (int argc, char * const argv[]) {
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
-    keep_running = 1;
     sss_node.keep_running = &keep_running;
     return run_sn_loop(&sss_node);
 }

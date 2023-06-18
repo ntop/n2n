@@ -21,6 +21,7 @@
 // fails with what looks like a struct rearrangement involving eee->stats
 
 #include <errno.h>         // for errno
+#include <stdbool.h>
 #include <stdint.h>        // for uint32_t
 #include <stdio.h>         // for snprintf, size_t, NULL
 #include <string.h>        // for memcmp, memcpy, strerror, strncpy
@@ -494,7 +495,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
 
     if(0 == memcmp(udp_buf, "stop", 4)) {
         traceEvent(TRACE_NORMAL, "stop command received");
-        *eee->keep_running = 0;
+        *eee->keep_running = false;
         return;
     }
 
@@ -608,7 +609,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%-19s %1s%1s | %-17s | %-21s | %-15s | %9s | %10s\n",
                             peer->version,
-                            (peer->purgeable == UNPURGEABLE) ? "l" : "",
+                            (peer->purgeable == false) ? "l" : "",
                             (peer == eee->curr_sn) ? (eee->sn_wait ? "." : "*" ) : "",
                             is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),

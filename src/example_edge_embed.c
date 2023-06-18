@@ -17,12 +17,13 @@
  */
 
 
+#include <stdbool.h>
 #include <stdio.h>   // for snprintf, NULL
 #include <stdlib.h>  // for exit
 #include "n2n.h"     // for n2n_edge_conf_t, edge_conf_add_supernode, edge_init
 
 
-static int keep_running;
+static bool keep_running = true;
 
 int main() {
 
@@ -60,8 +61,8 @@ int main() {
                    DEFAULT_MTU         // MTU to use
 #ifdef WIN32
 				 , 0
-#endif                   
-                   ) < 0)    
+#endif
+                   ) < 0)
         {
                 return -1;
         }
@@ -71,7 +72,6 @@ int main() {
         exit(1);
     }
 
-    keep_running = 1;
     eee->keep_running = &keep_running;
     rc = run_edge_loop(eee);
 

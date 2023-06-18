@@ -5,6 +5,7 @@
 
 
 #include <pearson.h>     // for pearson_hash_64
+#include <stdbool.h>
 #include <stdio.h>       // for snprintf, NULL, size_t
 #include <stdlib.h>      // for strtoul
 #include <string.h>      // for strtok, strlen, strncpy
@@ -68,7 +69,7 @@ void mgmt_error (mgmt_req_t *req, strbuf_t *buf, char *msg) {
 void mgmt_stop (mgmt_req_t *req, strbuf_t *buf) {
 
     if(req->type==N2N_MGMT_WRITE) {
-        *req->keep_running = 0;
+        *req->keep_running = false;
     }
 
     send_json_1uint(req, buf, "row", "keep_running", *req->keep_running);

@@ -9,6 +9,7 @@
 #define MANAGEMENT_H 1
 
 #include <n2n_typedefs.h>  // For the n2n_edge_t and n2n_sn_t defs
+#include <stdbool.h>
 #include <stddef.h>        // for size_t
 #include <stdint.h>        // for uint64_t
 #include <sys/types.h>     // for ssize_t
@@ -42,7 +43,7 @@ typedef struct mgmt_req {
     n2n_sn_t *sss;
     n2n_edge_t *eee;
     int mgmt_sock;                  // socket replies come from
-    int *keep_running;
+    bool *keep_running;
     uint64_t mgmt_password_hash;
     enum n2n_mgmt_type type;
     char *argv0;
