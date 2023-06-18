@@ -17,10 +17,38 @@
  */
 
 
+#include <errno.h>             // for errno
+#include <getopt.h>            // for getopt_long, optind, optarg
+#include <signal.h>            // for signal, SIGINT, SIGPIPE, SIGTERM, SIG_IGN
+#include <stdint.h>            // for uint8_t, uint16_t, uint32_t
+#include <stdio.h>             // for snprintf, printf, sscanf
+#include <stdlib.h>            // for calloc, free, atoi, EXIT_FAILURE, exit
+#include <string.h>            // for memset, NULL, memcmp, strchr, strcmp
+#include <sys/time.h>          // for timeval
+#include <time.h>              // for time, time_t
+#include <unistd.h>            // for getpid, STDIN_FILENO, _exit, geteuid
 #include "json.h"              // for _jsonpair, json_object_t, _jsonvalue
 #include "n2n.h"               // for inaddrtoa, traceEvent, TRACE_WARNING
 #include "random_numbers.h"    // for n2n_rand, n2n_seed, n2n_srand
+#include "uthash.h"            // for UT_hash_handle, HASH_ADD, HASH_DEL
 
+#ifdef __linux__
+#include <linux/netlink.h>     // for nlmsghdr, NLMSG_OK, NETLINK_ROUTE, NLM...
+#include <linux/rtnetlink.h>   // for RTA_DATA, rtmsg, RTA_GATEWAY, RTA_NEXT
+#endif
+
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>         // for inet_pton
+#include <net/if.h>            // for if_indextoname
+#include <net/route.h>         // for rtentry, RTF_GATEWAY, RTF_UP
+#include <netinet/in.h>        // for in_addr, sockaddr_in, htonl, htons, ntohl
+#include <sys/ioctl.h>         // for ioctl, SIOCADDRT, SIOCDELRT
+#include <sys/select.h>        // for select, FD_ISSET, FD_SET, FD_ZERO, fd_set
+#include <sys/socket.h>        // for send, socket, AF_INET, recv, connect
+#endif
 
 #if defined (__linux__) || defined(WIN32)  /*  currently, Linux and Windows only */
 
