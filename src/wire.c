@@ -26,7 +26,21 @@
  *  example.
  */
 
-#include "n2n.h"
+
+#include <stdint.h>      // for uint8_t, uint16_t, uint32_t, uint64_t
+#include <string.h>      // for size_t, memset, memcpy
+#include "portable_endian.h"  // for be64toh, htobe64
+#include "n2n.h"         // for n2n_sock_t, n2n_common_t, n2n_auth_t, n2n_RE...
+#include "n2n_wire.h"    // for decode_PACKET, decode_PEER_INFO, decode_QUER...
+
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <netinet/in.h>  // for sockaddr_in, sockaddr_in6, in6_addr, in_addr
+#include <sys/socket.h>  // for AF_INET, AF_INET6, SOCK_STREAM, SOCK_DGRAM
+#include <sys/un.h>      // for sa_family_t
+#endif
 
 
 int encode_uint8 (uint8_t * base,
