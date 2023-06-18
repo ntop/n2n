@@ -17,10 +17,29 @@
  */
 
 
+#include <getopt.h>            // for getopt_long
+#include <unistd.h>            // for optarg
+#include <signal.h>            // for signal, SIGINT, SIGPIPE, SIGTERM, SIG_IGN
+#include <stdint.h>            // for uint16_t, uint32_t, uint8_t
+#include <stdio.h>             // for printf, snprintf
+#include <stdlib.h>            // for NULL, atoi, exit, size_t
+#include <string.h>            // for strchr, strcmp
+#include <sys/time.h>          // for timeval
+#include <time.h>              // for time, time_t
+#include <unistd.h>            // for STDIN_FILENO, _exit
 #include "json.h"              // for _jsonpair, json_object_t, json_free
 #include "n2n.h"               // for traceEvent, setTraceLevel, getTraceLevel
+#include "n2n_port_mapping.h"  // for n2n_del_port_mapping, n2n_set_port_map...
 #include "random_numbers.h"    // for n2n_rand, n2n_seed, n2n_srand
 
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <netinet/in.h>        // for sockaddr_in, htonl, htons, INADDR_LOOP...
+#include <sys/select.h>        // for select, FD_ISSET, FD_SET, FD_ZERO, fd_set
+#include <sys/socket.h>        // for connect, recv, send, socket, AF_INET
+#endif
 
 #define WITH_PORT               1
 #define CORRECT_TAG             2
