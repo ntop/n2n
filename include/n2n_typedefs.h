@@ -19,6 +19,7 @@
 #ifndef _N2N_TYPEDEFS_H_
 #define _N2N_TYPEDEFS_H_
 
+#include <stdbool.h>
 #include <stdint.h>     // for uint8_t and friends
 #ifndef WIN32
 #include <arpa/inet.h>  // for in_addr_t
@@ -455,7 +456,7 @@ struct peer_info {
     n2n_cookie_t                     last_cookie;
     n2n_auth_t                       auth;
     int                              timeout;
-    uint8_t                          purgeable;
+    bool                             purgeable;
     time_t                           last_seen;
     time_t                           last_p2p;
     time_t                           last_sent_query;
@@ -703,7 +704,7 @@ struct n2n_edge {
     n2n_edge_conf_t         conf;
 
     /* Status */
-    int                              *keep_running;                      /**< Pointer to edge loop stop/go flag */
+    bool                             *keep_running;                      /**< Pointer to edge loop stop/go flag */
     struct peer_info                 *curr_sn;                           /**< Currently active supernode. */
     uint8_t                          sn_wait;                            /**< Whether we are waiting for a supernode response. */
     uint8_t                          sn_pong;                            /**< Whether we have seen a PONG since last time reset. */
@@ -733,7 +734,7 @@ struct n2n_edge {
     /* Peers */
     struct peer_info *               known_peers;                        /**< Edges we are connected to. */
     struct peer_info *               pending_peers;                      /**< Edges we have tried to register with. */
-#ifdef HAVE_BRIDGING_SUPPORT    
+#ifdef HAVE_BRIDGING_SUPPORT
     struct host_info *               known_hosts;                        /**< hosts we know. */
 #endif
 /* Timers */
@@ -789,7 +790,7 @@ typedef struct sn_user {
 struct sn_community {
     char                          community[N2N_COMMUNITY_SIZE];
     uint8_t                       is_federation;          /* if not-zero, then the current community is the federation of supernodes */
-    uint8_t                       purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
+    bool                          purgeable;              /* indicates purgeable community (fixed-name, predetermined (-c parameter) communties usually are unpurgeable) */
     uint8_t                       header_encryption;      /* Header encryption indicator. */
     he_context_t          *header_encryption_ctx_static;  /* Header encryption cipher context. */
     he_context_t          *header_encryption_ctx_dynamic; /* Header encryption cipher context. */
@@ -832,7 +833,7 @@ typedef struct n2n_tcp_connection {
 
 
 typedef struct n2n_sn {
-    int                                    *keep_running;   /* Pointer to sn loop stop/go flag */
+    bool                                   *keep_running;   /* Pointer to sn loop stop/go flag */
     time_t                                 start_time;      /* Used to measure uptime. */
     n2n_version_t                          version;         /* version string sent to edges along with PEER_INFO a.k.a. PONG */
     sn_stats_t                             stats;

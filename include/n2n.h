@@ -50,7 +50,7 @@
 #endif
 
 
-
+#include <stdbool.h>
 #include <time.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -272,7 +272,7 @@ int quick_edge_init (char *device_name, char *community_name,
                      char *encrypt_key, char *device_mac,
                      char *local_ip_address,
                      char *supernode_ip_address_port,
-                     int *keep_on_running);
+                     bool *keep_on_running);
 int comm_init (struct sn_community *comm, char *cmn);
 int sn_init_defaults (n2n_sn_t *sss);
 void sn_init (n2n_sn_t *sss);

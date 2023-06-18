@@ -925,7 +925,7 @@ static void daemonize () {
 
 /* *************************************************** */
 
-static int keep_on_running;
+static bool keep_on_running = true;
 
 #if defined(__linux__) || defined(WIN32)
 #ifdef WIN32
@@ -944,7 +944,7 @@ BOOL WINAPI term_handler(DWORD sig)
         called = 1;
     }
 
-    keep_on_running = 0;
+    keep_on_running = false;
 #ifdef WIN32
     return(TRUE);
 #endif
@@ -1303,7 +1303,6 @@ int main (int argc, char* argv[]) {
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
-    keep_on_running = 1;
     eee->keep_running = &keep_on_running;
     traceEvent(TRACE_NORMAL, "edge started");
     rc = run_edge_loop(eee);
