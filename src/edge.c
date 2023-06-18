@@ -946,6 +946,13 @@ BOOL WINAPI term_handler(DWORD sig)
 
     keep_on_running = false;
 #ifdef WIN32
+    switch (sig) {
+        case CTRL_CLOSE_EVENT:
+        case CTRL_LOGOFF_EVENT:
+        case CTRL_SHUTDOWN_EVENT:
+            // Will terminate us after we return, blocking it to cleanup
+            Sleep(INFINITE);
+    }
     return(TRUE);
 #endif
 }
