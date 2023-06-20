@@ -18,6 +18,11 @@
 
 
 #include "auth.h"
+#include <stdlib.h>      // for calloc, free
+#include <string.h>      // for strlen, size_t
+#include "curve25519.h"  // for curve25519
+#include "pearson.h"     // for pearson_hash_128, pearson_hash_256
+#include "speck.h"       // for speck_context_t, speck_128_encrypt, speck_init
 
 
 // mapping six binary bits to printable ascii character

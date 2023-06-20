@@ -23,7 +23,12 @@
 
 
 #include "speck.h"
+#include "portable_endian.h"  // for htole64, le64toh
+#include <stdlib.h>     // for size_t, malloc, free
 
+#if defined (SPECK_ALIGNED_CTX)
+#include <mm_malloc.h>  // for _mm_free, _mm_malloc
+#endif
 
 #if defined (__AVX512F__)  // AVX512 support ----------------------------------------------------------------------
 

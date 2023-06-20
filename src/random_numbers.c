@@ -17,6 +17,11 @@
  */
 
 
+#include <errno.h>   // for errno, EAGAIN
+#include <stddef.h>  // for NULL, size_t
+#include <time.h>    // for clock, time
+#include <unistd.h>  // for syscall
+#include "n2n.h"     // for TRACE_ERROR, traceEvent
 #include "random_numbers.h"
 
 

@@ -17,10 +17,8 @@
  */
 
 
-#include <stddef.h>
-#include <stdint.h>
-
-#include "portable_endian.h"
+#include <stddef.h>  // for size_t
+#include <stdint.h>  // for uint8_t, uint16_t, uint32_t, uint64_t
 
 
 void pearson_hash_256 (uint8_t *out, const uint8_t *in, size_t len);

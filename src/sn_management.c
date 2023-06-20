@@ -21,11 +21,27 @@
  * code.  In the fullness of time, they should both be merged
  */
 
-#include "n2n.h"
-#include "edge_utils_win32.h"
 
-#include "strbuf.h"
-#include "management.h"
+#include <errno.h>       // for errno
+#include <stdbool.h>
+#include <stdint.h>      // for uint8_t, uint32_t
+#include <stdio.h>       // for snprintf, size_t, sprintf, NULL
+#include <string.h>      // for memcmp, memcpy, strerror, strncpy
+#include <sys/types.h>   // for ssize_t, time_t
+#include "management.h"  // for mgmt_req_t, send_reply, mgmt_handler_t, mgmt...
+#include "n2n.h"         // for n2n_sn_t, sn_community, peer_info, N2N_SN_PK...
+#include "n2n_define.h"    // for N2N_SN_PKTBUF_SIZE, UNPURGEABLE
+#include "n2n_typedefs.h"  // for n2n_sn_t, sn_community, peer_info, sn_stats_t
+#include "strbuf.h"      // for strbuf_t, STRBUF_INIT
+#include "uthash.h"      // for UT_hash_handle, HASH_ITER, HASH_COUNT
+
+#ifdef WIN32
+#include <winsock.h>
+#include "edge_utils_win32.h"
+#else
+#include <sys/socket.h>  // for sendto, socklen_t
+#endif
+
 
 int load_allowed_sn_community (n2n_sn_t *sss); /* defined in sn_utils.c */
 

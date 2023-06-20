@@ -17,7 +17,12 @@
  */
 
 
-#include "n2n.h"
+#include <stdint.h>     // for uint8_t
+#include <stdlib.h>     // for size_t, calloc, free, NULL
+#include <string.h>     // for memset
+#include <sys/types.h>  // for time_t
+#include "minilzo.h"    // for lzo1x_1_compress, lzo1x_decompress, LZO1X_1_M...
+#include "n2n.h"        // for n2n_trans_op_t, TRACE_ERROR, traceEvent, N2N_...
 
 
 /* heap allocation for compression as per lzo example doc  */

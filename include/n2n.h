@@ -47,118 +47,54 @@
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_TCP           /* as explained on https://github.com/ntop/n2n/pull/627#issuecomment-782093706 */
 #undef N2N_HAVE_SETUID
-#endif
+#endif /* WIN32 */
 
 
 #include <stdbool.h>
-#include <time.h>
-#include <ctype.h>
-#include <stdlib.h>
+#include <stdio.h>         // for size_t, FILE
+#include "n2n_define.h"
+#include "n2n_typedefs.h"
+
+#ifdef WIN32
+#include <lmaccess.h>           /* for privilege check in tools/n2n-route */
+#include <lmapibuf.h>           /* for privilege check in tools/n2n-route */
+#include <sys/stat.h>
+#include <windows.h>            /* for privilege check in tools/n2n-route */
+#include <winsock2.h>           /* for tcp */
+#include "wintap.h"
+#define SHUT_RDWR   SD_BOTH     /* for tcp */
+#endif /* #ifdef WIN32 */
 
 #ifndef WIN32
-#include <netdb.h>
-#endif
-
-#ifndef _MSC_VER
-#include <getopt.h>
-#endif /* #ifndef _MSC_VER */
-
-#include <stdio.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdint.h>
-#include <time.h>
-
-#ifndef WIN32
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/param.h>
-#include <pthread.h>
+#include <netinet/in.h>    // for in_addr (ptr only), in_addr_t
+#include <pwd.h>
+#include <stdint.h>        // for uint8_t, uint64_t, uint32_t, uint16_t
+#include <sys/types.h>     // for time_t
+#include <unistd.h>        // for close
+#define closesocket(a) close(a)
 
 #ifdef __linux__
 #define N2N_CAN_NAME_IFACE 1
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <unistd.h>
-#include <net/if_arp.h>
-#include <net/if.h>
-#include <linux/if_tun.h>
-#include <net/route.h>
 #endif /* #ifdef __linux__ */
 
 #ifdef __FreeBSD__
 #include <netinet/in_systm.h>
 #endif /* #ifdef __FreeBSD__ */
 
-#include <syslog.h>
-#include <sys/wait.h>
-
 #ifdef HAVE_ZSTD
 #include <zstd.h>
 #endif
 
-#include <netinet/in.h>
-#include <netinet/udp.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <string.h>
-#include <assert.h>
-#include <sys/stat.h>
-#include <stdint.h>
 #if defined (HAVE_OPENSSL_1_1)
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif
-
-#define closesocket(a) close(a)
 #endif /* #ifndef WIN32 */
 
-#include "minilzo.h"
-#include <signal.h>
-#include <string.h>
-#include <stdarg.h>
-#include "lzoconf.h"
-#include "uthash.h"
-#include "n2n_define.h"
-#include "n2n_typedefs.h"
 
-#ifdef WIN32
-#include <windows.h>            /* for privilege check in tools/n2n-route */
-#include <lmaccess.h>           /* for privilege check in tools/n2n-route */
-#include <lmapibuf.h>           /* for privilege check in tools/n2n-route */
-#include <winsock2.h>           /* for tcp */
-#define SHUT_RDWR   SD_BOTH     /* for tcp */
-#include "wintap.h"
-#include <sys/stat.h>
-#else
-#include <pwd.h>
-#endif /* #ifdef WIN32 */
 
-#include "n2n_wire.h"
-#include "random_numbers.h"
-#include "pearson.h"
-#include "portable_endian.h"
-#include "aes.h"
-#include "cc20.h"
-#include "speck.h"
-#include "curve25519.h"
-#include "n2n_regex.h"
-#include "sn_selection.h"
-#include "network_traffic_filter.h"
-#include "auth.h"
-
-#include "n2n_port_mapping.h"
-
-#include "json.h"
 
 /* ************************************** */
-
-#include "header_encryption.h"
-#include "tf.h"
 
 #ifndef TRACE_ERROR
 #define TRACE_ERROR       0

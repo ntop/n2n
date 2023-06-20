@@ -18,8 +18,32 @@
 
 /* Supernode for n2n-2.x */
 
-#include "n2n.h"
-#include "header_encryption.h"
+
+#include <ctype.h>             // for isspace
+#include <errno.h>             // for errno
+#include <getopt.h>            // for required_argument, getopt_long, no_arg...
+#include <signal.h>            // for signal, SIGHUP, SIGINT, SIGPIPE, SIGTERM
+#include <stdbool.h>
+#include <stdint.h>            // for uint8_t, uint32_t
+#include <stdio.h>             // for printf, NULL, fclose, fgets, fopen
+#include <stdlib.h>            // for exit, atoi, calloc, free
+#include <string.h>            // for strerror, strlen, memcpy, strncpy, str...
+#include <sys/types.h>         // for time_t, u_char, u_int
+#include <time.h>              // for time
+#include <unistd.h>            // for _exit, daemon, getgid, getuid, setgid
+#include "n2n.h"               // for n2n_sn_t, sn_community, traceEvent
+#include "pearson.h"           // for pearson_hash_64
+#include "uthash.h"            // for UT_hash_handle, HASH_ITER, HASH_ADD_STR
+
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>         // for inet_addr
+#include <netinet/in.h>        // for ntohl, INADDR_ANY, INADDR_NONE, in_addr_t
+#include <pwd.h>               // for getpwnam, passwd
+#include <sys/socket.h>        // for listen, AF_INET
+#endif
 
 #define HASH_FIND_COMMUNITY(head, name, out) HASH_FIND_STR(head, name, out)
 

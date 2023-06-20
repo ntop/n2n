@@ -17,7 +17,11 @@
  */
 
 
-#include "n2n.h"
+#include <stdint.h>  // for uint8_t
+#include <stdio.h>   // for fprintf, stdout, stderr
+#include <string.h>  // for memset, strcmp
+#include "auth.h"    // for bin_to_ascii, bind_private_key_to_username, gene...
+#include "n2n.h"     // for n2n_private_public_key_t, N2N_USER_KEY_LINE_STARTER
 
 
 int main(int argc, char * argv[]) {

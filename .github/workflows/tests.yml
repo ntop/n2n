@@ -25,6 +25,13 @@ jobs:
           ./configure
           make test
 
+      - if: ${{ failure() }}
+        name: Upload tests output
+        uses: actions/upload-artifact@v3
+        with:
+          name: tests-smoketest
+          path: tests
+
   smoketest_all_opts:
     name: Smoke test With all options turned on
     runs-on: ubuntu-latest
@@ -39,12 +46,24 @@ jobs:
 
       - name: Install libraries needed for all options turned on
         run: |
-          sudo apt-get install -y libminiupnpc-dev libnatpmp-dev libpcap-dev libcap-dev
+          sudo apt-get install -y \
+            libminiupnpc-dev \
+            libnatpmp-dev \
+            libpcap-dev \
+            libcap-dev \
+            libzstd-dev
 
       - name: Run minimal test set
         run: |
           ./autogen.sh
-          ./configure --enable-pthread --enable-miniupnp --enable-natpmp --enable-cap --enable-pcap CFLAGS="-O3 -DN2N_OPTION_USE_PORTMAPPING"
+          ./configure \
+            --enable-pthread \
+            --enable-miniupnp \
+            --enable-natpmp \
+            --enable-cap \
+            --enable-pcap \
+            --with-zstd \
+            CFLAGS="-O3 -DN2N_OPTION_USE_PORTMAPPING"
           make test
 
   lint:
@@ -174,7 +193,7 @@ jobs:
         name: Upload tests output
         uses: actions/upload-artifact@v3
         with:
-          name: tests-out
+          name: tests-linux
           path: tests
 
       - name: Generate coverage reports
@@ -244,7 +263,7 @@ jobs:
         name: Upload tests output
         uses: actions/upload-artifact@v3
         with:
-          name: tests-out
+          name: tests-macos
           path: tests
 
       - name: Generate coverage reports
@@ -321,7 +340,7 @@ jobs:
         name: Upload tests output
         uses: actions/upload-artifact@v3
         with:
-          name: tests-out
+          name: tests-windows
           path: tests
 
       - name: Generate coverage data

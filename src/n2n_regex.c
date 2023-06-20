@@ -49,8 +49,12 @@
  */
 
 
-#include "n2n.h"
-#include "n2n_regex.h"
+#include <stdio.h>         // for printf
+#include <stdlib.h>        // for calloc, free
+#include <string.h>        // for memcpy
+#include "n2n_typedefs.h"  // for re_t
+#include "n2n_regex.h"     // for re_compile, re_match, re_matchp
+
 
 /* Definitions: */
 

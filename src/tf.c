@@ -48,6 +48,8 @@
 
 
 #include "tf.h"
+#include "portable_endian.h"  // for le32toh, htole32
+#include <string.h>  // for memcpy
 
 
 const uint8_t RS[4][8] = { { 0x01, 0xA4, 0x55, 0x87, 0x5A, 0x58, 0xDB, 0x9E, },

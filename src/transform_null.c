@@ -17,7 +17,10 @@
  */
 
 
-#include "n2n.h"
+#include <stdint.h>     // for uint8_t
+#include <string.h>     // for memcpy, size_t, memset
+#include <sys/types.h>  // for time_t
+#include "n2n.h"        // for n2n_trans_op_t, TRACE_DEBUG, traceEvent, N2N_...
 
 
 static int transop_deinit_null (n2n_trans_op_t *arg ) {

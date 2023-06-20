@@ -17,6 +17,7 @@
  */
 
 
+#include <fcntl.h>
 #include "n2n.h"
 
 

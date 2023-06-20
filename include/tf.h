@@ -51,11 +51,8 @@
 #define TF_H
 
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "portable_endian.h"
+#include <stdint.h>  // for uint32_t
+#include <stdlib.h>  // for size_t
 
 
 #define TF_BLOCK_SIZE     16

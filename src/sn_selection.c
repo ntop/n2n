@@ -17,7 +17,13 @@
  */
 
 
-#include "n2n.h"
+#include <stdint.h>           // for UINT64_MAX, uint32_t, int64_t, uint64_t
+#include <stdio.h>            // for snprintf, NULL
+#include <string.h>           // for memcpy, memset
+#include "n2n.h"              // for peer_info_t, n2n_edge_t, SN_SELECTION_CRIT...
+#include "portable_endian.h"  // for be32toh, be64toh, htobe64
+#include "sn_selection.h"     // for selection_criterion_str_t, sn_selection_cr...
+#include "uthash.h"           // for UT_hash_handle, HASH_COUNT, HASH_ITER, HAS...
 
 
 static SN_SELECTION_CRITERION_DATA_TYPE sn_selection_criterion_common_read (n2n_edge_t *eee);

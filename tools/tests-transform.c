@@ -16,10 +16,17 @@
  *
  */
 
-#include <inttypes.h>
 
-#include "n2n.h"
-#include "hexdump.h"
+#include <inttypes.h>   // for PRIx64
+#include <stdint.h>     // for uint8_t
+#include <stdio.h>      // for printf, fprintf, size_t, stderr, stdout
+#include <stdlib.h>     // for exit
+#include <string.h>     // for memcpy, memset, memcmp, strncpy
+#include <sys/types.h>  // for ssize_t
+#include "hexdump.h"    // for fhexdump
+#include "n2n.h"        // for n2n_trans_op_t, n2n_edge_conf_t, n2n_common_t
+#include "n2n_wire.h"   // for decode_PACKET, decode_common, encode_PACKET
+
 
 #define DURATION                2.5   // test duration per algorithm
 #define PACKETS_BEFORE_GETTIME  2047  // do not check time after every packet but after (2 ^ n - 1)

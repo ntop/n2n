@@ -17,7 +17,15 @@
  */
 
 
-#include "n2n.h"
+#include <stdint.h>          // for uint8_t
+#include <stdlib.h>          // for calloc, free
+#include <string.h>          // for memcpy, size_t, memset, memcmp, strlen
+#include <sys/types.h>       // for u_char, ssize_t, time_t
+#include "n2n.h"             // for n2n_trans_op_t, traceEvent, TRACE_ERROR
+#include "n2n_wire.h"        // for encode_uint64, encode_buf
+#include "pearson.h"         // for pearson_hash_256
+#include "random_numbers.h"  // for n2n_rand
+#include "tf.h"              // for TF_BLOCK_SIZE, tf_cbc_decrypt, tf_cbc_en...
 
 
 // size of random value prepended to plaintext defaults to TF_BLOCK_SIZE;

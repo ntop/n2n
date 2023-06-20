@@ -16,7 +16,12 @@
  *
  */
 
-#include "n2n.h"
+
+#include <stdbool.h>
+#include <stdio.h>   // for snprintf, NULL
+#include <stdlib.h>  // for exit
+#include "n2n.h"     // for n2n_edge_conf_t, edge_conf_add_supernode, edge_init
+
 
 static bool keep_running = true;
 

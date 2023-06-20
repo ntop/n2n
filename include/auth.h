@@ -17,11 +17,13 @@
  */
 
 
-#include "n2n.h"
-
-
 #ifndef AUTH_H
 #define AUTH_H
+
+
+#include <stddef.h>  // for size_t
+#include <stdint.h>  // for uint8_t, uint32_t
+#include "n2n.h"     // for n2n_private_public_key_t, n2n_community_t, N2N_A...
 
 
 int bin_to_ascii (char *out, uint8_t *in, size_t in_len);

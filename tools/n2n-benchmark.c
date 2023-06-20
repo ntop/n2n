@@ -16,13 +16,22 @@
  *
  */
 
+
+#include <stdint.h>      // for uint8_t, uint64_t
+#include <stdio.h>       // for printf, fflush, size_t, NULL, stdout
+#include <string.h>      // for memset, memcpy, memcmp, strncpy
+#include <sys/types.h>   // for ssize_t
+#include "curve25519.h"  // for curve25519
+#include "n2n.h"         // for n2n_trans_op_t, n2n_common_t, n2n_edge_conf_t
+#include "n2n_wire.h"    // for decode_PACKET, decode_common, encode_PACKET
+#include "pearson.h"     // for pearson_hash_64, pearson_hash_init
+
 #ifndef _MSC_VER
 /* MinGW has undefined function gettimeofday() warnings without this header
  * but Visual C++ doesnt even have the header */
-#include <sys/time.h>
+#include <sys/time.h>    // for gettimeofday, timeval
 #endif
 
-#include "n2n.h"
 
 #define DURATION                2.5   // test duration per algorithm
 #define PACKETS_BEFORE_GETTIME  2047  // do not check time after every packet but after (2 ^ n - 1)

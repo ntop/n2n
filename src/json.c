@@ -23,6 +23,8 @@
 // https://github.com/forkachild/C-Simple-JSON-Parser/issues/3#issuecomment-1073520808
 
 
+#include <stdlib.h>  // for malloc, free, NULL, atof, realloc
+#include <string.h>  // for memcpy
 #include "json.h"
 
 

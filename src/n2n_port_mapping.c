@@ -54,7 +54,8 @@
  */
 
 
-#include "n2n.h"
+#include <stdint.h>            // for uint16_t
+#include "n2n_port_mapping.h"  // for n2n_del_port_mapping, n2n_set_port_map...
 
 
 #ifdef HAVE_MINIUPNP

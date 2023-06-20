@@ -17,10 +17,13 @@
  */
 
 
-#include "n2n.h"
+#include "config.h"  // for HAVE_ZSTD
 
 
 #ifdef HAVE_ZSTD
+
+
+#include "n2n.h"
 
 
 typedef struct transop_zstd {

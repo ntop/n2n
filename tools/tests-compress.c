@@ -16,12 +16,17 @@
  *
  */
 
-#include <inttypes.h>
 
-#include <assert.h>
+#include <assert.h>    // for assert
+#include <inttypes.h>  // for PRIx64
+#include <stdint.h>    // for uint8_t
+#include <stdio.h>     // for printf, fprintf, stderr, stdout, NULL
+#include <stdlib.h>    // for exit
+#include <string.h>    // for memcmp
+#include "hexdump.h"   // for fhexdump
+#include "minilzo.h"   // for lzo1x_1_compress, lzo1x_decompress, LZO1X_1_ME...
+#include "n2n.h"       // for N2N_PKT_BUF_SIZE, TRACE_ERROR, traceEvent
 
-#include "n2n.h"
-#include "hexdump.h"
 
 /* heap allocation for compression as per lzo example doc */
 #define HEAP_ALLOC(var,size) lzo_align_t __LZO_MMODEL var [ ((size) + (sizeof(lzo_align_t) - 1)) / sizeof(lzo_align_t) ]

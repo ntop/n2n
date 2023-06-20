@@ -16,7 +16,42 @@
  *
  */
 
-#include "n2n.h"
+
+#include <ctype.h>                   // for isspace
+#include <errno.h>                   // for errno
+#include <getopt.h>                  // for required_argument, no_argument
+#include <signal.h>                  // for signal, SIG_IGN, SIGPIPE, SIGCHLD
+#include <stdbool.h>
+#include <stdint.h>                  // for uint8_t, uint16_t
+#include <stdio.h>                   // for printf, NULL, fclose, snprintf
+#include <stdlib.h>                  // for atoi, exit, calloc, free, malloc
+#include <string.h>                  // for strncpy, memset, strlen, strcmp
+#include <sys/param.h>               // for MIN
+#include <sys/time.h>                // for timeval
+#include <sys/types.h>               // for u_char
+#include <time.h>                    // for time
+#include <unistd.h>                  // for setuid, _exit, chdir, fork, getgid
+#include "auth.h"                    // for generate_private_key, generate_p...
+#include "config.h"                  // for PACKAGE_BUILDDATE, PACKAGE_VERSION
+#include "n2n.h"                     // for n2n_edge_conf_t, n2n_edge_t, fil...
+#include "network_traffic_filter.h"  // for process_traffic_filter_rule_str
+#include "pearson.h"                 // for pearson_hash_64
+#include "portable_endian.h"         // for htobe32
+#include "random_numbers.h"          // for n2n_seed, n2n_srand
+#include "sn_selection.h"            // for sn_selection_sort, sn_selection_...
+#include "speck.h"                   // for speck_init, speck_context_t
+#include "uthash.h"                  // for UT_hash_handle, HASH_ADD, HASH_C...
+
+#ifdef WIN32
+#include <winsock.h>
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>               // for inet_addr, inet_ntop
+#include <netinet/in.h>              // for INADDR_ANY, INADDR_NONE, ntohl
+#include <pwd.h>                     // for getpwnam, passwd
+#include <sys/select.h>              // for select, FD_ISSET, FD_SET, FD_ZERO
+#include <sys/socket.h>              // for AF_INET
+#endif
 
 /* *************************************************** */
 
@@ -32,7 +67,6 @@
 
 #include <sys/capability.h>
 #include <sys/prctl.h>
-#include "network_traffic_filter.h"
 
 static cap_value_t cap_values[] = {
     //CAP_NET_RAW,            /* Use RAW and PACKET sockets */
