@@ -705,6 +705,7 @@ jobs:
           ./autogen.sh
           export CC=${{ matrix.arch }}-gcc
           export AR=${{ matrix.arch }}-ar
+          export WINDRES=${{ matrix.arch }}-windres
           ./configure --host ${{ matrix.arch }}
           make
 

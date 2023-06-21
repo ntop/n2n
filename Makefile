@@ -209,7 +209,7 @@ win32:
 	$(MAKE) -C $@
 
 win32/edge_rc.o: win32/edge.rc win32/edge.manifest
-	windres win32/edge.rc -O coff -o win32/edge_rc.o
+	$(WINDRES) win32/edge.rc -O coff -o win32/edge_rc.o
 
 src/edge.o: $(N2N_DEPS)
 src/supernode.o: $(N2N_DEPS)
