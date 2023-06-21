@@ -1184,7 +1184,7 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
             mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
 #ifdef WIN32
             dec_ip_str_t ip_addr;
-            get_best_interface_ip(eee, ip_addr);
+            get_best_interface_ip(eee, &ip_addr);
             mreq.imr_interface.s_addr = inet_addr(ip_addr);
 #else
             mreq.imr_interface.s_addr = htonl(INADDR_ANY);
