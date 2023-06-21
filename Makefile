@@ -37,6 +37,7 @@ export CONFIG_TARGET
 ifndef CONFIG_TARGET
 ifeq ($(shell uname -o),Msys)
 CONFIG_TARGET=mingw
+WINDRES=windres
 else ifeq ($(shell uname -s),Darwin)
 CONFIG_TARGET=darwin
 else ifeq ($(shell uname), SunOS)
