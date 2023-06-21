@@ -43,8 +43,7 @@ struct tunread_arg {
 };
 
 extern HANDLE startTunReadThread (struct tunread_arg *arg);
-int get_best_interface_ip (n2n_edge_t * eee, dec_ip_str_t ip_addr);
-
+int get_best_interface_ip (n2n_edge_t * eee, dec_ip_str_t *ip_addr);
 
 #endif /* WIN32 */
 
