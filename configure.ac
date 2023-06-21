@@ -12,6 +12,9 @@ fi
 if test "${AR+set}" != set; then
     AR=ar
 fi
+if test "${WINDRES+set}" != set; then
+    WINDRES=windres
+fi
 
 N2N_LIBS_EXTRA=
 
@@ -149,6 +152,7 @@ AC_DEFINE_UNQUOTED(PACKAGE_OSNAME, "${OSNAME}", [OS name])
 
 AC_SUBST(CC)
 AC_SUBST(AR)
+AC_SUBST(WINDRES)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(N2N_VERSION)
