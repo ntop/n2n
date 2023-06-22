@@ -17,6 +17,5 @@ EOF
 
 cat <<EOF >include/config.h
 #define PACKAGE_VERSION "FIXME"
-#define PACKAGE_OSNAME "FIXME"
 #define PACKAGE_BUILDDATE "$(date)"
 EOF
