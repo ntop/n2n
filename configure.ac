@@ -2,8 +2,6 @@ odnl> Do not add anything above
 AC_INIT([edge], m4_esyscmd([scripts/version.sh | tr -d '\n']))
 dnl> Do not add anything above
 
-N2N_VERSION=${PACKAGE_VERSION}
-
 AC_DEFINE([PACKAGE_BUILDDATE], "[m4_esyscmd([scripts/version.sh date | tr -d '\n'])]", [Last change date])
 
 if test "${CC+set}" != set; then
@@ -134,28 +132,12 @@ AS_IF([test "x$enable_pthread" != xno],
 )
 
 
-MACHINE=`uname -m`
-SYSTEM=`uname -s`
-
-if test $SYSTEM = "Linux"; then
-   if test -f /etc/debian_version; then
-      DEBIAN_VERSION=`cat /etc/debian_version`
-      OSNAME="Debian $DEBIAN_VERSION"
-   else
-      OSNAME=`./config.guess`
-   fi
-else
-dnl> wget -O config.guess 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD'
-   OSNAME=`./config.guess`
-fi
-AC_DEFINE_UNQUOTED(PACKAGE_OSNAME, "${OSNAME}", [OS name])
 
 AC_SUBST(CC)
 AC_SUBST(AR)
 AC_SUBST(WINDRES)
 AC_SUBST(CFLAGS)
 AC_SUBST(LDFLAGS)
-AC_SUBST(N2N_VERSION)
 AC_SUBST(N2N_LIBS_EXTRA)
 AC_SUBST(TOOLS_ADDITIONAL)
 AC_CONFIG_HEADERS(include/config.h)

@@ -24,7 +24,7 @@
 #include <string.h>          // for memcmp, memcpy, memset, strlen, strerror
 #include <sys/time.h>        // for gettimeofday, timeval
 #include <time.h>            // for time, localtime, strftime
-#include "config.h"          // for PACKAGE_BUILDDATE, PACKAGE_OSNAME, PACKA...
+#include "config.h"          // for PACKAGE_BUILDDATE, PACKA...
 #include "n2n.h"
 #include "random_numbers.h"  // for n2n_rand
 #include "sn_selection.h"    // for sn_selection_criterion_default
@@ -608,10 +608,10 @@ void hexdump (const uint8_t *buf, size_t len) {
 
 void print_n2n_version () {
 
-    printf("Welcome to n2n v.%s for %s\n"
+    printf("Welcome to n2n v.%s\n"
            "Built on %s\n"
            "Copyright 2007-2022 - ntop.org and contributors\n\n",
-           PACKAGE_VERSION, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
+           PACKAGE_VERSION, PACKAGE_BUILDDATE);
 }
 
 /* *********************************************** */
