@@ -4,19 +4,11 @@ dnl> Do not add anything above
 
 AC_DEFINE([PACKAGE_BUILDDATE], "[m4_esyscmd([scripts/version.sh date | tr -d '\n'])]", [Last change date])
 
-if test "${CC+set}" != set; then
-    CC=gcc
-fi
-if test "${AR+set}" != set; then
-    AR=ar
-fi
-if test "${WINDRES+set}" != set; then
-    WINDRES=windres
-fi
-
 N2N_LIBS_EXTRA=
 
 AC_PROG_CC
+AC_CHECK_TOOL([AR], [ar], [false])
+AC_CHECK_TOOL([WINDRES], [windres], [false])
 
 # TODO: ideally, should use AC_ARG_ENABLE
 AC_ARG_WITH([edgex],
