@@ -6,6 +6,7 @@
 cat >config.mak <<EOF
 CC=gcc
 AR=ar
+WINDRES=windres
 CFLAGS=$CFLAGS -g -O2 -I./include
 LDFLAGS=$LDFLAGS -L.
 LDLIBS_EXTRA=$LDLIBS
