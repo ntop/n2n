@@ -386,8 +386,6 @@ jobs:
         run: |
           # This will warn about CC, but we cannot set CC until we run it :-S
           HOST_TRIPLET=$(dpkg-architecture -a${{ matrix.arch }} -q DEB_HOST_GNU_TYPE)
-          export CC=$HOST_TRIPLET-gcc
-          export AR=$HOST_TRIPLET-ar
           ./autogen.sh
           ./configure --host $HOST_TRIPLET
           cd packages/debian/
@@ -598,7 +596,6 @@ jobs:
           # this is a hack! it assumes the default SDK is the 'right' one
           export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
-          export CC=clang
           export CFLAGS="-target ${{ matrix.arch }}"
           export LDFLAGS="-target ${{ matrix.arch }}"
           ./configure --host=${{ matrix.arch }}
@@ -647,7 +644,6 @@ jobs:
           # this is a hack! it assumes the default SDK is the 'right' one
           export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
-          export CC=clang
           export CFLAGS="-arch x86_64 -arch arm64"
           export LDFLAGS="-arch x86_64 -arch arm64"
           ./configure
@@ -703,9 +699,6 @@ jobs:
         shell: bash
         run: |
           ./autogen.sh
-          export CC=${{ matrix.arch }}-gcc
-          export AR=${{ matrix.arch }}-ar
-          export WINDRES=${{ matrix.arch }}-windres
           ./configure --host ${{ matrix.arch }}
           make
 

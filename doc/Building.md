@@ -103,7 +103,7 @@ See `edge.exe --help` and `supernode.exe --help` for a full list of supported op
 The Makefiles are all setup to allow cross compiling of this code.  You
 will need to have the cross compiler, binutils and any additional libraries
 desired installed for the target architecture.  Then you can run the `./configure`
-with the appropriate CC and AR environment and the right `--host` option.
+with the appropriate `--host` option.
 
 If compiling on Debian or Ubuntu, this can be as simple as the following example:
 
@@ -111,8 +111,6 @@ If compiling on Debian or Ubuntu, this can be as simple as the following example
 HOST_TRIPLET=arm-linux-gnueabi
 sudo apt-get install binutils-$HOST_TRIPLET gcc-$HOST_TRIPLET
 ./autogen.sh
-export CC=$HOST_TRIPLET-gcc
-export AR=$HOST_TRIPLET-ar
 ./configure --host $HOST_TRIPLET
 make
 ```
