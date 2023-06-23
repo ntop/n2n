@@ -41,7 +41,7 @@
 #include "uthash.h"                  // for UT_hash_handle, HASH_COUNT, HASH...
 
 #ifdef WIN32
-#include <winsock.h>
+#include <winsock2.h>
 #include <ws2tcpip.h>
 #include "edge_utils_win32.h"
 #else
@@ -2873,6 +2873,17 @@ void print_edge_stats (const n2n_edge_t *eee) {
 
 /* ************************************** */
 
+bool add_read_event_select(int *total_events, HANDLE *events, SOCKET socket) {
+    HANDLE event_handle = WSACreateEvent();
+    int result = WSAEventSelect(socket, event_handle, FD_READ);
+    if (result != NO_ERROR) {
+        traceEvent(TRACE_ERROR, "can't select event, error code: %d", WSAGetLastError());
+        return false;
+    }
+    events[*total_events] = event_handle;
+    *total_events += 1;
+    return true;
+}
 
 int run_edge_loop (n2n_edge_t *eee) {
 
@@ -2895,7 +2906,6 @@ int run_edge_loop (n2n_edge_t *eee) {
     HANDLE tun_read_thread = startTunReadThread(&arg);
 #endif
 
-    *eee->keep_running = true;
     update_supernode_reg(eee, time(NULL));
 
     /* Main loop
@@ -2907,10 +2917,73 @@ int run_edge_loop (n2n_edge_t *eee) {
 
     while(*eee->keep_running) {
 
-        int rc, max_sock = 0;
+        bool management_has_message = false;
+        bool sock_has_message = false;
+        bool multicast_has_message = false;
+#ifndef WIN32
+        bool tuntap_has_message = false;
+#endif
+
+#ifdef WIN32
+        int total_events = 0;
+        HANDLE events[WSA_MAXIMUM_WAIT_EVENTS] = {0};
+        bool *event_message_map[WSA_MAXIMUM_WAIT_EVENTS] = {0};
+        events[total_events] = eee->stop_event_handle;
+        total_events += 1;
+        event_message_map[total_events] = &management_has_message;
+        if (!add_read_event_select(&total_events, events, eee->udp_mgmt_sock)) {
+            break;
+        }
+        if (eee->sock >= 0) {
+            event_message_map[total_events] = &sock_has_message;
+            if (!add_read_event_select(&total_events, events, eee->sock)) {
+                break;
+            }
+        }
+#ifndef SKIP_MULTICAST_PEERS_DISCOVERY
+        if (eee->conf.allow_p2p && eee->conf.preferred_sock.family == AF_INVALID) {
+            event_message_map[total_events] = &multicast_has_message;
+            if (!add_read_event_select(&total_events, events, eee->udp_multicast_sock)) {
+                break;
+            }
+        }
+#endif
+        DWORD wait_time_ms = (eee->sn_wait ? SOCKET_TIMEOUT_INTERVAL_SECS / 10 + 1 : SOCKET_TIMEOUT_INTERVAL_SECS) * 1000;
+        DWORD result = WSAWaitForMultipleEvents(total_events, events, false, wait_time_ms, true);
+        for (int i = 0; i < total_events; i++) {
+            HANDLE current_event = events[i];
+            if (current_event == NULL) {
+                break;
+            }
+            if (current_event != eee->stop_event_handle) {
+                if (!WSACloseEvent(current_event)) {
+                    traceEvent(TRACE_ERROR, "can't close event, error code: %d", WSAGetLastError());
+                    break;
+                }
+            }
+        }
+
+        traceEvent(TRACE_NORMAL, "wait for multiple events result: %d", result);
+        if (result == WSA_WAIT_IO_COMPLETION) {
+            traceEvent(TRACE_NORMAL, "WSA_WAIT_IO_COMPLETION");
+        }
+        if (result == WSA_WAIT_FAILED) {
+            traceEvent(TRACE_ERROR, "can't wait for events, error code: %d", WSAGetLastError());
+            break;
+        }
+        if (result >= WSA_WAIT_EVENT_0 && result <= WSA_WAIT_EVENT_0 + total_events - 1) {
+            int index = result - WSA_WAIT_EVENT_0;
+            HANDLE signaled_event = events[index];
+            traceEvent(TRACE_NORMAL, "signal event: %d, stop event: %d", signaled_event, eee->stop_event_handle);
+            if (signaled_event == eee->stop_event_handle) {
+                traceEvent(TRACE_NORMAL, "exit signal received");
+                break;
+            }
+            *event_message_map[index] = true;
+        }
+#else
+        int max_sock = 0;
         fd_set socket_mask;
-        struct timeval wait_time;
-        time_t now;
 
         FD_ZERO(&socket_mask);
 
@@ -2933,11 +3006,20 @@ int run_edge_loop (n2n_edge_t *eee) {
         FD_SET(eee->device.fd, &socket_mask);
         max_sock = max(max_sock, eee->device.fd);
 #endif
-
+        struct timeval wait_time;
         wait_time.tv_sec = (eee->sn_wait) ? (SOCKET_TIMEOUT_INTERVAL_SECS / 10 + 1) : (SOCKET_TIMEOUT_INTERVAL_SECS);
         wait_time.tv_usec = 0;
-        rc = select(max_sock + 1, &socket_mask, NULL, NULL, &wait_time);
-        now = time(NULL);
+        traceEvent(TRACE_NORMAL, "start waiting for select");
+        int rc = select(max_sock + 1, &socket_mask, NULL, NULL, &wait_time);
+        traceEvent(TRACE_NORMAL, "finish waiting for select");
+
+        management_has_message = FD_ISSET(eee->udp_mgmt_sock, &socket_mask);
+        sock_has_message = FD_ISSET(eee->sock, &socket_mask);
+        multicast_has_message = FD_ISSET(eee->udp_multicast_sock, &socket_mask);
+        tuntap_has_message = FD_ISSET(eee->device.fd, &socket_mask);
+#endif
+
+        time_t now = time(NULL);
 
         // make sure ciphers are updated before the packet is treated
         if((now - lastTransop) > TRANSOP_TICK_INTERVAL) {
@@ -2946,56 +3028,54 @@ int run_edge_loop (n2n_edge_t *eee) {
             eee->transop.tick(&eee->transop, now);
         }
 
-        if(rc > 0) {
-            // any or all of the FDs could have input; check them all
+        // any or all of the FDs could have input; check them all
 
-            // external
-            if((eee->sock >= 0) && FD_ISSET(eee->sock, &socket_mask)) {
-                if(0 != fetch_and_eventually_process_data(eee, eee->sock,
-                                                          pktbuf, &expected, &position,
-                                                          now)) {
-                    *eee->keep_running = false;
-                    break;
-                }
-                if(eee->conf.connect_tcp) {
-                    if((expected >= N2N_PKT_BUF_SIZE) || (position >= N2N_PKT_BUF_SIZE)) {
-                        // something went wrong, possibly even before
-                        // e.g. connection failure/closure in the middle of transmission (between len & data)
-                        supernode_disconnect(eee);
-                        eee->sn_wait = 1;
+        // external
+        if (sock_has_message) {
+            if(0 != fetch_and_eventually_process_data(eee, eee->sock,
+                                                        pktbuf, &expected, &position,
+                                                        now)) {
+                *eee->keep_running = false;
+                break;
+            }
+            if(eee->conf.connect_tcp) {
+                if((expected >= N2N_PKT_BUF_SIZE) || (position >= N2N_PKT_BUF_SIZE)) {
+                    // something went wrong, possibly even before
+                    // e.g. connection failure/closure in the middle of transmission (between len & data)
+                    supernode_disconnect(eee);
+                    eee->sn_wait = 1;
 
-                        expected = sizeof(uint16_t);
-                        position = 0;
-                    }
+                    expected = sizeof(uint16_t);
+                    position = 0;
                 }
             }
+        }
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
-            if(FD_ISSET(eee->udp_multicast_sock, &socket_mask)) {
-                if(0 != fetch_and_eventually_process_data(eee, eee->udp_multicast_sock,
-                                                          pktbuf, &expected, &position,
-                                                          now)) {
-                    *eee->keep_running = false;
-                    break;
-                }
+        if (multicast_has_message) {
+            if(0 != fetch_and_eventually_process_data(eee, eee->udp_multicast_sock,
+                                                        pktbuf, &expected, &position,
+                                                        now)) {
+                *eee->keep_running = false;
+                break;
             }
+        }
 #endif
 
-            if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
-                // read from the management port socket
-                readFromMgmtSocket(eee);
+        if (management_has_message) {
+            // read from the management port socket
+            readFromMgmtSocket(eee);
 
-                if(!(*eee->keep_running))
-                    break;
-            }
+            if(!(*eee->keep_running))
+                break;
+        }
 
 #ifndef WIN32
-            if(FD_ISSET(eee->device.fd, &socket_mask)) {
-                // read an ethernet frame from the TAP socket; write on the IP socket
-                edge_read_from_tap(eee);
-            }
-#endif
+        if (tuntap_has_message) {
+            // read an ethernet frame from the TAP socket; write on the IP socket
+            edge_read_from_tap(eee);
         }
+#endif
 
         // finished processing select data
         update_supernode_reg(eee, now);
@@ -3056,7 +3136,9 @@ int run_edge_loop (n2n_edge_t *eee) {
     send_unregister_super(eee);
 
 #ifdef WIN32
+    traceEvent(TRACE_NORMAL, "start waiting for tun read thread");
     WaitForSingleObject(tun_read_thread, INFINITE);
+    traceEvent(TRACE_NORMAL, "finish waiting for tun read thread");
 #endif
 
     supernode_disconnect(eee);
