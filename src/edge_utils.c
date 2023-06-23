@@ -2873,6 +2873,7 @@ void print_edge_stats (const n2n_edge_t *eee) {
 
 /* ************************************** */
 
+#ifdef WIN32
 bool add_read_event_select(int *total_events, HANDLE *events, SOCKET socket) {
     HANDLE event_handle = WSACreateEvent();
     int result = WSAEventSelect(socket, event_handle, FD_READ);
@@ -2884,6 +2885,7 @@ bool add_read_event_select(int *total_events, HANDLE *events, SOCKET socket) {
     *total_events += 1;
     return true;
 }
+#endif
 
 int run_edge_loop (n2n_edge_t *eee) {
 
