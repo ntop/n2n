@@ -962,7 +962,6 @@ static void daemonize () {
 static bool keep_on_running = true;
 #ifdef WIN32
 static HANDLE stop_event_handle;
-static HANDLE main_thread;
 #endif
 
 #if defined(__linux__) || defined(WIN32)
@@ -987,9 +986,6 @@ BOOL WINAPI term_handler(DWORD sig)
     if (!SetEvent(stop_event_handle)) {
         traceEvent(TRACE_ERROR, "failed to set stop signal, you may experience slow shutdown, error code: %d", GetLastError());
     }
-    // if (!CancelSynchronousIo(main_thread)) {
-    //     traceEvent(TRACE_ERROR, "failed to cancel synchronous io, you may experience slow shutdown, error code: %d", GetLastError());
-    // }
     switch (sig) {
         case CTRL_CLOSE_EVENT:
         case CTRL_LOGOFF_EVENT:
@@ -1352,7 +1348,6 @@ int main (int argc, char* argv[]) {
 #endif
 #ifdef WIN32
     SetConsoleCtrlHandler(term_handler, true);
-    main_thread = GetCurrentThread();
     stop_event_handle = CreateEvent(NULL, true, false, NULL);
     eee->stop_event_handle = stop_event_handle;
 #endif

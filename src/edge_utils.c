@@ -2949,7 +2949,7 @@ int run_edge_loop (n2n_edge_t *eee) {
         }
 #endif
         DWORD wait_time_ms = (eee->sn_wait ? SOCKET_TIMEOUT_INTERVAL_SECS / 10 + 1 : SOCKET_TIMEOUT_INTERVAL_SECS) * 1000;
-        DWORD result = WSAWaitForMultipleEvents(total_events, events, false, wait_time_ms, true);
+        DWORD result = WSAWaitForMultipleEvents(total_events, events, false, wait_time_ms, false);
         for (int i = 0; i < total_events; i++) {
             HANDLE current_event = events[i];
             if (current_event == NULL) {
@@ -2964,9 +2964,6 @@ int run_edge_loop (n2n_edge_t *eee) {
         }
 
         traceEvent(TRACE_NORMAL, "wait for multiple events result: %d", result);
-        if (result == WSA_WAIT_IO_COMPLETION) {
-            traceEvent(TRACE_NORMAL, "WSA_WAIT_IO_COMPLETION");
-        }
         if (result == WSA_WAIT_FAILED) {
             traceEvent(TRACE_ERROR, "can't wait for events, error code: %d", WSAGetLastError());
             break;
@@ -2974,7 +2971,6 @@ int run_edge_loop (n2n_edge_t *eee) {
         if (result >= WSA_WAIT_EVENT_0 && result <= WSA_WAIT_EVENT_0 + total_events - 1) {
             int index = result - WSA_WAIT_EVENT_0;
             HANDLE signaled_event = events[index];
-            traceEvent(TRACE_NORMAL, "signal event: %d, stop event: %d", signaled_event, eee->stop_event_handle);
             if (signaled_event == eee->stop_event_handle) {
                 traceEvent(TRACE_NORMAL, "exit signal received");
                 break;
