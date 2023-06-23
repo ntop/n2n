@@ -31,7 +31,7 @@
 #include "uthash.h"          // for UT_hash_handle, HASH_DEL, HASH_ITER, HAS...
 
 #ifdef WIN32
-#include <winsock.h>
+#include <winsock2.h>
 #include <ws2def.h>
 #include <ws2tcpip.h>
 #else

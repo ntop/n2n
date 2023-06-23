@@ -22,7 +22,7 @@
 #include "n2n.h"         // for n2n_sn_t, open_socket, run_sn_loop, sn_init
 
 #ifdef WIN32
-#include <winsock.h>
+#include <winsock2.h>
 #else
 #include <netinet/in.h>  // for INADDR_ANY, INADDR_LOOPBACK
 #endif
