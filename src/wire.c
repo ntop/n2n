@@ -34,7 +34,7 @@
 #include "n2n_wire.h"    // for decode_PACKET, decode_PEER_INFO, decode_QUER...
 
 #ifdef WIN32
-#include <winsock.h>
+#include <winsock2.h>
 #include <ws2tcpip.h>
 #else
 #include <netinet/in.h>  // for sockaddr_in, sockaddr_in6, in6_addr, in_addr
