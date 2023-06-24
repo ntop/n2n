@@ -4,8 +4,6 @@ dnl> Do not add anything above
 
 AC_DEFINE([PACKAGE_BUILDDATE], "[m4_esyscmd([scripts/version.sh date | tr -d '\n'])]", [Last change date])
 
-N2N_LIBS_EXTRA=
-
 AC_PROG_CC
 AC_CHECK_TOOL([AR], [ar], [false])
 AC_CHECK_TOOL([WINDRES], [windres], [false])
@@ -27,11 +25,7 @@ AC_ARG_WITH([zstd],
     AS_HELP_STRING([--with-zstd], [use zstd library]),
     [], [with_zstd=no])
 AS_IF([test "x$with_zstd" != "xno"],
-    [AC_CHECK_LIB([zstd], [ZSTD_compress],
-        [
-            AC_DEFINE([HAVE_ZSTD], [1], [Have ZSTD support])
-            N2N_LIBS_EXTRA="-lzstd ${N2N_LIBS_EXTRA}"
-        ],
+    [AC_CHECK_LIB([zstd], [ZSTD_compress],,
         [AC_MSG_ERROR([zstd library not found])]
     )],
 )
@@ -44,7 +38,7 @@ AS_IF([test "x$with_openssl" != xno],
     [AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset],
         [
             AC_DEFINE([HAVE_OPENSSL_1_1], [1], [OpenSSL 1.1 is present])
-            N2N_LIBS_EXTRA="-lcrypto ${N2N_LIBS_EXTRA}"
+            LIBS="-lcrypto ${LIBS}"
         ],
         [AC_MSG_ERROR([openssl library not found])]
     )],
@@ -54,11 +48,7 @@ AC_ARG_ENABLE([miniupnp],
     [AS_HELP_STRING([--enable-miniupnp], [support for miniupnp])],
     [], [enable_miniupnp=no])
 AS_IF([test "x$enable_miniupnp" != xno],
-    [AC_CHECK_LIB([miniupnpc], [upnpDiscover],
-        [
-            AC_DEFINE([HAVE_MINIUPNP], [1], [Have miniupnp library])
-            N2N_LIBS_EXTRA="-lminiupnpc ${N2N_LIBS_EXTRA}"
-        ],
+    [AC_CHECK_LIB([miniupnpc], [upnpDiscover],,
         [AC_MSG_ERROR([miniupnp library not found])]
     )],
 )
@@ -67,11 +57,7 @@ AC_ARG_ENABLE([natpmp],
     [AS_HELP_STRING([--enable-natpmp], [support for natpmp])],
     [], [enable_natpmp=no])
 AS_IF([test "x$enable_natpmp" != xno],
-    [AC_CHECK_LIB([natpmp], [initnatpmp],
-        [
-            AC_DEFINE([HAVE_NATPMP], [1], [Have natpmp library])
-            N2N_LIBS_EXTRA="-lnatpmp ${N2N_LIBS_EXTRA}"
-        ],
+    [AC_CHECK_LIB([natpmp], [initnatpmp],,
         [AC_MSG_ERROR([natpmp library not found])]
     )],
 )
@@ -83,7 +69,7 @@ AS_IF([test "x$enable_pcap" != xno],
     [AC_CHECK_LIB([pcap], [pcap_open_live],
         [
             AC_DEFINE([N2N_HAVE_PCAP], [1], [Have PCAP library])
-            N2N_LIBS_EXTRA="-lpcap ${N2N_LIBS_EXTRA}"
+            LIBS="-lpcap ${LIBS}"
             TOOLS_ADDITIONAL="$TOOLS_ADDITIONAL n2n-decode"
 
             # TODO
@@ -101,11 +87,7 @@ AC_ARG_ENABLE([cap],
     [AS_HELP_STRING([--enable-cap], [support for cap])],
     [], [enable_cap=no])
 AS_IF([test "x$enable_cap" != xno],
-    [AC_CHECK_LIB([cap], [cap_get_proc],
-        [
-            AC_DEFINE([HAVE_LIBCAP],[1],[Support for linux capabilities])
-            N2N_LIBS_EXTRA="${N2N_LIBS_EXTRA} -lcap"
-        ],
+    [AC_CHECK_LIB([cap], [cap_get_proc],,
         [AC_MSG_ERROR([cap library not found])]
     )],
 )
@@ -126,7 +108,6 @@ AS_IF([test "x$enable_pthread" != xno],
 
 
 AC_SUBST(WINDRES)
-AC_SUBST(N2N_LIBS_EXTRA)
 AC_SUBST(TOOLS_ADDITIONAL)
 AC_CONFIG_HEADERS(include/config.h)
 AC_CONFIG_FILES(config.mak)
