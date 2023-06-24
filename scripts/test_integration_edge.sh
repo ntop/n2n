@@ -16,16 +16,16 @@ docmd() {
 }
 
 # start a supernode
-docmd ${BINDIR}/supernode -v
+docmd "${BINDIR}"/supernode -v
 
 # Start the edge in the background
-docmd sudo ${BINDIR}/edge -l localhost:7654 -c test >/dev/null
+docmd sudo "${BINDIR}"/edge -l localhost:7654 -c test >/dev/null
 # TODO:
 # - send edge messages to stderr?
 
-docmd ${TOPDIR}/scripts/n2n-ctl communities
-docmd ${TOPDIR}/scripts/n2n-ctl packetstats
-docmd ${TOPDIR}/scripts/n2n-ctl edges --raw
+docmd "${TOPDIR}"/scripts/n2n-ctl communities
+docmd "${TOPDIR}"/scripts/n2n-ctl packetstats
+docmd "${TOPDIR}"/scripts/n2n-ctl edges --raw
 
 # TODO:
 # docmd ${TOPDIR}/scripts/n2n-ctl supernodes --raw
@@ -35,15 +35,15 @@ docmd ${TOPDIR}/scripts/n2n-ctl edges --raw
 #   - last_seen timestamp
 #   - uptime
 
-docmd ${TOPDIR}/scripts/n2n-ctl verbose
-docmd ${TOPDIR}/scripts/n2n-ctl --write verbose 1 2>/dev/null
+docmd "${TOPDIR}"/scripts/n2n-ctl verbose
+docmd "${TOPDIR}"/scripts/n2n-ctl --write verbose 1 2>/dev/null
 echo $?
-docmd ${TOPDIR}/scripts/n2n-ctl -k $AUTH --write verbose 1
+docmd "${TOPDIR}"/scripts/n2n-ctl -k $AUTH --write verbose 1
 
 # looks strange, but we are querying the state of the "stop" verb
-docmd ${TOPDIR}/scripts/n2n-ctl stop
+docmd "${TOPDIR}"/scripts/n2n-ctl stop
 
 # stop them both
-docmd ${TOPDIR}/scripts/n2n-ctl -k $AUTH --write stop
-docmd ${TOPDIR}/scripts/n2n-ctl -t 5645 -k $AUTH --write stop
+docmd "${TOPDIR}"/scripts/n2n-ctl -k $AUTH --write stop
+docmd "${TOPDIR}"/scripts/n2n-ctl -t 5645 -k $AUTH --write stop
 
