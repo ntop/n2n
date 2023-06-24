@@ -10,7 +10,7 @@ AC_CONFIG_AUX_DIR(scripts)
 AC_CANONICAL_HOST
 AC_PROG_CC
 AC_CHECK_TOOL([AR], [ar], [false])
-AC_CHECK_TOOL([WINDRES], [windres], [false])
+AC_CHECK_TOOL([WINDRES], [windres], [windres])
 
 # TODO: ideally, should use AC_ARG_ENABLE
 AC_ARG_WITH([edgex],
