@@ -48,7 +48,7 @@ class JsonUDP():
             data = json.loads(data.decode('utf8'))
 
             # TODO: We assume the first packet we get will be tagged for us
-            assert(data['_tag'] == tagstr)
+            assert (data['_tag'] == tagstr)
 
             if data['_type'] == 'error':
                 raise ValueError('Error: {}'.format(data['error']))
@@ -128,7 +128,7 @@ class JsonUDP():
         data, _ = self.sock.recvfrom(1024)
         data = json.loads(data.decode('utf8'))
         # assert(data['_tag'] == tagstr)
-        assert(data['_type'] == 'event')
+        assert (data['_type'] == 'event')
 
         del data['_tag']
         del data['_type']
