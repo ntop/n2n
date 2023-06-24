@@ -21,8 +21,6 @@ jobs:
 
       - name: Run minimal test set
         run: |
-          ./autogen.sh
-          ./configure
           make test
 
       - if: ${{ failure() }}
@@ -55,7 +53,7 @@ jobs:
 
       - name: Run minimal test set
         run: |
-          ./autogen.sh
+          make configure
           ./configure \
             --enable-pthread \
             --enable-miniupnp \
@@ -77,12 +75,6 @@ jobs:
       - name: Fix Checkout
         run: |
           git fetch --force --tags
-
-
-      - name: Make the makefiles
-        run: |
-          ./autogen.sh
-          ./configure
 
       - name: Install essential
         run: |
@@ -118,7 +110,7 @@ jobs:
 
       - name: Make the makefiles
         run: |
-          ./autogen.sh
+          make configure
 
           export CFLAGS="${{ matrix.flags }}"
           export LDFLAGS="${{ matrix.flags }}"
@@ -164,10 +156,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install build-essential
 
-      - name: generate a makefile and use it to install more packages
+      - name: Install required packages
         run: |
-          ./autogen.sh
-          ./configure
           make build-dep
         shell: bash
 
@@ -230,14 +220,12 @@ jobs:
           git fetch --force --tags
 
 
-      - name: Install packages
+      - name: Install essential
         run: |
           brew install automake
 
-      - name: generate a makefile and use it to install more packages
+      - name: Install required packages
         run: |
-          ./autogen.sh
-          ./configure
           make build-dep
         shell: bash
 

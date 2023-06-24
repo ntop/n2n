@@ -3,6 +3,19 @@
 # Specifically for windows, where installing autoconf looks suspiciously
 # like boiling the ocean.
 
+cat <<EOF >include/config.h.in
+// Created by hack fake autoconf for windows
+// not actually a config input
+EOF
+
+cat <<EOF >configure
+#!/bin/sh
+echo Created by hack fake autoconf for windows
+echo not a confgure script
+exit 1
+EOF
+chmod a+x configure
+
 cat >config.mak <<EOF
 CC=gcc
 AR=ar
