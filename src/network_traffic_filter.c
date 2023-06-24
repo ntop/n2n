@@ -26,7 +26,7 @@
 #include "uthash.h"                  // for UT_hash_handle, HASH_ITER, HASH_DEL
 
 #ifdef WIN32
-#include <winsock.h>
+#include <winsock2.h>
 #include <ws2tcpip.h>
 #else
 #include <arpa/inet.h>               // for inet_ntoa, inet_addr

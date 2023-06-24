@@ -56,11 +56,11 @@
 #include "n2n_typedefs.h"
 
 #ifdef WIN32
+#include <winsock2.h>           /* for tcp */
 #include <lmaccess.h>           /* for privilege check in tools/n2n-route */
 #include <lmapibuf.h>           /* for privilege check in tools/n2n-route */
 #include <sys/stat.h>
 #include <windows.h>            /* for privilege check in tools/n2n-route */
-#include <winsock2.h>           /* for tcp */
 #include "wintap.h"
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
 #endif /* #ifdef WIN32 */
