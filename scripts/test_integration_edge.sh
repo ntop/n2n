@@ -23,6 +23,10 @@ docmd sudo "${BINDIR}"/edge -l localhost:7654 -c test >/dev/null
 # TODO:
 # - send edge messages to stderr?
 
+# TODO: probe the api endpoint, waiting for both the supernode and edge to be
+# available?
+sleep 0.1
+
 docmd "${TOPDIR}"/scripts/n2n-ctl communities
 docmd "${TOPDIR}"/scripts/n2n-ctl packetstats
 docmd "${TOPDIR}"/scripts/n2n-ctl edges --raw
