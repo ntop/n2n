@@ -102,7 +102,7 @@ void mgmt_event_post2 (enum n2n_event_topic topic, int data0, void *data1, mgmt_
 
     char buf_space[100];
     strbuf_t *buf;
-    STRBUF_INIT(buf, buf_space);
+    STRBUF_INIT(buf, buf_space, sizeof(buf_space));
 
     char *tag;
     if(sub->type == N2N_MGMT_SUB) {

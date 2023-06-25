@@ -240,7 +240,7 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 
     /* we reuse the buffer already on the stack for all our strings */
     // xx
-    STRBUF_INIT(buf, udp_buf);
+    STRBUF_INIT(buf, udp_buf, N2N_SN_PKTBUF_SIZE);
 
     mgmt_req_init2(req, buf, (char *)&cmdlinebuf);
 

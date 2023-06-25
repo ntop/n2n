@@ -381,7 +381,7 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     traceEvent(TRACE_DEBUG, "mgmt json %s", cmdlinebuf);
 
     /* we reuse the buffer already on the stack for all our strings */
-    STRBUF_INIT(buf, udp_buf);
+    STRBUF_INIT(buf, udp_buf, N2N_SN_PKTBUF_SIZE);
 
     mgmt_req_init2(req, buf, (char *)&cmdlinebuf);
 
@@ -476,7 +476,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
 
     if((0 == memcmp(udp_buf, "help", 4)) || (0 == memcmp(udp_buf, "?", 1))) {
         strbuf_t *buf;
-        STRBUF_INIT(buf, &udp_buf);
+        STRBUF_INIT(buf, &udp_buf, sizeof(udp_buf));
         msg_len = snprintf(buf->str, buf->size,
                            "Help for edge management console:\n"
                            "\tstop    | Gracefully exit edge\n"
@@ -505,7 +505,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
         traceEvent(TRACE_NORMAL, "+verb traceLevel=%u", (unsigned int) getTraceLevel());
 
         strbuf_t *buf;
-        STRBUF_INIT(buf, &udp_buf);
+        STRBUF_INIT(buf, &udp_buf, sizeof(udp_buf));
         msg_len = snprintf(buf->str, buf->size,
                            "> +OK traceLevel=%u\n", (unsigned int) getTraceLevel());
 
@@ -516,7 +516,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
 
     if(0 == memcmp(udp_buf, "-verb", 5)) {
         strbuf_t *buf;
-        STRBUF_INIT(buf, &udp_buf);
+        STRBUF_INIT(buf, &udp_buf, sizeof(udp_buf));
 
         if(getTraceLevel() > 0) {
             setTraceLevel(getTraceLevel() - 1);
