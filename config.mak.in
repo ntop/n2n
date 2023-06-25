@@ -1,3 +1,7 @@
+# Global configuration, included in top Makefile and exported from there.
+# @configure_input@
+
+CONFIG_HOST=@host@
 PACKAGE_VERSION=@PACKAGE_VERSION@
 CC=@CC@
 AR=@AR@

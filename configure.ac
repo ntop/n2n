@@ -4,6 +4,7 @@ dnl> Do not add anything above
 
 AC_DEFINE([PACKAGE_BUILDDATE], "[m4_esyscmd([scripts/version.sh date | tr -d '\n'])]", [Last change date])
 
+AC_CANONICAL_HOST
 AC_PROG_CC
 AC_CHECK_TOOL([AR], [ar], [false])
 AC_CHECK_TOOL([WINDRES], [windres], [false])
@@ -106,7 +107,7 @@ AS_IF([test "x$enable_pthread" != xno],
 )
 
 
-
+AC_SUBST(host)
 AC_SUBST(WINDRES)
 AC_SUBST(TOOLS_ADDITIONAL)
 AC_CONFIG_HEADERS(include/config.h)
