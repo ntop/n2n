@@ -37,7 +37,6 @@
 
 #ifdef WIN32
 #include <winsock2.h>
-#include "edge_utils_win32.h"
 #else
 #include <sys/socket.h>  // for sendto, socklen_t
 #endif
