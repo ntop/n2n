@@ -4,6 +4,9 @@ dnl> Do not add anything above
 
 AC_DEFINE([PACKAGE_BUILDDATE], "[m4_esyscmd([scripts/version.sh date | tr -d '\n'])]", [Last change date])
 
+# Older versions of the autotools expect to find install-sh here.
+AC_CONFIG_AUX_DIR(scripts)
+
 AC_CANONICAL_HOST
 AC_PROG_CC
 AC_CHECK_TOOL([AR], [ar], [false])
