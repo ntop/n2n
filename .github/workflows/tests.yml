@@ -63,7 +63,7 @@ jobs:
             --enable-cap \
             --enable-pcap \
             --with-zstd \
-            CFLAGS="-O3 -DN2N_OPTION_USE_PORTMAPPING"
+            CFLAGS="-O3"
           make test
 
   lint:
