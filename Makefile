@@ -193,6 +193,7 @@ COVERAGEDIR?=coverage
 
 .PHONY: $(SUBDIRS)
 
+.PHONY: all
 all: version $(APPS) $(DOCS) $(SUBDIRS)
 
 # This allows breaking the build if the version.sh script discovers
@@ -320,11 +321,6 @@ install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
 	$(INSTALL_DOC) supernode.1.gz $(MAN1DIR)/
 	$(INSTALL_DOC) n2n.7.gz $(MAN7DIR)/
 	$(MAKE) -C tools install SBINDIR=$(abspath $(SBINDIR))
-
-configure include/config.h.in: configure.ac
-	autoreconf -if
-config.mak include/config.h: config.mak.in include/config.h.in configure
-	./configure
 
 # Docker builder section
 DOCKER_IMAGE_NAME=ntop/supernode
