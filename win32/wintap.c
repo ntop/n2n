@@ -50,8 +50,7 @@ static void iterate_win_network_adapters(
     void *userdata) {
   HKEY key, key2;
   char regpath[1024];
-  long len, rc;
-  int found = 0;
+  int rc;
   int err, i;
   struct win_adapter_info adapter;
 
@@ -66,7 +65,7 @@ static void iterate_win_network_adapters(
   }
 
   for (i = 0; ; i++) {
-    len = sizeof(adapter.adapterid);
+    long unsigned int len = sizeof(adapter.adapterid);
     if(RegEnumKeyEx(key, i, (LPTSTR)adapter.adapterid, &len, 0, 0, 0, NULL))
       break;
 
@@ -77,7 +76,7 @@ static void iterate_win_network_adapters(
       continue;
 
     len = sizeof(adapter.adaptername);
-    err = RegQueryValueEx(key2, "Name", 0, 0, adapter.adaptername, &len);
+    err = RegQueryValueEx(key2, "Name", 0, 0, (unsigned char *)adapter.adaptername, &len);
 
     RegCloseKey(key2);
 
@@ -117,7 +116,7 @@ void win_print_available_adapters() {
 
 static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, size_t regpath_size) {
   HKEY key, key2;
-  long len, rc;
+  int rc;
   char index[16];
   int err, i;
   devstr_t adapter_name;
@@ -129,7 +128,7 @@ static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, si
   }
 
   for(i = 0; ; i++) {
-    len = sizeof(index);
+    long unsigned int len = sizeof(index);
     if(RegEnumKeyEx(key, i, (LPTSTR)index, &len, 0, 0, 0, NULL))
       break;
 
@@ -138,7 +137,7 @@ static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, si
       continue;
 
     len = sizeof(adapter_name);
-    err = RegQueryValueEx(key2, "NetCfgInstanceId", 0, 0, adapter_name, &len);
+    err = RegQueryValueEx(key2, "NetCfgInstanceId", 0, 0, (unsigned char *)adapter_name, &len);
 
     RegCloseKey(key2);
 
@@ -161,9 +160,6 @@ static void set_interface_mac(struct tuntap_dev *device, const char *mac_str) {
   char cmd[256];
   char mac_buf[18];
   char adapter_info_reg[1024];
-
-  uint64_t mac = 0;
-  uint8_t *ptr = (uint8_t*)&mac;
 
   if(strlen(mac_str) != 17) {
     printf("Invalid MAC: %s\n", mac_str);
@@ -387,7 +383,8 @@ int open_wintap(struct tuntap_dev *device,
 
 int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len)
 {
-  DWORD read_size, last_err;
+  DWORD read_size;
+  int last_err;
 
   ResetEvent(tuntap->overlap_read.hEvent);
   if (ReadFile(tuntap->device_handle, buf, len, &read_size, &tuntap->overlap_read)) {
