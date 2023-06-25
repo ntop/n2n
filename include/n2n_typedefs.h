@@ -23,6 +23,7 @@
 #include <stdint.h>     // for uint8_t and friends
 #ifndef WIN32
 #include <arpa/inet.h>  // for in_addr_t
+#include <sys/socket.h> // for sockaddr
 #endif
 #include <uthash.h>
 #include <n2n_define.h>
