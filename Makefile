@@ -16,6 +16,9 @@ ifndef CONFIG_HOST
 $(error Please run ./configure)
 endif
 
+CFLAGS+=-I./include
+LDFLAGS+=-L.
+
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)
 PLATOPTS_SPARC64=-mcpu=ultrasparc -pipe -fomit-frame-pointer -ffast-math -finline-functions -fweb -frename-registers -mapp-regs
