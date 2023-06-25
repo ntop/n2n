@@ -1,3 +1,5 @@
+# Our default make target
+all:
 
 export CC
 export AR
@@ -6,7 +8,13 @@ export LDFLAGS
 export LDLIBS
 export TOOLS_ADDITIONAL
 
-include config.mak
+-include config.mak
+
+ifndef CONFIG_HOST
+# TODO:
+# dont error if we are installing build-deps or other non-compile action
+$(error Please run ./configure)
+endif
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)

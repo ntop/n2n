@@ -17,6 +17,7 @@ EOF
 chmod a+x configure
 
 cat >config.mak <<EOF
+CONFIG_HOST=x86_64-w64-mingw32
 CC=gcc
 AR=ar
 WINDRES=windres
