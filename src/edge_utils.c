@@ -1642,14 +1642,14 @@ void update_supernode_reg (n2n_edge_t * eee, time_t now) {
         --(eee->sup_attempts);
     }
 
-#ifndef HAVE_PTHREAD
+#ifndef HAVE_LIBPTHREAD
     if(supernode2sock(&(eee->curr_sn->sock), eee->curr_sn->ip_addr) == 0) {
 #endif
         traceEvent(TRACE_INFO, "registering with supernode [%s][number of supernodes %d][attempts left %u]",
                    supernode_ip(eee), HASH_COUNT(eee->conf.supernodes), (unsigned int)eee->sup_attempts);
 
         send_register_super(eee);
-#ifndef HAVE_PTHREAD
+#ifndef HAVE_LIBPTHREAD
     }
 #endif
 

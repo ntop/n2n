@@ -97,11 +97,7 @@ AC_ARG_ENABLE([pthread],
     [AS_HELP_STRING([--enable-pthread], [support for pthread])],
     [], [enable_pthread=no])
 AS_IF([test "x$enable_pthread" != xno],
-    [AC_CHECK_LIB([pthread], [pthread_mutex_trylock],
-        [
-            AC_DEFINE([HAVE_PTHREAD],[1],[pthread is present])
-            LDFLAGS="${LDFLAGS} -pthread"
-        ],
+    [AC_CHECK_LIB([pthread], [pthread_mutex_trylock],,
         [AC_MSG_ERROR([pthread library not found])]
     )],
 )

@@ -30,6 +30,10 @@
 #include "sn_selection.h"    // for sn_selection_criterion_default
 #include "uthash.h"          // for UT_hash_handle, HASH_DEL, HASH_ITER, HAS...
 
+#ifdef HAVE_LIBPTHREAD
+#include <pthread.h>
+#endif
+
 #ifdef WIN32
 #include <winsock2.h>
 #include <ws2def.h>
@@ -332,7 +336,7 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
 }
 
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
 N2N_THREAD_RETURN_DATATYPE resolve_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
     n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
@@ -385,7 +389,7 @@ N2N_THREAD_RETURN_DATATYPE resolve_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
 int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list) {
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     struct peer_info        *sn, *tmp_sn;
     n2n_resolve_ip_sock_t   *entry;
     int                     ret;
@@ -430,7 +434,7 @@ int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn
 
 void resolve_cancel_thread (n2n_resolve_parameter_t *param) {
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     pthread_cancel(param->id);
     free(param);
 #endif
@@ -441,7 +445,7 @@ uint8_t resolve_check (n2n_resolve_parameter_t *param, uint8_t requires_resoluti
 
     uint8_t ret = requires_resolution; /* if trylock fails, it still requires resolution */
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
     n2n_sock_str_t sock_buf;
 

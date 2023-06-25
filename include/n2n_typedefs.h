@@ -637,7 +637,7 @@ typedef struct n2n_resolve_ip_sock {
 typedef struct n2n_resolve_parameter {
     n2n_resolve_ip_sock_t   *list;         /* pointer to list of to be resolved nodes */
     uint8_t                 changed;       /* indicates a change */
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     pthread_t               id;            /* thread id */
     pthread_mutex_t         access;        /* mutex for shared access */
 #endif
