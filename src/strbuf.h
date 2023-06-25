@@ -14,10 +14,10 @@ typedef struct strbuf {
 } strbuf_t;
 
 // Initialise the strbuf pointer buf to point at the storage area p
-// p must be a known sized object
-#define STRBUF_INIT(buf,p) do { \
+// of size buflen
+#define STRBUF_INIT(buf,p,buflen) do { \
         buf = (void *)p; \
-        buf->size = sizeof(*p) - sizeof(size_t); \
+        buf->size = buflen - sizeof(size_t); \
 } while(0)
 
 
