@@ -248,7 +248,7 @@ jobs:
               python3
             ./autogen.sh
             ./configure
-            gmake test
+            gmake all
 
   test_macos:
     name: Test MacOS
