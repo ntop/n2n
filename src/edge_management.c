@@ -38,7 +38,6 @@
 #ifdef WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "edge_utils_win32.h"
 #else
 #include <arpa/inet.h>     // for inet_ntoa
 #include <netinet/in.h>    // for in_addr, htonl, in_addr_t
