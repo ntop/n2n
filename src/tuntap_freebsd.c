@@ -17,6 +17,7 @@
  */
 
 
+#include <fcntl.h>  // for open. O_RDWR
 #include "n2n.h"
 
 
