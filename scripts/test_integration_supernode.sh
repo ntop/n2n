@@ -18,6 +18,9 @@ docmd() {
 # start it running in the background
 docmd "${BINDIR}"/supernode -v
 
+# TODO: probe the api endpoint, waiting for the supernode to be available?
+sleep 0.1
+
 docmd "${TOPDIR}"/scripts/n2n-ctl -t 5645 communities
 docmd "${TOPDIR}"/scripts/n2n-ctl -t 5645 packetstats
 docmd "${TOPDIR}"/scripts/n2n-ctl -t 5645 edges --raw
