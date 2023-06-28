@@ -62,6 +62,7 @@ jobs:
             --enable-natpmp \
             --enable-cap \
             --enable-pcap \
+            --with-openssl \
             --with-zstd \
             CFLAGS="-O3"
           make test
