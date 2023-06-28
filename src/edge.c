@@ -42,7 +42,7 @@
 #include "speck.h"                   // for speck_init, speck_context_t
 #include "uthash.h"                  // for UT_hash_handle, HASH_ADD, HASH_C...
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -230,12 +230,12 @@ static void help (int level) {
                "[-J <password>] "
                "[-P <public key>] "
                "[-R <rule string>] "
-#ifdef WIN32
+#ifdef _WIN32
             "\n                      "
                "[-x <metric>] "
 #endif
           "\n\n local options        "
-#ifndef WIN32
+#ifndef _WIN32
                "[-f] "
 #endif
                "[-t <management port>] "
@@ -243,7 +243,7 @@ static void help (int level) {
             "\n                      "
                "[-v] "
                "[-V] "
-#ifndef WIN32
+#ifndef _WIN32
             "\n                      "
                "[-u <numerical user id>] "
                "[-g <numerical group id>] "
@@ -266,7 +266,7 @@ static void help (int level) {
           "\n                      [-E]  accept multicast MAC addresses"
           "\n            [--select-rtt]  select supernode by round trip time"
           "\n            [--select-mac]  select supernode by MAC address"
-#ifndef WIN32
+#ifndef _WIN32
           "\n                      [-f]  do not fork but run in foreground"
 #endif
           "\n                      [-v]  make more verbose, repeat as required"
@@ -351,14 +351,14 @@ static void help (int level) {
         printf("                   | rule format:    'src_ip/n:[s_port,e_port],...\n"
                "                   |    |on same|  ...dst_ip/n:[s_port,e_port],...\n"
                "                   |    | line  |  ...TCP+/-,UDP+/-,ICMP+/-'\n");
-#ifdef WIN32
+#ifdef _WIN32
         printf(" -x <metric>       | set TAP interface metric, defaults to 0 (auto),\n"
                "                   | e.g. set to 1 for better multiplayer game detection\n");
 #endif
         printf ("\n");
         printf (" LOCAL OPTIONS\n");
         printf (" -------------\n\n");
-#ifndef WIN32
+#ifndef _WIN32
         printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
 #endif
         printf(" -t <port>         | management UDP port, for multiple edges on a machine,\n"
@@ -367,7 +367,7 @@ static void help (int level) {
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
         printf(" -V                | make less verbose, repeat as required\n");
-#ifndef WIN32
+#ifndef _WIN32
         printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
         printf(" -g <GID>          | numeric group ID to use when privileges are dropped\n");
 #endif
@@ -378,7 +378,7 @@ static void help (int level) {
         printf(" N2N_COMMUNITY     | community name (ASCII), overwritten by '-c ...'\n");
         printf(" N2N_PASSWORD      | password (ASCII) for user-password authentication,\n"
                "                   | overwritten by '-J ...'\n");
-#ifdef WIN32
+#ifdef _WIN32
         printf ("\n");
         printf (" AVAILABLE TAP ADAPTERS\n");
         printf (" ----------------------\n\n");
@@ -490,7 +490,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             break;
         }
 
-#ifndef WIN32
+#ifndef _WIN32
         case 'u': /* unprivileged uid */ {
             ec->userid = atoi(optargument);
             break;
@@ -502,12 +502,12 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
         }
 #endif
 
-#ifndef WIN32
+#ifndef _WIN32
         case 'f' : /* do not fork as daemon */ {
             ec->daemon = 0;
             break;
         }
-#endif /* #ifndef WIN32 */
+#endif /* #ifndef _WIN32 */
 
         case 'm' : /* TUNTAP MAC address */ {
             strncpy(ec->device_mac, optargument, N2N_MACNAMSIZ);
@@ -785,7 +785,7 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             }
             break;
         }
-#ifdef WIN32
+#ifdef _WIN32
         case 'x': {
             conf->metric = atoi(optargument);
             ec->metric = atoi(optargument);
@@ -831,7 +831,7 @@ static int loadFromCLI (int argc, char *argv[], n2n_edge_conf_t *conf, n2n_tunta
 #ifdef __linux__
                             "T:"
 #endif
-#ifdef WIN32
+#ifdef _WIN32
                             "x:"
 #endif
                             ,
@@ -912,7 +912,7 @@ static int loadFromFile (const char *path, n2n_edge_conf_t *conf, n2n_tuntap_pri
 
 /* ************************************** */
 
-#ifndef WIN32
+#ifndef _WIN32
 static void daemonize () {
     int childpid;
 
@@ -961,8 +961,8 @@ static void daemonize () {
 
 static bool keep_on_running = true;
 
-#if defined(__linux__) || defined(WIN32)
-#ifdef WIN32
+#if defined(__linux__) || defined(_WIN32)
+#ifdef _WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
     static void term_handler(int sig)
@@ -979,7 +979,7 @@ BOOL WINAPI term_handler(DWORD sig)
     }
 
     keep_on_running = false;
-#ifdef WIN32
+#ifdef _WIN32
     switch (sig) {
         case CTRL_CLOSE_EVENT:
         case CTRL_LOGOFF_EVENT:
@@ -990,7 +990,7 @@ BOOL WINAPI term_handler(DWORD sig)
     return(TRUE);
 #endif
 }
-#endif /* defined(__linux__) || defined(WIN32) */
+#endif /* defined(__linux__) || defined(_WIN32) */
 
 /* *************************************************** */
 
@@ -1015,13 +1015,13 @@ int main (int argc, char* argv[]) {
     uint8_t  pktbuf[N2N_SN_PKTBUF_SIZE + sizeof(uint16_t)]; /* buffer + prepended buffer length in case of tcp */
 
 
-#ifndef WIN32
+#ifndef _WIN32
     struct passwd *pw = NULL;
 #endif
 #ifdef HAVE_LIBCAP
     cap_t caps;
 #endif
-#ifdef WIN32
+#ifdef _WIN32
     initWin32();
 #endif
 
@@ -1031,7 +1031,7 @@ int main (int argc, char* argv[]) {
     ec.mtu = DEFAULT_MTU;
     ec.daemon = 1;        /* By default run in daemon mode. */
 
-#ifndef WIN32
+#ifndef _WIN32
     if(((pw = getpwnam("n2n")) != NULL) ||
        ((pw = getpwnam("nobody")) != NULL)) {
         ec.userid = pw->pw_uid;
@@ -1039,7 +1039,7 @@ int main (int argc, char* argv[]) {
     }
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
     ec.tuntap_dev_name[0] = '\0';
     ec.metric = 0;
 #else
@@ -1055,7 +1055,7 @@ int main (int argc, char* argv[]) {
         rc = loadFromCLI(argc, argv, &conf, &ec);
     else
 
-#ifdef WIN32
+#ifdef _WIN32
         // load from current directory
         rc = loadFromFile("edge.conf", &conf, &ec);
 #else
@@ -1119,7 +1119,7 @@ int main (int argc, char* argv[]) {
     /* Random seed */
     n2n_srand (n2n_seed());
 
-#ifndef WIN32
+#ifndef _WIN32
     /* If running suid root then we need to setuid before using the force. */
     if(setuid(0) != 0)
         traceEvent(TRACE_ERROR, "unable to become root [%u/%s]", errno, strerror(errno));
@@ -1247,7 +1247,7 @@ int main (int argc, char* argv[]) {
             if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
                            eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
                            eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu
-#ifdef WIN32
+#ifdef _WIN32
                            , eee->tuntap_priv_conf.metric
 #endif
                                                            ) < 0)
@@ -1298,7 +1298,7 @@ int main (int argc, char* argv[]) {
     eee->sn_wait = 1;
     eee->last_register_req = 0;
 
-#ifndef WIN32
+#ifndef _WIN32
     if(eee->tuntap_priv_conf.daemon) {
         setUseSyslog(1); /* traceEvent output now goes to syslog. */
         daemonize();
@@ -1340,7 +1340,7 @@ int main (int argc, char* argv[]) {
     signal(SIGTERM, term_handler);
     signal(SIGINT,  term_handler);
 #endif
-#ifdef WIN32
+#ifdef _WIN32
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 
@@ -1365,7 +1365,7 @@ int main (int argc, char* argv[]) {
     tuntap_close(&eee->device);
     edge_term(eee);
 
-#ifdef WIN32
+#ifdef _WIN32
     destroyWin32();
 #endif
 

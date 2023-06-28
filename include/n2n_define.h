@@ -190,7 +190,7 @@ enum skip_add {SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define N2N_MULTICAST_PORT         1968
 #define N2N_MULTICAST_GROUP        "224.0.0.68"
 
-#ifdef WIN32
+#ifdef _WIN32
 #define N2N_IFNAMSIZ               64
 #else
 #define N2N_IFNAMSIZ               16 /* 15 chars * NULL */

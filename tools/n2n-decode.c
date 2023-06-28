@@ -58,7 +58,7 @@ static void help() {
 
 /* *************************************************** */
 
-#ifdef WIN32
+#ifdef _WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
 static void term_handler(int sig)
@@ -75,7 +75,7 @@ static void term_handler(int sig)
   }
 
   running = 0;
-#ifdef WIN32
+#ifdef _WIN32
   return(TRUE);
 #endif
 }
@@ -349,7 +349,7 @@ int main(int argc, char* argv[]) {
     return(5);
   }
 
-#ifdef WIN32
+#ifdef _WIN32
   SetConsoleCtrlHandler(term_handler, TRUE);
 #else
   signal(SIGTERM, term_handler);

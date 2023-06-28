@@ -33,7 +33,7 @@
 #include "n2n.h"         // for n2n_sock_t, n2n_common_t, n2n_auth_t, n2n_RE...
 #include "n2n_wire.h"    // for decode_PACKET, decode_PEER_INFO, decode_QUER...
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else

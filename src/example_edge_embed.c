@@ -59,7 +59,7 @@ int main() {
                    "255.255.255.0",     // Netmask to use
                    "DE:AD:BE:EF:01:10", // Set mac address
                    DEFAULT_MTU         // MTU to use
-#ifdef WIN32
+#ifdef _WIN32
 				 , 0
 #endif
                    ) < 0)
