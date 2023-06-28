@@ -1140,7 +1140,7 @@ static void sendto_sock (n2n_edge_t *eee, const void * buf,
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
 
-        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, (void *)&value, sizeof(value));
         value = 1;
 #ifdef LINUX
         setsockopt(eee->sock, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
@@ -1159,7 +1159,7 @@ static void sendto_sock (n2n_edge_t *eee, const void * buf,
     // if the connection is tcp, i.e. not the regular sock...
     if(eee->conf.connect_tcp) {
         value = 1; /* value should still be set to 1 */
-        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(eee->sock, IPPROTO_TCP, TCP_NODELAY, (void *)&value, sizeof(value));
 #ifdef LINUX
         value = 0;
         setsockopt(eee->sock, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
@@ -2791,7 +2791,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
 #endif
       ) {
         // udp
-        bread = recvfrom(sock, pktbuf, N2N_PKT_BUF_SIZE, 0 /*flags*/,
+        bread = recvfrom(sock, (void *)pktbuf, N2N_PKT_BUF_SIZE, 0 /*flags*/,
                          sender_sock, &ss_size);
 
         if((bread < 0)
@@ -2817,7 +2817,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
     } else {
         // tcp
         bread = recvfrom(sock,
-                         pktbuf + *position, *expected - *position, 0 /*flags*/,
+                         (void *)(pktbuf + *position), *expected - *position, 0 /*flags*/,
                         sender_sock, &ss_size);
         if((bread <= 0) && (errno)) {
             traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
