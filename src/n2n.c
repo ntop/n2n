@@ -82,7 +82,10 @@ SOCKET open_socket (int local_port, in_addr_t address, int type /* 0 = UDP, TCP 
 
 
 static int traceLevel = 2 /* NORMAL */;
-static int useSyslog = 0, syslog_opened = 0;
+static int useSyslog = 0;
+#ifndef WIN32
+static int syslog_opened = 0;
+#endif
 static FILE *traceFile = NULL;
 
 int getTraceLevel () {

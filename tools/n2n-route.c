@@ -75,7 +75,9 @@
 
 // REVISIT: may become obsolete
 #ifdef WIN32
+#ifndef STDIN_FILENO
 #define STDIN_FILENO            _fileno(stdin)
+#endif
 #endif
 
 
@@ -496,7 +498,6 @@ void handle_route (n2n_route_t* in_route, int verb) {
 
 #elif defined(WIN32)
     // REVISIT: use 'CreateIpForwardEntry()' and 'DeleteIpForwardEntry()' [iphlpapi.h]
-    struct in_addr net_addr, gateway;
     char c_net_addr[32];
     char c_gateway[32];
     char c_interface[32];
@@ -656,6 +657,11 @@ int _kbhit () {
     select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
 
     return FD_ISSET(STDIN_FILENO, &fds);
+}
+#else
+// A dummy definition to avoid compile errors on windows
+int _kbhit () {
+    return 0;
 }
 #endif
 

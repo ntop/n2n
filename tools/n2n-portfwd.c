@@ -50,7 +50,9 @@
 
 // REVISIT: may become obsolete
 #ifdef WIN32
+#ifndef STDIN_FILENO
 #define STDIN_FILENO            _fileno(stdin)
+#endif
 #endif
 
 
@@ -196,6 +198,11 @@ int _kbhit () {
     select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
 
     return FD_ISSET(STDIN_FILENO, &fds);
+}
+#else
+// A dummy definition to avoid compile errors on windows
+int _kbhit () {
+    return 0;
 }
 #endif
 

@@ -566,7 +566,7 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
     // if the connection is tcp, i.e. not the regular sock...
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
         value = 1; /* value should still be set to 1 */
-        setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&value, sizeof(value));
 #ifdef LINUX
         value = 0;
         setsockopt(socket_fd, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
