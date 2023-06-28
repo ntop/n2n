@@ -35,7 +35,7 @@
 #include "strbuf.h"        // for strbuf_t, STRBUF_INIT
 #include "uthash.h"        // for UT_hash_handle, HASH_ITER
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else

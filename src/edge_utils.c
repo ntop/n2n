@@ -40,7 +40,7 @@
 #include "speck.h"                   // for speck_128_decrypt, speck_128_enc...
 #include "uthash.h"                  // for UT_hash_handle, HASH_COUNT, HASH...
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include "edge_utils_win32.h"
@@ -307,7 +307,7 @@ int supernode_connect (n2n_edge_t *eee) {
         // set tcp socket to O_NONBLOCK so connect does not hang
         // requires checking the socket for readiness before sending and receving
         if(eee->conf.connect_tcp) {
-#ifdef WIN32
+#ifdef _WIN32
             u_long value = 1;
             ioctlsocket(eee->sock, FIONBIO, &value);
 #else
@@ -705,7 +705,7 @@ static void register_with_new_peer (n2n_edge_t *eee,
              */
             if(eee->conf.register_ttl == 1) {
                 /* We are DMZ host or port is directly accessible. Just let peer to send back the ack */
-#ifndef WIN32
+#ifndef _WIN32
             } else if(eee->conf.register_ttl > 1) {
                 /* Setting register_ttl usually implies that the edge knows the internal net topology
                  * clearly, we can apply aggressive port prediction to support incoming Symmetric NAT
@@ -1086,7 +1086,7 @@ static ssize_t sendto_fd (n2n_edge_t *eee, const void *buf,
     traceEvent(level, "sendto(%s) failed (%d) %s",
             sock_to_cstr(sockbuf, n2ndest),
             errno, errstr);
-#ifdef WIN32
+#ifdef _WIN32
     traceEvent(level, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
 
@@ -1182,7 +1182,7 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
         if(!eee->multicast_joined) {
             struct ip_mreq mreq;
             mreq.imr_multiaddr.s_addr = inet_addr(N2N_MULTICAST_GROUP);
-#ifdef WIN32
+#ifdef _WIN32
             dec_ip_str_t ip_addr;
             get_best_interface_ip(eee, &ip_addr);
             mreq.imr_interface.s_addr = inet_addr(ip_addr);
@@ -1194,7 +1194,7 @@ static void check_join_multicast_group (n2n_edge_t *eee) {
                 traceEvent(TRACE_WARNING, "failed to bind to local multicast group %s:%u [errno %u]",
                            N2N_MULTICAST_GROUP, N2N_MULTICAST_PORT, errno);
 
-#ifdef WIN32
+#ifdef _WIN32
                 traceEvent(TRACE_WARNING, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             } else {
@@ -1851,7 +1851,7 @@ static int handle_PACKET (n2n_edge_t * eee,
 
 
 #if 0
-#ifndef WIN32
+#ifndef _WIN32
 
 static char *get_ip_from_arp (dec_ip_str_t buf, const n2n_mac_t req_mac) {
 
@@ -2183,7 +2183,7 @@ void edge_read_from_tap (n2n_edge_t * eee) {
         tuntap_close(&(eee->device));
         tuntap_open(&(eee->device), eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode, eee->tuntap_priv_conf.ip_addr,
                     eee->tuntap_priv_conf.netmask, eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu
-#ifdef WIN32
+#ifdef _WIN32
 				   ,eee->tuntap_priv_conf.metric
 #endif
                     );
@@ -2795,14 +2795,14 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                          sender_sock, &ss_size);
 
         if((bread < 0)
-#ifdef WIN32
+#ifdef _WIN32
            && (WSAGetLastError() != WSAECONNRESET)
 #endif
           ) {
             /* For UDP bread of zero just means no data (unlike TCP). */
             /* The fd is no good now. Maybe we lost our interface. */
             traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
-#ifdef WIN32
+#ifdef _WIN32
             traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             return -1;
@@ -2821,7 +2821,7 @@ int fetch_and_eventually_process_data (n2n_edge_t *eee, SOCKET sock,
                         sender_sock, &ss_size);
         if((bread <= 0) && (errno)) {
             traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
-#ifdef WIN32
+#ifdef _WIN32
             traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
             supernode_disconnect(eee);
@@ -2889,7 +2889,7 @@ int run_edge_loop (n2n_edge_t *eee) {
     uint16_t position = 0;
     uint8_t  pktbuf[N2N_PKT_BUF_SIZE + sizeof(uint16_t)]; /* buffer + prepended buffer length in case of tcp */
 
-#ifdef WIN32
+#ifdef _WIN32
     struct tunread_arg arg;
     arg.eee = eee;
     HANDLE tun_read_thread = startTunReadThread(&arg);
@@ -2929,7 +2929,7 @@ int run_edge_loop (n2n_edge_t *eee) {
         }
 #endif
 
-#ifndef WIN32
+#ifndef _WIN32
         FD_SET(eee->device.fd, &socket_mask);
         max_sock = max(max_sock, eee->device.fd);
 #endif
@@ -2989,7 +2989,7 @@ int run_edge_loop (n2n_edge_t *eee) {
                     break;
             }
 
-#ifndef WIN32
+#ifndef _WIN32
             if(FD_ISSET(eee->device.fd, &socket_mask)) {
                 // read an ethernet frame from the TAP socket; write on the IP socket
                 edge_read_from_tap(eee);
@@ -3055,7 +3055,7 @@ int run_edge_loop (n2n_edge_t *eee) {
 
     send_unregister_super(eee);
 
-#ifdef WIN32
+#ifdef _WIN32
     WaitForSingleObject(tun_read_thread, INFINITE);
 #endif
 
@@ -3296,7 +3296,7 @@ int quick_edge_init (char *device_name, char *community_name,
     if(tuntap_open(&tuntap, device_name, "static",
                    local_ip_address, "255.255.255.0",
                    device_mac, DEFAULT_MTU
-#ifdef WIN32
+#ifdef _WIN32
 				 , 0
 #endif
                    ) < 0)

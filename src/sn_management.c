@@ -35,7 +35,7 @@
 #include "strbuf.h"      // for strbuf_t, STRBUF_INIT
 #include "uthash.h"      // for UT_hash_handle, HASH_ITER, HASH_COUNT
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #else
 #include <sys/socket.h>  // for sendto, socklen_t

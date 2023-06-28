@@ -25,7 +25,7 @@
 #include "network_traffic_filter.h"  // for create_network_traffic_filter
 #include "uthash.h"                  // for UT_hash_handle, HASH_ITER, HASH_DEL
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else

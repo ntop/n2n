@@ -169,7 +169,7 @@ LDLIBS+=-lsocket -lnsl
 endif
 
 ifeq ($(CONFIG_TARGET),mingw)
-CFLAGS+=-I. -I./win32 -DWIN32
+CFLAGS+=-I. -I./win32
 LDLIBS+=$(abspath win32/n2n_win32.a)
 LDLIBS+=-lnetapi32 -lws2_32 -liphlpapi
 N2N_DEPS+=win32/n2n_win32.a

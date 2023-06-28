@@ -16,7 +16,7 @@
 #include "n2n_define.h"    // for n2n_event_topic
 #include "strbuf.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #else
 #include <sys/socket.h>    // for sockaddr, sockaddr_storage, socklen_t

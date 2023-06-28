@@ -40,7 +40,7 @@
 #include "speck.h"              // for speck_128_encrypt, speck_context_t
 #include "uthash.h"             // for UT_hash_handle, HASH_ITER, HASH_DEL
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -512,7 +512,7 @@ static ssize_t sendto_fd (n2n_sn_t *sss,
     if((sent <= 0) && (errno)) {
         char * c = strerror(errno);
         traceEvent(TRACE_ERROR, "sendto failed (%d) %s", errno, c);
-#ifdef WIN32
+#ifdef _WIN32
         traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
         // if the erroneous connection is tcp, i.e. not the regular sock...
@@ -768,7 +768,7 @@ int sn_init_defaults (n2n_sn_t *sss) {
 
     char *tmp_string;
 
-#ifdef WIN32
+#ifdef _WIN32
     initWin32();
 #endif
 
@@ -904,7 +904,7 @@ void sn_term (n2n_sn_t *sss) {
 
     if(sss->community_file)
         free(sss->community_file);
-#ifdef WIN32
+#ifdef _WIN32
     destroyWin32();
 #endif
 }
@@ -2642,14 +2642,14 @@ int run_sn_loop (n2n_sn_t *sss) {
                                  sender_sock, &ss_size);
 
                 if((bread < 0)
-#ifdef WIN32
+#ifdef _WIN32
                    && (WSAGetLastError() != WSAECONNRESET)
 #endif
                   ) {
                     /* For UDP bread of zero just means no data (unlike TCP). */
                     /* The fd is no good now. Maybe we lost our interface. */
                     traceEvent(TRACE_ERROR, "recvfrom() failed %d errno %d (%s)", bread, errno, strerror(errno));
-#ifdef WIN32
+#ifdef _WIN32
                     traceEvent(TRACE_ERROR, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
                     *sss->keep_running = false;
@@ -2688,7 +2688,7 @@ int run_sn_loop (n2n_sn_t *sss) {
                     if(bread <= 0) {
                         traceEvent(TRACE_INFO, "closing tcp connection to [%s]", sock_to_cstr(sockbuf, (n2n_sock_t*)sender_sock));
                         traceEvent(TRACE_DEBUG, "recvfrom() returns %d and sees errno %d (%s)", bread, errno, strerror(errno));
-#ifdef WIN32
+#ifdef _WIN32
                         traceEvent(TRACE_DEBUG, "WSAGetLastError(): %u", WSAGetLastError());
 #endif
                         close_tcp_connection(sss, conn);

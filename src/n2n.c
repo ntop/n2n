@@ -34,7 +34,7 @@
 #include <pthread.h>
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2def.h>
 #include <ws2tcpip.h>
@@ -60,7 +60,7 @@ SOCKET open_socket (int local_port, in_addr_t address, int type /* 0 = UDP, TCP 
         return(-1);
     }
 
-#ifndef WIN32
+#ifndef _WIN32
     /* fcntl(sock_fd, F_SETFL, O_NONBLOCK); */
 #endif
 
@@ -83,7 +83,7 @@ SOCKET open_socket (int local_port, in_addr_t address, int type /* 0 = UDP, TCP 
 
 static int traceLevel = 2 /* NORMAL */;
 static int useSyslog = 0;
-#ifndef WIN32
+#ifndef _WIN32
 static int syslog_opened = 0;
 #endif
 static FILE *traceFile = NULL;
@@ -113,7 +113,7 @@ void closeTraceFile () {
     if((traceFile != NULL) && (traceFile != stdout)) {
         fclose(traceFile);
     }
-#ifndef WIN32
+#ifndef _WIN32
     if(useSyslog && syslog_opened) {
         closelog();
         syslog_opened = 0;
@@ -161,7 +161,7 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
             buf[strlen(buf) - 1] = '\0';
         }
 
-#ifndef WIN32
+#ifndef _WIN32
         if(useSyslog) {
             if(!syslog_opened) {
                 openlog("n2n", LOG_PID, LOG_DAEMON);
@@ -181,7 +181,7 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
             snprintf(out_buf, sizeof(out_buf), "%s [%s:%d] %s%s", theDate, &file[i], line, extra_msg, buf);
             fprintf(traceFile, "%s\n", out_buf);
             fflush(traceFile);
-#ifndef WIN32
+#ifndef _WIN32
         }
 #endif
     }
@@ -844,7 +844,7 @@ int memxor (uint8_t *destination, const uint8_t *source, size_t len) {
 
 /* *********************************************** */
 
-#if defined(WIN32)
+#ifdef _WIN32
 int gettimeofday (struct timeval *tp, void *tzp) {
 
     time_t clock;
