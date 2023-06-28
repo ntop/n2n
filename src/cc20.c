@@ -21,6 +21,7 @@
 #include <string.h>     // for memcpy
 #include "cc20.h"
 #include "config.h"  // HAVE_OPENSSL_1_1
+#include "n2n.h"     // for TRACE_ERROR, traceEvent
 #include "portable_endian.h"  // for htole32
 
 
