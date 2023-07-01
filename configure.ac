@@ -39,11 +39,7 @@ AC_ARG_WITH([openssl],
     [AS_HELP_STRING([--with-openssl], [enable support for OpenSSL])],
     [], [with_openssl=no])
 AS_IF([test "x$with_openssl" != xno],
-    [AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset],
-        [
-            AC_DEFINE([HAVE_OPENSSL_1_1], [1], [OpenSSL 1.1 is present])
-            LIBS="-lcrypto ${LIBS}"
-        ],
+    [AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_reset],,
         [AC_MSG_ERROR([openssl library not found])]
     )],
 )

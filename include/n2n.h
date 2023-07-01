@@ -85,7 +85,7 @@
 #include <zstd.h>
 #endif
 
-#if defined (HAVE_OPENSSL_1_1)
+#ifdef HAVE_LIBCRYPTO
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif
