@@ -26,7 +26,7 @@
 #include "portable_endian.h"  // for be32toh, htobe32
 
 
-#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------------------------------
+#ifdef HAVE_LIBCRYPTO // openSSL 1.1 ---------------------------------------------------------------------
 
 #include <openssl/err.h>    // for ERR_print_errors
 #include <openssl/evp.h>    // for EVP_EncryptInit_ex, EVP_CIPHER_CTX_set_p...

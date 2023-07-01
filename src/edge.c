@@ -1109,7 +1109,7 @@ int main (int argc, char* argv[]) {
 
     traceEvent(TRACE_NORMAL, "starting n2n edge %s %s", PACKAGE_VERSION, PACKAGE_BUILDDATE);
 
-#if defined(HAVE_OPENSSL_1_1)
+#ifdef HAVE_LIBCRYPTO
     traceEvent(TRACE_NORMAL, "using %s", OpenSSL_version(0));
 #endif
 

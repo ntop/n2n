@@ -20,12 +20,12 @@
 #include <stdlib.h>     // for calloc, free, size_t
 #include <string.h>     // for memcpy
 #include "cc20.h"
-#include "config.h"  // HAVE_OPENSSL_1_1
+#include "config.h"  // HAVE_LIBCRYPTO
 #include "n2n.h"     // for TRACE_ERROR, traceEvent
 #include "portable_endian.h"  // for htole32
 
 
-#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------------------------------
+#ifdef HAVE_LIBCRYPTO // openSSL 1.1 ---------------------------------------------------------------------
 
 
 // get any erorr message out of openssl
@@ -406,7 +406,7 @@ int cc20_init (const unsigned char *key, cc20_context_t **ctx) {
     *ctx = (cc20_context_t*)calloc(1, sizeof(cc20_context_t));
     if(!(*ctx))
         return -1;
-#if defined (HAVE_OPENSSL_1_1)
+#ifdef HAVE_LIBCRYPTO
     if(!((*ctx)->ctx = EVP_CIPHER_CTX_new())) {
         traceEvent(TRACE_ERROR, "cc20_init openssl's evp_* encryption context creation failed: %s",
                                 openssl_err_as_string());
@@ -423,7 +423,7 @@ int cc20_init (const unsigned char *key, cc20_context_t **ctx) {
 
 int cc20_deinit (cc20_context_t *ctx) {
 
-#if defined (HAVE_OPENSSL_1_1)
+#ifdef HAVE_LIBCRYPTO
     if(ctx->ctx) EVP_CIPHER_CTX_free(ctx->ctx);
 #endif
     free(ctx);
