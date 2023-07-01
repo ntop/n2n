@@ -16,6 +16,10 @@
  *
  */
 
+#include "config.h"
+
+#ifdef HAVE_LIBPCAP
+
 #include <errno.h>             // for errno
 #include <pcap.h>
 #include <signal.h>            // for signal, SIGINT, SIGTERM
@@ -372,3 +376,14 @@ int main(int argc, char* argv[]) {
 
   return(rv);
 }
+
+#else
+
+#include <stdio.h>
+
+int main() {
+    printf("n2n was compiled without libpcap support");
+    return -1;
+}
+
+#endif /* HAVE_LIBPCAP */

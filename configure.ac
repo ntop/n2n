@@ -66,19 +66,7 @@ AC_ARG_ENABLE([pcap],
     [AS_HELP_STRING([--enable-pcap], [support for pcap])],
     [], [enable_pcap=no])
 AS_IF([test "x$enable_pcap" != xno],
-    [AC_CHECK_LIB([pcap], [pcap_open_live],
-        [
-            AC_DEFINE([N2N_HAVE_PCAP], [1], [Have PCAP library])
-            LIBS="-lpcap ${LIBS}"
-            TOOLS_ADDITIONAL="$TOOLS_ADDITIONAL n2n-decode"
-
-            # TODO
-            # - pcap_set_immediate_mode has been available since libpcap 1.5
-            #   in 2013 - probably should remove this check
-            AC_CHECK_LIB([pcap], [pcap_set_immediate_mode],
-                AC_DEFINE([HAVE_PCAP_IMMEDIATE_MODE], [1], [Have pcap_immediate_mode])
-            )
-        ],
+    [AC_CHECK_LIB([pcap], [pcap_set_immediate_mode],,
         [AC_MSG_ERROR([pcap library not found])]
     )],
 )
@@ -104,7 +92,6 @@ AS_IF([test "x$enable_pthread" != xno],
 
 AC_SUBST(host)
 AC_SUBST(WINDRES)
-AC_SUBST(TOOLS_ADDITIONAL)
 AC_CONFIG_HEADERS(include/config.h)
 AC_CONFIG_FILES(config.mak)
 

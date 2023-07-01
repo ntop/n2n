@@ -6,7 +6,6 @@ export AR
 export CFLAGS
 export LDFLAGS
 export LDLIBS
-export TOOLS_ADDITIONAL
 
 -include config.mak
 
