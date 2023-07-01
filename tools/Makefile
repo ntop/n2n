@@ -15,8 +15,7 @@ LDFLAGS+=-L..
 
 N2N_LIB=../libn2n.a
 
-TOOLS=n2n-benchmark n2n-keygen n2n-route n2n-portfwd
-TOOLS+=$(TOOLS_ADDITIONAL)
+TOOLS=n2n-benchmark n2n-keygen n2n-route n2n-portfwd n2n-decode
 
 TESTS=tests-compress tests-elliptic tests-hashing tests-transform
 TESTS+=tests-wire
@@ -29,9 +28,7 @@ n2n-benchmark.o: $(N2N_LIB) $(HEADERS) ../config.mak
 n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../config.mak
 n2n-route.o: $(N2N_LIB) $(HEADERS) ../config.mak
 n2n-portfwd.o: $(N2N_LIB) $(HEADERS) ../config.mak
-
-n2n-decode: n2n-decode.c $(N2N_LIB) $(HEADERS) ../config.mak
-	$(CC) $(CFLAGS) $< $(LDFLAGS) $(LDLIBS) -lpcap -o $@
+n2n-decode.o: $(N2N_LIB) $(HEADERS) ../config.mak
 
 # See comments in the topdir Makefile about how to generate coverage
 # data.

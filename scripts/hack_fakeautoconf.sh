@@ -26,10 +26,6 @@ LDFLAGS=$LDFLAGS
 LDLIBS_EXTRA=$LDLIBS
 EOF
 
-cat >tools/config.mak <<EOF
-TOOLS_ADDITIONAL=
-EOF
-
 cat <<EOF >include/config.h
 #define PACKAGE_VERSION "FIXME"
 #define PACKAGE_BUILDDATE "$(date)"
