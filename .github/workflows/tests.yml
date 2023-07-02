@@ -346,14 +346,6 @@ jobs:
         run: |
           git fetch --force --tags
 
-
-      - name: generate a makefile and use it to install more packages
-        run: |
-          # This is a pretty big hammer, but gets the windows compile moving
-          ./scripts/hack_fakeautoconf.sh
-          make build-dep
-        shell: bash
-
       - name: Run a configure step
         run: |
           export CFLAGS="-fprofile-arcs -ftest-coverage"
