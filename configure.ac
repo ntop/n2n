@@ -13,10 +13,21 @@ AC_CHECK_TOOL([AR], [ar], [false])
 AC_CHECK_TOOL([WINDRES], [windres], [windres])
 
 case "$host_os" in
-    *-solaris*)
+    solaris*)
         # Was in Makefile with the test `uname` -eq "SunOS"
         # and comment "For OpenSolaris (Solaris too?)"
         LIBS="-lsocket -lnsl $LIBS"
+        ;;
+esac
+
+# This replicates the old config logic from the Makefile.
+# TODO: remove all this and just use the autotools default prefix
+# (which is "/usr/local")
+case "$host_os" in
+    darwin*)
+        ;;
+    *)
+        AC_PREFIX_DEFAULT(/usr)
         ;;
 esac
 
