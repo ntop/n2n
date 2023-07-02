@@ -7,6 +7,7 @@ export EXE
 export CFLAGS
 export LDFLAGS
 export LDLIBS
+export CONFIG_HOST_OS
 
 -include config.mak
 
@@ -208,6 +209,11 @@ src/example_edge_embed: $(N2N_LIB)
 
 ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
 src/edge: win32/edge_rc.o
+src/edge.exe: src/edge
+src/supernode.exe: src/supernode
+src/example_edge_embed_quick_edge_init.exe: src/example_edge_embed_quick_edge_init
+src/example_sn_embed.exe: src/example_sn_embed
+src/example_edge_embed.exe: src/example_edge_embed
 endif
 
 %: src/%
@@ -300,11 +306,11 @@ distclean:
 	rm -f $(addprefix src/,$(APPS))
 
 .PHONY: install
-install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
+install: edge$(EXE) supernode$(EXE) edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"
 	$(MKDIR) $(SBINDIR) $(MAN1DIR) $(MAN7DIR) $(MAN8DIR)
-	$(INSTALL_PROG) supernode $(SBINDIR)/
-	$(INSTALL_PROG) edge $(SBINDIR)/
+	$(INSTALL_PROG) supernode$(EXE) $(SBINDIR)/
+	$(INSTALL_PROG) edge$(EXE) $(SBINDIR)/
 	$(INSTALL_DOC) edge.8.gz $(MAN8DIR)/
 	$(INSTALL_DOC) supernode.1.gz $(MAN1DIR)/
 	$(INSTALL_DOC) n2n.7.gz $(MAN7DIR)/
