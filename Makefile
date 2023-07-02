@@ -136,12 +136,13 @@ LINT_CCODE=\
 	tools/tests-transform.c \
 	tools/tests-wire.c \
 
-
 LDLIBS+=-ln2n
+ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
+LDLIBS+=$(abspath win32/n2n_win32.a)
+endif
 LDLIBS+=$(LDLIBS_EXTRA)
 
 ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
-LDLIBS+=$(abspath win32/n2n_win32.a)
 N2N_DEPS+=win32/n2n_win32.a
 SUBDIRS+=win32
 endif
