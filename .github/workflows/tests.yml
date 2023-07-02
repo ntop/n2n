@@ -700,16 +700,21 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        arch:
-          - arm-linux-gnueabi
-          - aarch64-linux-gnu
+        include:
+          - arch: arm-linux-gnueabi
+          - arch: aarch64-linux-gnu
+
+          # Unfortunately, the ubnuts mingw package names dont follow the
+          # same naming convention as every other cross-compiler.
+          - arch: x86_64-w64-mingw32
+            package_suffix: mingw-w64-x86-64
 
           # I assume these architectures produce working code, but this has
           # not been directly confirmed.
           # They are compiled dynamically against normal libc, so will not
           # work on openwrt.
-          - mips-linux-gnu
-          - mipsel-linux-gnu
+          - arch: mips-linux-gnu
+          - arch: mipsel-linux-gnu
 
     steps:
       - uses: actions/checkout@v3
@@ -724,8 +729,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install \
-            binutils-${{ matrix.arch }} \
-            gcc-${{ matrix.arch }}
+            binutils-${{ matrix.package_suffix || matrix.arch }} \
+            gcc-${{ matrix.package_suffix || matrix.arch }}
 
       - name: Configure and Build
         shell: bash
