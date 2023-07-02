@@ -61,7 +61,6 @@
 #include <lmapibuf.h>           /* for privilege check in tools/n2n-route */
 #include <sys/stat.h>
 #include <windows.h>            /* for privilege check in tools/n2n-route */
-#include "wintap.h"
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
 #endif /* #ifdef _WIN32 */
 
