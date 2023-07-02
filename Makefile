@@ -154,7 +154,6 @@ LDLIBS+=$(LDLIBS_EXTRA)
 
 ifeq ($(CONFIG_TARGET),mingw)
 LDLIBS+=$(abspath win32/n2n_win32.a)
-LDLIBS+=-lnetapi32 -lws2_32 -liphlpapi
 N2N_DEPS+=win32/n2n_win32.a
 SUBDIRS+=win32
 endif
