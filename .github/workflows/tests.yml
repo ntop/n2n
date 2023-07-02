@@ -702,12 +702,12 @@ jobs:
       matrix:
         arch:
           - arm-linux-gnueabi
+          - aarch64-linux-gnu
 
           # I assume these architectures produce working code, but this has
           # not been directly confirmed.
           # They are compiled dynamically against normal libc, so will not
           # work on openwrt.
-          - aarch64-linux-gnu
           - mips-linux-gnu
           - mipsel-linux-gnu
 
