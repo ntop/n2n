@@ -20,6 +20,10 @@ case "$host_os" in
         ;;
     mingw*)
         LIBS="-lnetapi32 -lws2_32 -liphlpapi $LIBS"
+        EXE=".exe"
+        ;;
+    *)
+        EXE=""
         ;;
 esac
 
@@ -114,6 +118,7 @@ AS_IF([test "x$enable_pthread" != xno],
 
 AC_SUBST(host)
 AC_SUBST(host_os)
+AC_SUBST(EXE)
 AC_SUBST(WINDRES)
 AC_CONFIG_HEADERS(include/config.h)
 AC_CONFIG_FILES(config.mak)

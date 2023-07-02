@@ -3,6 +3,7 @@ all:
 
 export CC
 export AR
+export EXE
 export CFLAGS
 export LDFLAGS
 export LDLIBS
@@ -147,11 +148,11 @@ N2N_DEPS+=win32/n2n_win32.a
 SUBDIRS+=win32
 endif
 
-APPS=edge
-APPS+=supernode
-APPS+=example_edge_embed_quick_edge_init
-APPS+=example_edge_embed
-APPS+=example_sn_embed
+APPS=edge$(EXE)
+APPS+=supernode$(EXE)
+APPS+=example_edge_embed_quick_edge_init$(EXE)
+APPS+=example_edge_embed$(EXE)
+APPS+=example_sn_embed$(EXE)
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
