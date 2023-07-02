@@ -47,10 +47,6 @@ export CONFIG_TARGET
 ifndef CONFIG_TARGET
 ifeq ($(shell uname -o),Msys)
 CONFIG_TARGET=mingw
-else ifeq ($(shell uname -s),Darwin)
-CONFIG_TARGET=darwin
-else
-CONFIG_TARGET=generic
 endif
 endif
 
@@ -172,7 +168,7 @@ APPS+=example_sn_embed
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-# This is the superset of all packages that might be needed during the build.
+# This is the list of Debian/Ubuntu packages that are needed during the build.
 # Mostly of use in automated build systems.
 BUILD_DEP:=\
 	autoconf \
@@ -282,14 +278,20 @@ gcov:
 
 # This is a convinent target to use during development or from a CI/CD system
 .PHONY: build-dep
-build-dep:
-ifeq ($(CONFIG_TARGET),generic)
-	sudo apt install $(BUILD_DEP)
-else ifeq ($(CONFIG_TARGET),darwin)
-	brew install automake gcovr
+
+ifneq (,$(findstring darwin,$(CONFIG_HOST_OS)))
+build-dep: build-dep-brew
 else
-	echo Not attempting to install dependancies for system $(CONFIG_TARGET)
+build-dep: build-dep-dpkg
 endif
+
+.PHONY: build-dep-dpkg
+build-dep-dpkg:
+	sudo apt install $(BUILD_DEP)
+
+.PHONY: build-dep-brew
+build-dep-brew:
+	brew install automake gcovr
 
 .PHONY: clean
 clean:

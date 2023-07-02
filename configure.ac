@@ -110,6 +110,7 @@ AS_IF([test "x$enable_pthread" != xno],
 
 
 AC_SUBST(host)
+AC_SUBST(host_os)
 AC_SUBST(WINDRES)
 AC_CONFIG_HEADERS(include/config.h)
 AC_CONFIG_FILES(config.mak)
