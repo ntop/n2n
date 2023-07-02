@@ -15,11 +15,18 @@ LDFLAGS+=-L..
 
 N2N_LIB=../libn2n.a
 
-TOOLS=n2n-benchmark n2n-keygen n2n-route n2n-portfwd n2n-decode
+TOOLS+=n2n-benchmark$(EXE)
+TOOLS+=n2n-keygen$(EXE)
+TOOLS+=n2n-route$(EXE)
+TOOLS+=n2n-portfwd$(EXE)
+TOOLS+=n2n-decode$(EXE)
 
-TESTS=tests-compress tests-elliptic tests-hashing tests-transform
-TESTS+=tests-wire
-TESTS+=tests-auth
+TESTS=tests-compress$(EXE)
+TESTS+=tests-elliptic$(EXE)
+TESTS+=tests-hashing$(EXE)
+TESTS+=tests-transform$(EXE)
+TESTS+=tests-wire$(EXE)
+TESTS+=tests-auth$(EXE)
 
 .PHONY: all clean install
 all: $(TOOLS) $(TESTS)
@@ -29,6 +36,10 @@ n2n-keygen.o: $(N2N_LIB) $(HEADERS) ../config.mak
 n2n-route.o: $(N2N_LIB) $(HEADERS) ../config.mak
 n2n-portfwd.o: $(N2N_LIB) $(HEADERS) ../config.mak
 n2n-decode.o: $(N2N_LIB) $(HEADERS) ../config.mak
+
+# HACK for windows.
+%.exe: %
+	cp $< $@
 
 # See comments in the topdir Makefile about how to generate coverage
 # data.
