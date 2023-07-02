@@ -2,6 +2,8 @@
 # @configure_input@
 
 CONFIG_HOST=@host@
+CONFIG_PREFIX=@prefix@
+
 PACKAGE_VERSION=@PACKAGE_VERSION@
 CC=@CC@
 AR=@AR@
