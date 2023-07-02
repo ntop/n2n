@@ -12,6 +12,14 @@ AC_PROG_CC
 AC_CHECK_TOOL([AR], [ar], [false])
 AC_CHECK_TOOL([WINDRES], [windres], [windres])
 
+case "$host_os" in
+    *-solaris*)
+        # Was in Makefile with the test `uname` -eq "SunOS"
+        # and comment "For OpenSolaris (Solaris too?)"
+        LIBS="-lsocket -lnsl $LIBS"
+        ;;
+esac
+
 # TODO: ideally, should use AC_ARG_ENABLE
 AC_ARG_WITH([edgex],
     AS_HELP_STRING([--with-edgex], [Build for Ubiquity-X]),
