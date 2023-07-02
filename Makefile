@@ -38,18 +38,6 @@ ifndef UNAME_S
 $(error Could not run uname command, cannot continue)
 endif
 
-# Any compile environment that needs different flags, libraries, includes or
-# other settings will get its own CONFIG_TARGET value.  For cross compiling,
-# this might be set externally to the Makefile, but if not set we try to
-# set a reasonable default.
-
-export CONFIG_TARGET
-ifndef CONFIG_TARGET
-ifeq ($(shell uname -o),Msys)
-CONFIG_TARGET=mingw
-endif
-endif
-
 export MKDIR
 export INSTALL
 export INSTALL_PROG
@@ -152,7 +140,7 @@ LINT_CCODE=\
 LDLIBS+=-ln2n
 LDLIBS+=$(LDLIBS_EXTRA)
 
-ifeq ($(CONFIG_TARGET),mingw)
+ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
 LDLIBS+=$(abspath win32/n2n_win32.a)
 N2N_DEPS+=win32/n2n_win32.a
 SUBDIRS+=win32
@@ -216,7 +204,7 @@ src/example_edge_embed_quick_edge_init: $(N2N_LIB)
 src/example_sn_embed: $(N2N_LIB)
 src/example_edge_embed: $(N2N_LIB)
 
-ifeq ($(CONFIG_TARGET), mingw)
+ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
 src/edge: win32/edge_rc.o
 endif
 

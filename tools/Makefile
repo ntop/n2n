@@ -7,7 +7,7 @@ DEBUG?=-g3
 HEADERS=$(wildcard include/*.h)
 CFLAGS+=-I../include
 
-ifeq ($(CONFIG_TARGET),mingw)
+ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
 CFLAGS+=-I../win32
 endif
 CFLAGS+=$(DEBUG)
