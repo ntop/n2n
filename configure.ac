@@ -18,6 +18,9 @@ case "$host_os" in
         # and comment "For OpenSolaris (Solaris too?)"
         LIBS="-lsocket -lnsl $LIBS"
         ;;
+    mingw*)
+        LIBS="-lnetapi32 -lws2_32 -liphlpapi $LIBS"
+        ;;
 esac
 
 # This replicates the old config logic from the Makefile.

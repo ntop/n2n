@@ -18,12 +18,15 @@ chmod a+x configure
 
 cat >config.mak <<EOF
 CONFIG_HOST=x86_64-w64-mingw32
+CONFIG_HOST_OS=mingw32
+CONFIG_PREFIX=/usr/local
+
 CC=gcc
 AR=ar
 WINDRES=windres
 CFLAGS=$CFLAGS -g -O2
 LDFLAGS=$LDFLAGS
-LDLIBS_EXTRA=$LDLIBS
+LDLIBS_EXTRA=-lnetapi32 -lws2_32 -liphlpapi
 EOF
 
 cat <<EOF >include/config.h
