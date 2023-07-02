@@ -49,8 +49,6 @@ ifeq ($(shell uname -o),Msys)
 CONFIG_TARGET=mingw
 else ifeq ($(shell uname -s),Darwin)
 CONFIG_TARGET=darwin
-else ifeq ($(shell uname), SunOS)
-CONFIG_TARGET=sunos
 else
 CONFIG_TARGET=generic
 endif
@@ -161,11 +159,6 @@ LINT_CCODE=\
 
 LDLIBS+=-ln2n
 LDLIBS+=$(LDLIBS_EXTRA)
-
-#For OpenSolaris (Solaris too?)
-ifeq ($(CONFIG_TARGET), sunos)
-LDLIBS+=-lsocket -lnsl
-endif
 
 ifeq ($(CONFIG_TARGET),mingw)
 CFLAGS+=-I. -I./win32
