@@ -742,7 +742,7 @@ extern char * sock_to_cstr (n2n_sock_str_t out,
     memset(out, 0, N2N_SOCKBUF_SIZE);
 
     if(AF_INET6 == sock->family) {
-        char tmp[sizeof(n2n_sock_str_t)];
+        char tmp[INET6_ADDRSTRLEN+1];
 
         tmp[0] = '\0';
         inet_ntop(AF_INET6, sock->addr.v6, tmp, sizeof(n2n_sock_str_t));
