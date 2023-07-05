@@ -68,7 +68,6 @@ N2N_OBJS=\
 	src/curve25519.o \
 	src/edge_management.o \
 	src/edge_utils.o \
-	src/edge_utils_win32.o \
 	src/header_encryption.o \
 	src/hexdump.o \
 	src/json.o \
@@ -104,7 +103,6 @@ N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) config.mak
 # is passing the linter tests, this can be refactored)
 LINT_CCODE=\
 	include/curve25519.h \
-	include/edge_utils_win32.h \
 	include/header_encryption.h \
 	include/hexdump.h \
 	include/n2n_define.h \
@@ -116,7 +114,6 @@ LINT_CCODE=\
 	include/speck.h \
 	include/tf.h \
 	src/edge_management.c \
-	src/edge_utils_win32.c \
 	src/example_edge_embed_quick_edge_init.c \
 	src/header_encryption.c \
 	src/management.c \
@@ -130,6 +127,8 @@ LINT_CCODE=\
 	src/tuntap_linux.c \
 	src/tuntap_netbsd.c \
 	src/tuntap_osx.c \
+	src/win32/edge_utils_win32.c \
+	src/win32/edge_utils_win32.h \
 	src/wire.c \
 	tools/tests-auth.c \
 	tools/tests-compress.c \
@@ -194,6 +193,7 @@ src/example_sn_embed: $(N2N_LIB)
 src/example_edge_embed: $(N2N_LIB)
 
 ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
+N2N_OBJS+=src/win32/edge_utils_win32.o
 N2N_OBJS+=src/win32/getopt1.o
 N2N_OBJS+=src/win32/getopt.o
 N2N_OBJS+=src/win32/wintap.o

@@ -43,7 +43,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include "edge_utils_win32.h"
+#include "win32/edge_utils_win32.h"
 #else
 #include <arpa/inet.h>               // for inet_ntoa, inet_addr, inet_ntop
 #include <netinet/in.h>              // for sockaddr_in, ntohl, IPPROTO_IP
