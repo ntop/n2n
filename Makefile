@@ -139,15 +139,7 @@ LINT_CCODE=\
 	tools/tests-wire.c \
 
 LDLIBS+=-ln2n
-ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
-LDLIBS+=$(abspath win32/n2n_win32.a)
-endif
 LDLIBS+=$(LDLIBS_EXTRA)
-
-ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
-N2N_DEPS+=win32/n2n_win32.a
-SUBDIRS+=win32
-endif
 
 APPS=edge$(EXE)
 APPS+=supernode$(EXE)
@@ -189,12 +181,6 @@ version:
 tools: $(N2N_LIB)
 	$(MAKE) -C $@
 
-win32:
-	$(MAKE) -C $@
-
-win32/edge_rc.o: win32/edge.rc win32/edge.manifest
-	$(WINDRES) win32/edge.rc -O coff -o win32/edge_rc.o
-
 src/edge.o: $(N2N_DEPS)
 src/supernode.o: $(N2N_DEPS)
 src/example_edge_embed_quick_edge_init.o: $(N2N_DEPS)
@@ -208,7 +194,15 @@ src/example_sn_embed: $(N2N_LIB)
 src/example_edge_embed: $(N2N_LIB)
 
 ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
-src/edge: win32/edge_rc.o
+N2N_OBJS+=src/win32/getopt1.o
+N2N_OBJS+=src/win32/getopt.o
+N2N_OBJS+=src/win32/wintap.o
+
+src/win32/edge.rc: src/win32/edge.manifest
+src/win32/edge_rc.o: src/win32/edge.rc
+	$(WINDRES) $< -O coff -o $@
+
+src/edge: src/win32/edge_rc.o
 src/edge.exe: src/edge
 src/supernode.exe: src/supernode
 src/example_edge_embed_quick_edge_init.exe: src/example_edge_embed_quick_edge_init
@@ -225,8 +219,6 @@ endif
 $(N2N_LIB): $(N2N_OBJS)
 	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)
 #	$(RANLIB) $@
-
-win32/n2n_win32.a: win32
 
 .PHONY: test test.units test.integration
 test: test.units test.integration
