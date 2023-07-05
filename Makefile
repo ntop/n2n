@@ -102,6 +102,7 @@ N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) config.mak
 # As source files pass the linter, they can be added here (If all the source
 # is passing the linter tests, this can be refactored)
 LINT_CCODE=\
+	examples/example_edge_embed_quick_edge_init.c \
 	include/curve25519.h \
 	include/header_encryption.h \
 	include/hexdump.h \
@@ -114,7 +115,6 @@ LINT_CCODE=\
 	include/speck.h \
 	include/tf.h \
 	src/edge_management.c \
-	src/example_edge_embed_quick_edge_init.c \
 	src/header_encryption.c \
 	src/management.c \
 	src/management.h \
@@ -142,9 +142,6 @@ LDLIBS+=$(LDLIBS_EXTRA)
 
 APPS=edge$(EXE)
 APPS+=supernode$(EXE)
-APPS+=example_edge_embed_quick_edge_init$(EXE)
-APPS+=example_edge_embed$(EXE)
-APPS+=example_sn_embed$(EXE)
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
@@ -162,6 +159,7 @@ BUILD_DEP:=\
 	yamllint \
 
 SUBDIRS+=tools
+SUBDIRS+=examples
 
 COVERAGEDIR?=coverage
 
@@ -177,20 +175,14 @@ version:
 	@echo -n "Build for version: "
 	@scripts/version.sh
 
-tools: $(N2N_LIB)
+examples tools: $(N2N_LIB)
 	$(MAKE) -C $@
 
 src/edge.o: $(N2N_DEPS)
 src/supernode.o: $(N2N_DEPS)
-src/example_edge_embed_quick_edge_init.o: $(N2N_DEPS)
-src/example_sn_embed.o: $(N2N_DEPS)
-src/example_edge_embed.o: $(N2N_DEPS)
 
 src/edge: $(N2N_LIB)
 src/supernode: $(N2N_LIB)
-src/example_edge_embed_quick_edge_init: $(N2N_LIB)
-src/example_sn_embed: $(N2N_LIB)
-src/example_edge_embed: $(N2N_LIB)
 
 ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
 N2N_OBJS+=src/win32/edge_utils_win32.o
@@ -205,9 +197,6 @@ src/win32/edge_rc.o: src/win32/edge.rc
 src/edge: src/win32/edge_rc.o
 src/edge.exe: src/edge
 src/supernode.exe: src/supernode
-src/example_edge_embed_quick_edge_init.exe: src/example_edge_embed_quick_edge_init
-src/example_sn_embed.exe: src/example_sn_embed
-src/example_edge_embed.exe: src/example_edge_embed
 endif
 
 %: src/%
@@ -281,7 +270,7 @@ build-dep-brew:
 
 .PHONY: clean
 clean:
-	rm -f src/edge.o src/supernode.o src/example_edge_embed.o src/example_edge_embed_quick_edge_init.o src/example_sn_embed.o
+	rm -f src/edge.o src/supernode.o
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
