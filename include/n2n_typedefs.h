@@ -52,7 +52,7 @@ typedef int ssize_t;
 
 typedef unsigned long in_addr_t;
 
-#include "../win32/n2n_win32.h"
+#include "../src/win32/n2n_win32.h"
 // FIXME - continue untangling the build and includes - dont have a ".." here
 
 #endif /* #if defined(_MSC_VER) || defined(__MINGW32__) */
