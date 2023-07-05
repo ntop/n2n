@@ -16,8 +16,6 @@
  *
  */
 
-#ifdef _WIN32
-
 #include <winsock2.h>
 
 #include "edge_utils_win32.h"
@@ -107,7 +105,3 @@ int get_best_interface_ip (n2n_edge_t * eee, dec_ip_str_t *ip_addr){
     }
     return 0;
 }
-
-
-#endif
-
