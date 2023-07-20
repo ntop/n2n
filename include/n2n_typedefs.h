@@ -222,6 +222,7 @@ typedef struct tuntap_dev {
     uint32_t             device_mask;
     uint16_t             mtu;
     char                 dev_name[N2N_IFNAMSIZ];
+    int                  persistent;
 } tuntap_dev;
 
 #define SOCKET int
@@ -676,6 +677,7 @@ typedef struct n2n_edge_conf {
     uint8_t                  sn_selection_strategy; /**< encodes currently chosen supernode selection strategy. */
     uint8_t                  number_max_sn_pings;   /**< Number of maximum concurrently allowed supernode pings. */
     uint64_t                 mgmt_password_hash;    /**< contains hash of managament port password. */
+    uint8_t                  persistent;            /**< Persistent TUNTAP */
 } n2n_edge_conf_t;
 
 

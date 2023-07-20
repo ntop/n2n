@@ -3,6 +3,8 @@
 
 # n2n
 
+NOTE: edge with `--persistent` flag will make the Linux TUNTAP device persistent, this is useful for routing.
+
 n2n is a light VPN software which makes it easy to create virtual networks bypassing intermediate firewalls.
 
 In order to start using n2n, two elements are required:
