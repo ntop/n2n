@@ -1145,6 +1145,9 @@ static int update_edge (n2n_sn_t *sss,
         /* Known */
         if(auth_edge(&(scan->auth), &(reg->auth), answer_auth, comm) == 0) {
             if(!sock_equal(sender_sock, &(scan->sock))) {
+                scan->dev_addr.net_addr = reg->dev_addr.net_addr;
+                scan->dev_addr.net_bitlen = reg->dev_addr.net_bitlen;
+                memcpy((char*)scan->dev_desc, reg->dev_desc, N2N_DESC_SIZE);
                 memcpy(&(scan->sock), sender_sock, sizeof(n2n_sock_t));
                 scan->socket_fd = socket_fd;
                 scan->last_cookie = reg->cookie;
