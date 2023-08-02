@@ -127,11 +127,7 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
 
 /* Tuntap API */
 int tuntap_open (struct tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
-                 char *device_mask, const char * device_mac, int mtu
-#ifdef _WIN32
-				, int metric
-#endif
-                 );
+                 char *device_mask, const char * device_mac, int mtu, int metric);
 int tuntap_read (struct tuntap_dev *tuntap, unsigned char *buf, int len);
 int tuntap_write (struct tuntap_dev *tuntap, unsigned char *buf, int len);
 void tuntap_close (struct tuntap_dev *tuntap);

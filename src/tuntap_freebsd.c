@@ -36,7 +36,8 @@ int tuntap_open (tuntap_dev *device /* ignored */,
                  char *device_ip,
                  char *device_mask,
                  const char * device_mac,
-                 int mtu) {
+                 int mtu,
+                 int ignored) {
 
     int i;
     char tap_device[N2N_FREEBSD_TAPDEVICE_SIZE];

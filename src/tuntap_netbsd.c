@@ -40,7 +40,8 @@ int tuntap_open (tuntap_dev *device /* ignored */,
                  char *device_ip,
                  char *device_mask,
                  const char * device_mac,
-                 int mtu) {
+                 int mtu,
+                 int ignored) {
 
     char tap_device[N2N_NETBSD_TAPDEVICE_SIZE];
     struct ifreq req;
