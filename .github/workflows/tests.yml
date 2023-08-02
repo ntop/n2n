@@ -706,6 +706,8 @@ jobs:
 
           # Unfortunately, the ubnuts mingw package names dont follow the
           # same naming convention as every other cross-compiler.
+          - arch: i686-w64-mingw32
+            package_suffix: mingw-w64-i686
           - arch: x86_64-w64-mingw32
             package_suffix: mingw-w64-x86-64
 
