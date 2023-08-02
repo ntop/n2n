@@ -1246,11 +1246,8 @@ int main (int argc, char* argv[]) {
         if(runlevel == 4) { /* configure the TUNTAP device, including routes */
             if(tuntap_open(&tuntap, eee->tuntap_priv_conf.tuntap_dev_name, eee->tuntap_priv_conf.ip_mode,
                            eee->tuntap_priv_conf.ip_addr, eee->tuntap_priv_conf.netmask,
-                           eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu
-#ifdef _WIN32
-                           , eee->tuntap_priv_conf.metric
-#endif
-                                                           ) < 0)
+                           eee->tuntap_priv_conf.device_mac, eee->tuntap_priv_conf.mtu,
+                           eee->tuntap_priv_conf.metric) < 0)
                 exit(1);
             memcpy(&eee->device, &tuntap, sizeof(tuntap));
             traceEvent(TRACE_NORMAL, "created local tap device IP: %s, Mask: %s, MAC: %s",
