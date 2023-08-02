@@ -41,8 +41,7 @@
 #include "uthash.h"                  // for UT_hash_handle, HASH_COUNT, HASH...
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include "win32/defs.h"
 #include "win32/edge_utils_win32.h"
 #else
 #include <arpa/inet.h>               // for inet_ntoa, inet_addr, inet_ntop

@@ -36,8 +36,7 @@
 #include "uthash.h"            // for UT_hash_handle, HASH_ITER, HASH_ADD_STR
 
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include "win32/defs.h"
 #else
 #include <arpa/inet.h>         // for inet_addr
 #include <netinet/in.h>        // for ntohl, INADDR_ANY, INADDR_NONE, in_addr_t
