@@ -51,7 +51,14 @@
 #include <sys/socket.h>        // for send, socket, AF_INET, recv, connect
 #endif
 
-#if defined (__linux__) || defined(_WIN32)  /*  currently, Linux and Windows only */
+#if defined (__linux__) || defined(_WIN64)  /*  currently, Linux and Windows only */
+/* Technically, this could be supported on some 32-bit windows.
+ * The assumption here is that a version of Windows new enough to
+ * support the features needed is probably running with 64-bit.
+ *
+ * The alternative is that people trying to run old games are probably on
+ * Windows XP and are probably 32-bit.
+ */
 
 
 #define WITH_ADDRESS            1
@@ -1088,16 +1095,16 @@ end_route_tool:
 }
 
 
-#else  /* if defined(__linux__) || defined(_WIN32) --  currently, Linux and Windows only */
+#else  /* if defined(__linux__) || defined(_WIN64) --  currently, Linux and Windows only */
 
 
 int main (int argc, char* argv[]) {
 
-    traceEvent(TRACE_WARNING, "currently, only Linux and Windows are supported");
+    traceEvent(TRACE_WARNING, "currently, only Linux and 64-bit Windows are supported");
     traceEvent(TRACE_WARNING, "if you want to port to other OS, please find the source code having clearly marked the platform-dependant portions");
 
     return 0;
 }
 
 
-#endif /* if defined (__linux__) || defined(_WIN32)  --  currently, Linux and Windows only */
+#endif /* if defined (__linux__) || defined(_WIN64)  --  currently, Linux and Windows only */

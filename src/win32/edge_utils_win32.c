@@ -17,6 +17,7 @@
  */
 
 #include <winsock2.h>
+#include <iphlpapi.h>
 
 #include "edge_utils_win32.h"
 
