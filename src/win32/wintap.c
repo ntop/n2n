@@ -2,6 +2,9 @@
   (C) 2007-22 - Luca Deri <deri@ntop.org>
 */
 
+#include <winsock2.h>
+#include <iphlpapi.h>
+
 #include "n2n.h"
 #include "n2n_win32.h"
 
@@ -333,6 +336,15 @@ int open_wintap(struct tuntap_dev *device,
 
   /* ****************** */
 
+#ifdef _WIN64
+  /* Setting the metric is not actually 64-bit specific.
+   * The assumption here is that anyone needing a metric set will also
+   * need a new enough OS that they will be on 64-bit.
+   *
+   * The alternative is that people trying to run old games are probably on
+   * Windows XP and are probably 32-bit.
+   */
+
   /* metric */
 
   PMIB_IPINTERFACE_ROW Row;
@@ -357,6 +369,7 @@ int open_wintap(struct tuntap_dev *device,
     
     free(Row);
   }
+#endif /* _WIN64 */
 
   /* ****************** */
 
@@ -452,6 +465,8 @@ int tuntap_open(struct tuntap_dev *device,
 
 void tuntap_close(struct tuntap_dev *tuntap) {
 
+#ifdef _WIN64
+  /* See comment in open_wintap for notes about this ifdef */
   PMIB_IPINTERFACE_ROW Row;
 
   if(tuntap->metric) { /* only required if a value has been given (and thus stored) */
@@ -471,6 +486,7 @@ void tuntap_close(struct tuntap_dev *tuntap) {
 
     free(Row);
   }
+#endif /* _WIN64 */
 
   CloseHandle(tuntap->device_handle);
 }
