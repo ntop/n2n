@@ -2,8 +2,10 @@
   (C) 2007-22 - Luca Deri <deri@ntop.org>
 */
 
+#ifndef _WIN64
 #include <winsock2.h>
 #include <iphlpapi.h>
+#endif
 
 #include "n2n.h"
 #include "n2n_win32.h"
