@@ -2,8 +2,8 @@
   (C) 2007-22 - Luca Deri <deri@ntop.org>
 */
 
+#include "defs.h"
 #ifndef _WIN64
-#include <winsock2.h>
 #include <iphlpapi.h>
 #endif
 

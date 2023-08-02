@@ -35,9 +35,8 @@
 #endif
 
 #ifdef _WIN32
-#include <winsock2.h>
+#include "win32/defs.h"
 #include <ws2def.h>
-#include <ws2tcpip.h>
 #else
 #include <arpa/inet.h>       // for inet_ntop
 #include <netdb.h>           // for addrinfo, freeaddrinfo, gai_strerror

@@ -16,7 +16,7 @@
  *
  */
 
-#include <winsock2.h>
+#include "defs.h"
 #include <iphlpapi.h>
 
 #include "edge_utils_win32.h"
@@ -28,7 +28,7 @@
  * This function was not included in windows until after Windows XP
  */
 
-const char *inet_ntop (int af, const void *src, char *dst, socklen_t size) {
+const char *subst_inet_ntop (int af, const void *src, char *dst, int size) {
     if(af == AF_INET) {
         struct sockaddr_in in;
         memset(&in, 0, sizeof(in));

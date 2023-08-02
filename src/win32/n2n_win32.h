@@ -7,21 +7,6 @@
 #ifndef _N2N_WIN32_H_
 #define _N2N_WIN32_H_
 
-#ifndef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
-#define WIN32_LEAN_AND_MEAN
-
-#if defined(__MINGW32__)
-/* should be defined here and before winsock gets included */
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x501 //Otherwise the linker doesnt find getaddrinfo
-#endif /* #ifndef _WIN32_WINNT */
-#include <inttypes.h>
-#endif /* #if defined(__MINGW32__) */
-
-
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2def.h>

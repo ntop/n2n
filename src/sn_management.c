@@ -36,7 +36,7 @@
 #include "uthash.h"      // for UT_hash_handle, HASH_ITER, HASH_COUNT
 
 #ifdef _WIN32
-#include <winsock2.h>
+#include "win32/defs.h"
 #else
 #include <sys/socket.h>  // for sendto, socklen_t
 #endif

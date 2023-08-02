@@ -12,7 +12,9 @@
 #include "management.h"
 #include "n2n.h"         // for TRACE_DEBUG, traceEvent
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include "win32/defs.h"
+#else
 #include <netdb.h>       // for getnameinfo, NI_NUMERICHOST, NI_NUMERICSERV
 #include <sys/socket.h>  // for sendto, sockaddr
 #endif
