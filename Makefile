@@ -189,15 +189,15 @@ N2N_OBJS+=src/win32/edge_utils_win32.o
 N2N_OBJS+=src/win32/getopt1.o
 N2N_OBJS+=src/win32/getopt.o
 N2N_OBJS+=src/win32/wintap.o
+N2N_OBJS+=src/win32/edge_rc.o
+endif
 
 src/win32/edge.rc: src/win32/edge.manifest
 src/win32/edge_rc.o: src/win32/edge.rc
 	$(WINDRES) $< -O coff -o $@
 
-src/edge: src/win32/edge_rc.o
 src/edge.exe: src/edge
 src/supernode.exe: src/supernode
-endif
 
 %: src/%
 	cp $< $@
