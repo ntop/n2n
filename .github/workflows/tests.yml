@@ -408,9 +408,11 @@ jobs:
 
       - name: Install packages needed for build
         run: |
+          sudo dpkg --add-architecture ${{ matrix.arch }}
           sudo apt-get update
           sudo apt-get install debhelper build-essential \
             devscripts \
+            libc6:${{ matrix.arch }} \
             crossbuild-essential-${{ matrix.arch }}
 
       - name: Configure
