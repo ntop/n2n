@@ -413,6 +413,10 @@ jobs:
             devscripts \
             crossbuild-essential-${{ matrix.arch }}
 
+      - name: Hack dpkg-shlibdeps
+        run: |
+          echo '#!/bin/bash' | sudo tee /usr/bin/dpkg-shlibdeps
+
       - name: Configure
         # The HOST_TRIPLET line is not easily foldable
         # yamllint disable rule:line-length
