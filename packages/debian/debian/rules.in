@@ -12,7 +12,7 @@
 # http://www.tin.org/bin/man.cgi?section=7&topic=debhelper
 #
 
-package=@APP@
+package=n2n
 
 build: build-stamp
 build-stamp:

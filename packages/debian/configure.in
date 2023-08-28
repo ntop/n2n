@@ -39,10 +39,8 @@ if test "${with_edgex+set}" = set; then
     EXTN="mipsel"
 fi
 
-APP=n2n
 DATE=`date -R`
 
-AC_SUBST(APP)
 AC_SUBST(N2N_VERSION)
 AC_SUBST(EXTN)
 AC_SUBST(DATE)
