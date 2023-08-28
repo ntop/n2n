@@ -1,4 +1,4 @@
-@APP@ (@N2N_VERSION@) table; urgency=high
+n2n (@N2N_VERSION@) table; urgency=high
    * Last packaged version
 
  -- Luca Deri <deri@ntop.org>  @DATE@
