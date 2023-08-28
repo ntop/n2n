@@ -410,6 +410,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install debhelper build-essential \
+            devscripts \
             crossbuild-essential-${{ matrix.arch }}
 
       - name: Configure
