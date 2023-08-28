@@ -1,6 +1,6 @@
 Prerequisites
 -------------
-apt-get install debhelper fakeroot dpkg-sig
+apt-get install debhelper fakeroot dpkg-sig devscripts
 
 EdgeOS
 ------

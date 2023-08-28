@@ -32,13 +32,9 @@ if test "${with_edgex+set}" = set; then
     EXTN="mipsel"
 fi
 
-DATE=`date -R`
-
 AC_SUBST(N2N_VERSION)
 AC_SUBST(EXTN)
-AC_SUBST(DATE)
 
-AC_CONFIG_FILES(debian/changelog)
 AC_CONFIG_FILES(debian/files)
 AC_CONFIG_FILES(debian/control)
 AC_CONFIG_FILES(debian/rules)
