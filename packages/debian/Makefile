@@ -1,6 +1,9 @@
 #
 # Change it according to your setup
 #
+# Prerequisite: apt-get install devscripts
+#
+#
 N2N_HOME=$(PWD)/../..
 N2N_BUILD=${N2N_HOME}/packages/debian/n2n
 
