@@ -7,6 +7,7 @@ import argparse
 import socket
 import json
 import collections
+import time
 
 
 class JsonUDP():
@@ -171,6 +172,24 @@ def str_table(rows, columns, orderby):
     return ''.join(result)
 
 
+def num2timestr(seconds):
+    """Convert a number of seconds into a human time"""
+    days, seconds = divmod(seconds, (60*60*24))
+    hours, seconds = divmod(seconds, (60*60))
+    minutes, seconds = divmod(seconds, 60)
+
+    r = []
+    if days:
+        r += [f"{days}d"]
+    if hours:
+        r += [f"{hours}h"]
+    if minutes:
+        r += [f"{minutes}m"]
+    if seconds:
+        r += [f"{seconds}s"]
+    return "".join(r)
+
+
 def subcmd_show_supernodes(rpc, args):
     rows = rpc.read('supernodes')
     columns = [
@@ -179,7 +198,12 @@ def subcmd_show_supernodes(rpc, args):
         'macaddr',
         'sockaddr',
         'uptime',
+        'last_seen',
     ]
+
+    now = int(time.time())
+    for row in rows:
+        row["last_seen"] = num2timestr(now - row["last_seen"])
 
     return str_table(rows, columns, args.orderby)
 
@@ -192,7 +216,12 @@ def subcmd_show_edges(rpc, args):
         'macaddr',
         'sockaddr',
         'desc',
+        'last_seen',
     ]
+
+    now = int(time.time())
+    for row in rows:
+        row["last_seen"] = num2timestr(now - row["last_seen"])
 
     return str_table(rows, columns, args.orderby)
 
