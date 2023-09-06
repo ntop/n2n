@@ -688,7 +688,7 @@ size_t clear_peer_list (struct peer_info ** peer_list) {
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
-        if (scan->purgeable == false && scan->ip_addr) {
+        if (!scan->purgeable && scan->ip_addr) {
             free(scan->ip_addr);
         }
         HASH_DEL(*peer_list, scan);

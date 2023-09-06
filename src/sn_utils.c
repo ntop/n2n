@@ -1483,7 +1483,7 @@ static int purge_expired_communities (n2n_sn_t *sss,
             }
         }
 
-        if((comm->edges == NULL) && (comm->purgeable == true)) {
+        if((comm->edges == NULL) && (comm->purgeable)) {
             traceEvent(TRACE_INFO, "purging idle community %s", comm->community);
             if(NULL != comm->header_encryption_ctx_static) {
                 /* this should not happen as 'purgeable' and thus only communities w/o encrypted header here */
