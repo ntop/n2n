@@ -683,6 +683,7 @@ static void register_with_new_peer (n2n_edge_t *eee,
         scan->sock = *peer;
         scan->timeout = eee->conf.register_interval; /* TODO: should correspond to the peer supernode registration timeout */
         scan->last_valid_time_stamp = initial_time_stamp();
+        scan->purgeable = true;
         if(via_multicast)
             scan->local = 1;
 
@@ -1903,6 +1904,7 @@ static int check_query_peer_info (n2n_edge_t *eee, time_t now, n2n_mac_t mac) {
         scan->timeout = eee->conf.register_interval; /* TODO: should correspond to the peer supernode registration timeout */
         scan->last_seen = now; /* Don't change this it marks the pending peer for removal. */
         scan->last_valid_time_stamp = initial_time_stamp();
+        scan->purgeable = true;
 
         HASH_ADD_PEER(eee->pending_peers, scan);
     }
