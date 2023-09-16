@@ -109,6 +109,6 @@ void mgmt_event_post2 (enum n2n_event_topic topic, int data0, void *data1, mgmt_
 void mgmt_help_row (mgmt_req_t *req, strbuf_t *buf, char *cmd, char *help);
 void mgmt_help_events_row (mgmt_req_t *req, strbuf_t *buf, mgmt_req_t *sub, char *cmd, char *help);
 int mgmt_auth (mgmt_req_t *req, char *auth);
-void mgmt_req_init2 (mgmt_req_t *req, strbuf_t *buf, char *cmdline);
+bool mgmt_req_init2 (mgmt_req_t *req, strbuf_t *buf, char *cmdline);
 
 #endif

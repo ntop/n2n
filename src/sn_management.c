@@ -241,7 +241,10 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     // xx
     STRBUF_INIT(buf, udp_buf, N2N_SN_PKTBUF_SIZE);
 
-    mgmt_req_init2(req, buf, (char *)&cmdlinebuf);
+    if (!mgmt_req_init2(req, buf, (char *)&cmdlinebuf)) {
+        // if anything failed during init
+        return;
+    }
 
     int handler;
     lookup_handler(handler, mgmt_handlers, req->argv0);
