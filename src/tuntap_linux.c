@@ -138,6 +138,14 @@ int tuntap_open (tuntap_dev *device,
         return -1;
     }
 
+    // persistent
+    rc = ioctl(device->fd, TUNSETPERSIST, device->persistent);
+    if (rc < 0) {
+        traceEvent(TRACE_ERROR, "tuntap ioctl(TUNSETPERSIST, IFF_TAP) error: %s[%d]\n", strerror(errno), rc);
+        close(device->fd);
+        return -1;
+    }
+
     // store the device name for later reuse
     strncpy(device->dev_name, ifr.ifr_name, MIN(IFNAMSIZ, N2N_IFNAMSIZ));
 
@@ -251,7 +259,6 @@ int tuntap_write (struct tuntap_dev *tuntap, unsigned char *buf, int len) {
 
 
 void tuntap_close (struct tuntap_dev *tuntap) {
-
     close(tuntap->fd);
 }
 

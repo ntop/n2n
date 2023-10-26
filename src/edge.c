@@ -305,6 +305,7 @@ static void help (int level) {
                "                   | '-m 10:20:30:40:50:60', random otherwise\n");
 #if defined(N2N_CAN_NAME_IFACE)
         printf(" -d <device>       | TAP device name\n");
+        printf(" --persistent      | Persistent TAP device\n");
 #endif
         printf(" -M <mtu>          | specify n2n MTU of TAP interface, default %d\n", DEFAULT_MTU);
         printf(" -r                | enable packet forwarding through n2n community\n");
@@ -568,6 +569,11 @@ static int setOption (int optkey, char *optargument, n2n_tuntap_priv_config_t *e
             ec->tuntap_dev_name[N2N_IFNAMSIZ - 1] = '\0';
             break;
         }
+        case '$': /* persistent TUNTAP */ {
+            traceEvent(TRACE_NORMAL, "persistent TUNTAP");
+            conf->persistent = 1;
+            break;
+        }
 #endif
         case 'I': /* Device Description (hint) or username */ {
             strncpy((char *)conf->dev_desc, optargument, N2N_DESC_SIZE);
@@ -807,6 +813,7 @@ static const struct option long_options[] =
         { "help",                no_argument,       NULL, '@' }, /* internal special character '@' to identify long help case */
         { "select-rtt",          no_argument,       NULL, '[' }, /*                            '['             rtt selection strategy */
         { "select-mac",          no_argument,       NULL, ']' }, /*                            ']'             mac selection strategy */
+        { "persistent",          no_argument,       NULL, '$'}, /*                             '$'             persistent tap device  */
         { "management-password", required_argument, NULL, '{' }, /*                            '{'             management port password */
         { NULL,                  0,                 NULL,  0  }
     };
@@ -1109,6 +1116,7 @@ int main (int argc, char* argv[]) {
     if(setuid(0) != 0)
         traceEvent(TRACE_ERROR, "unable to become root [%u/%s]", errno, strerror(errno));
     /* setgid(0); */
+    tuntap.persistent = conf.persistent;
 #endif
 
     if(conf.encrypt_key && !strcmp((char*)conf.community_name, conf.encrypt_key))
