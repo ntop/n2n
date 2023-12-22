@@ -34,7 +34,7 @@
 #include "random_numbers.h"    // for n2n_rand, n2n_seed, n2n_srand
 
 #ifdef _WIN32
-#include <winsock.h>
+#include <winsock2.h>
 #include <ws2tcpip.h>
 #else
 #include <netinet/in.h>        // for sockaddr_in, htonl, htons, INADDR_LOOP...

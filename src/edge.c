@@ -959,6 +959,9 @@ static void daemonize () {
 /* *************************************************** */
 
 static bool keep_on_running = true;
+#ifdef _WIN32
+static HANDLE stop_event_handle;
+#endif
 
 #if defined(__linux__) || defined(_WIN32)
 #ifdef _WIN32
@@ -979,6 +982,9 @@ BOOL WINAPI term_handler(DWORD sig)
 
     keep_on_running = false;
 #ifdef _WIN32
+    if (!SetEvent(stop_event_handle)) {
+        traceEvent(TRACE_ERROR, "failed to set stop signal, you may experience slow shutdown, error code: %d", GetLastError());
+    }
     switch (sig) {
         case CTRL_CLOSE_EVENT:
         case CTRL_LOGOFF_EVENT:
@@ -1337,7 +1343,9 @@ int main (int argc, char* argv[]) {
     signal(SIGINT,  term_handler);
 #endif
 #ifdef _WIN32
-    SetConsoleCtrlHandler(term_handler, TRUE);
+    SetConsoleCtrlHandler(term_handler, true);
+    stop_event_handle = CreateEvent(NULL, true, false, NULL);
+    eee->stop_event_handle = stop_event_handle;
 #endif
 
     eee->keep_running = &keep_on_running;
