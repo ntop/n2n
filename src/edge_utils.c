@@ -2872,7 +2872,7 @@ void print_edge_stats (const n2n_edge_t *eee) {
 
 /* ************************************** */
 
-#ifdef WIN32
+#ifdef _WIN32
 bool add_read_event_select(int *total_events, HANDLE *events, SOCKET socket) {
     HANDLE event_handle = WSACreateEvent();
     int result = WSAEventSelect(socket, event_handle, FD_READ);
@@ -2921,11 +2921,11 @@ int run_edge_loop (n2n_edge_t *eee) {
         bool management_has_message = false;
         bool sock_has_message = false;
         bool multicast_has_message = false;
-#ifndef WIN32
+#ifndef _WIN32
         bool tuntap_has_message = false;
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
         int total_events = 0;
         HANDLE events[WSA_MAXIMUM_WAIT_EVENTS] = {0};
         bool *event_message_map[WSA_MAXIMUM_WAIT_EVENTS] = {0};
