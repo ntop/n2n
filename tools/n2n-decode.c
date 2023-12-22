@@ -16,6 +16,10 @@
  *
  */
 
+#include "config.h"
+
+#ifdef HAVE_LIBPCAP
+
 #include <errno.h>             // for errno
 #include <pcap.h>
 #include <signal.h>            // for signal, SIGINT, SIGTERM
@@ -58,7 +62,7 @@ static void help() {
 
 /* *************************************************** */
 
-#ifdef WIN32
+#ifdef _WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
 static void term_handler(int sig)
@@ -75,7 +79,7 @@ static void term_handler(int sig)
   }
 
   running = 0;
-#ifdef WIN32
+#ifdef _WIN32
   return(TRUE);
 #endif
 }
@@ -349,7 +353,7 @@ int main(int argc, char* argv[]) {
     return(5);
   }
 
-#ifdef WIN32
+#ifdef _WIN32
   SetConsoleCtrlHandler(term_handler, TRUE);
 #else
   signal(SIGTERM, term_handler);
@@ -372,3 +376,14 @@ int main(int argc, char* argv[]) {
 
   return(rv);
 }
+
+#else
+
+#include <stdio.h>
+
+int main() {
+    printf("n2n was compiled without libpcap support");
+    return -1;
+}
+
+#endif /* HAVE_LIBPCAP */

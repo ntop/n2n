@@ -178,7 +178,7 @@ uint64_t n2n_seed (void) {
 #endif
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
     HCRYPTPROV crypto_provider;
     CryptAcquireContext (&crypto_provider, NULL, NULL,
                          PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);

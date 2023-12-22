@@ -34,7 +34,7 @@
 #define AES128_KEY_BYTES        (128/8)
 
 
-#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------------------------------
+#ifdef HAVE_LIBCRYPTO // openSSL 1.1 ---------------------------------------------------------------------
 
 #include <openssl/aes.h>
 #include <openssl/evp.h>

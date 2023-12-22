@@ -120,7 +120,8 @@ int tuntap_open (tuntap_dev *device,
                  char *device_ip,
                  char *device_mask,
                  const char * device_mac,
-                 int mtu) {
+                 int mtu,
+                 int ignored) {
 
     char *tuntap_device = "/dev/net/tun";
     int ioctl_fd;

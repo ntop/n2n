@@ -58,7 +58,7 @@
 #endif
 
 #include <stdio.h>
-#ifdef WIN32
+#ifdef _WIN32
 #include <string.h>
 #endif
 
@@ -171,7 +171,7 @@ static char *nextchar;
    for unrecognized options.  */
 
 #ifndef DARWIN
-#ifdef WIN32
+#ifdef _WIN32
 int opterr = 0;
 #else
 int opterr = 1;
@@ -231,7 +231,7 @@ static char *posixly_correct;
 # define my_index	strchr
 #else
 
-#ifndef WIN32
+#ifndef _WIN32
 # if HAVE_STRING_H
 #  include <string.h>
 # else

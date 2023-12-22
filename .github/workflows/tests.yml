@@ -62,8 +62,9 @@ jobs:
             --enable-natpmp \
             --enable-cap \
             --enable-pcap \
+            --with-openssl \
             --with-zstd \
-            CFLAGS="-O3 -DN2N_OPTION_USE_PORTMAPPING"
+            CFLAGS="-O3"
           make test
 
   lint:
@@ -211,6 +212,45 @@ jobs:
       - name: Upload data to codecov
         uses: codecov/codecov-action@v3
 
+  test_bsd:
+    name: Test BSD
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - name: freebsd
+            architecture: x86-64
+            version: '13.2'
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Fix Checkout
+        run: |
+          git fetch --force --tags
+
+      - name: Test on ${{ matrix.os.name }}
+        uses: cross-platform-actions/action@v0.15.0
+        with:
+          operating_system: ${{ matrix.os.name }}
+          architecture: ${{ matrix.os.architecture }}
+          version: ${{ matrix.os.version }}
+          shell: bash
+          memory: 5G
+          cpu_count: 4
+          run: |
+            sudo pkg install -y \
+              autoconf \
+              automake \
+              gcc \
+              git \
+              gmake \
+              python3
+            ./autogen.sh
+            ./configure
+            gmake all
+
   test_macos:
     name: Test MacOS
     runs-on: ${{ matrix.os }}
@@ -306,14 +346,6 @@ jobs:
         run: |
           git fetch --force --tags
 
-
-      - name: generate a makefile and use it to install more packages
-        run: |
-          # This is a pretty big hammer, but gets the windows compile moving
-          ./scripts/hack_fakeautoconf.sh
-          make build-dep
-        shell: bash
-
       - name: Run a configure step
         run: |
           export CFLAGS="-fprofile-arcs -ftest-coverage"
@@ -378,7 +410,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install debhelper build-essential \
+            devscripts \
             crossbuild-essential-${{ matrix.arch }}
+
+      - name: Hack dpkg-shlibdeps
+        run: |
+          echo '#!/bin/bash' | sudo tee /usr/bin/dpkg-shlibdeps
 
       - name: Configure
         # The HOST_TRIPLET line is not easily foldable
@@ -386,12 +423,8 @@ jobs:
         run: |
           # This will warn about CC, but we cannot set CC until we run it :-S
           HOST_TRIPLET=$(dpkg-architecture -a${{ matrix.arch }} -q DEB_HOST_GNU_TYPE)
-          export CC=$HOST_TRIPLET-gcc
-          export AR=$HOST_TRIPLET-ar
           ./autogen.sh
           ./configure --host $HOST_TRIPLET
-          cd packages/debian/
-          ./configure EXTN=${{ matrix.arch }}
         # yamllint enable rule:line-length
 
       - name: Build
@@ -598,7 +631,6 @@ jobs:
           # this is a hack! it assumes the default SDK is the 'right' one
           export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
-          export CC=clang
           export CFLAGS="-target ${{ matrix.arch }}"
           export LDFLAGS="-target ${{ matrix.arch }}"
           ./configure --host=${{ matrix.arch }}
@@ -647,7 +679,6 @@ jobs:
           # this is a hack! it assumes the default SDK is the 'right' one
           export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
-          export CC=clang
           export CFLAGS="-arch x86_64 -arch arm64"
           export LDFLAGS="-arch x86_64 -arch arm64"
           ./configure
@@ -672,16 +703,23 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        arch:
-          - arm-linux-gnueabi
+        include:
+          - arch: arm-linux-gnueabi
+          - arch: aarch64-linux-gnu
+
+          # Unfortunately, the ubnuts mingw package names dont follow the
+          # same naming convention as every other cross-compiler.
+          - arch: i686-w64-mingw32
+            package_suffix: mingw-w64-i686
+          - arch: x86_64-w64-mingw32
+            package_suffix: mingw-w64-x86-64
 
           # I assume these architectures produce working code, but this has
           # not been directly confirmed.
           # They are compiled dynamically against normal libc, so will not
           # work on openwrt.
-          - aarch64-linux-gnu
-          - mips-linux-gnu
-          - mipsel-linux-gnu
+          - arch: mips-linux-gnu
+          - arch: mipsel-linux-gnu
 
     steps:
       - uses: actions/checkout@v3
@@ -696,15 +734,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install \
-            binutils-${{ matrix.arch }} \
-            gcc-${{ matrix.arch }}
+            binutils-${{ matrix.package_suffix || matrix.arch }} \
+            gcc-${{ matrix.package_suffix || matrix.arch }}
 
       - name: Configure and Build
         shell: bash
         run: |
           ./autogen.sh
-          export CC=${{ matrix.arch }}-gcc
-          export AR=${{ matrix.arch }}-ar
           ./configure --host ${{ matrix.arch }}
           make
 

@@ -2,6 +2,11 @@
   (C) 2007-22 - Luca Deri <deri@ntop.org>
 */
 
+#include "defs.h"
+#ifndef _WIN64
+#include <iphlpapi.h>
+#endif
+
 #include "n2n.h"
 #include "n2n_win32.h"
 
@@ -50,8 +55,7 @@ static void iterate_win_network_adapters(
     void *userdata) {
   HKEY key, key2;
   char regpath[1024];
-  long len, rc;
-  int found = 0;
+  int rc;
   int err, i;
   struct win_adapter_info adapter;
 
@@ -66,7 +70,7 @@ static void iterate_win_network_adapters(
   }
 
   for (i = 0; ; i++) {
-    len = sizeof(adapter.adapterid);
+    long unsigned int len = sizeof(adapter.adapterid);
     if(RegEnumKeyEx(key, i, (LPTSTR)adapter.adapterid, &len, 0, 0, 0, NULL))
       break;
 
@@ -77,7 +81,7 @@ static void iterate_win_network_adapters(
       continue;
 
     len = sizeof(adapter.adaptername);
-    err = RegQueryValueEx(key2, "Name", 0, 0, adapter.adaptername, &len);
+    err = RegQueryValueEx(key2, "Name", 0, 0, (unsigned char *)adapter.adaptername, &len);
 
     RegCloseKey(key2);
 
@@ -117,7 +121,7 @@ void win_print_available_adapters() {
 
 static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, size_t regpath_size) {
   HKEY key, key2;
-  long len, rc;
+  int rc;
   char index[16];
   int err, i;
   devstr_t adapter_name;
@@ -129,7 +133,7 @@ static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, si
   }
 
   for(i = 0; ; i++) {
-    len = sizeof(index);
+    long unsigned int len = sizeof(index);
     if(RegEnumKeyEx(key, i, (LPTSTR)index, &len, 0, 0, 0, NULL))
       break;
 
@@ -138,7 +142,7 @@ static int lookup_adapter_info_reg(const char *target_adapter, char *regpath, si
       continue;
 
     len = sizeof(adapter_name);
-    err = RegQueryValueEx(key2, "NetCfgInstanceId", 0, 0, adapter_name, &len);
+    err = RegQueryValueEx(key2, "NetCfgInstanceId", 0, 0, (unsigned char *)adapter_name, &len);
 
     RegCloseKey(key2);
 
@@ -161,9 +165,6 @@ static void set_interface_mac(struct tuntap_dev *device, const char *mac_str) {
   char cmd[256];
   char mac_buf[18];
   char adapter_info_reg[1024];
-
-  uint64_t mac = 0;
-  uint8_t *ptr = (uint8_t*)&mac;
 
   if(strlen(mac_str) != 17) {
     printf("Invalid MAC: %s\n", mac_str);
@@ -277,7 +278,7 @@ int open_wintap(struct tuntap_dev *device,
 
   /* ************************************** */
 
-  if(device_mac[0])
+  if(device_mac && device_mac[0])
     set_interface_mac(device, device_mac);
 
     /* Get MAC address from tap device->device_name */
@@ -337,6 +338,15 @@ int open_wintap(struct tuntap_dev *device,
 
   /* ****************** */
 
+#ifdef _WIN64
+  /* Setting the metric is not actually 64-bit specific.
+   * The assumption here is that anyone needing a metric set will also
+   * need a new enough OS that they will be on 64-bit.
+   *
+   * The alternative is that people trying to run old games are probably on
+   * Windows XP and are probably 32-bit.
+   */
+
   /* metric */
 
   PMIB_IPINTERFACE_ROW Row;
@@ -361,6 +371,7 @@ int open_wintap(struct tuntap_dev *device,
     
     free(Row);
   }
+#endif /* _WIN64 */
 
   /* ****************** */
 
@@ -387,7 +398,8 @@ int open_wintap(struct tuntap_dev *device,
 
 int tuntap_read(struct tuntap_dev *tuntap, unsigned char *buf, int len)
 {
-  DWORD read_size, last_err;
+  DWORD read_size;
+  int last_err;
 
   ResetEvent(tuntap->overlap_read.hEvent);
   if (ReadFile(tuntap->device_handle, buf, len, &read_size, &tuntap->overlap_read)) {
@@ -455,6 +467,8 @@ int tuntap_open(struct tuntap_dev *device,
 
 void tuntap_close(struct tuntap_dev *tuntap) {
 
+#ifdef _WIN64
+  /* See comment in open_wintap for notes about this ifdef */
   PMIB_IPINTERFACE_ROW Row;
 
   if(tuntap->metric) { /* only required if a value has been given (and thus stored) */
@@ -474,6 +488,7 @@ void tuntap_close(struct tuntap_dev *tuntap) {
 
     free(Row);
   }
+#endif /* _WIN64 */
 
   CloseHandle(tuntap->device_handle);
 }

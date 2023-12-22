@@ -38,7 +38,7 @@
 #include <immintrin.h>  /* _rdrand64_step, rdseed4_step */
 #endif
 
-#if defined (WIN32)
+#ifdef _WIN32
 #include <wincrypt.h>   // HCTYPTPROV, Crypt*-functions
 #endif
 

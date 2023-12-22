@@ -33,9 +33,8 @@
 #include "n2n.h"         // for n2n_sock_t, n2n_common_t, n2n_auth_t, n2n_RE...
 #include "n2n_wire.h"    // for decode_PACKET, decode_PEER_INFO, decode_QUER...
 
-#ifdef WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#ifdef _WIN32
+#include "win32/defs.h"
 #else
 #include <netinet/in.h>  // for sockaddr_in, sockaddr_in6, in6_addr, in_addr
 #include <sys/socket.h>  // for AF_INET, AF_INET6, SOCK_STREAM, SOCK_DGRAM
@@ -687,11 +686,8 @@ int fill_sockaddr (struct sockaddr * addr,
 // fills struct sockaddr's data into n2n_sock
 int fill_n2nsock (n2n_sock_t* sock, const struct sockaddr* sa) {
 
-#ifdef __APPLE__
     sock->family = sa->sa_family;
-#else
-    sock->family = *(sa_family_t*)sa;
-#endif
+
     switch(sock->family) {
         case AF_INET: {
             sock->port = ntohs(((struct sockaddr_in*)sa)->sin_port);

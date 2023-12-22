@@ -1,7 +1,17 @@
-N2N_VERSION=@N2N_VERSION@
+# Global configuration, included in top Makefile and exported from there.
+# @configure_input@
+
+CONFIG_HOST=@host@
+CONFIG_HOST_OS=@host_os@
+CONFIG_PREFIX=@prefix@
+
+PACKAGE_VERSION=@PACKAGE_VERSION@
+
 CC=@CC@
 AR=@AR@
-CFLAGS=@CFLAGS@ -I./include
-LDFLAGS=@LDFLAGS@ -L.
-LDLIBS_EXTRA=@N2N_LIBS_EXTRA@
-TOOLS_ADDITIONAL=@TOOLS_ADDITIONAL@
+WINDRES=@WINDRES@
+EXE=@EXE@
+
+CFLAGS=@CFLAGS@
+LDFLAGS=@LDFLAGS@
+LDLIBS_EXTRA=@LIBS@

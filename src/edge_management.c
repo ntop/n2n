@@ -35,10 +35,8 @@
 #include "strbuf.h"        // for strbuf_t, STRBUF_INIT
 #include "uthash.h"        // for UT_hash_handle, HASH_ITER
 
-#ifdef WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include "edge_utils_win32.h"
+#ifdef _WIN32
+#include "win32/defs.h"
 #else
 #include <arpa/inet.h>     // for inet_ntoa
 #include <netinet/in.h>    // for in_addr, htonl, in_addr_t
@@ -381,9 +379,12 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
     traceEvent(TRACE_DEBUG, "mgmt json %s", cmdlinebuf);
 
     /* we reuse the buffer already on the stack for all our strings */
-    STRBUF_INIT(buf, udp_buf);
+    STRBUF_INIT(buf, udp_buf, N2N_SN_PKTBUF_SIZE);
 
-    mgmt_req_init2(req, buf, (char *)&cmdlinebuf);
+    if(!mgmt_req_init2(req, buf, (char *)&cmdlinebuf)) {
+        // if anything failed during init
+        return;
+    }
 
     if(req->type == N2N_MGMT_SUB) {
         int handler;
@@ -476,7 +477,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
 
     if((0 == memcmp(udp_buf, "help", 4)) || (0 == memcmp(udp_buf, "?", 1))) {
         strbuf_t *buf;
-        STRBUF_INIT(buf, &udp_buf);
+        STRBUF_INIT(buf, &udp_buf, sizeof(udp_buf));
         msg_len = snprintf(buf->str, buf->size,
                            "Help for edge management console:\n"
                            "\tstop    | Gracefully exit edge\n"
@@ -505,7 +506,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
         traceEvent(TRACE_NORMAL, "+verb traceLevel=%u", (unsigned int) getTraceLevel());
 
         strbuf_t *buf;
-        STRBUF_INIT(buf, &udp_buf);
+        STRBUF_INIT(buf, &udp_buf, sizeof(udp_buf));
         msg_len = snprintf(buf->str, buf->size,
                            "> +OK traceLevel=%u\n", (unsigned int) getTraceLevel());
 
@@ -516,7 +517,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
 
     if(0 == memcmp(udp_buf, "-verb", 5)) {
         strbuf_t *buf;
-        STRBUF_INIT(buf, &udp_buf);
+        STRBUF_INIT(buf, &udp_buf, sizeof(udp_buf));
 
         if(getTraceLevel() > 0) {
             setTraceLevel(getTraceLevel() - 1);
@@ -609,7 +610,7 @@ void readFromMgmtSocket (n2n_edge_t *eee) {
         msg_len += snprintf((char *) (udp_buf + msg_len), (N2N_PKT_BUF_SIZE - msg_len),
                             "%-19s %1s%1s | %-17s | %-21s | %-15s | %9s | %10s\n",
                             peer->version,
-                            (peer->purgeable == false) ? "l" : "",
+                            (peer->purgeable) ? "" : "l",
                             (peer == eee->curr_sn) ? (eee->sn_wait ? "." : "*" ) : "",
                             is_null_mac(peer->mac_addr) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                             sock_to_cstr(sockbuf, &(peer->sock)),

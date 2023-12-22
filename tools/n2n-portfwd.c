@@ -33,7 +33,7 @@
 #include "n2n_port_mapping.h"  // for n2n_del_port_mapping, n2n_set_port_map...
 #include "random_numbers.h"    // for n2n_rand, n2n_seed, n2n_srand
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -49,8 +49,10 @@
 #define INFO_INTERVAL           5
 
 // REVISIT: may become obsolete
-#ifdef WIN32
+#ifdef _WIN32
+#ifndef STDIN_FILENO
 #define STDIN_FILENO            _fileno(stdin)
+#endif
 #endif
 
 
@@ -73,13 +75,13 @@ void set_term_handler(const void *handler) {
     signal(SIGTERM, handler);
     signal(SIGINT, handler);
 #endif
-#ifdef WIN32
+#ifdef _WIN32
     SetConsoleCtrlHandler(handler, TRUE);
 #endif
 }
 
 
-#ifdef WIN32
+#ifdef _WIN32
 BOOL WINAPI term_handler (DWORD sig) {
 #else
 static void term_handler (int sig) {
@@ -96,7 +98,7 @@ static void term_handler (int sig) {
     }
 
     keep_running = false;
-#ifdef WIN32
+#ifdef _WIN32
     return TRUE;
 #endif
 }
@@ -111,7 +113,7 @@ SOCKET connect_to_management_port (n2n_portfwd_conf_t *ppp) {
     SOCKET ret;
     struct sockaddr_in sock_addr;
 
-#if defined(WIN32)
+#ifdef _WIN32
     // Windows requires a call to WSAStartup() before it can work with sockets
     WORD wVersionRequested;
     WSADATA wsaData;
@@ -182,7 +184,7 @@ int get_port_from_json (uint16_t *port, json_object_t *json, char *key, int tag,
 // PLATFORM-DEPENDANT CODE
 
 
-#if !defined(WIN32)
+#ifndef _WIN32
 // taken from https://web.archive.org/web/20170407122137/http://cc.byexamples.com/2007/04/08/non-blocking-user-input-in-loop-without-ncurses/
 int _kbhit () {
 
@@ -196,6 +198,11 @@ int _kbhit () {
     select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
 
     return FD_ISSET(STDIN_FILENO, &fds);
+}
+#else
+// A dummy definition to avoid compile errors on windows
+int _kbhit () {
+    return 0;
 }
 #endif
 

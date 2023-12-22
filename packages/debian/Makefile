@@ -1,8 +1,18 @@
 #
 # Change it according to your setup
 #
+# Prerequisite: apt-get install devscripts
+#
+#
 N2N_HOME=$(PWD)/../..
 N2N_BUILD=${N2N_HOME}/packages/debian/n2n
+
+include ${N2N_HOME}/config.mak
+
+# TODO: continue to untangle the version generation
+# we either should not need to override the config.mak here or
+# should never set the version in config.mak and always calculate it
+PACKAGE_VERSION := $(shell ${N2N_HOME}/scripts/version.sh)
 
 all: clean pkg
 
@@ -19,7 +29,8 @@ pkg:
 	install -m644 ../../community.list ${N2N_BUILD}/usr/share/doc/n2n/examples/
 	install -m644 ../../doc/*.md ${N2N_BUILD}/usr/share/doc/n2n/
 	@/bin/rm -f ../n2n*.deb
-	dpkg-buildpackage -rfakeroot -d -us -uc -a@EXTN@
+	DEBEMAIL=builder@example.com dch -v ${PACKAGE_VERSION} --no-auto-nmu Auto Build
+	dpkg-buildpackage -rfakeroot -d -us -uc --host-type ${CONFIG_HOST}
 	-dpkg-sig --sign builder -k D1EB60BE ../n2n_*deb
 	@\rm -f ../n2n_*dsc ../n2n_*.gz ../n2n_*changes
 	@/bin/mv ../n2n_*deb .

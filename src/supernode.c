@@ -35,9 +35,8 @@
 #include "pearson.h"           // for pearson_hash_64
 #include "uthash.h"            // for UT_hash_handle, HASH_ITER, HASH_ADD_STR
 
-#ifdef WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#ifdef _WIN32
+#include "win32/defs.h"
 #else
 #include <arpa/inet.h>         // for inet_addr
 #include <netinet/in.h>        // for ntohl, INADDR_ANY, INADDR_NONE, in_addr_t
@@ -107,7 +106,7 @@ static void help (int level) {
             "\n                           "
                "[--management-password <pw>] "
                "[-v] "
-#ifndef WIN32
+#ifndef _WIN32
             "\n                           "
                "[-u <numerical user id>]"
                "[-g <numerical group id>]"
@@ -168,7 +167,7 @@ static void help (int level) {
         printf(" --management_...  | management port password, defaults to '%s'\n"
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
-#ifndef WIN32
+#ifndef _WIN32
         printf(" -u <UID>          | numeric user ID to use when privileges are dropped\n");
         printf(" -g <GID>          | numeric group ID to use when privileges are dropped\n");
 #endif
@@ -324,7 +323,7 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
 
             break;
         }
-#ifndef WIN32
+#ifndef _WIN32
         case 'u': /* unprivileged uid */
             sss->userid = atoi(_optarg);
             break;
@@ -425,7 +424,7 @@ static int loadFromCLI (int argc, char * const argv[], n2n_sn_t *sss) {
 #if defined(N2N_HAVE_DAEMON)
                            "f"
 #endif
-#ifndef WIN32
+#ifndef _WIN32
                            "u:g:"
 #endif
                             ,
@@ -567,8 +566,8 @@ static void dump_registrations (int signo) {
 
 static bool keep_running = true;
 
-#if defined(__linux__) || defined(WIN32)
-#ifdef WIN32
+#if defined(__linux__) || defined(_WIN32)
+#ifdef _WIN32
 BOOL WINAPI term_handler (DWORD sig)
 #else
     static void term_handler(int sig)
@@ -585,11 +584,11 @@ BOOL WINAPI term_handler (DWORD sig)
     }
 
     keep_running = false;
-#ifdef WIN32
+#ifdef _WIN32
     return(TRUE);
 #endif
 }
-#endif /* defined(__linux__) || defined(WIN32) */
+#endif /* defined(__linux__) || defined(_WIN32) */
 
 /* *************************************************** */
 
@@ -597,7 +596,7 @@ BOOL WINAPI term_handler (DWORD sig)
 int main (int argc, char * const argv[]) {
 
     int rc;
-#ifndef WIN32
+#ifndef _WIN32
     struct passwd *pw = NULL;
 #endif
     struct peer_info *scan, *tmp;
@@ -615,7 +614,7 @@ int main (int argc, char * const argv[]) {
         rc = loadFromCLI(argc, argv, &sss_node);
     } else
 
-#ifdef WIN32
+#ifdef _WIN32
         // load from current directory
         rc = loadFromFile("supernode.conf", &sss_node);
 #else
@@ -689,7 +688,7 @@ int main (int argc, char * const argv[]) {
     HASH_ITER(hh, sss_node.federation->edges, scan, tmp)
         scan->socket_fd = sss_node.sock;
 
-#ifndef WIN32
+#ifndef _WIN32
     /*
      * If no uid/gid is specified on the commandline, use the uid/gid of the
      * first found out of user "n2n" or "nobody"
@@ -734,7 +733,7 @@ int main (int argc, char * const argv[]) {
     signal(SIGINT,  term_handler);
     signal(SIGHUP,  dump_registrations);
 #endif
-#ifdef WIN32
+#ifdef _WIN32
     SetConsoleCtrlHandler(term_handler, TRUE);
 #endif
 

@@ -19,14 +19,7 @@
 #ifndef _EDGE_UTILS_WIN32_H_
 #define _EDGE_UTILS_WIN32_H_
 
-#ifdef WIN32
-
-#define WIN32_LEAN_AND_MEAN
-
-#include <process.h>
 #include <n2n.h>
-#include <winsock2.h>
-#include <iphlpapi.h>
 
 
 /* Multicast peers discovery disabled due to https://github.com/ntop/n2n/issues/65 */
@@ -43,10 +36,8 @@ struct tunread_arg {
 };
 
 extern HANDLE startTunReadThread (struct tunread_arg *arg);
-int get_best_interface_ip (n2n_edge_t * eee, dec_ip_str_t ip_addr);
+int get_best_interface_ip (n2n_edge_t * eee, dec_ip_str_t *ip_addr);
 
-
-#endif /* WIN32 */
 
 #endif /* _EDGE_UTILS_WIN32_H_ */
 

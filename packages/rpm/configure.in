@@ -48,9 +48,5 @@ AC_SUBST(DATE)
 AC_SUBST(RPM_SIGN_CMD)
 
 AC_CONFIG_FILES(n2n.spec)
-AC_CONFIG_FILES(../etc/systemd/system/edge.service)
-AC_CONFIG_FILES(../etc/systemd/system/edge@.service)
-AC_CONFIG_FILES(../etc/systemd/system/edge-ntopng@.service)
-AC_CONFIG_FILES(../etc/systemd/system/supernode.service)
 AC_CONFIG_FILES(Makefile)
 AC_OUTPUT

@@ -25,9 +25,8 @@
 #include "network_traffic_filter.h"  // for create_network_traffic_filter
 #include "uthash.h"                  // for UT_hash_handle, HASH_ITER, HASH_DEL
 
-#ifdef WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#ifdef _WIN32
+#include "win32/defs.h"
 #else
 #include <arpa/inet.h>               // for inet_ntoa, inet_addr
 #include <netinet/in.h>              // for in_addr, in_addr_t, ntohs, ntohl

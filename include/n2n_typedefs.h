@@ -21,8 +21,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>     // for uint8_t and friends
-#ifndef WIN32
+#ifndef _WIN32
 #include <arpa/inet.h>  // for in_addr_t
+#include <sys/socket.h> // for sockaddr
 #endif
 #include <uthash.h>
 #include <n2n_define.h>
@@ -51,8 +52,8 @@ typedef int ssize_t;
 
 typedef unsigned long in_addr_t;
 
-#include "n2n_win32.h"
-// FIXME - the above include is from a different subdir
+#include "../src/win32/n2n_win32.h"
+// FIXME - continue untangling the build and includes - dont have a ".." here
 
 #endif /* #if defined(_MSC_VER) || defined(__MINGW32__) */
 
@@ -83,7 +84,7 @@ typedef unsigned long in_addr_t;
 #endif
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 #ifndef __LITTLE_ENDIAN__
 #define __LITTLE_ENDIAN__ 1
 #endif
@@ -230,7 +231,7 @@ typedef char dec_ip_bit_str_t[N2N_NETMASK_STR_SIZE + 4];
 typedef char devstr_t[N2N_IFNAMSIZ];
 
 
-#ifndef WIN32
+#ifndef _WIN32
 typedef struct tuntap_dev {
     int                  fd;
     int                  if_idx;
@@ -242,9 +243,9 @@ typedef struct tuntap_dev {
 } tuntap_dev;
 
 #define SOCKET int
-#else /* #ifndef WIN32 */
+#else /* #ifndef _WIN32 */
 typedef u_short sa_family_t;
-#endif /* #ifndef WIN32 */
+#endif /* #ifndef _WIN32 */
 
 
 typedef struct speck_context_t he_context_t;
@@ -573,7 +574,7 @@ typedef struct n2n_tuntap_priv_config {
     int             mtu;
     int             metric;
     uint8_t         daemon;
-#ifndef WIN32
+#ifndef _WIN32
     uid_t           userid;
     gid_t           groupid;
 #endif
@@ -637,7 +638,7 @@ typedef struct n2n_resolve_ip_sock {
 typedef struct n2n_resolve_parameter {
     n2n_resolve_ip_sock_t   *list;         /* pointer to list of to be resolved nodes */
     uint8_t                 changed;       /* indicates a change */
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     pthread_t               id;            /* thread id */
     pthread_mutex_t         access;        /* mutex for shared access */
 #endif
@@ -851,7 +852,7 @@ typedef struct n2n_sn {
     int                                    mgmt_sock;       /* management socket. */
     n2n_ip_subnet_t                        min_auto_ip_net; /* Address range of auto_ip service. */
     n2n_ip_subnet_t                        max_auto_ip_net; /* Address range of auto_ip service. */
-#ifndef WIN32
+#ifndef _WIN32
     uid_t                                  userid;
     gid_t                                  groupid;
 #endif

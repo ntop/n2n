@@ -12,7 +12,9 @@
 #include "management.h"
 #include "n2n.h"         // for TRACE_DEBUG, traceEvent
 
-#ifndef WIN32
+#ifdef _WIN32
+#include "win32/defs.h"
+#else
 #include <netdb.h>       // for getnameinfo, NI_NUMERICHOST, NI_NUMERICSERV
 #include <sys/socket.h>  // for sendto, sockaddr
 #endif
@@ -102,7 +104,7 @@ void mgmt_event_post2 (enum n2n_event_topic topic, int data0, void *data1, mgmt_
 
     char buf_space[100];
     strbuf_t *buf;
-    STRBUF_INIT(buf, buf_space);
+    STRBUF_INIT(buf, buf_space, sizeof(buf_space));
 
     char *tag;
     if(sub->type == N2N_MGMT_SUB) {
@@ -208,7 +210,7 @@ int mgmt_auth (mgmt_req_t *req, char *auth) {
 /*
  * Handle the common and shred parts of the mgmt_req_t initialisation
  */
-void mgmt_req_init2 (mgmt_req_t *req, strbuf_t *buf, char *cmdline) {
+bool mgmt_req_init2 (mgmt_req_t *req, strbuf_t *buf, char *cmdline) {
     char *typechar;
     char *options;
     char *flagstr;
@@ -224,7 +226,7 @@ void mgmt_req_init2 (mgmt_req_t *req, strbuf_t *buf, char *cmdline) {
     if(!typechar) {
         /* should not happen */
         mgmt_error(req, buf, "notype");
-        return;
+        return false;
     }
     if(*typechar == 'r') {
         req->type=N2N_MGMT_READ;
@@ -234,20 +236,20 @@ void mgmt_req_init2 (mgmt_req_t *req, strbuf_t *buf, char *cmdline) {
         req->type=N2N_MGMT_SUB;
     } else {
         mgmt_error(req, buf, "badtype");
-        return;
+        return false;
     }
 
     /* Extract the tag to use in all reply packets */
     options = strtok(NULL, " \r\n");
     if(!options) {
         mgmt_error(req, buf, "nooptions");
-        return;
+        return false;
     }
 
     req->argv0 = strtok(NULL, " \r\n");
     if(!req->argv0) {
         mgmt_error(req, buf, "nocmd");
-        return;
+        return false;
     }
 
     /*
@@ -279,6 +281,8 @@ void mgmt_req_init2 (mgmt_req_t *req, strbuf_t *buf, char *cmdline) {
 
     if(!mgmt_auth(req, auth)) {
         mgmt_error(req, buf, "badauth");
-        return;
+        return false;
     }
+
+    return true;
 }

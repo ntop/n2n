@@ -12,7 +12,7 @@
 # http://www.tin.org/bin/man.cgi?section=7&topic=debhelper
 #
 
-package=@APP@
+package=n2n
 
 build: build-stamp
 build-stamp:
@@ -50,6 +50,7 @@ binary-arch: build install
 	cp -r ../etc debian/n2n
 	find debian/n2n -name "*.in" -exec /bin/rm {} ';'
 	find debian/n2n -name "*~" -exec /bin/rm {} ';'
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
 	dh_link
 	dh_gencontrol
 	dh_md5sums

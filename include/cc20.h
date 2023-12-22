@@ -23,14 +23,14 @@
 
 #include <stddef.h>  // for size_t
 #include <stdint.h>  // for uint32_t, uint8_t
-#include "config.h"  // HAVE_OPENSSL_1_1
+#include "config.h"  // HAVE_LIBCRYPTO
 
 
 #define CC20_IV_SIZE           16
 #define CC20_KEY_BYTES       (256/8)
 
 
-#ifdef HAVE_OPENSSL_1_1 // openSSL 1.1 ----------------------------------------------------------------------------
+#ifdef HAVE_LIBCRYPTO // openSSL 1.1 ----------------------------------------------------------------------------
 
 
 #include <openssl/evp.h>

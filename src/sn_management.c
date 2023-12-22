@@ -35,9 +35,8 @@
 #include "strbuf.h"      // for strbuf_t, STRBUF_INIT
 #include "uthash.h"      // for UT_hash_handle, HASH_ITER, HASH_COUNT
 
-#ifdef WIN32
-#include <winsock2.h>
-#include "edge_utils_win32.h"
+#ifdef _WIN32
+#include "win32/defs.h"
 #else
 #include <sys/socket.h>  // for sendto, socklen_t
 #endif
@@ -240,9 +239,12 @@ static void handleMgmtJson (mgmt_req_t *req, char *udp_buf, const int recvlen) {
 
     /* we reuse the buffer already on the stack for all our strings */
     // xx
-    STRBUF_INIT(buf, udp_buf);
+    STRBUF_INIT(buf, udp_buf, N2N_SN_PKTBUF_SIZE);
 
-    mgmt_req_init2(req, buf, (char *)&cmdlinebuf);
+    if(!mgmt_req_init2(req, buf, (char *)&cmdlinebuf)) {
+        // if anything failed during init
+        return;
+    }
 
     int handler;
     lookup_handler(handler, mgmt_handlers, req->argv0);
@@ -372,7 +374,7 @@ int process_mgmt (n2n_sn_t *sss,
 
         ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                             "%s '%s'\n",
-                            (community->is_federation) ? "FEDERATION" : ((community->purgeable == false) ? "FIXED NAME COMMUNITY" : "COMMUNITY"),
+                            (community->is_federation) ? "FEDERATION" : ((community->purgeable) ? "COMMUNITY" : "FIXED NAME COMMUNITY"),
                             (community->is_federation) ? "-/-" : community->community);
         sendto_mgmt(sss, sender_sock, sock_size, (const uint8_t *) resbuf, ressize);
         ressize = 0;
@@ -383,7 +385,7 @@ int process_mgmt (n2n_sn_t *sss,
             ressize += snprintf(resbuf + ressize, N2N_SN_PKTBUF_SIZE - ressize,
                                 "%4u | %-19s | %-17s | %-21s %-3s | %-15s | %9s\n",
                                 ++num,
-                                (peer->dev_addr.net_addr == 0) ? ((peer->purgeable == false) ? "-l" : "") : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
+                                (peer->dev_addr.net_addr == 0) ? ((peer->purgeable) ? "" : "-l") : ip_subnet_to_str(ip_bit_str, &peer->dev_addr),
                                 (is_null_mac(peer->mac_addr)) ? "" : macaddr_str(mac_buf, peer->mac_addr),
                                 sock_to_cstr(sockbuf, &(peer->sock)),
                                 ((peer->socket_fd >= 0) && (peer->socket_fd != sss->sock)) ? "TCP" : "",

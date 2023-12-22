@@ -25,12 +25,10 @@
 #include <stdint.h>
 #endif
 
-#if defined(WIN32)
-#include "n2n_win32.h"
-#else /* #if defined(WIN32) */
+#ifndef _WIN32
 #include <netinet/in.h>
 #include <sys/socket.h> /* AF_INET and AF_INET6 */
-#endif /* #if defined(WIN32) */
+#endif /* #ifndef _WIN32 */
 
 #include "sn_selection.h"
 

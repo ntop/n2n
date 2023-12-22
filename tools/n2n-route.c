@@ -38,7 +38,7 @@
 #include <linux/rtnetlink.h>   // for RTA_DATA, rtmsg, RTA_GATEWAY, RTA_NEXT
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -51,7 +51,14 @@
 #include <sys/socket.h>        // for send, socket, AF_INET, recv, connect
 #endif
 
-#if defined (__linux__) || defined(WIN32)  /*  currently, Linux and Windows only */
+#if defined (__linux__) || defined(_WIN64)  /*  currently, Linux and Windows only */
+/* Technically, this could be supported on some 32-bit windows.
+ * The assumption here is that a version of Windows new enough to
+ * support the features needed is probably running with 64-bit.
+ *
+ * The alternative is that people trying to run old games are probably on
+ * Windows XP and are probably 32-bit.
+ */
 
 
 #define WITH_ADDRESS            1
@@ -74,8 +81,10 @@
 #define AUTO_DETECT            1
 
 // REVISIT: may become obsolete
-#ifdef WIN32
+#ifdef _WIN32
+#ifndef STDIN_FILENO
 #define STDIN_FILENO            _fileno(stdin)
+#endif
 #endif
 
 
@@ -115,7 +124,7 @@ int is_privileged (void) {
 
     return euid == 0;
 
-#elif defined(WIN32)
+#elif defined(_WIN32)
 // taken from https://stackoverflow.com/a/10553065
         int result;
         DWORD rc;
@@ -146,13 +155,13 @@ void set_term_handler(const void *handler) {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, handler);
     signal(SIGINT, handler);
-#elif defined(WIN32)
+#elif defined(_WIN32)
     SetConsoleCtrlHandler(handler, TRUE);
 #endif
 }
 
 
-#if !defined(WIN32)
+#ifndef _WIN32
 static void term_handler (int sig) {
 #else
 BOOL WINAPI term_handler (DWORD sig) {
@@ -169,7 +178,7 @@ BOOL WINAPI term_handler (DWORD sig) {
     }
 
     keep_running = false;
-#if defined(WIN32)
+#ifdef _WIN32
     return TRUE;
 #endif
 }
@@ -315,7 +324,7 @@ find_default_gateway_end:
     closesocket(sock);
     return ret;
 
-#elif defined(WIN32)
+#elif defined(_WIN32)
     // taken from (and modified)
     // https://docs.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-createipforwardentry
 
@@ -374,7 +383,7 @@ find_default_gateway_end:
 // PLATFORM-DEPENDANT CODE
 
 
-#if defined(WIN32)
+#ifdef _WIN32
 DWORD get_interface_index (struct in_addr addr) {
     // taken from (and modified)
     // https://docs.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-createipforwardentry
@@ -494,9 +503,8 @@ void handle_route (n2n_route_t* in_route, int verb) {
 
     closesocket(sock);
 
-#elif defined(WIN32)
+#elif defined(_WIN32)
     // REVISIT: use 'CreateIpForwardEntry()' and 'DeleteIpForwardEntry()' [iphlpapi.h]
-    struct in_addr net_addr, gateway;
     char c_net_addr[32];
     char c_gateway[32];
     char c_interface[32];
@@ -572,7 +580,7 @@ SOCKET connect_to_management_port (n2n_route_conf_t *rrr) {
     SOCKET ret;
     struct sockaddr_in sock_addr;
 
-#if defined(WIN32)
+#ifdef _WIN32
     // Windows requires a call to WSAStartup() before it can work with sockets
     WORD wVersionRequested;
     WSADATA wsaData;
@@ -642,7 +650,7 @@ int get_addr_from_json (struct in_addr *addr, json_object_t *json, char *key, in
 // PLATFORM-DEPENDANT CODE
 
 
-#if !defined(WIN32)
+#ifndef _WIN32
 // taken from https://web.archive.org/web/20170407122137/http://cc.byexamples.com/2007/04/08/non-blocking-user-input-in-loop-without-ncurses/
 int _kbhit () {
 
@@ -656,6 +664,11 @@ int _kbhit () {
     select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
 
     return FD_ISSET(STDIN_FILENO, &fds);
+}
+#else
+// A dummy definition to avoid compile errors on windows
+int _kbhit () {
+    return 0;
 }
 #endif
 
@@ -1082,16 +1095,16 @@ end_route_tool:
 }
 
 
-#else  /* if defined(__linux__) || defined(WIN32) --  currently, Linux and Windows only */
+#else  /* if defined(__linux__) || defined(_WIN64) --  currently, Linux and Windows only */
 
 
 int main (int argc, char* argv[]) {
 
-    traceEvent(TRACE_WARNING, "currently, only Linux and Windows are supported");
+    traceEvent(TRACE_WARNING, "currently, only Linux and 64-bit Windows are supported");
     traceEvent(TRACE_WARNING, "if you want to port to other OS, please find the source code having clearly marked the platform-dependant portions");
 
     return 0;
 }
 
 
-#endif /* if defined (__linux__) || defined(WIN32)  --  currently, Linux and Windows only */
+#endif /* if defined (__linux__) || defined(_WIN64)  --  currently, Linux and Windows only */

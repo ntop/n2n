@@ -9,7 +9,6 @@ config.rpath
 config.status
 include/config.h
 include/config.h.in
-tools/config.mak
 autom4te.cache
 edge
 example_edge_embed_quick_edge_init
@@ -25,14 +24,7 @@ build
 .idea
 .vscode
 .vs
-packages/debian/debian/changelog
-packages/debian/debian/control
 packages/debian/debian/files
-packages/debian/debian/rules
-packages/etc/systemd/system/edge-ntopng@.service
-packages/etc/systemd/system/edge.service
-packages/etc/systemd/system/edge@.service
-packages/etc/systemd/system/supernode.service
 *dSYM*
 
 __pycache__

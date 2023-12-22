@@ -6,9 +6,9 @@ Standards-Version: 4.6.0
 Build-Depends:
 
 Package: n2n
-Architecture: @EXTN@
+Architecture: any
 Suggests: uml-utilities
-Depends: ${shlibs:Depends}, ${misc:Depends} @EXTRA_DEP@
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Conflicts: n2n (<< 2.1.0-1)
 Replaces: n2n (<< 2.1.0-1)
 Description: a layer-two peer-to-peer virtual private network (VPN)

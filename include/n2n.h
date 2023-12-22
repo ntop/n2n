@@ -42,12 +42,12 @@
 #include "config.h" /* Visual C++ */
 
 /* Moved here to define _CRT_SECURE_NO_WARNINGS before all the including takes place */
-#ifdef WIN32
+#ifdef _WIN32
 #define N2N_CAN_NAME_IFACE 1
 #undef N2N_HAVE_DAEMON
 #undef N2N_HAVE_TCP           /* as explained on https://github.com/ntop/n2n/pull/627#issuecomment-782093706 */
 #undef N2N_HAVE_SETUID
-#endif /* WIN32 */
+#endif /* _WIN32 */
 
 
 #include <stdbool.h>
@@ -55,17 +55,16 @@
 #include "n2n_define.h"
 #include "n2n_typedefs.h"
 
-#ifdef WIN32
+#ifdef _WIN32
+#include <winsock2.h>           /* for tcp */
 #include <lmaccess.h>           /* for privilege check in tools/n2n-route */
 #include <lmapibuf.h>           /* for privilege check in tools/n2n-route */
 #include <sys/stat.h>
 #include <windows.h>            /* for privilege check in tools/n2n-route */
-#include <winsock2.h>           /* for tcp */
-#include "wintap.h"
 #define SHUT_RDWR   SD_BOTH     /* for tcp */
-#endif /* #ifdef WIN32 */
+#endif /* #ifdef _WIN32 */
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <netinet/in.h>    // for in_addr (ptr only), in_addr_t
 #include <pwd.h>
 #include <stdint.h>        // for uint8_t, uint64_t, uint32_t, uint16_t
@@ -85,11 +84,11 @@
 #include <zstd.h>
 #endif
 
-#if defined (HAVE_OPENSSL_1_1)
+#ifdef HAVE_LIBCRYPTO
 #include <openssl/opensslv.h>
 #include <openssl/crypto.h>
 #endif
-#endif /* #ifndef WIN32 */
+#endif /* #ifndef _WIN32 */
 
 
 
@@ -128,11 +127,7 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
 
 /* Tuntap API */
 int tuntap_open (struct tuntap_dev *device, char *dev, const char *address_mode, char *device_ip,
-                 char *device_mask, const char * device_mac, int mtu
-#ifdef WIN32
-				, int metric
-#endif
-                 );
+                 char *device_mask, const char * device_mac, int mtu, int metric);
 int tuntap_read (struct tuntap_dev *tuntap, unsigned char *buf, int len);
 int tuntap_write (struct tuntap_dev *tuntap, unsigned char *buf, int len);
 void tuntap_close (struct tuntap_dev *tuntap);

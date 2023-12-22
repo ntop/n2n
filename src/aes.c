@@ -16,6 +16,7 @@
  *
  */
 
+#include "config.h"
 
 #include <stdint.h>  // for uint32_t, uint8_t
 #include <stdlib.h>  // for calloc, free
@@ -25,8 +26,10 @@
 #include "portable_endian.h"  // for be32toh, htobe32
 
 
-#if defined (HAVE_OPENSSL_1_1) // openSSL 1.1 ---------------------------------------------------------------------
+#ifdef HAVE_LIBCRYPTO // openSSL 1.1 ---------------------------------------------------------------------
 
+#include <openssl/err.h>    // for ERR_print_errors
+#include <openssl/evp.h>    // for EVP_EncryptInit_ex, EVP_CIPHER_CTX_set_p...
 
 // get any erorr message out of openssl
 // taken from https://en.wikibooks.org/wiki/OpenSSL/Error_handling

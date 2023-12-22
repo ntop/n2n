@@ -7,6 +7,7 @@ import argparse
 import socket
 import json
 import collections
+import time
 
 
 class JsonUDP():
@@ -48,7 +49,7 @@ class JsonUDP():
             data = json.loads(data.decode('utf8'))
 
             # TODO: We assume the first packet we get will be tagged for us
-            assert(data['_tag'] == tagstr)
+            assert (data['_tag'] == tagstr)
 
             if data['_type'] == 'error':
                 raise ValueError('Error: {}'.format(data['error']))
@@ -128,7 +129,7 @@ class JsonUDP():
         data, _ = self.sock.recvfrom(1024)
         data = json.loads(data.decode('utf8'))
         # assert(data['_tag'] == tagstr)
-        assert(data['_type'] == 'event')
+        assert (data['_type'] == 'event')
 
         del data['_tag']
         del data['_type']
@@ -171,6 +172,28 @@ def str_table(rows, columns, orderby):
     return ''.join(result)
 
 
+def num2timestr(seconds):
+    """Convert a number of seconds into a human time"""
+
+    if seconds == 0:
+        return "now"
+
+    days, seconds = divmod(seconds, (60*60*24))
+    hours, seconds = divmod(seconds, (60*60))
+    minutes, seconds = divmod(seconds, 60)
+
+    r = []
+    if days:
+        r += [f"{days}d"]
+    if hours:
+        r += [f"{hours}h"]
+    if minutes:
+        r += [f"{minutes}m"]
+    if seconds:
+        r += [f"{seconds}s"]
+    return "".join(r)
+
+
 def subcmd_show_supernodes(rpc, args):
     rows = rpc.read('supernodes')
     columns = [
@@ -179,7 +202,12 @@ def subcmd_show_supernodes(rpc, args):
         'macaddr',
         'sockaddr',
         'uptime',
+        'last_seen',
     ]
+
+    now = int(time.time())
+    for row in rows:
+        row["last_seen"] = num2timestr(now - row["last_seen"])
 
     return str_table(rows, columns, args.orderby)
 
@@ -192,7 +220,12 @@ def subcmd_show_edges(rpc, args):
         'macaddr',
         'sockaddr',
         'desc',
+        'last_seen',
     ]
+
+    now = int(time.time())
+    for row in rows:
+        row["last_seen"] = num2timestr(now - row["last_seen"])
 
     return str_table(rows, columns, args.orderby)
 

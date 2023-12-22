@@ -1,12 +1,24 @@
+# Our default make target
+all:
 
 export CC
 export AR
+export EXE
 export CFLAGS
 export LDFLAGS
 export LDLIBS
-export TOOLS_ADDITIONAL
+export CONFIG_HOST_OS
 
-include config.mak
+-include config.mak
+
+ifndef CONFIG_HOST
+# TODO:
+# dont error if we are installing build-deps or other non-compile action
+$(error Please run ./configure)
+endif
+
+CFLAGS+=-I./include
+LDFLAGS+=-L.
 
 #Ultrasparc64 users experiencing SIGBUS should try the following gcc options
 #(thanks to Robert Gibbon)
@@ -28,24 +40,6 @@ ifndef UNAME_S
 $(error Could not run uname command, cannot continue)
 endif
 
-# Any compile environment that needs different flags, libraries, includes or
-# other settings will get its own CONFIG_TARGET value.  For cross compiling,
-# this might be set externally to the Makefile, but if not set we try to
-# set a reasonable default.
-
-export CONFIG_TARGET
-ifndef CONFIG_TARGET
-ifeq ($(shell uname -o),Msys)
-CONFIG_TARGET=mingw
-else ifeq ($(shell uname -s),Darwin)
-CONFIG_TARGET=darwin
-else ifeq ($(shell uname), SunOS)
-CONFIG_TARGET=sunos
-else
-CONFIG_TARGET=generic
-endif
-endif
-
 export MKDIR
 export INSTALL
 export INSTALL_PROG
@@ -58,13 +52,9 @@ INSTALL_PROG=$(INSTALL) -m755
 INSTALL_DOC=$(INSTALL) -m644
 
 # DESTDIR set in debian make system
-PREFIX?=$(DESTDIR)/usr
-ifeq ($(CONFIG_TARGET),darwin)
-SBINDIR=$(PREFIX)/local/sbin
-else
-SBINDIR=$(PREFIX)/sbin
-endif
+PREFIX?=$(DESTDIR)/$(CONFIG_PREFIX)
 
+SBINDIR=$(PREFIX)/sbin
 MANDIR?=$(PREFIX)/share/man
 MAN1DIR=$(MANDIR)/man1
 MAN7DIR=$(MANDIR)/man7
@@ -78,7 +68,6 @@ N2N_OBJS=\
 	src/curve25519.o \
 	src/edge_management.o \
 	src/edge_utils.o \
-	src/edge_utils_win32.o \
 	src/header_encryption.o \
 	src/hexdump.o \
 	src/json.o \
@@ -113,8 +102,8 @@ N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) config.mak
 # As source files pass the linter, they can be added here (If all the source
 # is passing the linter tests, this can be refactored)
 LINT_CCODE=\
+	examples/example_edge_embed_quick_edge_init.c \
 	include/curve25519.h \
-	include/edge_utils_win32.h \
 	include/header_encryption.h \
 	include/hexdump.h \
 	include/n2n_define.h \
@@ -126,8 +115,6 @@ LINT_CCODE=\
 	include/speck.h \
 	include/tf.h \
 	src/edge_management.c \
-	src/edge_utils_win32.c \
-	src/example_edge_embed_quick_edge_init.c \
 	src/header_encryption.c \
 	src/management.c \
 	src/management.h \
@@ -140,6 +127,8 @@ LINT_CCODE=\
 	src/tuntap_linux.c \
 	src/tuntap_netbsd.c \
 	src/tuntap_osx.c \
+	src/win32/edge_utils_win32.c \
+	src/win32/edge_utils_win32.h \
 	src/wire.c \
 	tools/tests-auth.c \
 	tools/tests-compress.c \
@@ -148,32 +137,15 @@ LINT_CCODE=\
 	tools/tests-transform.c \
 	tools/tests-wire.c \
 
-
 LDLIBS+=-ln2n
 LDLIBS+=$(LDLIBS_EXTRA)
 
-#For OpenSolaris (Solaris too?)
-ifeq ($(CONFIG_TARGET), sunos)
-LDLIBS+=-lsocket -lnsl
-endif
-
-ifeq ($(CONFIG_TARGET),mingw)
-CFLAGS+=-I. -I./win32 -DWIN32
-LDLIBS+=$(abspath win32/n2n_win32.a)
-LDLIBS+=-lnetapi32 -lws2_32 -liphlpapi
-N2N_DEPS+=win32/n2n_win32.a
-SUBDIRS+=win32
-endif
-
-APPS=edge
-APPS+=supernode
-APPS+=example_edge_embed_quick_edge_init
-APPS+=example_edge_embed
-APPS+=example_sn_embed
+APPS=edge$(EXE)
+APPS+=supernode$(EXE)
 
 DOCS=edge.8.gz supernode.1.gz n2n.7.gz
 
-# This is the superset of all packages that might be needed during the build.
+# This is the list of Debian/Ubuntu packages that are needed during the build.
 # Mostly of use in automated build systems.
 BUILD_DEP:=\
 	autoconf \
@@ -187,6 +159,7 @@ BUILD_DEP:=\
 	yamllint \
 
 SUBDIRS+=tools
+SUBDIRS+=examples
 
 COVERAGEDIR?=coverage
 
@@ -202,30 +175,29 @@ version:
 	@echo -n "Build for version: "
 	@scripts/version.sh
 
-tools: $(N2N_LIB)
+examples tools: $(N2N_LIB)
 	$(MAKE) -C $@
-
-win32:
-	$(MAKE) -C $@
-
-win32/edge_rc.o: win32/edge.rc win32/edge.manifest
-	windres win32/edge.rc -O coff -o win32/edge_rc.o
 
 src/edge.o: $(N2N_DEPS)
 src/supernode.o: $(N2N_DEPS)
-src/example_edge_embed_quick_edge_init.o: $(N2N_DEPS)
-src/example_sn_embed.o: $(N2N_DEPS)
-src/example_edge_embed.o: $(N2N_DEPS)
 
 src/edge: $(N2N_LIB)
 src/supernode: $(N2N_LIB)
-src/example_edge_embed_quick_edge_init: $(N2N_LIB)
-src/example_sn_embed: $(N2N_LIB)
-src/example_edge_embed: $(N2N_LIB)
 
-ifeq ($(CONFIG_TARGET), mingw)
-src/edge: win32/edge_rc.o
+ifneq (,$(findstring mingw,$(CONFIG_HOST_OS)))
+N2N_OBJS+=src/win32/edge_utils_win32.o
+N2N_OBJS+=src/win32/getopt1.o
+N2N_OBJS+=src/win32/getopt.o
+N2N_OBJS+=src/win32/wintap.o
+N2N_OBJS+=src/win32/edge_rc.o
 endif
+
+src/win32/edge.rc: src/win32/edge.manifest
+src/win32/edge_rc.o: src/win32/edge.rc
+	$(WINDRES) $< -O coff -o $@
+
+src/edge.exe: src/edge
+src/supernode.exe: src/supernode
 
 %: src/%
 	cp $< $@
@@ -236,8 +208,6 @@ endif
 $(N2N_LIB): $(N2N_OBJS)
 	$(AR) rcs $(N2N_LIB) $(N2N_OBJS)
 #	$(RANLIB) $@
-
-win32/n2n_win32.a: win32
 
 .PHONY: test test.units test.integration
 test: test.units test.integration
@@ -283,18 +253,24 @@ gcov:
 
 # This is a convinent target to use during development or from a CI/CD system
 .PHONY: build-dep
-build-dep:
-ifeq ($(CONFIG_TARGET),generic)
-	sudo apt install $(BUILD_DEP)
-else ifeq ($(CONFIG_TARGET),darwin)
-	brew install automake gcovr
+
+ifneq (,$(findstring darwin,$(CONFIG_HOST_OS)))
+build-dep: build-dep-brew
 else
-	echo Not attempting to install dependancies for system $(CONFIG_TARGET)
+build-dep: build-dep-dpkg
 endif
+
+.PHONY: build-dep-dpkg
+build-dep-dpkg:
+	sudo apt install $(BUILD_DEP)
+
+.PHONY: build-dep-brew
+build-dep-brew:
+	brew install automake gcovr
 
 .PHONY: clean
 clean:
-	rm -f src/edge.o src/supernode.o src/example_edge_embed.o src/example_edge_embed_quick_edge_init.o src/example_sn_embed.o
+	rm -f src/edge.o src/supernode.o
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
@@ -303,7 +279,7 @@ clean:
 distclean:
 	rm -f tests/*.out src/*.gcno src/*.gcda src/*.indent src/*.unc-backup*
 	rm -rf autom4te.cache/
-	rm -f config.log config.status configure Makefile tools/Makefile include/config.h include/config.h.in
+	rm -f config.log config.status configure include/config.h include/config.h.in
 	rm -f doc/edge.8.gz doc/n2n.7.gz doc/supernode.1.gz
 	rm -f packages/debian/config.log packages/debian/config.status
 	rm -rf packages/debian/autom4te.cache/
@@ -311,11 +287,11 @@ distclean:
 	rm -f $(addprefix src/,$(APPS))
 
 .PHONY: install
-install: edge supernode edge.8.gz supernode.1.gz n2n.7.gz
+install: edge$(EXE) supernode$(EXE) edge.8.gz supernode.1.gz n2n.7.gz
 	echo "MANDIR=$(MANDIR)"
 	$(MKDIR) $(SBINDIR) $(MAN1DIR) $(MAN7DIR) $(MAN8DIR)
-	$(INSTALL_PROG) supernode $(SBINDIR)/
-	$(INSTALL_PROG) edge $(SBINDIR)/
+	$(INSTALL_PROG) supernode$(EXE) $(SBINDIR)/
+	$(INSTALL_PROG) edge$(EXE) $(SBINDIR)/
 	$(INSTALL_DOC) edge.8.gz $(MAN8DIR)/
 	$(INSTALL_DOC) supernode.1.gz $(MAN1DIR)/
 	$(INSTALL_DOC) n2n.7.gz $(MAN7DIR)/

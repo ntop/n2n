@@ -24,16 +24,19 @@
 #include <string.h>          // for memcmp, memcpy, memset, strlen, strerror
 #include <sys/time.h>        // for gettimeofday, timeval
 #include <time.h>            // for time, localtime, strftime
-#include "config.h"          // for PACKAGE_BUILDDATE, PACKAGE_OSNAME, PACKA...
+#include "config.h"          // for PACKAGE_BUILDDATE, PACKA...
 #include "n2n.h"
 #include "random_numbers.h"  // for n2n_rand
 #include "sn_selection.h"    // for sn_selection_criterion_default
 #include "uthash.h"          // for UT_hash_handle, HASH_DEL, HASH_ITER, HAS...
 
-#ifdef WIN32
-#include <winsock2.h>
+#ifdef HAVE_LIBPTHREAD
+#include <pthread.h>
+#endif
+
+#ifdef _WIN32
+#include "win32/defs.h"
 #include <ws2def.h>
-#include <ws2tcpip.h>
 #else
 #include <arpa/inet.h>       // for inet_ntop
 #include <netdb.h>           // for addrinfo, freeaddrinfo, gai_strerror
@@ -56,7 +59,7 @@ SOCKET open_socket (int local_port, in_addr_t address, int type /* 0 = UDP, TCP 
         return(-1);
     }
 
-#ifndef WIN32
+#ifndef _WIN32
     /* fcntl(sock_fd, F_SETFL, O_NONBLOCK); */
 #endif
 
@@ -78,7 +81,10 @@ SOCKET open_socket (int local_port, in_addr_t address, int type /* 0 = UDP, TCP 
 
 
 static int traceLevel = 2 /* NORMAL */;
-static int useSyslog = 0, syslog_opened = 0;
+static int useSyslog = 0;
+#ifndef _WIN32
+static int syslog_opened = 0;
+#endif
 static FILE *traceFile = NULL;
 
 int getTraceLevel () {
@@ -106,7 +112,7 @@ void closeTraceFile () {
     if((traceFile != NULL) && (traceFile != stdout)) {
         fclose(traceFile);
     }
-#ifndef WIN32
+#ifndef _WIN32
     if(useSyslog && syslog_opened) {
         closelog();
         syslog_opened = 0;
@@ -154,7 +160,7 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
             buf[strlen(buf) - 1] = '\0';
         }
 
-#ifndef WIN32
+#ifndef _WIN32
         if(useSyslog) {
             if(!syslog_opened) {
                 openlog("n2n", LOG_PID, LOG_DAEMON);
@@ -174,7 +180,7 @@ void _traceEvent (int eventTraceLevel, char* file, int line, char * format, ...)
             snprintf(out_buf, sizeof(out_buf), "%s [%s:%d] %s%s", theDate, &file[i], line, extra_msg, buf);
             fprintf(traceFile, "%s\n", out_buf);
             fflush(traceFile);
-#ifndef WIN32
+#ifndef _WIN32
         }
 #endif
     }
@@ -332,7 +338,7 @@ int supernode2sock (n2n_sock_t *sn, const n2n_sn_name_t addrIn) {
 }
 
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
 N2N_THREAD_RETURN_DATATYPE resolve_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
     n2n_resolve_parameter_t *param = (n2n_resolve_parameter_t*)p;
@@ -385,7 +391,7 @@ N2N_THREAD_RETURN_DATATYPE resolve_thread(N2N_THREAD_PARAMETER_DATATYPE p) {
 
 int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn_list) {
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     struct peer_info        *sn, *tmp_sn;
     n2n_resolve_ip_sock_t   *entry;
     int                     ret;
@@ -430,7 +436,7 @@ int resolve_create_thread (n2n_resolve_parameter_t **param, struct peer_info *sn
 
 void resolve_cancel_thread (n2n_resolve_parameter_t *param) {
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     pthread_cancel(param->id);
     free(param);
 #endif
@@ -441,7 +447,7 @@ uint8_t resolve_check (n2n_resolve_parameter_t *param, uint8_t requires_resoluti
 
     uint8_t ret = requires_resolution; /* if trylock fails, it still requires resolution */
 
-#ifdef HAVE_PTHREAD
+#ifdef HAVE_LIBPTHREAD
     n2n_resolve_ip_sock_t   *entry, *tmp_entry;
     n2n_sock_str_t sock_buf;
 
@@ -522,6 +528,7 @@ struct peer_info* add_sn_to_list_by_mac_or_sock (struct peer_info **sn_list, n2n
             if(peer) {
                 sn_selection_criterion_default(&(peer->selection_criterion));
                 peer->last_valid_time_stamp = initial_time_stamp();
+                peer->purgeable = true;
                 memcpy(&(peer->sock), sock, sizeof(n2n_sock_t));
                 memcpy(peer->mac_addr, mac, sizeof(n2n_mac_t));
                 HASH_ADD_PEER(*sn_list, peer);
@@ -608,10 +615,10 @@ void hexdump (const uint8_t *buf, size_t len) {
 
 void print_n2n_version () {
 
-    printf("Welcome to n2n v.%s for %s\n"
+    printf("Welcome to n2n v.%s\n"
            "Built on %s\n"
            "Copyright 2007-2022 - ntop.org and contributors\n\n",
-           PACKAGE_VERSION, PACKAGE_OSNAME, PACKAGE_BUILDDATE);
+           PACKAGE_VERSION, PACKAGE_BUILDDATE);
 }
 
 /* *********************************************** */
@@ -681,7 +688,7 @@ size_t clear_peer_list (struct peer_info ** peer_list) {
     size_t retval = 0;
 
     HASH_ITER(hh, *peer_list, scan, tmp) {
-        if (scan->purgeable == false && scan->ip_addr) {
+        if (!scan->purgeable && scan->ip_addr) {
             free(scan->ip_addr);
         }
         HASH_DEL(*peer_list, scan);
@@ -735,7 +742,7 @@ extern char * sock_to_cstr (n2n_sock_str_t out,
     memset(out, 0, N2N_SOCKBUF_SIZE);
 
     if(AF_INET6 == sock->family) {
-        char tmp[sizeof(n2n_sock_str_t)];
+        char tmp[INET6_ADDRSTRLEN+1];
 
         tmp[0] = '\0';
         inet_ntop(AF_INET6, sock->addr.v6, tmp, sizeof(n2n_sock_str_t));
@@ -837,7 +844,7 @@ int memxor (uint8_t *destination, const uint8_t *source, size_t len) {
 
 /* *********************************************** */
 
-#if defined(WIN32)
+#ifdef _WIN32
 int gettimeofday (struct timeval *tp, void *tzp) {
 
     time_t clock;
