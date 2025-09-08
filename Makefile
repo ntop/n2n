@@ -97,6 +97,13 @@ N2N_OBJS=\
 	src/tuntap_osx.o \
 	src/wire.o \
 
+DEPFILES = $(N2N_OBJS:.o=.d)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -MMD -MP -c -o $@ $<
+
+-include $(DEPFILES)
+
 N2N_DEPS=$(wildcard include/*.h) $(wildcard src/*.c) config.mak
 
 # As source files pass the linter, they can be added here (If all the source
@@ -273,6 +280,7 @@ clean:
 	rm -f src/edge.o src/supernode.o
 	rm -rf $(N2N_OBJS) $(N2N_LIB) $(APPS) $(DOCS) $(COVERAGEDIR)/ *.dSYM *~
 	rm -f tests/*.out src/*.gcno src/*.gcda
+	rm -f $(DEPFILES)
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean; done
 
 .PHONY: distclean
