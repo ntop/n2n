@@ -94,9 +94,21 @@
 #include <linux/rtnetlink.h>
 #endif /* #ifdef __linux__ */
 
+#ifdef __APPLE__
+#define N2N_CAN_NAME_IFACE 1
+#endif
+
 #ifdef __FreeBSD__
 #include <netinet/in_systm.h>
 #endif /* #ifdef __FreeBSD__ */
+
+#ifdef __APPLE__
+#include <sys/kern_control.h>
+#include <sys/sys_domain.h>
+#include <net/if_utun.h>
+#include <net/if.h>
+#include <ifaddrs.h>
+#endif /* #ifdef __APPLE__ */
 
 #include <syslog.h>
 #include <sys/wait.h>

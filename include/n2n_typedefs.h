@@ -222,6 +222,9 @@ typedef struct tuntap_dev {
     uint32_t             device_mask;
     uint16_t             mtu;
     char                 dev_name[N2N_IFNAMSIZ];
+#ifdef __APPLE__
+    void                *edge_context;
+#endif
 } tuntap_dev;
 
 #define SOCKET int

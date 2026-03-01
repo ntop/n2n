@@ -1,0 +1,28 @@
+=== n2n macOS utun unit tests ===
+
+PASS: IPv4 multicast 224.0.0.1 -> 01:00:5E:00:00:01
+PASS: IPv4 multicast 239.255.255.250 -> 01:00:5E:7F:FF:FA
+PASS: IPv6 multicast ff02::1 -> 33:33:00:00:00:01
+PASS: IPv4 broadcast 255.255.255.255 -> FF:FF:FF:FF:FF:FF
+PASS: IPv4 subnet broadcast 10.0.0.255/24 -> FF:FF:FF:FF:FF:FF
+PASS: Unknown unicast IP not in ARP cache -> broadcast MAC
+PASS: ARP cache: insert and lookup returns correct MAC
+PASS: ARP cache: update replaces old MAC with new MAC
+PASS: ARP cache: miss returns broadcast MAC
+PASS: ARP cache: broadcast MAC not cached, returns broadcast
+PASS: ARP cache: zero MAC not cached, returns broadcast
+PASS: ARP handle returns frame length
+PASS: ARP request: sender MAC/IP learned in cache
+PASS: AF header is AF_INET
+PASS: Ethernet synthesis: dest MAC from ARP cache
+PASS: Ethernet synthesis: EtherType is 0x0800
+PASS: Ethernet synthesis: src MAC is our MAC
+PASS: Assembled frame: dest MAC at offset 0
+PASS: Assembled frame: EtherType at offset 12
+PASS: ARP frame has EtherType 0x0806
+PASS: IPX frame is not IP/IPv6, would be silently consumed
+PASS: IPv4 frame has correct EtherType
+PASS: IPv6 unicast -> broadcast MAC
+PASS: Known unicast IP returns cached MAC
+
+=== Results: 24 passed, 0 failed ===

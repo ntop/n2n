@@ -121,6 +121,12 @@ N2N_DEPS+=win32/n2n_win32.a
 SUBDIRS+=win32
 endif
 
+ifeq ($(CONFIG_TARGET),darwin)
+CFLAGS+=-I./macos
+N2N_OBJS+=$(patsubst macos/%.c, macos/%.o, $(wildcard macos/*.c))
+N2N_DEPS+=$(wildcard macos/*.h) $(wildcard macos/*.c)
+endif
+
 APPS=edge
 APPS+=supernode
 APPS+=example_edge_embed_quick_edge_init

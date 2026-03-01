@@ -46,6 +46,9 @@ SOCKET open_socket (int local_port, in_addr_t address, int type /* 0 = UDP, TCP 
 
     sockopt = 1;
     setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, (char *)&sockopt, sizeof(sockopt));
+#ifdef SO_REUSEPORT
+    setsockopt(sock_fd, SOL_SOCKET, SO_REUSEPORT, (char *)&sockopt, sizeof(sockopt));
+#endif
 
     memset(&local_address, 0, sizeof(local_address));
     local_address.sin_family = AF_INET;
