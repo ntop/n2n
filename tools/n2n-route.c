@@ -41,6 +41,7 @@
 #ifdef _WIN32
 #include <winsock.h>
 #include <ws2tcpip.h>
+#include <iphlpapi.h>
 #else
 #include <arpa/inet.h>         // for inet_pton
 #include <net/if.h>            // for if_indextoname
