@@ -17,6 +17,10 @@
 
 #endif
 
+#if defined(__WINDOWS__)
+#   include <stdlib.h>
+#endif
+
 #if defined(__linux__) || defined(__CYGWIN__)
 /* Define necessary macros for the header to expose all fields. */
 #   if !defined(_BSD_SOURCE)

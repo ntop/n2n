@@ -26,8 +26,8 @@
 #include <windows.h>
 #include <ws2def.h>
 #include <ws2ipdef.h>
+#include <iphlpapi.h>
 #if defined(_MSC_VER)
-#include <Iphlpapi.h>
 #pragma comment(lib,"Iphlpapi.lib")
 #endif
 #include <netioapi.h>
@@ -105,9 +105,9 @@ typedef struct tuntap_dev {
 #define pthread_mutex_t HANDLE
 
 #define pthread_create(p_thread_handle, attr, thread_func, p_param)                         \
-    (*p_thread_handle = CreateThread(0 /* default security flags */, 0 /*default stack*/,   \
-                 thread_func, p_param, 0 /* default creation flags */,                      \
-                 NULL) == 0)
+    ((*p_thread_handle = CreateThread(0 /* default security flags */, 0 /*default stack*/,  \
+                 (LPTHREAD_START_ROUTINE)thread_func, p_param, 0 /* default creation flags */, \
+                 NULL)) == NULL)
 
 #define pthread_cancel(p_thread_handle) \
     TerminateThread(p_thread_handle, 0)
@@ -120,7 +120,7 @@ typedef struct tuntap_dev {
     WaitForSingleObject(*mutex, INFINITE)
 
 #define pthread_mutex_trylock(mutex)  \
-    WaitForSingleObject(*mutex, NULL)
+    WaitForSingleObject(*mutex, 0)
 
 #define pthread_mutex_unlock(mutex) \
     ReleaseMutex(*mutex)
