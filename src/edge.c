@@ -953,7 +953,7 @@ static void daemonize () {
 
 static int keep_on_running;
 
-#if defined(__linux__) || defined(WIN32)
+#if defined(__linux__) || defined(WIN32) || defined(__APPLE__)
 #ifdef WIN32
 BOOL WINAPI term_handler(DWORD sig)
 #else
@@ -975,7 +975,7 @@ BOOL WINAPI term_handler(DWORD sig)
     return(TRUE);
 #endif
 }
-#endif /* defined(__linux__) || defined(WIN32) */
+#endif /* defined(__linux__) || defined(WIN32) || defined(__APPLE__) */
 
 /* *************************************************** */
 
@@ -1238,6 +1238,9 @@ int main (int argc, char* argv[]) {
                                                            ) < 0)
                 exit(1);
             memcpy(&eee->device, &tuntap, sizeof(tuntap));
+#ifdef __APPLE__
+            eee->device.edge_context = eee;
+#endif
             traceEvent(TRACE_NORMAL, "created local tap device IP: %s, Mask: %s, MAC: %s",
                                      eee->tuntap_priv_conf.ip_addr,
                                      eee->tuntap_priv_conf.netmask,
@@ -1325,7 +1328,7 @@ int main (int argc, char* argv[]) {
         traceEvent(TRACE_WARNING, "running as root is discouraged, check out the -u/-g options");
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     signal(SIGPIPE, SIG_IGN);
     signal(SIGTERM, term_handler);
     signal(SIGINT,  term_handler);

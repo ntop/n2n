@@ -44,6 +44,9 @@ static void check_peer_registration_needed (n2n_edge_t *eee,
 
 static int edge_init_sockets (n2n_edge_t *eee);
 int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
+#ifdef __APPLE__
+int edge_init_routes_darwin (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes);
+#endif
 static void edge_cleanup_routes (n2n_edge_t *eee);
 
 static void check_known_peer_sock_change (n2n_edge_t *eee,
@@ -3641,6 +3644,10 @@ static int edge_init_routes_win (n2n_edge_t *eee, n2n_route_t *routes, uint16_t 
 int edge_init_routes (n2n_edge_t *eee, n2n_route_t *routes, uint16_t num_routes) {
 #ifdef __linux__
     return    edge_init_routes_linux(eee, routes, num_routes);
+#endif
+
+#ifdef __APPLE__
+    return    edge_init_routes_darwin(eee, routes, num_routes);
 #endif
 
 #ifdef WIN32

@@ -11,6 +11,10 @@ TESTS="
     tests-wire
 "
 
+if [ "$(uname)" = "Darwin" ]; then
+    TESTS="$TESTS tests-utun"
+fi
+
 TOOLSDIR=tools
 TESTDATA=tests
 

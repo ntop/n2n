@@ -20,6 +20,11 @@ TOOLS+=@ADDITIONAL_TOOLS@
 TESTS=tests-compress tests-elliptic tests-hashing tests-transform
 TESTS+=tests-wire
 
+ifeq ($(CONFIG_TARGET),darwin)
+CFLAGS+=-I../macos
+TESTS+=tests-utun
+endif
+
 .PHONY: all clean install
 all: $(TOOLS) $(TESTS)
 

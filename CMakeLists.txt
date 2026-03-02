@@ -166,6 +166,12 @@ if(DEFINED WIN32)
   target_link_libraries(n2n edge_utils_win32 n2n_win32 iphlpapi)
 endif(DEFINED WIN32)
 
+if(APPLE)
+  INCLUDE_DIRECTORIES(macos)
+  add_subdirectory(macos)
+  target_link_libraries(n2n n2n_macos)
+endif()
+
 add_executable(edge src/edge.c)
 target_link_libraries(edge n2n)
 

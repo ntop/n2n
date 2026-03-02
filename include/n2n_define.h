@@ -142,7 +142,11 @@ enum skip_add {SN_ADD = 0, SN_ADD_SKIP = 1, SN_ADD_ADDED = 2};
 #define N2N_MACNAMSIZ             18 /* AA:BB:CC:DD:EE:FF + NULL*/
 #define N2N_IF_MODE_SIZE          16 /* static | dhcp */
 
+#ifdef __APPLE__
+#define N2N_EDGE_DEFAULT_DEV_NAME    "utun"
+#else
 #define N2N_EDGE_DEFAULT_DEV_NAME    "edge0"
+#endif
 #define N2N_EDGE_DEFAULT_NETMASK     "255.255.255.0"  /* default netmask for edge ip address... */
 #define N2N_EDGE_DEFAULT_CIDR_NM     24               /* ... also in cidr format  */
 

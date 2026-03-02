@@ -1,13 +1,66 @@
 # n2n on macOS
 
-In order to use n2n on macOS, you first need to install support for TUN/TAP interfaces:
+n2n supports macOS Catalina (10.15) and later using the native `utun` interface.
+No third-party kernel extensions (kexts) or TUN/TAP drivers are required.
+
+## Building
+
+```bash
+./autogen.sh
+./configure
+make
+```
+
+If autotools are not available, you can also use CMake:
+
+```bash
+mkdir build && cd build
+cmake ..
+make
+```
+
+## Running
+
+```bash
+sudo ./edge -c mynetwork -k mysecretpass -a 192.168.100.1 -l supernode:7777
+```
+
+`sudo` is required to create utun interfaces.
+
+## Running unit tests
+
+```bash
+make test
+```
+
+For the full integration test suite (requires sudo and starts/stops edge processes):
+
+```bash
+sudo scripts/test_utun.sh
+```
+
+## Differences from Linux
+
+- The interface name (e.g. `utun7`) is assigned by the kernel. Use `-d utun5`
+  to request a specific interface number.
+- DHCP mode (`-a dhcp:...`) is not supported. Use static IP or supernode
+  auto-assignment instead.
+- The VPN operates in IP-only mode (Layer 3) on the local interface. Non-IP
+  Ethernet protocols are not supported locally, but full Ethernet compatibility
+  is maintained on the wire with Linux/Windows peers.
+- ARP resolution for remote peers is handled internally by the edge process.
+- Routes bound to the utun interface are automatically cleaned up when the
+  edge process exits (the kernel destroys the interface on fd close).
+
+## Legacy macOS (pre-Catalina)
+
+Older versions of macOS that still support kernel extensions can use the
+tuntaposx TAP driver. This is no longer maintained and not recommended:
 
 ```bash
 brew tap homebrew/cask
-brew cask install tuntap
+brew install --cask tuntap
 ```
-
-If you are on a modern version of macOS (i.e. Catalina), the commands above will ask you to enable the TUN/TAP kernel extension in System Preferences → Security & Privacy → General.
 
 For more information refer to vendor documentation or the [Apple Technical Note](https://developer.apple.com/library/content/technotes/tn2459/_index.html).
 
