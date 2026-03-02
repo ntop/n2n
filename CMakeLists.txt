@@ -1,5 +1,5 @@
+cmake_minimum_required(VERSION 3.5...3.31)
 project(n2n)
-cmake_minimum_required(VERSION 2.6)
 include(CheckFunctionExists)
 SET(CMAKE_VERBOSE_MAKEFILE ON)
 
