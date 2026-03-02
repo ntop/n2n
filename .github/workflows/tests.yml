@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Run minimal test set
         run: |
           ./autogen.sh
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Make the makefiles
         run: |
@@ -44,14 +44,14 @@ jobs:
     name: Test Linux
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os:
-          - ubuntu-20.04
           - ubuntu-22.04
+          - ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install essential
         run: |
@@ -85,39 +85,40 @@ jobs:
 
       - if: ${{ always() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: tests-out
+          name: tests-out-${{ matrix.os }}
           path: tests
 
       - name: Generate coverage reports
         run: |
+          rm -f a-conftest.gcno a-conftest.gcda
           make gcov
           make cover COVERAGEDIR=coverage/${{ matrix.os }}
         shell: bash
 
       - name: Upload gcovr report artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: coverage
+          name: coverage-${{ matrix.os }}
           path: coverage
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
 
   test_macos:
     needs: smoketest
     name: Test MacOS
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os:
-          - macos-11
-          - macos-12
+          - macos-14
+          - macos-15
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install packages
         run: |
@@ -150,9 +151,9 @@ jobs:
 
       - if: ${{ always() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: tests-out
+          name: tests-out-${{ matrix.os }}
           path: tests
 
       - name: Generate coverage reports
@@ -169,27 +170,27 @@ jobs:
         shell: bash
 
       # - name: Upload gcovr report artifact
-      #  uses: actions/upload-artifact@v2
+      #  uses: actions/upload-artifact@v4
       #  with:
-      #    name: coverage
+      #    name: coverage-${{ matrix.os }}
       #    path: coverage
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
 
   test_windows:
     needs: smoketest
     name: Test Windows
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os:
-          - windows-2019
           - windows-2022
+          - windows-2025
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: generate a makefile and use it to install more packages
         run: |
@@ -218,18 +219,19 @@ jobs:
 
       - if: ${{ always() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: tests-out
+          name: tests-out-${{ matrix.os }}
           path: tests
 
       - name: Generate coverage data
         run: |
-          make gcov
+          make gcov || true
         shell: bash
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
+        continue-on-error: true
 
   package_dpkg:
     name: Package for Debian/Ubuntu
@@ -246,7 +248,7 @@ jobs:
           - i386
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -280,9 +282,9 @@ jobs:
           make
 
       - name: Upload dpkg
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: packages-dpkg
+          name: packages-dpkg-${{ matrix.arch }}
           path: packages/debian/*.deb
 
   package_rpm:
@@ -292,7 +294,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -321,7 +323,7 @@ jobs:
           mv ../rpmbuild ./
 
       - name: Upload rpm
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: packages-rpm
           path: rpmbuild/RPMS/x86_64/*.rpm
@@ -333,7 +335,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Fix Checkout
         run: |
@@ -351,9 +353,9 @@ jobs:
           make install DESTDIR=binaries/x86_64-pc-mingw64
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: binaries-windows
           path: binaries
 
   binaries_macos:
@@ -369,7 +371,7 @@ jobs:
           - arm64-apple-macos
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Fix Checkout
         run: |
@@ -393,7 +395,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: Upload config.log output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: config-log-${{ matrix.arch }}
           path: config.log
@@ -404,9 +406,9 @@ jobs:
           make install DESTDIR=binaries/${{ matrix.arch }}
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: binaries-macos-${{ matrix.arch }}
           path: binaries
 
   binaries_macos_universal:
@@ -416,7 +418,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Fix Checkout
         run: |
@@ -444,9 +446,9 @@ jobs:
           make install DESTDIR=binaries/universal-apple-darwin
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: binaries-macos-universal
           path: binaries
 
   binaries_linux_crosscompile:
@@ -469,7 +471,7 @@ jobs:
           - mipsel-linux-gnu
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Fix Checkout
         run: |
@@ -497,9 +499,9 @@ jobs:
           make install DESTDIR=binaries/${{ matrix.arch }}
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: binaries-linux-${{ matrix.arch }}
           path: binaries
 
   # Given the clearly documented use of annotated tags to signal releases,
@@ -526,7 +528,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Fix Checkout
         run: |
@@ -536,22 +538,23 @@ jobs:
         id: get_tagtype
         run: |
           TYPE=$(git cat-file -t $GITHUB_REF)
-          echo "::set-output name=TAGTYPE::$TYPE"
+          echo "TAGTYPE=$TYPE" >> "$GITHUB_OUTPUT"
           echo ==========
           echo REF=$GITHUB_REF
           echo TAGTYPE=$TYPE
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: Upload Assets to Release
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           prerelease: true
           files: |
-            artifacts/packages-dpkg/*.deb
+            artifacts/packages-dpkg*/*.deb
             artifacts/packages-rpm/*.rpm

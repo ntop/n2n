@@ -39,9 +39,12 @@
 # endif
 #endif
 
+#include "getopt.h"
+
 #include <stdio.h>
 #ifdef WIN32
 #include <string.h>
+#include <stdlib.h>
 #endif
 
 /* Comment out all this code if we are using the GNU C Library, and are not
@@ -103,8 +106,6 @@
 
    GNU application programs can use a third alternative mode in which
    they can distinguish the relative order of options and other arguments.  */
-
-#include "getopt.h"
 
 /* For communication from `getopt' to the caller.
    When `getopt' finds an option that takes an argument,
@@ -221,17 +222,10 @@ static char *posixly_correct;
 # endif
 #endif
 
-/* Avoid depending on library functions or files
-   whose names are inconsistent.  */
-
-#ifndef getenv
-extern char *getenv ();
-#endif
+/* getenv is declared in stdlib.h which we include for WIN32 */
 
 static char *
-my_index (str, chr)
-     const char *str;
-     int chr;
+my_index (const char *str, int chr)
 {
   while (*str)
     {
@@ -319,8 +313,7 @@ static void exchange (char **);
 #endif
 
 static void
-exchange (argv)
-     char **argv;
+exchange (char **argv)
 {
   int bottom = first_nonopt;
   int middle = last_nonopt;
@@ -400,14 +393,8 @@ exchange (argv)
 
 /* Initialize the internal data when the first call is made.  */
 
-#if defined __STDC__ && __STDC__
-static const char *_getopt_initialize (int, char *const *, const char *);
-#endif
 static const char *
-_getopt_initialize (argc, argv, optstring)
-     int argc;
-     char *const *argv;
-     const char *optstring;
+_getopt_initialize (int argc, char *const *argv, const char *optstring)
 {
   /* Start processing options with ARGV-element 1 (since ARGV-element 0
      is the program name); the sequence of previously skipped
@@ -526,13 +513,8 @@ _getopt_initialize (argc, argv, optstring)
    long-named options.  */
 
 int
-_getopt_internal (argc, argv, optstring, longopts, longind, long_only)
-     int argc;
-     char *const *argv;
-     const char *optstring;
-     const struct option *longopts;
-     int *longind;
-     int long_only;
+_getopt_internal (int argc, char *const *argv, const char *optstring,
+                  const struct option *longopts, int *longind, int long_only)
 {
   int print_errors = opterr;
   if (optstring[0] == ':')
@@ -987,10 +969,7 @@ _getopt_internal (argc, argv, optstring, longopts, longind, long_only)
 }
 
 int
-getopt____ (argc, argv, optstring)
-     int argc;
-     char *const *argv;
-     const char *optstring;
+getopt____ (int argc, char *const *argv, const char *optstring)
 {
   return _getopt_internal (argc, argv, optstring,
 			   (const struct option *) 0,
@@ -1006,9 +985,7 @@ getopt____ (argc, argv, optstring)
    the above definition of `getopt'.  */
 
 int
-main (argc, argv)
-     int argc;
-     char **argv;
+main (int argc, char **argv)
 {
   int c;
   int digit_optind = 0;

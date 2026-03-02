@@ -47,12 +47,12 @@ class JsonUDP():
 
         # TODO: We assume the first packet we get will be tagged for us
         # and be either an "error" or a "begin"
-        assert(data['_tag'] == tagstr)
+        assert data['_tag'] == tagstr
 
         if data['_type'] == 'error':
             raise ValueError('Error: {}'.format(data['error']))
 
-        assert(data['_type'] == 'begin')
+        assert data['_type'] == 'begin'
 
         # Ideally, we would confirm that this is our "begin", but that
         # would need the cmd passed into this method, and that would
