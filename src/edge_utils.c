@@ -3122,10 +3122,14 @@ static int edge_init_sockets (n2n_edge_t *eee) {
         closesocket(eee->udp_multicast_sock);
 #endif
 
-    eee->udp_mgmt_sock = open_socket(eee->conf.mgmt_port, INADDR_LOOPBACK, 0 /* UDP */);
-    if(eee->udp_mgmt_sock < 0) {
-        traceEvent(TRACE_ERROR, "failed to bind management UDP port %u", eee->conf.mgmt_port);
-        return(-2);
+    if(eee->conf.mgmt_port == 0) {
+        traceEvent(TRACE_NORMAL, "management port disabled");
+    } else {
+        eee->udp_mgmt_sock = open_socket(eee->conf.mgmt_port, INADDR_LOOPBACK, 0 /* UDP */);
+        if(eee->udp_mgmt_sock < 0) {
+            traceEvent(TRACE_ERROR, "failed to bind management UDP port %u", eee->conf.mgmt_port);
+            return(-2);
+        }
     }
 
 #ifndef SKIP_MULTICAST_PEERS_DISCOVERY
