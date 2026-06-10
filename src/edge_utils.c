@@ -2913,7 +2913,8 @@ int run_edge_loop (n2n_edge_t *eee) {
 
         FD_ZERO(&socket_mask);
 
-        FD_SET(eee->udp_mgmt_sock, &socket_mask);
+        if(eee->udp_mgmt_sock >= 0)
+            FD_SET(eee->udp_mgmt_sock, &socket_mask);
         max_sock = eee->udp_mgmt_sock;
 
         if(eee->sock >= 0) {
@@ -2980,7 +2981,7 @@ int run_edge_loop (n2n_edge_t *eee) {
             }
 #endif
 
-            if(FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
+            if(eee->udp_mgmt_sock >= 0 && FD_ISSET(eee->udp_mgmt_sock, &socket_mask)) {
                 // read from the management port socket
                 readFromMgmtSocket(eee);
 
