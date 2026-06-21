@@ -16,7 +16,7 @@
 #if defined(__MINGW32__)
 /* should be defined here and before winsock gets included */
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x501 //Otherwise the linker doesnt find getaddrinfo
+#define _WIN32_WINNT 0x0601 /* Windows 7+ (required for modern API support) */
 #endif /* #ifndef _WIN32_WINNT */
 #include <inttypes.h>
 #endif /* #if defined(__MINGW32__) */

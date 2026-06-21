@@ -6,13 +6,16 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   smoketest:
     name: Smoke test
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Run minimal test set
         run: |
           ./autogen.sh
@@ -24,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Make the makefiles
         run: |
@@ -51,7 +54,7 @@ jobs:
           - ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install essential
         run: |
@@ -79,32 +82,38 @@ jobs:
       - if: ${{ always() }}
         name: Move test outputs to an arch specific location
         shell: bash
+        env:
+          MATRIX_OS: ${{ matrix.os }}
         run: |
-          mkdir -p tests/${{ matrix.os }}
-          mv tests/*.out tests/${{ matrix.os }}
+          mkdir -p "tests/$MATRIX_OS"
+          mv tests/*.out "tests/$MATRIX_OS"
 
       - if: ${{ always() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tests-out-${{ matrix.os }}
           path: tests
 
       - name: Generate coverage reports
+        env:
+          MATRIX_OS: ${{ matrix.os }}
         run: |
           rm -f a-conftest.gcno a-conftest.gcda
           make gcov
-          make cover COVERAGEDIR=coverage/${{ matrix.os }}
+          make cover COVERAGEDIR="coverage/$MATRIX_OS"
         shell: bash
 
       - name: Upload gcovr report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-${{ matrix.os }}
           path: coverage
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   test_macos:
     needs: smoketest
@@ -118,7 +127,7 @@ jobs:
           - macos-15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install packages
         run: |
@@ -145,13 +154,15 @@ jobs:
       - if: ${{ always() }}
         name: Move test outputs to an arch specific location
         shell: bash
+        env:
+          MATRIX_OS: ${{ matrix.os }}
         run: |
-          mkdir -p tests/${{ matrix.os }}
-          mv tests/*.out tests/${{ matrix.os }}
+          mkdir -p "tests/$MATRIX_OS"
+          mv tests/*.out "tests/$MATRIX_OS"
 
       - if: ${{ always() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tests-out-${{ matrix.os }}
           path: tests
@@ -170,13 +181,15 @@ jobs:
         shell: bash
 
       # - name: Upload gcovr report artifact
-      #  uses: actions/upload-artifact@v4
+      #  uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       #  with:
       #    name: coverage-${{ matrix.os }}
       #    path: coverage
 
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   test_windows:
     needs: smoketest
@@ -190,7 +203,7 @@ jobs:
           - windows-2025
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: generate a makefile and use it to install more packages
         run: |
@@ -213,25 +226,33 @@ jobs:
       - if: ${{ always() }}
         name: Move test outputs to an arch specific location
         shell: bash
+        env:
+          MATRIX_OS: ${{ matrix.os }}
         run: |
-          mkdir -p tests/${{ matrix.os }}
-          mv tests/*.out tests/${{ matrix.os }}
+          mkdir -p "tests/$MATRIX_OS"
+          mv tests/*.out "tests/$MATRIX_OS"
 
       - if: ${{ always() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tests-out-${{ matrix.os }}
           path: tests
 
+      # Coverage generation is flaky on Windows/MinGW (gcov output format
+      # differences). Allow failure so it doesn't block the pipeline.
       - name: Generate coverage data
         run: |
           make gcov || true
         shell: bash
 
+      # Codecov upload may fail on Windows when coverage data is incomplete.
+      # Allow failure to avoid blocking the pipeline.
       - name: Upload data to codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         continue-on-error: true
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   package_dpkg:
     name: Package for Debian/Ubuntu
@@ -248,7 +269,7 @@ jobs:
           - i386
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -257,23 +278,27 @@ jobs:
           git fetch --force --tags
 
       - name: Install packages needed for build
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
           sudo apt-get update
           sudo apt-get install debhelper build-essential \
-            crossbuild-essential-${{ matrix.arch }}
+            "crossbuild-essential-$MATRIX_ARCH"
 
       - name: Configure
         # The HOST_TRIPLET line is not easily foldable
         # yamllint disable rule:line-length
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
           # This will warn about CC, but we cannot set CC until we run it :-S
-          HOST_TRIPLET=$(dpkg-architecture -a${{ matrix.arch }} -q DEB_HOST_GNU_TYPE)
+          HOST_TRIPLET=$(dpkg-architecture -a"$MATRIX_ARCH" -q DEB_HOST_GNU_TYPE)
           export CC=$HOST_TRIPLET-gcc
           export AR=$HOST_TRIPLET-ar
           ./autogen.sh
-          ./configure --host $HOST_TRIPLET
+          ./configure --host "$HOST_TRIPLET"
           cd packages/debian/
-          ./configure EXTN=${{ matrix.arch }}
+          ./configure EXTN="$MATRIX_ARCH"
         # yamllint enable rule:line-length
 
       - name: Build
@@ -282,7 +307,7 @@ jobs:
           make
 
       - name: Upload dpkg
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: packages-dpkg-${{ matrix.arch }}
           path: packages/debian/*.deb
@@ -294,7 +319,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -323,7 +348,7 @@ jobs:
           mv ../rpmbuild ./
 
       - name: Upload rpm
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: packages-rpm
           path: rpmbuild/RPMS/x86_64/*.rpm
@@ -335,7 +360,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Fix Checkout
         run: |
@@ -353,7 +378,7 @@ jobs:
           make install DESTDIR=binaries/x86_64-pc-mingw64
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: binaries-windows
           path: binaries
@@ -371,7 +396,7 @@ jobs:
           - arm64-apple-macos
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Fix Checkout
         run: |
@@ -383,30 +408,34 @@ jobs:
 
       - name: Configure and Build
         shell: bash
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
           # this is a hack! it assumes the default SDK is the 'right' one
           export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
           ./autogen.sh
           export CC=clang
-          export CFLAGS="-target ${{ matrix.arch }}"
-          export LDFLAGS="-target ${{ matrix.arch }}"
-          ./configure --host=${{ matrix.arch }}
+          export CFLAGS="-target $MATRIX_ARCH"
+          export LDFLAGS="-target $MATRIX_ARCH"
+          ./configure --host="$MATRIX_ARCH"
           make
 
       - if: ${{ failure() }}
         name: Upload config.log output
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: config-log-${{ matrix.arch }}
           path: config.log
 
       - name: Create binary dir
         shell: bash
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
-          make install DESTDIR=binaries/${{ matrix.arch }}
+          make install DESTDIR="binaries/$MATRIX_ARCH"
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: binaries-macos-${{ matrix.arch }}
           path: binaries
@@ -418,7 +447,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Fix Checkout
         run: |
@@ -446,7 +475,7 @@ jobs:
           make install DESTDIR=binaries/universal-apple-darwin
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: binaries-macos-universal
           path: binaries
@@ -471,35 +500,41 @@ jobs:
           - mipsel-linux-gnu
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Fix Checkout
         run: |
           git fetch --force --tags
 
       - name: Install cross compiler
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
           sudo apt-get update
           sudo apt-get install \
-            binutils-${{ matrix.arch }} \
-            gcc-${{ matrix.arch }}
+            "binutils-$MATRIX_ARCH" \
+            "gcc-$MATRIX_ARCH"
 
       - name: Configure and Build
         shell: bash
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
           ./autogen.sh
-          export CC=${{ matrix.arch }}-gcc
-          export AR=${{ matrix.arch }}-ar
-          ./configure --host ${{ matrix.arch }}
+          export CC="$MATRIX_ARCH-gcc"
+          export AR="$MATRIX_ARCH-ar"
+          ./configure --host "$MATRIX_ARCH"
           make
 
       - name: Create binary dir
         shell: bash
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
         run: |
-          make install DESTDIR=binaries/${{ matrix.arch }}
+          make install DESTDIR="binaries/$MATRIX_ARCH"
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: binaries-linux-${{ matrix.arch }}
           path: binaries
@@ -518,6 +553,8 @@ jobs:
   upload_release:
     name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     needs:
       - package_dpkg
       - package_rpm
@@ -528,7 +565,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Fix Checkout
         run: |
@@ -537,22 +574,22 @@ jobs:
       - name: Get Tag Type
         id: get_tagtype
         run: |
-          TYPE=$(git cat-file -t $GITHUB_REF)
+          TYPE=$(git cat-file -t "$GITHUB_REF")
           echo "TAGTYPE=$TYPE" >> "$GITHUB_OUTPUT"
           echo ==========
-          echo REF=$GITHUB_REF
-          echo TAGTYPE=$TYPE
+          echo "REF=$GITHUB_REF"
+          echo "TAGTYPE=$TYPE"
 
       - name: Fetch all Artifacts
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
           merge-multiple: true
 
       - name: Upload Assets to Release
         if: steps.get_tagtype.outputs.TAGTYPE == 'tag'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
           prerelease: true
           files: |
