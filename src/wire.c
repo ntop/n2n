@@ -463,6 +463,11 @@ int decode_REGISTER_SUPER (n2n_REGISTER_SUPER_t *reg,
     retval += decode_buf(reg->dev_desc, N2N_DESC_SIZE, base, rem, idx);
     retval += decode_uint16(&(reg->auth.scheme), base, rem, idx);
     retval += decode_uint16(&(reg->auth.token_size), base, rem, idx);
+    /* token_size is read from the wire; bound it to the fixed-size
+     * destination field auth.token before copying. */
+    if(reg->auth.token_size > N2N_AUTH_MAX_TOKEN_SIZE) {
+        return -1;
+    }
     retval += decode_buf(reg->auth.token, reg->auth.token_size, base, rem, idx);
     retval += decode_uint32(&(reg->key_time), base, rem, idx);
 
@@ -498,6 +503,11 @@ int decode_UNREGISTER_SUPER (n2n_UNREGISTER_SUPER_t *unreg,
 
     retval += decode_uint16(&(unreg->auth.scheme), base, rem, idx);
     retval += decode_uint16(&(unreg->auth.token_size), base, rem, idx);
+    /* token_size is read from the wire; bound it to the fixed-size
+     * destination field auth.token before copying. */
+    if(unreg->auth.token_size > N2N_AUTH_MAX_TOKEN_SIZE) {
+        return -1;
+    }
     retval += decode_buf(unreg->auth.token, unreg->auth.token_size, base, rem, idx);
     retval += decode_mac(unreg->srcMac, base, rem, idx);
 
@@ -603,10 +613,20 @@ int decode_REGISTER_SUPER_ACK (n2n_REGISTER_SUPER_ACK_t *reg,
 
     retval += decode_uint16(&(reg->auth.scheme), base, rem, idx);
     retval += decode_uint16(&(reg->auth.token_size), base, rem, idx);
+    /* token_size is read from the wire; bound it to the fixed-size
+     * destination field auth.token before copying. */
+    if(reg->auth.token_size > N2N_AUTH_MAX_TOKEN_SIZE) {
+        return -1;
+    }
     retval += decode_buf(reg->auth.token, reg->auth.token_size, base, rem, idx);
 
     /* Following the edge socket are an array of backup supernodes. */
     retval += decode_uint8(&(reg->num_sn), base, rem, idx);
+    /* num_sn is read from the wire; bound the resulting payload to the
+     * caller's fixed-size tmpbuf (REG_SUPER_ACK_PAYLOAD_SPACE bytes). */
+    if((size_t)reg->num_sn * REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE > REG_SUPER_ACK_PAYLOAD_SPACE) {
+        return -1;
+    }
     retval += decode_buf(tmpbuf, (reg->num_sn * REG_SUPER_ACK_PAYLOAD_ENTRY_SIZE), base, rem, idx);
 
     retval += decode_uint32(&(reg->key_time), base, rem, idx);
@@ -648,6 +668,11 @@ int decode_REGISTER_SUPER_NAK (n2n_REGISTER_SUPER_NAK_t *nak,
 
     retval += decode_uint16(&(nak->auth.scheme), base, rem, idx);
     retval += decode_uint16(&(nak->auth.token_size), base, rem, idx);
+    /* token_size is read from the wire; bound it to the fixed-size
+     * destination field auth.token before copying. */
+    if(nak->auth.token_size > N2N_AUTH_MAX_TOKEN_SIZE) {
+        return -1;
+    }
     retval += decode_buf(nak->auth.token, nak->auth.token_size, base, rem, idx);
 
     return retval;
