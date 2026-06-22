@@ -136,7 +136,7 @@ jobs:
 
       - if: ${{ failure() }}
         name: Upload tests output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "analysis${{ matrix.flags }}"
           path: tests
