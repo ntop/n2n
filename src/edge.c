@@ -361,7 +361,7 @@ static void help (int level) {
         printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
 #endif
         printf(" -t <port>         | management UDP port, for multiple edges on a machine,\n"
-               "                   | defaults to %u\n", N2N_EDGE_MGMT_PORT);
+               "                   | defaults to %u; 0 disables the management API\n", N2N_EDGE_MGMT_PORT);
         printf(" --management_...  | management port password, defaults to '%s'\n"
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");

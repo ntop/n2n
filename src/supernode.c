@@ -163,7 +163,7 @@ static void help (int level) {
         printf(" -f                | do not fork and run as a daemon, rather run in foreground\n");
 #endif
         printf(" -t <port>         | management UDP port, for multiple supernodes on a machine,\n"
-               "                   | defaults to %u\n", N2N_SN_MGMT_PORT);
+               "                   | defaults to %u; 0 disables the management API\n", N2N_SN_MGMT_PORT);
         printf(" --management_...  | management port password, defaults to '%s'\n"
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
@@ -225,13 +225,8 @@ static int setOption (int optkey, char *_optarg, n2n_sn_t *sss) {
             break;
         }
 
-        case 't': /* mgmt-port */
+        case 't': /* mgmt-port; 0 disables the management API */
             sss->mport = atoi(_optarg);
-
-            if(sss->mport == 0)
-                traceEvent(TRACE_WARNING, "bad management port format, defaulting to %u", N2N_SN_MGMT_PORT);
-                // default is made sure in sn_init()
-
             break;
 
         case 'l': { /* supernode:port */
@@ -677,12 +672,16 @@ int main (int argc, char * const argv[]) {
     }
 #endif
 
-    sss_node.mgmt_sock = open_socket(sss_node.mport, INADDR_LOOPBACK, 0 /* UDP */);
-    if(-1 == sss_node.mgmt_sock) {
-        traceEvent(TRACE_ERROR, "failed to open management socket, %s", strerror(errno));
-        exit(-2);
+    if(sss_node.mport == 0) {
+        traceEvent(TRACE_NORMAL, "management port disabled");
     } else {
-        traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", sss_node.mport);
+        sss_node.mgmt_sock = open_socket(sss_node.mport, INADDR_LOOPBACK, 0 /* UDP */);
+        if(-1 == sss_node.mgmt_sock) {
+            traceEvent(TRACE_ERROR, "failed to open management socket, %s", strerror(errno));
+            exit(-2);
+        } else {
+            traceEvent(TRACE_NORMAL, "supernode is listening on UDP %u (management)", sss_node.mport);
+        }
     }
 
     HASH_ITER(hh, sss_node.federation->edges, scan, tmp)

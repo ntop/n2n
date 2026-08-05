@@ -66,7 +66,8 @@ defaults to '10.128.255.0-10.255.255.0/24'
 disable daemon mode (UNIX) and run in foreground.
 .TP
 \fB\-t \fR<\fIport\fR>, \fB\-\-mgmt-port\fR=<\fIport\fR>
-management UDP port, for multiple supernodes on a machine, defaults to 5645
+management UDP port, for multiple supernodes on a machine, defaults to 5645.
+A value of 0 disables the management API entirely (no UDP socket is bound).
 .TP
 \fB\-\-management-password \fR<\fIpassword\fR>
 sets the password for access to JSON API at the management port, defaults to 'n2n'. The password
