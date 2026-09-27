@@ -545,7 +545,7 @@ static ssize_t sendto_sock(n2n_sn_t *sss,
     // if the connection is tcp, i.e. not the regular sock...
     if((socket_fd >= 0) && (socket_fd != sss->sock)) {
 
-        setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(value));
+        setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&value, sizeof(value));
         value = 1;
 #ifdef LINUX
         setsockopt(socket_fd, IPPROTO_TCP, TCP_CORK, &value, sizeof(value));
@@ -2609,7 +2609,8 @@ int run_sn_loop (n2n_sn_t *sss) {
 #ifdef N2N_HAVE_TCP
         FD_SET(sss->tcp_sock, &socket_mask);
 #endif
-        FD_SET(sss->mgmt_sock, &socket_mask);
+        if(sss->mgmt_sock >= 0)
+            FD_SET(sss->mgmt_sock, &socket_mask);
 
         max_sock = MAX(MAX(sss->sock, sss->mgmt_sock), sss->tcp_sock);
 
@@ -2761,7 +2762,7 @@ int run_sn_loop (n2n_sn_t *sss) {
 #endif /* N2N_HAVE_TCP */
 
             // handle management port input
-            if(FD_ISSET(sss->mgmt_sock, &socket_mask)) {
+            if(sss->mgmt_sock >= 0 && FD_ISSET(sss->mgmt_sock, &socket_mask)) {
                 struct sockaddr_storage sas;
                 struct sockaddr *sender_sock = (struct sockaddr*)&sas;
                 socklen_t ss_size = sizeof(sas);

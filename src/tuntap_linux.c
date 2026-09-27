@@ -187,7 +187,6 @@ int tuntap_open (tuntap_dev *device,
     memset(&sa, 0, sizeof(sa));
     sa.nl_family = PF_NETLINK;
     sa.nl_groups = RTMGRP_LINK;
-    sa.nl_pid = getpid();
 
     memset(&msg, 0, sizeof(msg));
     msg.msg_name = &sa;

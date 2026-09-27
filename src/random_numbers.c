@@ -182,7 +182,7 @@ uint64_t n2n_seed (void) {
     HCRYPTPROV crypto_provider;
     CryptAcquireContext (&crypto_provider, NULL, NULL,
                          PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
-    CryptGenRandom (crypto_provider, 8, &seed);
+    CryptGenRandom (crypto_provider, 8, (unsigned char*)&seed);
     CryptReleaseContext (crypto_provider, 0);
     ret += seed;
 #endif

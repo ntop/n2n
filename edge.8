@@ -189,7 +189,7 @@ do not fork and run as a daemon, rather run in foreground
 \fB\-t \fR<\fIport\fR>
 binds the edge management system to the given UDP port. Default 5644. Use this
 if you need to run multiple instance of edge; or something is bound to that
-port.
+port. A value of 0 disables the management API entirely (no UDP socket is bound).
 .TP
 \fB\-\-management-password \fR<\fIpassword\fR>
 sets the password for access to JSON API at the management port, defaults to 'n2n'. The password

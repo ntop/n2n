@@ -3,9 +3,7 @@
 */
 
 #include "defs.h"
-#ifndef _WIN64
 #include <iphlpapi.h>
-#endif
 
 #include "n2n.h"
 #include "n2n_win32.h"

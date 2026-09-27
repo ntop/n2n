@@ -21,7 +21,7 @@
 #include <stdlib.h>     // for size_t, calloc, free, NULL
 #include <string.h>     // for memset
 #include <sys/types.h>  // for time_t
-#include "minilzo.h"    // for lzo1x_1_compress, lzo1x_decompress, LZO1X_1_M...
+#include "minilzo.h"    // for lzo1x_1_compress, lzo1x_decompress_safe, LZO1X_1_M...
 #include "n2n.h"        // for n2n_trans_op_t, TRACE_ERROR, traceEvent, N2N_...
 
 
@@ -92,10 +92,8 @@ static int transop_decode_lzo (n2n_trans_op_t *arg,
         return 0;
     }
 
-    lzo1x_decompress(inbuf, in_len, outbuf, &deflated_len, NULL);
-
-    if(deflated_len > N2N_PKT_BUF_SIZE) {
-        traceEvent(TRACE_ERROR, "decode_lzo outbuf wrong size (%ul) decompressed", deflated_len);
+    if(lzo1x_decompress_safe(inbuf, in_len, outbuf, &deflated_len, NULL) != LZO_E_OK) {
+        traceEvent(TRACE_ERROR, "decode_lzo decompression failed or output exceeds buffer");
         return 0;
     }
 
