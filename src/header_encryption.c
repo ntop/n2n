@@ -44,6 +44,12 @@ int packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
     uint32_t test_magic;
     uint32_t checksum_high = 0;
 
+    // an encrypted header is at least the common part of the header, as
+    // packet_header_encrypt() makes it (which requires packet_len >= 24)
+    if(packet_len < 24) {
+        return 0;
+    }
+
     // check for magic
     // so, as a first step, decrypt last 4 bytes from where originally the community name would be
     speck_ctr((uint8_t*)&test_magic, &packet[16], 4, packet, (speck_context_t*)ctx);
@@ -52,7 +58,10 @@ int packet_header_decrypt (uint8_t packet[], uint16_t packet_len,
     //extract header length (lower 2 bytes)
     uint32_t header_len = test_magic - magic;
 
-    if(header_len <= packet_len) {
+    // header_len comes from the decrypted magic: for a packet of another
+    // community or a made-up one it can be anything, and below 24 the
+    // header_len - 16 below wraps, running the decryption far past packet[]
+    if((header_len >= 24) && (header_len <= packet_len)) {
         // decrypt the complete header
         speck_ctr(&packet[16], &packet[16], header_len - 16, packet, (speck_context_t*)ctx);
 
