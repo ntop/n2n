@@ -16,8 +16,8 @@ typedef struct strbuf {
 // Initialise the strbuf pointer buf to point at the storage area p
 // of size buflen
 #define STRBUF_INIT(buf,p,buflen) do { \
-        buf = (void *)p; \
-        buf->size = buflen - sizeof(size_t); \
+            buf = (void *)p; \
+            buf->size = buflen - sizeof(size_t); \
 } while(0)
 
 
