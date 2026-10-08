@@ -110,9 +110,9 @@ enum federation {IS_NO_FEDERATION = 0,IS_FEDERATION = 1};
 #define DEFAULT_MTU     1290
 
 #define HASH_ADD_PEER(head,add) \
-    HASH_ADD(hh,head,mac_addr,sizeof(n2n_mac_t),add)
+        HASH_ADD(hh,head,mac_addr,sizeof(n2n_mac_t),add)
 #define HASH_FIND_PEER(head,mac,out) \
-    HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
+        HASH_FIND(hh,head,mac,sizeof(n2n_mac_t),out)
 #define N2N_EDGE_SN_HOST_SIZE     48
 #define N2N_EDGE_SUP_ATTEMPTS     3             /* Number of failed attmpts before moving on to next supernode. */
 #define N2N_PATHNAME_MAXLEN       256
