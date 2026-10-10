@@ -362,7 +362,7 @@ static void help (int level) {
 #endif
         printf(" -t <port>         | management UDP port, for multiple edges on a machine,\n"
                "                   | defaults to %u; 0 disables the management API\n", N2N_EDGE_MGMT_PORT);
-        printf(" --management_...  | management port password, defaults to '%s'\n"
+        printf(" --management-...  | management port password, defaults to '%s'\n"
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
         printf(" -V                | make less verbose, repeat as required\n");

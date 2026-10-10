@@ -164,7 +164,7 @@ static void help (int level) {
 #endif
         printf(" -t <port>         | management UDP port, for multiple supernodes on a machine,\n"
                "                   | defaults to %u; 0 disables the management API\n", N2N_SN_MGMT_PORT);
-        printf(" --management_...  | management port password, defaults to '%s'\n"
+        printf(" --management-...  | management port password, defaults to '%s'\n"
                " ...password <pw>  | \n", N2N_MGMT_PASSWORD);
         printf(" -v                | make more verbose, repeat as required\n");
 #ifndef _WIN32
