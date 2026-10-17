@@ -2559,7 +2559,7 @@ void process_udp (n2n_edge_t *eee, const struct sockaddr *sender_sock, const SOC
                             inet_ntop(payload_sock.family,
                                       (payload_sock.family == AF_INET) ? (void*)&(payload_sock.addr.v4) : (void*)&(payload_sock.addr.v6),
                                       sn->ip_addr, N2N_EDGE_SN_HOST_SIZE - 1);
-                            sprintf(ip_tmp, "%s:%u", (char*)sn->ip_addr, (uint16_t)(payload_sock.port));
+                            snprintf(ip_tmp, sizeof(ip_tmp), "%s:%u", (char*)sn->ip_addr, (uint16_t)(payload_sock.port));
                             memcpy(sn->ip_addr, ip_tmp, sizeof(ip_tmp));
                         }
                         sn_selection_criterion_default(&(sn->selection_criterion));
