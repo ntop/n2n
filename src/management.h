@@ -82,15 +82,15 @@ typedef size_t (mgmt_event_handler_t)(strbuf_t *buf, char *tag, int data0, void 
 // Lookup the index of matching argv0 in a cmd list
 // store index in "Result", or -1 for not found
 #define lookup_handler(Result, list, argv0) do { \
-        int nr_max = sizeof(list) / sizeof(list[0]); \
-        for( Result=0; Result < nr_max; Result++ ) { \
-            if(0 == strcmp(list[Result].cmd, argv0)) { \
-                break; \
+            int nr_max = sizeof(list) / sizeof(list[0]); \
+            for( Result=0; Result < nr_max; Result++ ) { \
+                if(0 == strcmp(list[Result].cmd, argv0)) { \
+                    break; \
+                } \
             } \
-        } \
-        if( Result >= nr_max ) { \
-            Result = -1; \
-        } \
+            if( Result >= nr_max ) { \
+                Result = -1; \
+            } \
 } while(0)
 
 ssize_t send_reply (mgmt_req_t *req, strbuf_t *buf, size_t msg_len);
